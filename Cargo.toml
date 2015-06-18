@@ -1,8 +1,9 @@
 [package]
 authors = ["Without Boats <lee@libertad.ucsd.edu>"]
+description = "Add dependencies to your Cargo.toml from the command line."
+license = "Apache-2.0/MIT"
 name = "cargo-add"
 version = "0.1.0"
-license = "Apache-2.0/MIT"
 
 [dependencies]
 docopt = "*"
