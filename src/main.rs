@@ -156,7 +156,7 @@ fn insert_dependency(manifest: &mut BTreeMap<String, toml::Value>, (name, data):
 
 fn main() {
     //1. Generate an Args struct from the docopts string.
-    docopt::Docopt::new(USAGE).and_then(|d| d.decode::<Args>()).map_err(From::from)
+    docopt::Docopt::new(USAGE).and_then(|d| d.decode::<Args>()).or_else(|err| err.exit())
     //2. Generate a list of dependencies & a manifest file handle from the Args.
     //[Args -> (File, Vec<Dependency>)]
     .and_then(|args| {
@@ -182,7 +182,7 @@ fn main() {
     })
     //4. Print error message and return error code on failure.
     .or_else(|err| -> Result<(), Box<Error>> {
-        println!("Could not add dependency.\n\nERROR: {}", err);
+        println!("Could not add dependency.\n\nERROR: {:?}", err);
         process::exit(1);
     }).ok();
 }
