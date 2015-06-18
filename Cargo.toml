@@ -1,5 +1,5 @@
 [package]
-authors = ["Lee <lee@libertad.ucsd.edu>"]
+authors = ["Without Boats <lee@libertad.ucsd.edu>"]
 name = "cargo-add"
 version = "0.1.0"
 
