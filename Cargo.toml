@@ -4,6 +4,8 @@ description = "Add dependencies to your Cargo.toml from the command line."
 license = "Apache-2.0/MIT"
 name = "cargo-add"
 version = "0.1.0"
+repository = "https://github.com/withoutboats/cargo-add"
+homepage = "https://github.com/withoutboats/cargo-add"
 
 [dependencies]
 docopt = "*"
