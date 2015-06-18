@@ -182,7 +182,7 @@ fn main() {
     })
     //4. Print error message and return error code on failure.
     .or_else(|err| -> Result<(), Box<Error>> {
-        println!("Could not add dependency.\n\nERROR: {:?}", err);
+        println!("Could not add dependency.\n\nERROR: {}", err);
         process::exit(1);
     }).ok();
 }
