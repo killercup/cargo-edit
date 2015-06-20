@@ -3,13 +3,15 @@ extern crate rustc_serialize;
 extern crate semver;
 extern crate toml;
 
-use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::{OpenOptions, File};
 use std::io::{Read, Write};
 use std::process;
 
+mod args;
 mod manifest;
+
+use args::Args;
 
 static USAGE: &'static str = "
 Usage:
@@ -32,60 +34,6 @@ not be polled to guarantee that a crate meeting that version requirement
 actually exists.
 ";
 
-#[derive(Debug, RustcDecodable)]
-/// Docopts input args.
-struct Args {
-    arg_section: String,
-    arg_dep: Vec<String>,
-    arg_source: String,
-    flag_manifest_path: Option<String>,
-    flag_version: bool,
-    flag_git: bool,
-    flag_path: bool,
-}
-
-fn parse_sections(args: &Args) -> String {
-    let toml_field = match &args.arg_section[..] {
-        // Handle shortcuts
-        "deps" => "dependencies",
-        "dev-deps" => "dev-dependencies",
-        "build-deps" => "build-dependencies",
-        // No shortcut
-        field => field
-    };
-
-    String::from(toml_field)
-}
-
-/// Parse command-line input into key/value data that can be added to the TOML.
-fn parse_dependency(dep: &String, args: &Args) -> Result<manifest::Dependency, Box<Error>> {
-    if args.flag_version { parse_semver(&args.arg_source) }
-    else if args.flag_git { parse_git(&args.arg_source) }
-    else if args.flag_path { parse_path(&args.arg_source) }
-    else { Ok(toml::Value::String(String::from("*"))) }
-    .map(|data| (dep.clone(), data))
-}
-
-/// Parse (and validate) a version requirement to the correct TOML data.
-fn parse_semver(version: &String) -> Result<toml::Value, Box<Error>> {
-    try!(semver::VersionReq::parse(version));
-    Ok(toml::Value::String(version.clone()))
-}
-
-/// Parse a git source to the correct TOML data.
-fn parse_git(repo: &String) -> Result<toml::Value, Box<Error>> {
-    let mut dep = BTreeMap::new();
-    dep.insert(String::from("git"), toml::Value::String(repo.clone()));
-    Ok(toml::Value::Table(dep))
-}
-
-/// Parse a path to the correct TOML data.
-fn parse_path(path: &String) -> Result<toml::Value, Box<Error>> {
-    let mut dep = BTreeMap::new();
-    dep.insert(String::from("path"), toml::Value::String(path.clone()));
-    Ok(toml::Value::Table(dep))
-}
-
 fn main() {
     // 1. Generate an Args struct from the docopts string.
     docopt::Docopt::new(USAGE)
@@ -93,7 +41,7 @@ fn main() {
     // 2. Generate a list of dependencies & a manifest file handle from the Args.
     .and_then(|args: Args| -> Result<(File, Vec<manifest::Dependency>, Args), Box<Error>> {
         args.arg_dep.iter()
-        .map(|dep| parse_dependency(dep, &args))
+        .map(|dep| Args::parse_dependency(dep, &args))
         .collect::<Result<Vec<_>, _>>()
         .and_then(|deps| {
             manifest::find_manifest(args.flag_manifest_path.as_ref())
@@ -107,7 +55,7 @@ fn main() {
         manifest::read_as_toml(&mut manifest)
         .and_then(|mut toml_data| {
             deps.into_iter()
-            .map(|dep| manifest::insert_into_table(&mut toml_data, parse_sections(&args), dep))
+            .map(|dep| manifest::insert_into_table(&mut toml_data, Args::parse_sections(&args), dep))
             .collect::<Result<Vec<_>, _>>()
             .map_err(From::from)
             .map(|_| toml_data)
