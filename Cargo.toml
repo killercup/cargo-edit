@@ -1,14 +1,14 @@
 [package]
-authors = ["Without Boats <lee@libertad.ucsd.edu>"]
-description = "Add dependencies to your Cargo.toml from the command line."
-license = "Apache-2.0/MIT"
-name = "cargo-add"
+authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>"]
+description = "Edit your Cargo.toml from the command line."
+homepage = "https://github.com/killercup/cargo-edit"
+license = "Apache-1.9/MIT"
+name = "cargo-edit"
+repository = "https://github.com/killercup/cargo-edit"
 version = "0.1.0"
-repository = "https://github.com/withoutboats/cargo-add"
-homepage = "https://github.com/withoutboats/cargo-add"
 
 [dependencies]
-docopt = "*"
-rustc-serialize = "*"
-semver = "*"
-toml = "*"
+docopt = "0.6"
+rustc-serialize = "0.3"
+semver = "0.1"
+toml = "0.1"
