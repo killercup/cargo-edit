@@ -1,6 +1,7 @@
 use std::fmt;
 use std::error::Error;
 
+use pad::{PadStr, Alignment};
 use toml;
 
 use manifest::Manifest;
@@ -32,14 +33,17 @@ impl fmt::Display for ListError {
 }
 
 
-pub fn list_section(manifest: &Manifest, section: &str) -> Result<(), Box<Error>> {
+pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Error>> {
     let section = String::from(section);
+    let mut output = vec![];
 
     let list = try!(
         manifest.data.get(&section)
         .and_then(|field| field.as_table() )
         .ok_or(ListError::SectionMissing(section))
     );
+
+    let name_max_len = list.keys().map(|k| k.len()).max().unwrap_or(0);
 
     for (name, val) in list {
         let version = match *val {
@@ -55,8 +59,11 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<(), Box<Error>
             _ => String::from("")
         };
 
-        println!("{name} ({version})", name = name, version = version);
+        output.push(format!("{name} {version}",
+            name = name.pad_to_width_with_alignment(name_max_len, Alignment::Left),
+            version = version));
     }
 
-    Ok(())
+    Ok(output.connect("\n"))
+}
 }

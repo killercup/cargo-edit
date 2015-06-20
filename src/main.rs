@@ -4,6 +4,7 @@ extern crate docopt;
 extern crate rustc_serialize;
 extern crate semver;
 extern crate toml;
+extern crate pad;
 
 use std::error::Error;
 use std::process;
@@ -61,6 +62,7 @@ fn handle_list(args: &Args) -> Result<(), Box<Error>> {
     let manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref()));
 
     list::list_section(&manifest, &args.get_section())
+    .map(|listing| println!("{}", listing) )
     .or_else(|err| {
         println!("Could list your stuff.\n\nERROR: {}", err);
         Err(err)
