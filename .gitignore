@@ -1,2 +1,20 @@
+# Project specific stuff
 target
+
+# Editor Stuff
+*.sublime-project
+*.sublime-workspace
 .*.swp
+*.bak
+*~
+
+# System stuff
+.DS_Store
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.directory
+
