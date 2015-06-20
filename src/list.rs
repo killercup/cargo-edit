@@ -66,4 +66,37 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Er
 
     Ok(output.connect("\n"))
 }
+
+#[cfg(test)]
+mod test {
+    use manifest::Manifest;
+    use super::list_section;
+
+    static DEFAULT_CARGO_TOML: &'static str = r#"[package]
+authors = ["Some Guy"]
+name = "lorem-ipsum"
+version = "0.1.0"
+
+[dependencies]
+foo-bar = "0.1"
+lorem-ipsum = "0.4.2""#;
+
+    #[test]
+    fn basic_listing() {
+        let manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
+
+        assert_eq!(
+            list_section(&manifile, "dependencies").unwrap(), "\
+foo-bar     0.1
+lorem-ipsum 0.4.2"
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn unknown_section() {
+        let manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
+
+        list_section(&manifile, "lol-dependencies").unwrap();
+    }
 }
