@@ -7,8 +7,15 @@ use toml;
 use manifest;
 
 #[derive(Debug, RustcDecodable)]
+pub enum Command {
+    List,
+    Add,
+}
+
+#[derive(Debug, RustcDecodable)]
 /// Docopts input args.
 pub struct Args {
+    pub arg_command: Command,
     pub arg_section: String,
     pub arg_dep: Vec<String>,
     pub arg_source: String,
@@ -21,6 +28,7 @@ pub struct Args {
 impl Default for Args {
     fn default() -> Args {
         Args {
+            arg_command: Command::Add,
             arg_section: String::from("dependencies"),
             arg_dep: vec![],
             arg_source: String::from(""),

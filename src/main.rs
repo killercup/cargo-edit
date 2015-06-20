@@ -11,20 +11,26 @@ use std::process;
 #[macro_use] mod utils;
 mod args;
 mod manifest;
+mod list;
 #[cfg(test)] mod manifest_test;
 
-use args::Args;
+use args::{Args, Command};
 use manifest::Manifest;
 
 static USAGE: &'static str = "
 Usage:
-    cargo edit <section> add [options] <dep>...
-    cargo edit <section> add [options] <dep> (--version | --path | --git) <source>
-    cargo edit <section> add -h | --help
+    cargo edit <section> <command>
+    cargo edit <section> <command> [options] <dep>...
+    cargo edit <section> <command> [options] <dep> (--version | --path | --git) <source>
+    cargo edit -h | --help
 
 Options:
     --manifest-path PATH    Path to the manifest to add a dependency to.
     -h --help               Show this help page.
+
+Available commands are:
+    add         Add new dependency
+    list        Show a list of all dependencies
 
 Edit a crate's dependencies by changing the Cargo.toml file.
 
@@ -37,21 +43,42 @@ not be polled to guarantee that a crate meeting that version requirement
 actually exists.
 ";
 
-fn main() {
-    let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode::<Args>())
-        .unwrap_or_else(|err| err.exit());
-
-    let mut manifest = Manifest::open(&args.flag_manifest_path.as_ref())
-        .unwrap();
+fn handle_add(args: &Args) -> Result<(), Box<Error>> {
+    let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref()));
 
     manifest.add_deps(&args.get_section(), &args.get_dependencies())
     .and_then(|_| {
         let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref()));
         manifest.write_to_file(&mut file)
     })
-    .or_else(|err| -> Result<(), Box<Error>> {
+    .or_else(|err| {
         println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
+        Err(err)
+    })
+}
+
+fn handle_list(args: &Args) -> Result<(), Box<Error>> {
+    let manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref()));
+
+    list::list_section(&manifest, &args.get_section())
+    .or_else(|err| {
+        println!("Could list your stuff.\n\nERROR: {}", err);
+        Err(err)
+    })
+}
+
+fn main() {
+    let args = docopt::Docopt::new(USAGE)
+        .and_then(|d| d.decode::<Args>())
+        .unwrap_or_else(|err| err.exit());
+
+    let work = match args.arg_command {
+        Command::List => handle_list(&args),
+        Command::Add  => handle_add(&args),
+    };
+
+    work
+    .or_else(|_| -> Result<(), Box<Error>> {
         process::exit(1);
     }).ok();
 }
