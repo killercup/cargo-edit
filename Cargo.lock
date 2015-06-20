@@ -1,5 +1,5 @@
 [root]
-name = "cargo-add"
+name = "cargo-edit"
 version = "0.1.0"
 dependencies = [
  "docopt 0.6.66 (registry+https://github.com/rust-lang/crates.io-index)",
