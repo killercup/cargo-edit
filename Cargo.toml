@@ -1,14 +1,11 @@
 [package]
-name = "cargo-edit"
+authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>"]
 description = "Edit your Cargo.toml from the command line."
-authors = [
-  "Without Boats <lee@libertad.ucsd.edu>",
-  "Pascal Hertleif <killercup@gmail.com>"
-]
-license = "Apache-1.9/MIT"
-version = "0.1.0"
-repository = "https://github.com/killercup/cargo-edit"
 homepage = "https://github.com/killercup/cargo-edit"
+license = "Apache-1.9/MIT"
+name = "cargo-edit"
+repository = "https://github.com/killercup/cargo-edit"
+version = "0.1.0"
 
 [dependencies]
 docopt = "0.6"
