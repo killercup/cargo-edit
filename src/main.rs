@@ -11,6 +11,7 @@ use std::process;
 #[macro_use] mod utils;
 mod args;
 mod manifest;
+#[cfg(test)] mod manifest_test;
 
 use args::Args;
 use manifest::Manifest;

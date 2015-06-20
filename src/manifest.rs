@@ -28,7 +28,7 @@ impl fmt::Display for ManifestError {
 
 #[derive(Debug, PartialEq)]
 pub struct Manifest {
-    data: TomlMap
+    pub data: TomlMap
 }
 
 impl Manifest {
@@ -113,46 +113,5 @@ impl Manifest {
         .collect::<Result<Vec<_>, _>>()
         .map_err(From::from)
         .map(|_| ())
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use args::Args;
-    use super::Manifest;
-
-    static default_cargo_toml: &'static str = r#"[package]
-authors = ["Some Guy"]
-name = "lorem-ipsum"
-version = "0.1.0"
-
-[dependencies]
-foo-bar = "0.1""#;
-
-    #[test]
-    fn add_dependency() {
-        let opts = Args {
-            arg_section: String::from("dependencies"),
-            arg_dep: vec![String::from("lorem-ipsum")],
-            ..Default::default()
-        };
-
-        let mut manifile = Manifest::from_str(default_cargo_toml).unwrap();
-
-        manifile.add_deps(
-            &opts.get_section(),
-            &opts.get_dependencies()
-        );
-
-        println!("{:#?}", manifile);
-
-        let lorem = manifile.data.get(&opts.get_section()).expect("no section")
-            .lookup("lorem-ipsum").expect("no lorem")
-            .as_str().expect("not a str");
-
-        assert_eq!(
-            lorem,
-            "*"
-        );
     }
 }
