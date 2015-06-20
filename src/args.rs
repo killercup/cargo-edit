@@ -1,21 +1,10 @@
 use std::error::Error;
 use std::collections::BTreeMap;
 
-use rustc_serialize;
 use semver;
 use toml;
 
 use manifest;
-
-macro_rules! toml_table {
-    ($key:expr => $value:expr) => {
-        {
-            let mut dep = BTreeMap::new();
-            dep.insert(String::from($key), toml::Value::String($value.clone()));
-            toml::Value::Table(dep)
-        }
-    }
-}
 
 #[derive(Debug, RustcDecodable)]
 /// Docopts input args.
@@ -29,8 +18,22 @@ pub struct Args {
     pub flag_path: bool,
 }
 
+impl Default for Args {
+    fn default() -> Args {
+        Args {
+            arg_section: String::from("dependencies"),
+            arg_dep: vec![],
+            arg_source: String::from(""),
+            flag_manifest_path: None,
+            flag_version: false,
+            flag_git: false,
+            flag_path: false,
+        }
+    }
+}
+
 impl Args {
-    pub fn parse_sections(args: &Args) -> String {
+    pub fn parse_section(args: &Args) -> String {
         let toml_field = match &args.arg_section[..] {
             // Handle shortcuts
             "deps" => "dependencies",

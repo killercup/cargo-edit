@@ -1,17 +1,19 @@
+#![cfg_attr(test, allow(dead_code))]
+
 extern crate docopt;
 extern crate rustc_serialize;
 extern crate semver;
 extern crate toml;
 
 use std::error::Error;
-use std::fs::{OpenOptions, File};
-use std::io::{Read, Write};
 use std::process;
 
+#[macro_use] mod utils;
 mod args;
 mod manifest;
 
 use args::Args;
+use manifest::Manifest;
 
 static USAGE: &'static str = "
 Usage:
@@ -35,34 +37,24 @@ actually exists.
 ";
 
 fn main() {
-    // 1. Generate an Args struct from the docopts string.
-    docopt::Docopt::new(USAGE)
-    .and_then(|d| d.decode::<Args>()).or_else(|err| err.exit())
-    // 2. Generate a list of dependencies & a manifest file handle from the Args.
-    .and_then(|args: Args| -> Result<(File, Vec<manifest::Dependency>, Args), Box<Error>> {
-        args.arg_dep.iter()
-        .map(|dep| Args::parse_dependency(dep, &args))
-        .collect::<Result<Vec<_>, _>>()
-        .and_then(|deps| {
-            manifest::find_manifest(args.flag_manifest_path.as_ref())
-            .and_then(|path| OpenOptions::new().read(true).write(true)
-                                               .open(path).map_err(From::from))
-            .map(|manifest| (manifest, deps, args))
-        })
+    let args = docopt::Docopt::new(USAGE)
+        .and_then(|d| d.decode::<Args>())
+        .unwrap_or_else(|err| err.exit());
+
+    let deps: Vec<manifest::Dependency> = args.arg_dep.iter()
+        .filter_map(|dep| Args::parse_dependency(dep, &args).ok())
+        .collect();
+
+    let mut manifest = Manifest::open(&args.flag_manifest_path.as_ref())
+        .unwrap();
+
+    let table = Args::parse_section(&args);
+
+    manifest.add_deps(&table, &deps)
+    .and_then(|_| {
+        let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref()));
+        manifest.write_to_file(&mut file)
     })
-    // 3. Add the dependencies to the manifest. [(File, Vec<Dependency>) -> ()]
-    .and_then(|(mut manifest, deps, args)| {
-        manifest::read_as_toml(&mut manifest)
-        .and_then(|mut toml_data| {
-            deps.into_iter()
-            .map(|dep| manifest::insert_into_table(&mut toml_data, Args::parse_sections(&args), dep))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(From::from)
-            .map(|_| toml_data)
-        })
-        .and_then(|toml_data| manifest::write_from_toml(&mut manifest, toml_data))
-    })
-    // 4. Print error message and return error code on failure.
     .or_else(|err| -> Result<(), Box<Error>> {
         println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
         process::exit(1);
