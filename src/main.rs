@@ -41,16 +41,10 @@ fn main() {
         .and_then(|d| d.decode::<Args>())
         .unwrap_or_else(|err| err.exit());
 
-    let deps: Vec<manifest::Dependency> = args.arg_dep.iter()
-        .filter_map(|dep| Args::parse_dependency(dep, &args).ok())
-        .collect();
-
     let mut manifest = Manifest::open(&args.flag_manifest_path.as_ref())
         .unwrap();
 
-    let table = Args::parse_section(&args);
-
-    manifest.add_deps(&table, &deps)
+    manifest.add_deps(&args.get_section(), &args.get_dependencies())
     .and_then(|_| {
         let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref()));
         manifest.write_to_file(&mut file)

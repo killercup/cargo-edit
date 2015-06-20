@@ -33,8 +33,8 @@ impl Default for Args {
 }
 
 impl Args {
-    pub fn parse_section(args: &Args) -> String {
-        let toml_field = match &args.arg_section[..] {
+    pub fn get_section(&self) -> String {
+        let toml_field = match &(self.arg_section[..]) {
             // Handle shortcuts
             "deps" => "dependencies",
             "dev-deps" => "dev-dependencies",
@@ -47,12 +47,18 @@ impl Args {
     }
 
     /// Parse command-line input into key/value data that can be added to the TOML.
-    pub fn parse_dependency(dep: &String, args: &Args) -> Result<manifest::Dependency, Box<Error>> {
-        if args.flag_version { Args::parse_semver(&args.arg_source) }
-        else if args.flag_git { Args::parse_git(&args.arg_source) }
-        else if args.flag_path { Args::parse_path(&args.arg_source) }
+    pub fn parse_dependency(&self, dep: &String) -> Result<manifest::Dependency, Box<Error>> {
+        if self.flag_version { Args::parse_semver(&self.arg_source) }
+        else if self.flag_git { Args::parse_git(&self.arg_source) }
+        else if self.flag_path { Args::parse_path(&self.arg_source) }
         else { Ok(toml::Value::String(String::from("*"))) }
         .map(|data| (dep.clone(), data))
+    }
+
+    pub fn get_dependencies(&self) -> Vec<manifest::Dependency> {
+        self.arg_dep.iter()
+            .filter_map(|dep| self.parse_dependency(dep).ok())
+            .collect()
     }
 
     /// Parse (and validate) a version requirement to the correct TOML data.
