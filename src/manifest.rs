@@ -62,13 +62,8 @@ pub fn write_from_toml(file: &mut File, mut toml: TomlMap)
            toml::Value::Table(toml)).map_err(From::from)
 }
 
-// Add a dependency to a Cargo.toml.
-pub fn insert_dependency(manifest: &mut TomlMap, dep: Dependency)
-        -> Result<(), ManifestError> {
-    insert_into_table(manifest, String::from("dependencies"), dep)
-}
-
-fn insert_into_table(manifest: &mut TomlMap, table: String, (name, data): Dependency)
+// Add entry to a Cargo.toml.
+pub fn insert_into_table(manifest: &mut TomlMap, table: String, (name, data): Dependency)
         -> Result<(), ManifestError> {
     match manifest.entry(table)
     .or_insert(toml::Value::Table(BTreeMap::new())) {
