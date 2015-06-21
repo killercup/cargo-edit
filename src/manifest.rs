@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use toml;
 
 pub type Dependency = (String, toml::Value);
-pub type TomlMap = BTreeMap<String, toml::Value>;
 
 #[derive(Debug)]
 /// Catch-all error for misconfigured crates.
@@ -26,9 +25,34 @@ impl fmt::Display for ManifestError {
     }
 }
 
+enum CargoFile {
+    Config,
+    Lock,
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Manifest {
-    pub data: TomlMap
+    pub data: toml::Table
+}
+
+/// If a manifest is specified, return that one, otherise perform a manifest search starting from
+/// the current directory.
+fn find(specified: &Option<&String>, file: CargoFile) -> Result<PathBuf, Box<Error>> {
+    specified.map(PathBuf::from).ok_or(())
+    .or_else(|_| env::current_dir().map_err(From::from)
+                 .and_then(|ref dir| search(dir, file).map_err(From::from)))
+}
+
+/// Search for Cargo.toml in this directory and recursively up the tree until one is found.
+#[allow(unconditional_recursion)] //Incorrect lint; recursion is conditional.
+fn search(dir: &Path, file: CargoFile) -> Result<PathBuf, ManifestError> {
+    let manifest = match file {
+        CargoFile::Config => dir.join("Cargo.toml"),
+        CargoFile::Lock => dir.join("Cargo.lock"),
+    };
+
+    fs::metadata(&manifest).map(|_| manifest)
+    .or(dir.parent().ok_or(ManifestError).and_then(|dir| search(dir, file)))
 }
 
 impl Manifest {
@@ -44,23 +68,16 @@ impl Manifest {
     }
 
     pub fn find_file(path: &Option<&String>) -> Result<File, Box<Error>> {
-        /// If a manifest is specified, return that one, otherise perform a manifest search starting from
-        /// the current directory.
-        fn find(specified: &Option<&String>) -> Result<PathBuf, Box<Error>> {
-            specified.map(PathBuf::from).ok_or(())
-            .or_else(|_| env::current_dir().map_err(From::from)
-                         .and_then(|ref dir| search(dir).map_err(From::from)))
-        }
+        find(path, CargoFile::Config)
+        .and_then(|path| {
+            OpenOptions::new()
+            .read(true).write(true).open(path)
+            .map_err(From::from)
+        })
+    }
 
-        /// Search for Cargo.toml in this directory and recursively up the tree until one is found.
-        #[allow(unconditional_recursion)] //Incorrect lint; recursion is conditional.
-        fn search(dir: &Path) -> Result<PathBuf, ManifestError> {
-            let manifest = dir.join("Cargo.toml");
-            fs::metadata(&manifest).map(|_| manifest)
-            .or(dir.parent().ok_or(ManifestError).and_then(search))
-        }
-
-        find(path)
+    pub fn find_lock_file(path: &Option<&String>) -> Result<File, Box<Error>> {
+        find(path, CargoFile::Lock)
         .and_then(|path| {
             OpenOptions::new()
             .read(true).write(true).open(path)
@@ -70,6 +87,14 @@ impl Manifest {
 
     pub fn open(path: &Option<&String>) -> Result<Manifest, Box<Error>> {
         let mut file = try!(Manifest::find_file(path));
+        let mut data = String::new();
+        try!(file.read_to_string(&mut data));
+
+        Manifest::from_str(&data)
+    }
+
+    pub fn open_lock_file(path: &Option<&String>) -> Result<Manifest, Box<Error>> {
+        let mut file = try!(Manifest::find_lock_file(path));
         let mut data = String::new();
         try!(file.read_to_string(&mut data));
 

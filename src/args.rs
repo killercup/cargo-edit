@@ -9,6 +9,7 @@ use manifest;
 #[derive(Debug, RustcDecodable)]
 pub enum Command {
     List,
+    Tree,
     Add,
 }
 

@@ -16,6 +16,8 @@ use std::process;
 mod args;
 mod manifest;
 mod list;
+mod list_error;
+mod tree;
 #[cfg(test)] mod manifest_test;
 
 use args::{Args, Command};
@@ -23,7 +25,7 @@ use manifest::Manifest;
 
 static USAGE: &'static str = "
 Usage:
-    cargo edit <section> <command>
+    cargo edit <section> <command> [options]
     cargo edit <section> <command> [options] <dep>...
     cargo edit <section> <command> [options] <dep> (--version | --path | --git) <source>
     cargo edit -h | --help
@@ -35,8 +37,9 @@ Options:
 Available commands are:
     add         Add new dependency
     list        Show a list of all dependencies
+    tree        Show a tree of all dependencies and their subdependencies
 
-Edit a crate's dependencies by changing the Cargo.toml file.
+Edit/display a crate's dependencies using its Cargo.toml file.
 
 If no source is specified, the source will be set to a wild-card version
 dependency from the source's default crate registry.
@@ -72,6 +75,14 @@ fn handle_list(args: &Args) -> Result<(), Box<Error>> {
     })
 }
 
+fn handle_tree(args: &Args) -> Result<(), Box<Error>> {
+    let manifest = try!(Manifest::open_lock_file(&args.flag_manifest_path.as_ref()));
+
+    let output = try!(tree::parse_lock_file(&manifest));
+    println!("{}", output);
+    Ok(())
+}
+
 fn main() {
     let args = docopt::Docopt::new(USAGE)
         .and_then(|d| d.decode::<Args>())
@@ -79,6 +90,7 @@ fn main() {
 
     let work = match args.arg_command {
         Command::List => handle_list(&args),
+        Command::Tree => handle_tree(&args),
         Command::Add  => handle_add(&args),
     };
 
