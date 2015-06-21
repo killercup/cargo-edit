@@ -1,5 +1,8 @@
 #![cfg_attr(test, allow(dead_code))]
 
+#![cfg_attr(feature = "dev", feature(plugin))]
+#![cfg_attr(feature = "dev", plugin(clippy))]
+
 extern crate docopt;
 extern crate rustc_serialize;
 extern crate semver;
