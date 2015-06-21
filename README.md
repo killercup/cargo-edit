@@ -2,11 +2,19 @@
 
 This tool extends the behavior of cargo to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line. It is very simple to install and use.
 
-### Installation
+[![Build Status](https://travis-ci.org/killercup/cargo-edit.svg?branch=master)](https://travis-ci.org/killercup/cargo-edit)
+
+## Installation
 
 You can build `cargo-edit` from the source, available through GitHub. Once you have an executable, you can move it to a directory in your PATH, and the `cargo edit` command will now work.
 
-### Use
+## Features
+
+- Add any kind of dependency
+- List dependencies
+- Display a tree of dependencies and subdependencies
+
+## Use
 
 See `cargo edit -h` for a full description of use.
 
