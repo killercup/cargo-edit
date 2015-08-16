@@ -6,6 +6,7 @@ use toml;
 use manifest::Manifest;
 use list_error::ListError;
 
+#[allow(deprecated)] // connect -> join
 pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Error>> {
     let section = String::from(section);
     let mut output = vec![];
@@ -20,7 +21,7 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Er
 
     for (name, val) in list {
         let version = match *val {
-            toml::Value::String(ref version) => version.to_string(),
+            toml::Value::String(ref version) => version.to_owned(),
             toml::Value::Table(_) => {
                 let v = try!(
                     val.lookup("version")

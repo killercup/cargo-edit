@@ -44,7 +44,6 @@ fn find(specified: &Option<&String>, file: CargoFile) -> Result<PathBuf, Box<Err
 }
 
 /// Search for Cargo.toml in this directory and recursively up the tree until one is found.
-#[allow(unconditional_recursion)] //Incorrect lint; recursion is conditional.
 fn search(dir: &Path, file: CargoFile) -> Result<PathBuf, ManifestError> {
     let manifest = match file {
         CargoFile::Config => dir.join("Cargo.toml"),
