@@ -6,14 +6,12 @@ use toml;
 
 use manifest;
 
-#[derive(Debug, RustcDecodable)]
 pub enum Command {
     List,
     Tree,
     Add,
 }
 
-#[derive(Debug, RustcDecodable)]
 /// Docopts input args.
 pub struct Args {
     pub arg_command: Command,
@@ -47,7 +45,9 @@ impl Args {
             // Handle shortcuts
             "deps" => "dependencies",
             "dev-deps" => "dev-dependencies",
+            "dev" => "dev-dependencies",
             "build-deps" => "build-dependencies",
+            "build" => "build-dependencies",
             // No shortcut
             field => field
         };

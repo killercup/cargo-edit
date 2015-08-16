@@ -12,9 +12,8 @@ default = []
 dev = ["clippy"]
 
 [dependencies]
-docopt = "0.6"
+clap = "1.2"
 pad = "0.1"
-rustc-serialize = "0.3"
 semver = "0.1"
 toml = "0.1"
 

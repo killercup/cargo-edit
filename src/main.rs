@@ -3,14 +3,14 @@
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]
 
-extern crate docopt;
-extern crate rustc_serialize;
+extern crate clap;
 extern crate semver;
 extern crate toml;
 extern crate pad;
 
 use std::error::Error;
 use std::process;
+use clap::{App, Arg, ArgGroup, SubCommand, AppSettings};
 
 #[macro_use] mod utils;
 mod args;
@@ -84,18 +84,67 @@ fn handle_tree(args: &Args) -> Result<(), Box<Error>> {
 }
 
 fn main() {
-    let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode::<Args>())
-        .unwrap_or_else(|err| err.exit());
+    let args = App::new("cargo")
+    .version(env!("CARGO_PKG_VERSION"))
+    .settings(&[
+        AppSettings::GlobalVersion,
+        AppSettings::ArgRequiredElseHelp,
+        AppSettings::SubcommandRequiredElseHelp,
+    ])
+    .subcommand(SubCommand::with_name("edit")
+        .about("Edit/display a crate's dependencies using its Cargo.toml file.")
+        .settings(&[
+            AppSettings::SubcommandRequiredElseHelp,
+        ])
+        .arg(Arg::with_name("manifest-path")
+           .long("manifest-path")
+           .takes_value(true)
+           .help("Path to the manifest to add a dependency to.")
+        )
+        .arg(Arg::with_name("section")
+           .help("Select group of dependencies, e.g. 'dev-dependencies'. Allows some shortcuts like 'dev' or 'dev-deps'.")
+           .required(true)
+           .index(1)
+        )
+        .subcommand(SubCommand::with_name("add")
+            .about("Add new dependency")
+            .arg(Arg::with_name("dependency")
+               .help("Name of the dependency to add")
+               .required(true)
+               .index(2)
+            )
+            .arg(Arg::with_name("version")
+               .long("version")
+               .short("v")
+               .takes_value(true)
+               .help("Set the crates.io version to use.")
+            )
+            .arg_group(ArgGroup::with_name("dependency_source")
+                .add_all(vec!["path", "git"])
+            )
+            .arg(Arg::with_name("path")
+               .long("path")
+               .takes_value(true)
+               .help("Set the path to use for this crate.")
+            )
+            .arg(Arg::with_name("git")
+               .long("git")
+               .takes_value(true)
+               .help("Set the git URL to use for this crate.")
+            )
+        )
+    )
+    .get_matches();
 
-    let work = match args.arg_command {
-        Command::List => handle_list(&args),
-        Command::Tree => handle_tree(&args),
-        Command::Add  => handle_add(&args),
-    };
 
-    work
-    .or_else(|_| -> Result<(), Box<Error>> {
-        process::exit(1);
-    }).ok();
+    // let work = match args.arg_command {
+    //     Command::List => handle_list(&args),
+    //     Command::Tree => handle_tree(&args),
+    //     Command::Add  => handle_add(&args),
+    // };
+    //
+    // work
+    // .or_else(|_| -> Result<(), Box<Error>> {
+    //     process::exit(1);
+    // }).ok();
 }
