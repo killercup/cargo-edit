@@ -17,7 +17,4 @@ pad = "0.1"
 rustc-serialize = "0.3"
 semver = "0.1"
 toml = "0.1"
-
-[dependencies.clippy]
-git = "https://github.com/Manishearth/rust-clippy.git"
-optional = true
+clippy = {git = "https://github.com/Manishearth/rust-clippy.git", optional = true}
