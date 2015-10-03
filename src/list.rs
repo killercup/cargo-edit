@@ -26,6 +26,7 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Er
                 let v = try!(
                     val.lookup("version")
                     .and_then(|field| field.as_str())
+                    .or_else(|| val.lookup("git").map(|_| "git"))
                     .ok_or(ListError::VersionMissing(name.clone()))
                 );
                 String::from(v)
