@@ -31,7 +31,7 @@ fn get_root_deps(lock_file: &toml::Table) -> Result<Vec<Dependency>, Box<Error>>
         lock_file
         .get("root")
         .and_then(|field| field.lookup("dependencies"))
-        .ok_or(ListError::SectionMissing("root.dependencies".to_owned()))
+        .ok_or(ListError::SectionMissing("dependencies".to_owned()))
     );
 
     let output = root_deps.as_slice()
