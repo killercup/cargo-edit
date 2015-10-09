@@ -1,5 +1,7 @@
 # Project specific stuff
 target
+# rustfmt
+*.bk
 
 # Editor Stuff
 *.sublime-project
@@ -7,6 +9,7 @@ target
 .*.swp
 *.bak
 *~
+.vscode
 
 # System stuff
 .DS_Store
@@ -17,4 +20,3 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .directory
-
