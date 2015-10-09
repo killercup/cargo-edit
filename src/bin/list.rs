@@ -69,7 +69,8 @@ fn main() {
         .and_then(|d| d.decode::<Args>())
         .unwrap_or_else(|err| err.exit());
 
-    handle_list(&args).or_else(|_| -> Result<(), Box<Error>> {
+    if let Err(err) = handle_list(&args) {
+        println!("{}", err);
         process::exit(1);
-    }).ok();
+    }
 }
