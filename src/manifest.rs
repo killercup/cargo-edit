@@ -25,6 +25,22 @@ impl fmt::Display for ManifestError {
     }
 }
 
+#[derive(Debug)]
+/// Catch-all error for misconfigured crates.
+pub struct ManifestPathError;
+
+impl Error for ManifestPathError {
+    fn description(&self) -> &str {
+        "The manifest path you supplied was not valid."
+    }
+}
+
+impl fmt::Display for ManifestPathError {
+    fn fmt(&self, format: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        format.write_str(self.description())
+    }
+}
+
 enum CargoFile {
     Config,
     Lock,
@@ -38,9 +54,18 @@ pub struct Manifest {
 /// If a manifest is specified, return that one, otherise perform a manifest search starting from
 /// the current directory.
 fn find(specified: &Option<&String>, file: CargoFile) -> Result<PathBuf, Box<Error>> {
-    specified.map(PathBuf::from).ok_or(())
-    .or_else(|_| env::current_dir().map_err(From::from)
-                 .and_then(|ref dir| search(dir, file).map_err(From::from)))
+    let file_path = specified.map(PathBuf::from);
+
+    if let Some(path) = file_path {
+        if try!(fs::metadata(&path)).is_file() {
+            Ok(path)
+        } else {
+            Err(ManifestPathError).map_err(From::from)
+        }
+    } else {
+        env::current_dir().map_err(From::from)
+            .and_then(|ref dir| search(dir, file).map_err(From::from))
+    }
 }
 
 /// Search for Cargo.toml in this directory and recursively up the tree until one is found.

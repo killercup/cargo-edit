@@ -70,7 +70,7 @@ fn handle_list(args: &Args) -> Result<(), Box<Error>> {
     list::list_section(&manifest, &args.get_section())
     .map(|listing| println!("{}", listing) )
     .or_else(|err| {
-        println!("Could list your stuff.\n\nERROR: {}", err);
+        println!("Could not list your stuff.\n\nERROR: {}", err);
         Err(err)
     })
 }
