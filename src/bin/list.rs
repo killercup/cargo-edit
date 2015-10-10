@@ -1,5 +1,9 @@
+//! `cargo add`
+
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]
+
+#![deny(missing_docs)]
 
 extern crate docopt;
 extern crate rustc_serialize;

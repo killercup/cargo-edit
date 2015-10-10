@@ -19,6 +19,6 @@ mod tree;
 #[cfg(test)] mod args;
 #[cfg(test)] mod manifest_test;
 
-pub use manifest::Manifest;
+pub use manifest::{Dependency, Manifest};
 pub use list::list_section;
 pub use tree::parse_lock_file as list_tree;
