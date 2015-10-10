@@ -3,7 +3,7 @@ name = "cargo-edit"
 version = "0.1.0"
 dependencies = [
  "assert_cli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.18 (git+https://github.com/Manishearth/rust-clippy.git)",
+ "clippy 0.0.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.73 (registry+https://github.com/rust-lang/crates.io-index)",
  "pad 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -35,8 +35,8 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.18"
-source = "git+https://github.com/Manishearth/rust-clippy.git#e36c6d1a7c2e9edf6d172edc9939b54f60b2d8a5"
+version = "0.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-normalization 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
