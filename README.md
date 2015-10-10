@@ -3,6 +3,8 @@
 This tool extends the behavior of cargo to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line. It is very simple to install and use.
 
 [![Build Status](https://travis-ci.org/killercup/cargo-edit.svg?branch=master)](https://travis-ci.org/killercup/cargo-edit)
+[![Coverage Status](https://coveralls.io/repos/killercup/cargo-edit/badge.svg?branch=master&service=github)](https://coveralls.io/github/killercup/cargo-edit?branch=master)
+
 
 ## Installation
 

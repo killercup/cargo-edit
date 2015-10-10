@@ -25,7 +25,7 @@ addons:
     - libdw-dev
 after_success:
 - travis-cargo --only stable doc-upload
-- travis-cargo coveralls --no-sudo
+- env COVERAGE_TESTING=1 travis-cargo coveralls --no-sudo
 notifications:
   email:
     on_success: never
