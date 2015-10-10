@@ -49,7 +49,7 @@ impl Args {
             "dev-deps" => "dev-dependencies",
             "build-deps" => "build-dependencies",
             // No shortcut
-            field => field
+            field => field,
         };
 
         String::from(toml_field)
@@ -57,15 +57,22 @@ impl Args {
 
     /// Parse command-line input into key/value data that can be added to the TOML.
     pub fn parse_dependency(&self, dep: &String) -> Result<manifest::Dependency, Box<Error>> {
-        if self.flag_version { Args::parse_semver(&self.arg_source) }
-        else if self.flag_git { Args::parse_git(&self.arg_source) }
-        else if self.flag_path { Args::parse_path(&self.arg_source) }
-        else { Ok(toml::Value::String(String::from("*"))) }
-        .map(|data| (dep.clone(), data))
+        let version = if self.flag_version {
+            Args::parse_semver(&self.arg_source)
+        } else if self.flag_git {
+            Args::parse_git(&self.arg_source)
+        } else if self.flag_path {
+            Args::parse_path(&self.arg_source)
+        } else {
+            Ok(toml::Value::String(String::from("*")))
+        };
+
+        version.map(|data| (dep.clone(), data))
     }
 
     pub fn get_dependencies(&self) -> Vec<manifest::Dependency> {
-        self.arg_dep.iter()
+        self.arg_dep
+            .iter()
             .filter_map(|dep| self.parse_dependency(dep).ok())
             .collect()
     }
