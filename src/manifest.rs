@@ -140,9 +140,9 @@ impl Manifest {
     /// Add entry to a Cargo.toml.
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn insert_into_table(&mut self,
-                         table: &str,
-                         &(ref name, ref data): &Dependency)
-                         -> Result<(), ManifestError> {
+                             table: &str,
+                             &(ref name, ref data): &Dependency)
+                             -> Result<(), ManifestError> {
         let ref mut manifest = self.data;
         let entry = manifest.entry(String::from(table))
                             .or_insert(toml::Value::Table(BTreeMap::new()));

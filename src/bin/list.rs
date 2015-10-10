@@ -63,11 +63,10 @@ fn handle_list(args: &Args) -> Result<(), Box<Error>> {
         list_section(&manifest, &args.get_section())
     };
 
-    listing.map(|listing| println!("{}", listing))
-           .or_else(|err| {
-               println!("Could not list your stuff.\n\nERROR: {}", err);
-               Err(err)
-           })
+    listing.map(|listing| println!("{}", listing)).or_else(|err| {
+        println!("Could not list your stuff.\n\nERROR: {}", err);
+        Err(err)
+    })
 }
 
 fn main() {
