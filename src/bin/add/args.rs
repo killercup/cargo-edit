@@ -16,7 +16,7 @@ pub struct Args {
     /// build-dependency
     pub flag_build: bool,
     /// Version
-    pub flag_v: Option<String>,
+    pub flag_ver: Option<String>,
     /// Git repo Path
     pub flag_git: Option<String>,
     /// Crate directory path
@@ -43,7 +43,7 @@ impl Args {
 
     /// Build depenency from arguments
     pub fn parse_dependency(&self) -> Result<Dependency, Box<Error>> {
-        let version = if let Some(ref version) = self.flag_v {
+        let version = if let Some(ref version) = self.flag_ver {
             parse_semver(&version)
         } else if let Some(ref repo) = self.flag_git {
             parse_git(&repo)
@@ -63,7 +63,7 @@ impl Default for Args {
             arg_crate: "demo".to_owned(),
             flag_dev: false,
             flag_build: false,
-            flag_v: None,
+            flag_ver: None,
             flag_git: None,
             flag_path: None,
             flag_optional: false,

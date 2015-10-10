@@ -21,14 +21,14 @@ use args::Args;
 
 static USAGE: &'static str = r"
 Usage:
-    cargo add <crate> [--dev|--build] [--v=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
     cargo add (-h|--help)
     cargo add --version
 
 Options:
     -D --dev                Add crate as development dependency.
     -B --build              Add crate as build dependency.
-    --v=<semver>            Specify the version to grab from the registry (crates.io).
+    --ver=<semver>          Specify the version to grab from the registry (crates.io).
     --git=<uri>             Specify a git repository to download the crate from.
     --path=<uri>            Specify the path the crate should be loaded from.
     --optional              Add as an optional dependency, e.g. for use in features.
