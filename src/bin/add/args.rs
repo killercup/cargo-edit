@@ -128,7 +128,7 @@ mod tests {
     fn test_dependency_parsing() {
         let args = Args {
             arg_crate: "demo".to_owned(),
-            flag_v: Some("0.4.2".to_owned()),
+            flag_ver: Some("0.4.2".to_owned()),
             ..Args::default()
         };
 
