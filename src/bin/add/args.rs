@@ -43,6 +43,10 @@ impl Args {
 
     /// Build depenency from arguments
     pub fn parse_dependency(&self) -> Result<Dependency, Box<Error>> {
+        if crate_name_has_version(&self.arg_crate) {
+            return parse_crate_name_with_version(&self.arg_crate);
+        }
+
         let version = if let Some(ref version) = self.flag_ver {
             parse_semver(&version)
         } else if let Some(ref repo) = self.flag_git {
@@ -81,6 +85,22 @@ macro_rules! toml_table {
             toml::Value::Table(dep)
         }
     }
+}
+
+fn crate_name_has_version(name: &str) -> bool {
+    name.contains("@")
+}
+
+fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
+    // if !crate_name_has_version(name) {
+    //     return Err("fuu");
+    // }
+
+    let xs: Vec<&str> = name.splitn(2, "@").collect();
+    let (name, version) = (xs[0], xs[1]);
+    let version = try!(parse_semver(&version.to_owned()));
+
+    Ok((String::from(name), version))
 }
 
 /// Parse (and validate) a version requirement to the correct TOML data.
