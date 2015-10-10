@@ -25,34 +25,23 @@ impl fmt::Display for ManifestError {
     }
 }
 
-#[derive(Debug)]
-/// Catch-all error for misconfigured crates.
-pub struct ManifestPathError;
-
-impl Error for ManifestPathError {
-    fn description(&self) -> &str {
-        "The manifest path you supplied was not valid."
-    }
-}
-
-impl fmt::Display for ManifestPathError {
-    fn fmt(&self, format: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        format.write_str(self.description())
-    }
-}
-
 enum CargoFile {
     Config,
     Lock,
 }
 
+/// A Cargo Manifest
 #[derive(Debug, PartialEq)]
 pub struct Manifest {
+    /// Manifest contents as TOML data
     pub data: toml::Table,
 }
 
 /// If a manifest is specified, return that one, otherise perform a manifest search starting from
 /// the current directory.
+/// If a manifest is specified, return that one. If a path is specified, perform a manifest search
+/// starting from there. If nothing is specified, start searching from the current directory
+/// (`cwd`).
 fn find(specified: &Option<&String>, file: CargoFile) -> Result<PathBuf, Box<Error>> {
     let file_path = specified.map(PathBuf::from);
 
@@ -60,7 +49,7 @@ fn find(specified: &Option<&String>, file: CargoFile) -> Result<PathBuf, Box<Err
         if try!(fs::metadata(&path)).is_file() {
             Ok(path)
         } else {
-            Err(ManifestPathError).map_err(From::from)
+            search(&path, file).map_err(From::from)
         }
     } else {
         env::current_dir()
@@ -82,6 +71,7 @@ fn search(dir: &Path, file: CargoFile) -> Result<PathBuf, ManifestError> {
 }
 
 impl Manifest {
+    /// Read manifest data from string
     pub fn from_str(input: &str) -> Result<Manifest, Box<Error>> {
         let mut parser = toml::Parser::new(&input);
 
@@ -92,6 +82,10 @@ impl Manifest {
               .map(|data| Manifest { data: data })
     }
 
+    /// Look for a `Cargo.toml` file
+    ///
+    /// Starts at the given path an goes into its parent directories until the manifest file is
+    /// found. If no path is given, the process's working directory is used as a starting point.
     pub fn find_file(path: &Option<&String>) -> Result<File, Box<Error>> {
         find(path, CargoFile::Config).and_then(|path| {
             OpenOptions::new()
@@ -102,6 +96,10 @@ impl Manifest {
         })
     }
 
+    /// Look for a `Cargo.lock` file
+    ///
+    /// Starts at the given path an goes into its parent directories until the manifest file is
+    /// found. If no path is given, the process' working directory is used as a starting point.
     pub fn find_lock_file(path: &Option<&String>) -> Result<File, Box<Error>> {
         find(path, CargoFile::Lock).and_then(|path| {
             OpenOptions::new()
@@ -112,6 +110,7 @@ impl Manifest {
         })
     }
 
+    /// Open the `Cargo.toml` for a path (or the process' `cwd`)
     pub fn open(path: &Option<&String>) -> Result<Manifest, Box<Error>> {
         let mut file = try!(Manifest::find_file(path));
         let mut data = String::new();
@@ -120,6 +119,7 @@ impl Manifest {
         Manifest::from_str(&data)
     }
 
+    /// Open the `Cargo.lock` for a path (or the process' `cwd`)
     pub fn open_lock_file(path: &Option<&String>) -> Result<Manifest, Box<Error>> {
         let mut file = try!(Manifest::find_lock_file(path));
         let mut data = String::new();

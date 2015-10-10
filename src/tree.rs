@@ -13,6 +13,7 @@ type Package = (PkgName, PkgVersion);
 type Dependency = Package;
 type Dependencies = Vec<Dependency>;
 
+/// A package as declared in the lock file
 pub type Packages = BTreeMap<Package, Dependencies>;
 
 /// Parse stuff like `"docopt 0.6.67 (registry+https://github.com/rust-lang/crates.io-index)"`
@@ -106,6 +107,7 @@ fn list_deps(pkgs: &Packages, deps: &Dependencies, level: u32) -> Result<String,
     Ok(output)
 }
 
+/// Parse a `Cargo.lock` file and list its dependencies
 pub fn parse_lock_file(manifest: &Manifest) -> Result<String, Box<Error>> {
     let lock_file = &manifest.data;
 
