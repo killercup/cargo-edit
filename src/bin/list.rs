@@ -13,9 +13,11 @@ use cargo_edit::{Manifest, list_section, list_tree};
 static USAGE: &'static str = r"
 Usage:
     cargo list [<section>] [options]
+    cargo list (-h|--help)
+    cargo list --version
 
 Options:
-    --manifest-path PATH    Path to the manifest to add a dependency to.
+    --manifest-path=<path>  Path to the manifest to add a dependency to.
     --tree                  List dependencies recursively as tree.
     -h --help               Show this help page.
 
@@ -28,6 +30,7 @@ struct Args {
     arg_section: Option<String>,
     flag_manifest_path: Option<String>,
     flag_tree: bool,
+    flag_version: bool,
 }
 
 impl Args {
@@ -68,6 +71,11 @@ fn main() {
     let args = docopt::Docopt::new(USAGE)
         .and_then(|d| d.decode::<Args>())
         .unwrap_or_else(|err| err.exit());
+
+    if args.flag_version {
+        println!("cargo-list version {}", env!("CARGO_PKG_VERSION"));
+        process::exit(0);
+    }
 
     if let Err(err) = handle_list(&args) {
         println!("{}", err);
