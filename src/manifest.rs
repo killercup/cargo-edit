@@ -137,6 +137,7 @@ impl Manifest {
     }
 
     /// Add entry to a Cargo.toml.
+    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     fn insert_into_table(&mut self,
                          table: &str,
                          &(ref name, ref data): &Dependency)
@@ -144,8 +145,8 @@ impl Manifest {
         let ref mut manifest = self.data;
         let entry = manifest.entry(String::from(table))
                             .or_insert(toml::Value::Table(BTreeMap::new()));
-        match entry {
-            &mut toml::Value::Table(ref mut deps) => {
+        match *entry {
+            toml::Value::Table(ref mut deps) => {
                 deps.insert(name.clone(), data.clone());
                 Ok(())
             }
