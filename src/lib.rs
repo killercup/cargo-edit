@@ -1,4 +1,7 @@
+//! Show and Edit Cargo's Manifest Files
+
 #![cfg_attr(test, allow(dead_code))]
+#![deny(missing_docs)]
 
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]

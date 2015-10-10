@@ -6,6 +6,7 @@ use toml;
 use manifest::Manifest;
 use list_error::ListError;
 
+/// List the dependencies for manifest section
 #[allow(deprecated)] // connect -> join
 pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Error>> {
     let section = String::from(section);
