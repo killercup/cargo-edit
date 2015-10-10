@@ -18,6 +18,9 @@ path = "src/bin/list.rs"
 [features]
 default = []
 dev = ["clippy"]
+[[bin]]
+name = "cargo-add"
+path = "src/bin/add/main.rs"
 
 [dependencies]
 docopt = "0.6"

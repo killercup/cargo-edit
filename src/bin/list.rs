@@ -47,7 +47,7 @@ impl Args {
             "dev-deps" => "dev-dependencies",
             "build-deps" => "build-dependencies",
             // No shortcut
-            field => field
+            field => field,
         };
 
         String::from(toml_field)
@@ -63,18 +63,17 @@ fn handle_list(args: &Args) -> Result<(), Box<Error>> {
         list_section(&manifest, &args.get_section())
     };
 
-    listing
-    .map(|listing| println!("{}", listing) )
-    .or_else(|err| {
-        println!("Could not list your stuff.\n\nERROR: {}", err);
-        Err(err)
-    })
+    listing.map(|listing| println!("{}", listing))
+           .or_else(|err| {
+               println!("Could not list your stuff.\n\nERROR: {}", err);
+               Err(err)
+           })
 }
 
 fn main() {
     let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode::<Args>())
-        .unwrap_or_else(|err| err.exit());
+                   .and_then(|d| d.decode::<Args>())
+                   .unwrap_or_else(|err| err.exit());
 
     if args.flag_version {
         println!("cargo-list version {}", env!("CARGO_PKG_VERSION"));
