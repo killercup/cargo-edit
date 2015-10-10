@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use pad::{PadStr, Alignment};
+use pad::{Alignment, PadStr};
 use toml;
 
 use manifest::Manifest;
@@ -11,11 +11,10 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Er
     let section = String::from(section);
     let mut output = vec![];
 
-    let list = try!(
-        manifest.data.get(&section)
-        .and_then(|field| field.as_table() )
-        .ok_or(ListError::SectionMissing(section))
-    );
+    let list = try!(manifest.data
+                            .get(&section)
+                            .and_then(|field| field.as_table())
+                            .ok_or(ListError::SectionMissing(section)));
 
     let name_max_len = list.keys().map(|k| k.len()).max().unwrap_or(0);
 
@@ -23,20 +22,19 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Er
         let version = match *val {
             toml::Value::String(ref version) => version.to_owned(),
             toml::Value::Table(_) => {
-                let v = try!(
-                    val.lookup("version")
-                    .and_then(|field| field.as_str())
-                    .or_else(|| val.lookup("git").map(|_| "git"))
-                    .ok_or(ListError::VersionMissing(name.clone()))
-                );
+                let v = try!(val.lookup("version")
+                                .and_then(|field| field.as_str())
+                                .or_else(|| val.lookup("git").map(|_| "git"))
+                                .ok_or(ListError::VersionMissing(name.clone())));
                 String::from(v)
-            },
-            _ => String::from("")
+            }
+            _ => String::from(""),
         };
 
         output.push(format!("{name} {version}",
-            name = name.pad_to_width_with_alignment(name_max_len, Alignment::Left),
-            version = version));
+                            name = name.pad_to_width_with_alignment(name_max_len,
+                                                                    Alignment::Left),
+                            version = version));
     }
 
     Ok(output.connect("\n"))
@@ -60,11 +58,10 @@ lorem-ipsum = "0.4.2""#;
     fn basic_listing() {
         let manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
 
-        assert_eq!(
-            list_section(&manifile, "dependencies").unwrap(), "\
+        assert_eq!(list_section(&manifile, "dependencies").unwrap(),
+                   "\
 foo-bar     0.1
-lorem-ipsum 0.4.2"
-        );
+lorem-ipsum 0.4.2");
     }
 
     #[test]

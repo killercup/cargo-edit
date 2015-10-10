@@ -86,15 +86,17 @@ fn add_dependency_from_git() {
 
     let mut manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
 
-    manifile.add_deps(
-        &opts.get_section(),
-        &opts.get_dependencies()
-    ).unwrap();
+    manifile.add_deps(&opts.get_section(), &opts.get_dependencies()).unwrap();
 
-    let entry = manifile.data.get(&opts.get_section()).expect("section not found")
-        .lookup("amet").expect("entry not found")
-        .lookup("git").expect("git not found")
-        .as_str().expect("entry not a str");
+    let entry = manifile.data
+                        .get(&opts.get_section())
+                        .expect("section not found")
+                        .lookup("amet")
+                        .expect("entry not found")
+                        .lookup("git")
+                        .expect("git not found")
+                        .as_str()
+                        .expect("entry not a str");
 
     assert_eq!(entry, "https://localhost/amet.git");
 }
@@ -111,15 +113,17 @@ fn add_dependency_from_path() {
 
     let mut manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
 
-    manifile.add_deps(
-        &opts.get_section(),
-        &opts.get_dependencies()
-    ).unwrap();
+    manifile.add_deps(&opts.get_section(), &opts.get_dependencies()).unwrap();
 
-    let entry = manifile.data.get(&opts.get_section()).expect("section not found")
-        .lookup("amet").expect("entry not found")
-        .lookup("path").expect("path not found")
-        .as_str().expect("entry not a str");
+    let entry = manifile.data
+                        .get(&opts.get_section())
+                        .expect("section not found")
+                        .lookup("amet")
+                        .expect("entry not found")
+                        .lookup("path")
+                        .expect("path not found")
+                        .as_str()
+                        .expect("entry not a str");
 
     assert_eq!(entry, "../amet");
 }

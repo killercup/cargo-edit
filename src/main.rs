@@ -12,13 +12,13 @@ extern crate pad;
 use std::error::Error;
 use std::process;
 
-#[macro_use] mod utils;
+#[macro_use]mod utils;
 mod args;
 mod manifest;
 mod list;
 mod list_error;
 mod tree;
-#[cfg(test)] mod manifest_test;
+#[cfg(test)]mod manifest_test;
 
 use args::{Args, Command};
 use manifest::Manifest;
@@ -54,25 +54,25 @@ fn handle_add(args: &Args) -> Result<(), Box<Error>> {
     let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref()));
 
     manifest.add_deps(&args.get_section(), &args.get_dependencies())
-    .and_then(|_| {
-        let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref()));
-        manifest.write_to_file(&mut file)
-    })
-    .or_else(|err| {
-        println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
-        Err(err)
-    })
+            .and_then(|_| {
+                let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref()));
+                manifest.write_to_file(&mut file)
+            })
+            .or_else(|err| {
+                println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
+                Err(err)
+            })
 }
 
 fn handle_list(args: &Args) -> Result<(), Box<Error>> {
     let manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref()));
 
     list::list_section(&manifest, &args.get_section())
-    .map(|listing| println!("{}", listing) )
-    .or_else(|err| {
-        println!("Could not list your stuff.\n\nERROR: {}", err);
-        Err(err)
-    })
+        .map(|listing| println!("{}", listing))
+        .or_else(|err| {
+            println!("Could not list your stuff.\n\nERROR: {}", err);
+            Err(err)
+        })
 }
 
 fn handle_tree(args: &Args) -> Result<(), Box<Error>> {
@@ -85,17 +85,17 @@ fn handle_tree(args: &Args) -> Result<(), Box<Error>> {
 
 fn main() {
     let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode::<Args>())
-        .unwrap_or_else(|err| err.exit());
+                   .and_then(|d| d.decode::<Args>())
+                   .unwrap_or_else(|err| err.exit());
 
     let work = match args.arg_command {
         Command::List => handle_list(&args),
         Command::Tree => handle_tree(&args),
-        Command::Add  => handle_add(&args),
+        Command::Add => handle_add(&args),
     };
 
-    work
-    .or_else(|_| -> Result<(), Box<Error>> {
-        process::exit(1);
-    }).ok();
+    work.or_else(|_| -> Result<(), Box<Error>> {
+            process::exit(1);
+        })
+        .ok();
 }

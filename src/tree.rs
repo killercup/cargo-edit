@@ -19,70 +19,70 @@ pub type Packages = BTreeMap<Package, Dependencies>;
 /// by splitting at whitespace and taking the first two things.
 fn parse_dep_from_str(input: &str) -> Option<Dependency> {
     let pkg = input.split(' ').collect::<Vec<&str>>();
-    if pkg.len() != 3 { return None; }
-    Some((
-        String::from(pkg[0]), // name
-        String::from(pkg[1]), // version
-    ))
+    if pkg.len() != 3 {
+        return None;
+    }
+
+    let (name, version) = (pkg[0], pkg[1]);
+
+    Some((String::from(name), String::from(version)))
 }
 
 fn get_root_deps(lock_file: &toml::Table) -> Result<Vec<Dependency>, Box<Error>> {
-    let root_deps = try!(
-        lock_file
-        .get("root")
-        .and_then(|field| field.lookup("dependencies"))
-        .ok_or(ListError::SectionMissing("dependencies".to_owned()))
-    );
+    let root_deps = try!(lock_file.get("root")
+                                  .and_then(|field| field.lookup("dependencies"))
+                                  .ok_or(ListError::SectionMissing("dependencies".to_owned())));
 
     let output = root_deps.as_slice()
-        .unwrap_or(&vec![])
-        .iter()
-        .filter_map(|dep| {
-            let dep = dep.clone();
-            if let toml::Value::String(pkg_desc) = dep {
-                parse_dep_from_str(&pkg_desc)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<Dependency>>();
+                          .unwrap_or(&vec![])
+                          .iter()
+                          .filter_map(|dep| {
+                              let dep = dep.clone();
+                              if let toml::Value::String(pkg_desc) = dep {
+                                  parse_dep_from_str(&pkg_desc)
+                              } else {
+                                  None
+                              }
+                          })
+                          .collect::<Vec<Dependency>>();
 
     Ok(output)
 }
 
 fn get_packages(lock_file: &toml::Table) -> Result<Packages, Box<Error>> {
-    let packages: &toml::Value = try!(
-        lock_file
-        .get("package")
-        .ok_or(ListError::SectionMissing("package".to_owned()))
-    );
+    let packages: &toml::Value = try!(lock_file.get("package")
+                                               .ok_or(ListError::SectionMissing("package"
+                                                                                    .to_owned())));
 
     let mut output = BTreeMap::new();
 
     for pkg in packages.as_slice().unwrap_or(&vec![]) {
-        let package = try!(pkg.as_table()
-            .ok_or(ListError::SectionMissing("package".to_owned())));
+        let package = try!(pkg.as_table().ok_or(ListError::SectionMissing("package".to_owned())));
 
         let name = try!(package.get("name")
-            .and_then(|item| item.as_str())
-            .ok_or(ListError::SectionMissing("name".to_owned())));
+                               .and_then(|item| item.as_str())
+                               .ok_or(ListError::SectionMissing("name".to_owned())));
 
         let version = try!(package.get("version")
-            .and_then(|item| item.as_str())
-            .ok_or(ListError::SectionMissing("version".to_owned())));
+                                  .and_then(|item| item.as_str())
+                                  .ok_or(ListError::SectionMissing("version".to_owned())));
 
         let deps: Dependencies = package.get("dependencies")
-            .and_then(|item| {
-                let item = item.clone();
-                if let toml::Value::Array(d) = item {
-                    Some(d)
-                } else { None }
-            })
-            .and_then(|items| Some(items.iter()
-                .filter_map(|i| i.as_str())
-                .filter_map(parse_dep_from_str)
-                .collect::<Dependencies>()))
-            .unwrap_or(vec![]);
+                                        .and_then(|item| {
+                                            let item = item.clone();
+                                            if let toml::Value::Array(d) = item {
+                                                Some(d)
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .and_then(|items| {
+                                            Some(items.iter()
+                                                      .filter_map(|i| i.as_str())
+                                                      .filter_map(parse_dep_from_str)
+                                                      .collect::<Dependencies>())
+                                        })
+                                        .unwrap_or(vec![]);
 
         output.insert((name.to_owned(), version.to_owned()), deps);
     }
@@ -122,13 +122,12 @@ mod test {
 
     #[test]
     fn basic_tree() {
-        let manifile = Manifest::open_lock_file(
-            &Some(&"tests/fixtures/tree/Cargo.lock".to_owned())
-        ).unwrap();
+        let manifile = Manifest::open_lock_file(&Some(&"tests/fixtures/tree/Cargo.lock"
+                                                           .to_owned()))
+                           .unwrap();
 
-        assert_eq!(
-            parse_lock_file(&manifile).unwrap(),
-            "\
+        assert_eq!(parse_lock_file(&manifile).unwrap(),
+                   "\
 ‣ clippy (0.0.5)
 ‣ docopt (0.6.67)
     ‣ regex (0.1.38)
@@ -146,7 +145,6 @@ mod test {
 ‣ semver (0.1.19)
 ‣ toml (0.1.20)
     ‣ rustc-serialize (0.3.15)
-"
-        );
+");
     }
 }
