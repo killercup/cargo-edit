@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
-use std::env;
+use std::{env, fmt, str};
 use std::error::Error;
-use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -71,17 +70,6 @@ fn search(dir: &Path, file: CargoFile) -> Result<PathBuf, ManifestError> {
 }
 
 impl Manifest {
-    /// Read manifest data from string
-    pub fn from_str(input: &str) -> Result<Manifest, Box<Error>> {
-        let mut parser = toml::Parser::new(&input);
-
-        parser.parse()
-              .ok_or(parser.errors.pop())
-              .map_err(Option::unwrap)
-              .map_err(From::from)
-              .map(|data| Manifest { data: data })
-    }
-
     /// Look for a `Cargo.toml` file
     ///
     /// Starts at the given path an goes into its parent directories until the manifest file is
@@ -116,7 +104,7 @@ impl Manifest {
         let mut data = String::new();
         try!(file.read_to_string(&mut data));
 
-        Manifest::from_str(&data)
+        data.parse()
     }
 
     /// Open the `Cargo.lock` for a path (or the process' `cwd`)
@@ -125,7 +113,7 @@ impl Manifest {
         let mut data = String::new();
         try!(file.read_to_string(&mut data));
 
-        Manifest::from_str(&data)
+        data.parse()
     }
 
     /// Overwrite a file with TOML data.
@@ -149,6 +137,7 @@ impl Manifest {
     }
 
     /// Add entry to a Cargo.toml.
+    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     fn insert_into_table(&mut self,
                          table: &str,
                          &(ref name, ref data): &Dependency)
@@ -156,8 +145,8 @@ impl Manifest {
         let ref mut manifest = self.data;
         let entry = manifest.entry(String::from(table))
                             .or_insert(toml::Value::Table(BTreeMap::new()));
-        match entry {
-            &mut toml::Value::Table(ref mut deps) => {
+        match *entry {
+            toml::Value::Table(ref mut deps) => {
                 deps.insert(name.clone(), data.clone());
                 Ok(())
             }
@@ -172,5 +161,20 @@ impl Manifest {
             .collect::<Result<Vec<_>, _>>()
             .map_err(From::from)
             .map(|_| ())
+    }
+}
+
+impl str::FromStr for Manifest {
+    type Err = Box<Error>;
+
+    /// Read manifest data from string
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let mut parser = toml::Parser::new(&input);
+
+        parser.parse()
+              .ok_or(parser.errors.pop())
+              .map_err(Option::unwrap)
+              .map_err(From::from)
+              .map(|data| Manifest { data: data })
     }
 }

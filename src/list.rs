@@ -57,7 +57,7 @@ lorem-ipsum = "0.4.2""#;
 
     #[test]
     fn basic_listing() {
-        let manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
+        let manifile: Manifest = DEFAULT_CARGO_TOML.parse().unwrap();
 
         assert_eq!(list_section(&manifile, "dependencies").unwrap(),
                    "\
@@ -68,7 +68,7 @@ lorem-ipsum 0.4.2");
     #[test]
     #[should_panic]
     fn unknown_section() {
-        let manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
+        let manifile: Manifest = DEFAULT_CARGO_TOML.parse().unwrap();
 
         list_section(&manifile, "lol-dependencies").unwrap();
     }

@@ -19,7 +19,7 @@ macro_rules! add_deps_test {
                 ..Default::default()
             };
 
-            let mut manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
+            let mut manifile: Manifest = DEFAULT_CARGO_TOML.parse().unwrap();
 
             manifile.add_deps(
                 &opts.get_section(),
@@ -47,7 +47,7 @@ macro_rules! add_deps_test {
                 ..Default::default()
             };
 
-            let mut manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
+            let mut manifile: Manifest = DEFAULT_CARGO_TOML.parse().unwrap();
 
             manifile.add_deps(
                 &opts.get_section(),
@@ -84,7 +84,7 @@ fn add_dependency_from_git() {
         ..Default::default()
     };
 
-    let mut manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
+    let mut manifile: Manifest = DEFAULT_CARGO_TOML.parse().unwrap();
 
     manifile.add_deps(&opts.get_section(), &opts.get_dependencies()).unwrap();
 
@@ -111,7 +111,7 @@ fn add_dependency_from_path() {
         ..Default::default()
     };
 
-    let mut manifile = Manifest::from_str(DEFAULT_CARGO_TOML).unwrap();
+    let mut manifile: Manifest = DEFAULT_CARGO_TOML.parse().unwrap();
 
     manifile.add_deps(&opts.get_section(), &opts.get_dependencies()).unwrap();
 
