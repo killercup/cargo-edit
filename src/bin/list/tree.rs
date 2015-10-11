@@ -4,7 +4,7 @@ use std::iter::repeat;
 
 use toml;
 
-use manifest::Manifest;
+use cargo_edit::Manifest;
 use list_error::ListError;
 
 type PkgName = String;
@@ -119,7 +119,7 @@ pub fn parse_lock_file(manifest: &Manifest) -> Result<String, Box<Error>> {
 
 #[cfg(test)]
 mod test {
-    use manifest::Manifest;
+    use cargo_edit::Manifest;
     use super::parse_lock_file;
 
     #[test]

@@ -7,12 +7,21 @@
 
 extern crate docopt;
 extern crate rustc_serialize;
+extern crate pad;
+extern crate toml;
 
 use std::error::Error;
 use std::process;
 
 extern crate cargo_edit;
-use cargo_edit::{Manifest, list_section, list_tree};
+use cargo_edit::Manifest;
+
+mod list;
+mod list_error;
+mod tree;
+
+use list::list_section;
+use tree::parse_lock_file as list_tree;
 
 static USAGE: &'static str = r"
 Usage:
