@@ -2,10 +2,10 @@
 
 This tool extends [Cargo](http://doc.crates.io/) to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line.
 
-Currently available subcommand:
+Currently available subcommands:
 
-- `cargo add`
-- `cargo list`
+- [`cargo add`](#cargo-add)
+- [`cargo list`](#cargo-list)
 
 [![Build Status](https://travis-ci.org/killercup/cargo-edit.svg?branch=master)](https://travis-ci.org/killercup/cargo-edit)
 [![Coverage Status](https://coveralls.io/repos/killercup/cargo-edit/badge.svg?branch=master&service=github)](https://coveralls.io/github/killercup/cargo-edit?branch=master)
