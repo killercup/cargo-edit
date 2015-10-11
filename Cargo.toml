@@ -8,16 +8,15 @@ repository = "https://github.com/killercup/cargo-edit"
 version = "0.1.0"
 
 [[bin]]
-name = "main"
-path = "src/main.rs"
-
-[[bin]]
 name = "cargo-list"
-path = "src/bin/list.rs"
+path = "src/bin/list/main.rs"
 
 [features]
 default = []
 dev = ["clippy"]
+[[bin]]
+name = "cargo-add"
+path = "src/bin/add/main.rs"
 
 [dependencies]
 docopt = "0.6"

@@ -6,6 +6,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use toml;
 
+/// A Crate Dependency
 pub type Dependency = (String, toml::Value);
 
 #[derive(Debug)]
@@ -138,10 +139,10 @@ impl Manifest {
 
     /// Add entry to a Cargo.toml.
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
-    fn insert_into_table(&mut self,
-                         table: &str,
-                         &(ref name, ref data): &Dependency)
-                         -> Result<(), ManifestError> {
+    pub fn insert_into_table(&mut self,
+                             table: &str,
+                             &(ref name, ref data): &Dependency)
+                             -> Result<(), ManifestError> {
         let ref mut manifest = self.data;
         let entry = manifest.entry(String::from(table))
                             .or_insert(toml::Value::Table(BTreeMap::new()));
@@ -154,7 +155,7 @@ impl Manifest {
         }
     }
 
-    /// Add entry to manifest
+    /// Add multiple dependencies to manifest
     pub fn add_deps(&mut self, table: &str, deps: &[Dependency]) -> Result<(), Box<Error>> {
         deps.iter()
             .map(|dep| self.insert_into_table(table, &dep))

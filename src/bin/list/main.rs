@@ -1,21 +1,36 @@
+//! `cargo add`
+
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]
 
+#![deny(missing_docs)]
+
 extern crate docopt;
 extern crate rustc_serialize;
+extern crate pad;
+extern crate toml;
 
 use std::error::Error;
 use std::process;
 
 extern crate cargo_edit;
-use cargo_edit::{Manifest, list_section, list_tree};
+use cargo_edit::Manifest;
+
+mod list;
+mod list_error;
+mod tree;
+
+use list::list_section;
+use tree::parse_lock_file as list_tree;
 
 static USAGE: &'static str = r"
 Usage:
     cargo list [<section>] [options]
+    cargo list (-h|--help)
+    cargo list --version
 
 Options:
-    --manifest-path PATH    Path to the manifest to add a dependency to.
+    --manifest-path=<path>  Path to the manifest to add a dependency to.
     --tree                  List dependencies recursively as tree.
     -h --help               Show this help page.
 
@@ -28,6 +43,7 @@ struct Args {
     arg_section: Option<String>,
     flag_manifest_path: Option<String>,
     flag_tree: bool,
+    flag_version: bool,
 }
 
 impl Args {
@@ -40,7 +56,7 @@ impl Args {
             "dev-deps" => "dev-dependencies",
             "build-deps" => "build-dependencies",
             // No shortcut
-            field => field
+            field => field,
         };
 
         String::from(toml_field)
@@ -56,9 +72,7 @@ fn handle_list(args: &Args) -> Result<(), Box<Error>> {
         list_section(&manifest, &args.get_section())
     };
 
-    listing
-    .map(|listing| println!("{}", listing) )
-    .or_else(|err| {
+    listing.map(|listing| println!("{}", listing)).or_else(|err| {
         println!("Could not list your stuff.\n\nERROR: {}", err);
         Err(err)
     })
@@ -66,8 +80,13 @@ fn handle_list(args: &Args) -> Result<(), Box<Error>> {
 
 fn main() {
     let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode::<Args>())
-        .unwrap_or_else(|err| err.exit());
+                   .and_then(|d| d.decode::<Args>())
+                   .unwrap_or_else(|err| err.exit());
+
+    if args.flag_version {
+        println!("cargo-list version {}", env!("CARGO_PKG_VERSION"));
+        process::exit(0);
+    }
 
     if let Err(err) = handle_list(&args) {
         println!("{}", err);

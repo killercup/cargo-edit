@@ -3,7 +3,7 @@ use std::error::Error;
 use pad::{Alignment, PadStr};
 use toml;
 
-use manifest::Manifest;
+use cargo_edit::Manifest;
 use list_error::ListError;
 
 /// List the dependencies for manifest section
@@ -43,7 +43,7 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Er
 
 #[cfg(test)]
 mod test {
-    use manifest::Manifest;
+    use cargo_edit::Manifest;
     use super::list_section;
 
     static DEFAULT_CARGO_TOML: &'static str = r#"[package]
