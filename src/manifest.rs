@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 use std::{env, fmt, str};
 use std::error::Error;
 use std::fs::{self, File, OpenOptions};
@@ -152,6 +153,29 @@ impl Manifest {
                 Ok(())
             }
             _ => Err(ManifestError),
+        }
+    }
+
+    /// Remove entry from a Cargo.toml.
+    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
+    pub fn remove_from_table(&mut self,
+                             table: &str,
+                             name: &str)
+                             -> Result<(), ManifestError> {
+        let ref mut manifest = self.data;
+        let entry = manifest.entry(String::from(table));
+
+        match entry {
+            Entry::Vacant(_) => Err(ManifestError),
+            Entry::Occupied(entry) => {
+                match *entry.into_mut() {
+                    toml::Value::Table(ref mut deps) => {
+                        deps.remove(name);
+                        Ok(())
+                    }
+                    _ => Err(ManifestError)
+                }
+            }
         }
     }
 
