@@ -9,6 +9,9 @@ extern crate docopt;
 extern crate toml;
 extern crate semver;
 extern crate rustc_serialize;
+extern crate curl;
+#[macro_use]
+extern crate quick_error;
 
 use std::error::Error;
 use std::process;
@@ -16,6 +19,7 @@ use std::process;
 extern crate cargo_edit;
 use cargo_edit::Manifest;
 
+mod fetch_version;
 mod args;
 use args::Args;
 
