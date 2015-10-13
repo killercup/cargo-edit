@@ -1,6 +1,5 @@
 use std::error::Error;
 use std::collections::BTreeMap;
-use std::iter::repeat;
 
 use toml;
 
@@ -91,20 +90,37 @@ fn get_packages(lock_file: &toml::Table) -> Result<Packages, Box<Error>> {
     Ok(output)
 }
 
-const INDENT: u32 = 4;
-
-fn list_deps(pkgs: &Packages, deps: &Dependencies, level: u32) -> Result<String, Box<Error>> {
+fn list_deps_helper(
+    pkgs: &Packages,
+    deps: &Dependencies,
+    levels: &mut Vec<bool>
+) -> Result<String, Box<Error>> {
     let mut output = String::new();
-    for dep in deps {
-        output.push_str(&repeat(" ").take((level * INDENT) as usize).collect::<String>());
-        output.push_str(&format!("‣ {} ({})\n", dep.0, dep.1));
+    for (i, dep) in deps.iter().enumerate() {
+        // For any indent level where the parent is the last dependency in the list, we don't want
+        // to print out a branch.
+        for is_last in levels.iter().cloned() {
+            let indent = if is_last { "    " } else { "│   " };
+            output.push_str(indent);
+        }
+
+        let is_last = i == deps.len() - 1;
+        let branch = if !is_last { "├──" } else { "└──" };
+
+        output.push_str(&format!("{} {} ({})\n", branch, dep.0, dep.1));
 
         if let Some(subdeps) = pkgs.get(dep) {
-            let sublist = try!(list_deps(pkgs, subdeps, level + 1));
+            levels.push(is_last);
+            let sublist = try!(list_deps_helper(pkgs, subdeps, levels));
             output.push_str(&sublist);
+            levels.pop();
         }
     }
     Ok(output)
+}
+
+fn list_deps(pkgs: &Packages, deps: &Dependencies) -> Result<String, Box<Error>> {
+    list_deps_helper(pkgs, deps, &mut vec![])
 }
 
 /// Parse a `Cargo.lock` file and list its dependencies
@@ -114,7 +130,7 @@ pub fn parse_lock_file(manifest: &Manifest) -> Result<String, Box<Error>> {
     let root_deps = try!(get_root_deps(lock_file));
     let pkgs = try!(get_packages(lock_file));
 
-    list_deps(&pkgs, &root_deps, 0)
+    list_deps(&pkgs, &root_deps)
 }
 
 #[cfg(test)]
@@ -129,24 +145,24 @@ mod test {
                            .unwrap();
 
         assert_eq!(parse_lock_file(&manifile).unwrap(),
-                   "\
-‣ clippy (0.0.5)
-‣ docopt (0.6.67)
-    ‣ regex (0.1.38)
-        ‣ aho-corasick (0.2.1)
-            ‣ memchr (0.1.3)
-                ‣ libc (0.1.8)
-        ‣ memchr (0.1.3)
-            ‣ libc (0.1.8)
-        ‣ regex-syntax (0.1.2)
-    ‣ rustc-serialize (0.3.15)
-    ‣ strsim (0.3.0)
-‣ pad (0.1.4)
-    ‣ unicode-width (0.1.1)
-‣ rustc-serialize (0.3.15)
-‣ semver (0.1.19)
-‣ toml (0.1.20)
-    ‣ rustc-serialize (0.3.15)
+                      "\
+├── clippy (0.0.5)
+├── docopt (0.6.67)
+│   ├── regex (0.1.38)
+│   │   ├── aho-corasick (0.2.1)
+│   │   │   └── memchr (0.1.3)
+│   │   │       └── libc (0.1.8)
+│   │   ├── memchr (0.1.3)
+│   │   │   └── libc (0.1.8)
+│   │   └── regex-syntax (0.1.2)
+│   ├── rustc-serialize (0.3.15)
+│   └── strsim (0.3.0)
+├── pad (0.1.4)
+│   └── unicode-width (0.1.1)
+├── rustc-serialize (0.3.15)
+├── semver (0.1.19)
+└── toml (0.1.20)
+    └── rustc-serialize (0.3.15)
 ");
     }
 }
