@@ -1,7 +1,5 @@
 ///! Handle `cargo rm` arguments
 
-use std::error::Error;
-
 #[derive(Debug, RustcDecodable)]
 /// Docopts input args.
 pub struct Args {
@@ -39,19 +37,5 @@ impl Default for Args {
             flag_manifest_path: None,
             flag_version: false,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use toml;
-    use super::*;
-
-    #[test]
-    fn test_dependency_parsing() {
-        let args = Args {
-            arg_crate: "demo".to_owned(),
-            ..Args::default()
-        };
     }
 }
