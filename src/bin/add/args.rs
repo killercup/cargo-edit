@@ -81,7 +81,7 @@ macro_rules! toml_table {
     ($key:expr => $value:expr) => {
         {
             let mut dep = BTreeMap::new();
-            dep.insert(String::from($key), toml::Value::String($value.clone()));
+            dep.insert(String::from($key), toml::Value::String($value.to_owned()));
             toml::Value::Table(dep)
         }
     }
@@ -104,18 +104,18 @@ fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
 }
 
 /// Parse (and validate) a version requirement to the correct TOML data.
-fn parse_semver(version: &String) -> Result<toml::Value, Box<Error>> {
+fn parse_semver(version: &str) -> Result<toml::Value, Box<Error>> {
     try!(semver::VersionReq::parse(version));
-    Ok(toml::Value::String(version.clone()))
+    Ok(toml::Value::String(version.to_owned()))
 }
 
 /// Parse a git source to the correct TOML data.
-fn parse_git(repo: &String) -> Result<toml::Value, Box<Error>> {
+fn parse_git(repo: &str) -> Result<toml::Value, Box<Error>> {
     Ok(toml_table!("git" => repo))
 }
 
 /// Parse a path to the correct TOML data.
-fn parse_path(path: &String) -> Result<toml::Value, Box<Error>> {
+fn parse_path(path: &str) -> Result<toml::Value, Box<Error>> {
     Ok(toml_table!("path" => path))
 }
 
