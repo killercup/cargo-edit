@@ -65,11 +65,11 @@ impl Args {
 
 fn handle_list(args: &Args) -> Result<(), Box<Error>> {
     let listing = if args.flag_tree {
-        let manifest = try!(Manifest::open_lock_file(&args.flag_manifest_path.as_ref().map(|s| &**s)));
+        let manifest = try!(Manifest::open_lock_file(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
         list_tree(&manifest)
     } else {
-        let manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &**s)));
-        list_section(&manifest, &args.get_section())
+        let manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
+        list_section(&manifest, args.get_section())
     };
 
     listing.map(|listing| println!("{}", listing)).or_else(|err| {

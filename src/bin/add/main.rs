@@ -42,13 +42,13 @@ Add a dependency to a Cargo.toml manifest file.
 ";
 
 fn handle_add(args: &Args) -> Result<(), Box<Error>> {
-    let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &**s)));
+    let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
     let dep = try!(args.parse_dependency());
 
     manifest.insert_into_table(&args.get_section(), &dep)
             .map_err(From::from)
             .and_then(|_| {
-                let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref().map(|s| &**s)));
+                let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
                 manifest.write_to_file(&mut file)
             })
             .or_else(|err| {
