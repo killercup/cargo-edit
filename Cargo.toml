@@ -11,9 +11,6 @@ version = "0.1.0"
 name = "cargo-list"
 path = "src/bin/list/main.rs"
 
-[features]
-default = []
-dev = ["clippy"]
 [[bin]]
 name = "cargo-add"
 path = "src/bin/add/main.rs"
@@ -24,7 +21,15 @@ pad = "0.1"
 rustc-serialize = "0.3"
 semver = "0.1"
 toml = "0.1"
-clippy = {version = "0.0.19", optional = true}
+
+[dependencies.clippy]
+optional = true
+version = "0.0.19"
 
 [dev-dependencies]
 assert_cli = "0.1.0"
+tempdir = "0.3"
+
+[features]
+default = []
+dev = ["clippy"]
