@@ -68,7 +68,7 @@ fn main() {
     }
 
     if let Err(err) = handle_add(&args) {
-        println!("{}", err);
+        println!("Command failed due to unhandled error: {}", err);
         process::exit(1);
     }
 }
