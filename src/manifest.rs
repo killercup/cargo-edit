@@ -170,8 +170,8 @@ impl Manifest {
     ///     let mut manifest = Manifest { data: toml::Table::new() };
     ///     let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
     ///     let _ = manifest.insert_into_table("dependencies", &dep);
-    ///     assert_eq!(manifest.remove_from_table("dependencies", &dep.0).is_ok(), true);
-    ///     assert_eq!(manifest.remove_from_table("dependencies", &dep.0).is_ok(), false);
+    ///     assert!(manifest.remove_from_table("dependencies", &dep.0).is_ok());
+    ///     assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
     /// # }
     /// ```
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
@@ -230,13 +230,13 @@ mod tests {
         let mut manifest = Manifest { data: toml::Table::new() };
         let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
         let _ = manifest.insert_into_table("dependencies", &dep);
-        assert_eq!(manifest.remove_from_table("dependencies", &dep.0).is_ok(), true);
+        assert!(manifest.remove_from_table("dependencies", &dep.0).is_ok());
     }
 
     #[test]
     fn remove_missing_name_from_table() {
         let mut manifest = Manifest { data: toml::Table::new() };
         let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
-        assert_eq!(manifest.remove_from_table("dependencies", &dep.0).is_ok(), false);
+        assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
     }
 }
