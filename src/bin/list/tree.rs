@@ -140,8 +140,7 @@ mod test {
 
     #[test]
     fn basic_tree() {
-        let manifile = Manifest::open_lock_file(&Some(&"tests/fixtures/tree/Cargo.lock"
-                                                           .to_owned()))
+        let manifile = Manifest::open_lock_file(&Some("tests/fixtures/tree/Cargo.lock"))
                            .unwrap();
 
         assert_eq!(parse_lock_file(&manifile).unwrap(),
