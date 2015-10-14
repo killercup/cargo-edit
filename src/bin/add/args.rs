@@ -48,11 +48,11 @@ impl Args {
         }
 
         let version = if let Some(ref version) = self.flag_ver {
-            parse_semver(&version)
+            parse_semver(version.clone())
         } else if let Some(ref repo) = self.flag_git {
-            parse_git(&repo)
+            parse_git(repo.clone())
         } else if let Some(ref path) = self.flag_path {
-            parse_path(&path)
+            parse_path(path.clone())
         } else {
             Ok(toml::Value::String(String::from("*")))
         };
@@ -81,7 +81,7 @@ macro_rules! toml_table {
     ($key:expr => $value:expr) => {
         {
             let mut dep = BTreeMap::new();
-            dep.insert(String::from($key), toml::Value::String($value.clone()));
+            dep.insert(String::from($key), toml::Value::String($value));
             toml::Value::Table(dep)
         }
     }
@@ -98,24 +98,24 @@ fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
 
     let xs: Vec<&str> = name.splitn(2, "@").collect();
     let (name, version) = (xs[0], xs[1]);
-    let version = try!(parse_semver(&version.to_owned()));
+    let version = try!(parse_semver(version.to_owned()));
 
-    Ok((String::from(name), version))
+    Ok((name.to_owned(), version))
 }
 
 /// Parse (and validate) a version requirement to the correct TOML data.
-fn parse_semver(version: &String) -> Result<toml::Value, Box<Error>> {
-    try!(semver::VersionReq::parse(version));
-    Ok(toml::Value::String(version.clone()))
+fn parse_semver(version: String) -> Result<toml::Value, Box<Error>> {
+    try!(semver::VersionReq::parse(&version));
+    Ok(toml::Value::String(version))
 }
 
 /// Parse a git source to the correct TOML data.
-fn parse_git(repo: &String) -> Result<toml::Value, Box<Error>> {
+fn parse_git(repo: String) -> Result<toml::Value, Box<Error>> {
     Ok(toml_table!("git" => repo))
 }
 
 /// Parse a path to the correct TOML data.
-fn parse_path(path: &String) -> Result<toml::Value, Box<Error>> {
+fn parse_path(path: String) -> Result<toml::Value, Box<Error>> {
     Ok(toml_table!("path" => path))
 }
 
