@@ -25,7 +25,7 @@ Usage:
     cargo rm (-h|--help)
     cargo rm --version
 
-Options
+Options:
     -D --dev                Remove crate as development dependency.
     -B --build              Remove crate as build dependency.
     --manifest-path=<path>  Path to the manifest to remove a dependency from.
