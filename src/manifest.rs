@@ -157,6 +157,23 @@ impl Manifest {
     }
 
     /// Remove entry from a Cargo.toml.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # extern crate cargo_edit;
+    /// # extern crate toml;
+    /// # fn main() {
+    ///     use cargo_edit::Manifest;
+    ///     use toml;
+    ///
+    ///     let mut manifest = Manifest { data: toml::Table::new() };
+    ///     let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+    ///     let _ = manifest.insert_into_table("dependencies", &dep);
+    ///     assert_eq!(manifest.remove_from_table("dependencies", &dep.0).is_ok(), true);
+    ///     assert_eq!(manifest.remove_from_table("dependencies", &dep.0).is_ok(), false);
+    /// # }
+    /// ```
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn remove_from_table(&mut self,
                              table: &str,
@@ -170,8 +187,7 @@ impl Manifest {
             Entry::Occupied(entry) => {
                 match *entry.into_mut() {
                     toml::Value::Table(ref mut deps) => {
-                        deps.remove(name);
-                        Ok(())
+                        deps.remove(name).map(|_| ()).ok_or(ManifestError)
                     }
                     _ => Err(ManifestError)
                 }
@@ -201,5 +217,26 @@ impl str::FromStr for Manifest {
               .map_err(Option::unwrap)
               .map_err(From::from)
               .map(|data| Manifest { data: data })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use toml;
+
+    #[test]
+    fn remove_existing_name_from_table() {
+        let mut manifest = Manifest { data: toml::Table::new() };
+        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        let _ = manifest.insert_into_table("dependencies", &dep);
+        assert_eq!(manifest.remove_from_table("dependencies", &dep.0).is_ok(), true);
+    }
+
+    #[test]
+    fn remove_missing_name_from_table() {
+        let mut manifest = Manifest { data: toml::Table::new() };
+        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        assert_eq!(manifest.remove_from_table("dependencies", &dep.0).is_ok(), false);
     }
 }
