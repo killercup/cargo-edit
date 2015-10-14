@@ -42,7 +42,7 @@ pub struct Manifest {
 /// If a manifest is specified, return that one. If a path is specified, perform a manifest search
 /// starting from there. If nothing is specified, start searching from the current directory
 /// (`cwd`).
-fn find(specified: &Option<&String>, file: CargoFile) -> Result<PathBuf, Box<Error>> {
+fn find(specified: &Option<&str>, file: CargoFile) -> Result<PathBuf, Box<Error>> {
     let file_path = specified.map(PathBuf::from);
 
     if let Some(path) = file_path {
@@ -75,7 +75,7 @@ impl Manifest {
     ///
     /// Starts at the given path an goes into its parent directories until the manifest file is
     /// found. If no path is given, the process's working directory is used as a starting point.
-    pub fn find_file(path: &Option<&String>) -> Result<File, Box<Error>> {
+    pub fn find_file(path: &Option<&str>) -> Result<File, Box<Error>> {
         find(path, CargoFile::Config).and_then(|path| {
             OpenOptions::new()
                 .read(true)
@@ -89,7 +89,7 @@ impl Manifest {
     ///
     /// Starts at the given path an goes into its parent directories until the manifest file is
     /// found. If no path is given, the process' working directory is used as a starting point.
-    pub fn find_lock_file(path: &Option<&String>) -> Result<File, Box<Error>> {
+    pub fn find_lock_file(path: &Option<&str>) -> Result<File, Box<Error>> {
         find(path, CargoFile::Lock).and_then(|path| {
             OpenOptions::new()
                 .read(true)
@@ -100,7 +100,7 @@ impl Manifest {
     }
 
     /// Open the `Cargo.toml` for a path (or the process' `cwd`)
-    pub fn open(path: &Option<&String>) -> Result<Manifest, Box<Error>> {
+    pub fn open(path: &Option<&str>) -> Result<Manifest, Box<Error>> {
         let mut file = try!(Manifest::find_file(path));
         let mut data = String::new();
         try!(file.read_to_string(&mut data));
@@ -109,7 +109,7 @@ impl Manifest {
     }
 
     /// Open the `Cargo.lock` for a path (or the process' `cwd`)
-    pub fn open_lock_file(path: &Option<&String>) -> Result<Manifest, Box<Error>> {
+    pub fn open_lock_file(path: &Option<&str>) -> Result<Manifest, Box<Error>> {
         let mut file = try!(Manifest::find_lock_file(path));
         let mut data = String::new();
         try!(file.read_to_string(&mut data));
