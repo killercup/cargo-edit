@@ -23,8 +23,8 @@ fn execute_command<S>(command: &[S], manifest: &str) where S: AsRef<OsStr> {
 
     if !call.status.success() {
         println!("Status code: {:?}", call.status);
-        println!("STDOUT: {:?}", String::from_utf8_lossy(&call.stdout));
-        println!("STDERR: {:?}", String::from_utf8_lossy(&call.stderr));
+        println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
+        println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
         panic!("cargo-add failed to execute")
     }
 }
@@ -49,5 +49,67 @@ fn adds_dependencies() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.my-package").unwrap();
-    assert_eq!(val.as_str().unwrap(), "*")
+    assert_eq!(val.as_str().unwrap(), "*");
+}
+
+#[test]
+fn adds_dev_build_dependencies() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dev-dependencies.my-dev-package").is_none());
+    assert!(toml.lookup("build-dependencies.my-build-package").is_none());
+
+    execute_command(&["add", "my-dev-package", "--dev"], &manifest);
+    execute_command(&["add", "my-build-package", "--build"], &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dev-dependencies.my-dev-package").unwrap();
+    assert_eq!(val.as_str().unwrap(), "*");
+    let val = toml.lookup("build-dependencies.my-build-package").unwrap();
+    assert_eq!(val.as_str().unwrap(), "*");
+
+    // cannot run with both --dev and --build at the same time
+    let call = process::Command::new("target/debug/cargo-add")
+        .args(&["add", "failure", "--dev", "--build"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output().unwrap();
+    assert!(!call.status.success());
+
+    // 'failure' dep not present
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.failure").is_none());
+    assert!(toml.lookup("dev-dependencies.failure").is_none());
+    assert!(toml.lookup("build-dependencies.failure").is_none());
+}
+
+#[test]
+fn adds_fixed_version() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.versioned-package").is_none());
+
+    execute_command(&["add", "versioned-package", "--ver", ">=0.1.1"], &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.versioned-package").expect("not added");
+    assert_eq!(val.as_str().expect("not string"), ">=0.1.1");
+
+    // cannot run with both --dev and --build at the same time
+    let call = process::Command::new("target/debug/cargo-add")
+        .args(&["add", "failure", "--ver", "invalid version string"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output().unwrap();
+    assert!(!call.status.success());
+
+    // 'failure' dep not present
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.failure").is_none());
+    assert!(toml.lookup("dev-dependencies.failure").is_none());
+    assert!(toml.lookup("build-dependencies.failure").is_none());
 }
