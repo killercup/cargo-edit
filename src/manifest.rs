@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
-use std::{env, fmt, str};
+use std::{env, str};
 use std::error::Error;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -11,29 +11,24 @@ use toml;
 pub type Dependency = (String, toml::Value);
 
 /// Enumeration of errors which can occur when working with a rust manifest.
-#[derive(Debug)]
-pub enum ManifestError {
-    /// Cargo.toml could not be found.
-    MissingManifest,
-    /// The TOML table could not be found.
-    NonExistentTable,
-    /// The dependency could not be found.
-    NonExistentDependency,
-}
-
-impl Error for ManifestError {
-    fn description(&self) -> &str {
-        match *self {
-            ManifestError::MissingManifest => "Your Cargo.toml is missing.",
-            ManifestError::NonExistentTable => "The table could not be found.",
-            ManifestError::NonExistentDependency => "The dependency could not be found.",
+quick_error! {
+    #[derive(Debug)]
+    pub enum ManifestError {
+        /// Cargo.toml could not be found.
+        MissingManifest {
+            description("missing manifest")
+            display("Your Cargo.toml is missing.")
         }
-    }
-}
-
-impl fmt::Display for ManifestError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(self.description())
+        /// The TOML table could not be found.
+        NonExistentTable {
+            description("non existent table")
+            display("The table could not be found.")
+        }
+        /// The dependency could not be found.
+        NonExistentDependency {
+            description("non existent dependency")
+            display("The dependency could not be found.")
+        }
     }
 }
 
@@ -237,17 +232,10 @@ mod tests {
     use toml;
 
     #[test]
-    fn remove_existing_name_from_table() {
+    fn add_remove_dependency() {
         let mut manifest = Manifest { data: toml::Table::new() };
         let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
         let _ = manifest.insert_into_table("dependencies", &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.0).is_ok());
-    }
-
-    #[test]
-    fn remove_missing_name_from_table() {
-        let mut manifest = Manifest { data: toml::Table::new() };
-        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
-        assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
     }
 }

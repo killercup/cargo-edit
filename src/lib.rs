@@ -6,6 +6,7 @@
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]
 
+#[macro_use] extern crate quick_error;
 extern crate toml;
 
 mod manifest;
