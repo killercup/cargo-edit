@@ -1,5 +1,4 @@
 ///! Handle `cargo rm` arguments
-
 #[derive(Debug, RustcDecodable)]
 /// Docopts input args.
 pub struct Args {
