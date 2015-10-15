@@ -229,13 +229,36 @@ impl str::FromStr for Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
     use toml;
 
     #[test]
     fn add_remove_dependency() {
         let mut manifest = Manifest { data: toml::Table::new() };
+        // Create a copy containing empty "dependencies" table because removing
+        //   the last entry in a table does not remove the section.
+        let mut copy = Manifest { data: toml::Table::new() };
+        copy.data.insert("dependencies".to_owned(), toml::Value::Table(BTreeMap::new()));
         let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
         let _ = manifest.insert_into_table("dependencies", &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.0).is_ok());
+        assert_eq!(manifest, copy);
+    }
+
+    #[test]
+    fn remove_dependency_no_section() {
+        let mut manifest = Manifest { data: toml::Table::new() };
+        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
+    }
+
+    #[test]
+    fn remove_dependency_non_existent() {
+        let mut manifest = Manifest { data: toml::Table::new() };
+        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        let other_dep = ("other-dep".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        let _ = manifest.insert_into_table("dependencies", &other_dep);
+        assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
+
     }
 }
