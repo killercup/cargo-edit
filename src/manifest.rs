@@ -10,19 +10,30 @@ use toml;
 /// A Crate Dependency
 pub type Dependency = (String, toml::Value);
 
+/// Enumeration of errors which can occur when working with a rust manifest.
 #[derive(Debug)]
-/// Catch-all error for misconfigured crates.
-pub struct ManifestError;
+pub enum ManifestError {
+    /// Cargo.toml could not be found.
+    MissingManifest,
+    /// The TOML table could not be found.
+    NonExistentTable,
+    /// The dependency could not be found.
+    NonExistentDependency,
+}
 
 impl Error for ManifestError {
     fn description(&self) -> &str {
-        "Your Cargo.toml is either missing or incorrectly structured."
+        match *self {
+            ManifestError::MissingManifest => "Your Cargo.toml is missing.",
+            ManifestError::NonExistentTable => "The table could not be found.",
+            ManifestError::NonExistentDependency => "The dependency could not be found.",
+        }
     }
 }
 
 impl fmt::Display for ManifestError {
-    fn fmt(&self, format: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        format.write_str(self.description())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.description())
     }
 }
 
@@ -68,7 +79,7 @@ fn search(dir: &Path, file: CargoFile) -> Result<PathBuf, ManifestError> {
 
     fs::metadata(&manifest)
         .map(|_| manifest)
-        .or(dir.parent().ok_or(ManifestError).and_then(|dir| search(dir, file)))
+        .or(dir.parent().ok_or(ManifestError::MissingManifest).and_then(|dir| search(dir, file)))
 }
 
 impl Manifest {
@@ -129,7 +140,7 @@ impl Manifest {
                                                     toml.remove("project")
                                                         .map(|data| ("project", data))
                                                 })
-                                                .ok_or(ManifestError));
+                                                .ok_or(ManifestError::MissingManifest));
         write!(file,
                "[{}]\n{}{}",
                proj_header,
@@ -152,7 +163,7 @@ impl Manifest {
                 deps.insert(name.clone(), data.clone());
                 Ok(())
             }
-            _ => Err(ManifestError),
+            _ => Err(ManifestError::NonExistentTable),
         }
     }
 
@@ -183,13 +194,13 @@ impl Manifest {
         let entry = manifest.entry(String::from(table));
 
         match entry {
-            Entry::Vacant(_) => Err(ManifestError),
+            Entry::Vacant(_) => Err(ManifestError::NonExistentTable),
             Entry::Occupied(entry) => {
                 match *entry.into_mut() {
                     toml::Value::Table(ref mut deps) => {
-                        deps.remove(name).map(|_| ()).ok_or(ManifestError)
+                        deps.remove(name).map(|_| ()).ok_or(ManifestError::NonExistentDependency)
                     }
-                    _ => Err(ManifestError)
+                    _ => Err(ManifestError::NonExistentTable)
                 }
             }
         }
