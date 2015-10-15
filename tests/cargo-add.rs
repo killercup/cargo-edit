@@ -37,9 +37,16 @@ fn get_toml(manifest_path: &str) -> toml::Value {
     toml::Value::Table(toml::Parser::new(&s).parse().unwrap())
 }
 
+/// 'failure' dep not present
+fn no_manifest_failures(manifest: &toml::Value) -> bool {
+    manifest.lookup("dependencies.failure").is_none() &&
+    manifest.lookup("dev-dependencies.failure").is_none() &&
+    manifest.lookup("build-dependencies.failure").is_none()
+}
+
 #[test]
 fn adds_dependencies() {
-    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
@@ -55,7 +62,7 @@ fn adds_dependencies() {
 
 #[test]
 fn adds_dev_build_dependencies() {
-    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
@@ -77,18 +84,14 @@ fn adds_dev_build_dependencies() {
         .args(&["add", "failure", "--dev", "--build"])
         .arg(format!("--manifest-path={}", &manifest))
         .output().unwrap();
-    assert!(!call.status.success());
 
-    // 'failure' dep not present
-    let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.failure").is_none());
-    assert!(toml.lookup("dev-dependencies.failure").is_none());
-    assert!(toml.lookup("build-dependencies.failure").is_none());
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest)));
 }
 
 #[test]
 fn adds_fixed_version() {
-    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
@@ -106,18 +109,14 @@ fn adds_fixed_version() {
         .args(&["add", "failure", "--ver", "invalid version string"])
         .arg(format!("--manifest-path={}", &manifest))
         .output().unwrap();
-    assert!(!call.status.success());
 
-    // 'failure' dep not present
-    let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.failure").is_none());
-    assert!(toml.lookup("dev-dependencies.failure").is_none());
-    assert!(toml.lookup("build-dependencies.failure").is_none());
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest)));
 }
 
 #[test]
 fn adds_git_source() {
-    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
@@ -148,7 +147,7 @@ fn adds_git_source() {
 
 #[test]
 fn adds_local_source() {
-    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
@@ -175,7 +174,7 @@ fn adds_local_source() {
 
 #[test]
 fn package_kinds_are_mutually_exclusive() {
-    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     let call = process::Command::new("target/debug/cargo-add")
         .args(&["add", "failure"])
@@ -184,11 +183,7 @@ fn package_kinds_are_mutually_exclusive() {
         .args(&["--path", "/path/here"])
         .arg(format!("--manifest-path={}", &manifest))
         .output().unwrap();
-    assert!(!call.status.success());
 
-    // 'failure' dep not present
-    let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.failure").is_none());
-    assert!(toml.lookup("dev-dependencies.failure").is_none());
-    assert!(toml.lookup("build-dependencies.failure").is_none());
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest)));
 }
