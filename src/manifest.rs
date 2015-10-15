@@ -20,14 +20,14 @@ quick_error! {
             display("Your Cargo.toml is missing.")
         }
         /// The TOML table could not be found.
-        NonExistentTable(name: String) {
+        NonExistentTable(table: String) {
             description("non existent table")
-            display("The table `{}` could not be found.", name)
+            display("The table `{}` could not be found.", table)
         }
         /// The dependency could not be found.
-        NonExistentDependency(name: String) {
+        NonExistentDependency(name: String, table: String) {
             description("non existent dependency")
-            display("The dependency `{}` could not be found.", name)
+            display("The dependency `{}` could not be found in `{}`.", name, table)
         }
     }
 }
@@ -192,7 +192,7 @@ impl Manifest {
             Entry::Occupied(entry) => {
                 match *entry.into_mut() {
                     toml::Value::Table(ref mut deps) => {
-                        deps.remove(name).map(|_| ()).ok_or(ManifestError::NonExistentDependency(name.into()))
+                        deps.remove(name).map(|_| ()).ok_or(ManifestError::NonExistentDependency(name.into(), table.into()))
                     }
                     _ => Err(ManifestError::NonExistentTable(table.into()))
                 }
