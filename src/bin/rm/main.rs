@@ -60,8 +60,7 @@ fn main() {
         process::exit(0);
     }
 
-    if let Err(err) = handle_rm(&args) {
-        println!("{}", err);
+    if let Err(_) = handle_rm(&args) {
         process::exit(1);
     }
 }
