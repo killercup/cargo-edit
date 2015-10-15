@@ -34,13 +34,16 @@ You should be able to use the new Cargo subcommands now.
 
 ### `cargo add`
 
-Add new dependencies to your `Cargo.toml`.
+Add new dependencies to your `Cargo.toml`. When no version is specified, `cargo add` will try to query the latest version's number from [crates.io](https://crates.io).
 
 #### Examples
 
 ```sh
+$ # Add a specific version
 $ cargo add regex@0.1.41 --dev
-$ cargo add gcc --ver=0.3.18 --build
+$ # Query the latest version from crates.io and adds it as build dependency
+$ cargo add gcc --build
+$ # Add a non-crates.io crate
 $ cargo add local_experiment --path=lib/trial-and-error/
 ```
 

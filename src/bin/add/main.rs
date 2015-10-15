@@ -9,6 +9,9 @@ extern crate docopt;
 extern crate toml;
 extern crate semver;
 extern crate rustc_serialize;
+extern crate curl;
+#[macro_use]
+extern crate quick_error;
 
 use std::error::Error;
 use std::process;
@@ -16,6 +19,7 @@ use std::process;
 extern crate cargo_edit;
 use cargo_edit::Manifest;
 
+mod fetch_version;
 mod args;
 use args::Args;
 
@@ -48,7 +52,9 @@ fn handle_add(args: &Args) -> Result<(), Box<Error>> {
     manifest.insert_into_table(&args.get_section(), &dep)
             .map_err(From::from)
             .and_then(|_| {
-                let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
+                let mut file = try!(Manifest::find_file(&args.flag_manifest_path
+                                                             .as_ref()
+                                                             .map(|s| &s[..])));
                 manifest.write_to_file(&mut file)
             })
             .or_else(|err| {

@@ -90,22 +90,29 @@ fn get_packages(lock_file: &toml::Table) -> Result<Packages, Box<Error>> {
     Ok(output)
 }
 
-fn list_deps_helper(
-    pkgs: &Packages,
-    deps: &Dependencies,
-    levels: &mut Vec<bool>
-) -> Result<String, Box<Error>> {
+fn list_deps_helper(pkgs: &Packages,
+                    deps: &Dependencies,
+                    levels: &mut Vec<bool>)
+                    -> Result<String, Box<Error>> {
     let mut output = String::new();
     for (i, dep) in deps.iter().enumerate() {
         // For any indent level where the parent is the last dependency in the list, we don't want
         // to print out a branch.
         for is_last in levels.iter().cloned() {
-            let indent = if is_last { "    " } else { "│   " };
+            let indent = if is_last {
+                "    "
+            } else {
+                "│   "
+            };
             output.push_str(indent);
         }
 
         let is_last = i == deps.len() - 1;
-        let branch = if !is_last { "├──" } else { "└──" };
+        let branch = if !is_last {
+            "├──"
+        } else {
+            "└──"
+        };
 
         output.push_str(&format!("{} {} ({})\n", branch, dep.0, dep.1));
 
@@ -140,11 +147,10 @@ mod test {
 
     #[test]
     fn basic_tree() {
-        let manifile = Manifest::open_lock_file(&Some("tests/fixtures/tree/Cargo.lock"))
-                           .unwrap();
+        let manifile = Manifest::open_lock_file(&Some("tests/fixtures/tree/Cargo.lock")).unwrap();
 
         assert_eq!(parse_lock_file(&manifile).unwrap(),
-                      "\
+                   "\
 ├── clippy (0.0.5)
 ├── docopt (0.6.67)
 │   ├── regex (0.1.38)

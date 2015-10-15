@@ -5,6 +5,7 @@ use std::error::Error;
 use toml;
 use semver;
 use cargo_edit::Dependency;
+use fetch_version::get_latest_version;
 
 #[derive(Debug, RustcDecodable)]
 /// Docopts input args.
@@ -54,7 +55,9 @@ impl Args {
         } else if let Some(ref path) = self.flag_path {
             parse_path(path.clone())
         } else {
-            Ok(toml::Value::String(String::from("*")))
+            get_latest_version(&self.arg_crate)
+                .map(|v| toml::Value::String(v))
+                .map_err(From::from)
         };
 
         version.map(|data| (self.arg_crate.clone(), data))
