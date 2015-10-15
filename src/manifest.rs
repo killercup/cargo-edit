@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
-use std::{env, fmt, str};
+use std::collections::btree_map::Entry;
+use std::{env, str};
 use std::error::Error;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -9,19 +10,25 @@ use toml;
 /// A Crate Dependency
 pub type Dependency = (String, toml::Value);
 
-#[derive(Debug)]
-/// Catch-all error for misconfigured crates.
-pub struct ManifestError;
-
-impl Error for ManifestError {
-    fn description(&self) -> &str {
-        "Your Cargo.toml is either missing or incorrectly structured."
-    }
-}
-
-impl fmt::Display for ManifestError {
-    fn fmt(&self, format: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        format.write_str(self.description())
+/// Enumeration of errors which can occur when working with a rust manifest.
+quick_error! {
+    #[derive(Debug)]
+    pub enum ManifestError {
+        /// Cargo.toml could not be found.
+        MissingManifest {
+            description("missing manifest")
+            display("Your Cargo.toml is missing.")
+        }
+        /// The TOML table could not be found.
+        NonExistentTable {
+            description("non existent table")
+            display("The table could not be found.")
+        }
+        /// The dependency could not be found.
+        NonExistentDependency {
+            description("non existent dependency")
+            display("The dependency could not be found.")
+        }
     }
 }
 
@@ -67,7 +74,7 @@ fn search(dir: &Path, file: CargoFile) -> Result<PathBuf, ManifestError> {
 
     fs::metadata(&manifest)
         .map(|_| manifest)
-        .or(dir.parent().ok_or(ManifestError).and_then(|dir| search(dir, file)))
+        .or(dir.parent().ok_or(ManifestError::MissingManifest).and_then(|dir| search(dir, file)))
 }
 
 impl Manifest {
@@ -128,7 +135,7 @@ impl Manifest {
                                                     toml.remove("project")
                                                         .map(|data| ("project", data))
                                                 })
-                                                .ok_or(ManifestError));
+                                                .ok_or(ManifestError::MissingManifest));
         write!(file,
                "[{}]\n{}{}",
                proj_header,
@@ -151,7 +158,46 @@ impl Manifest {
                 deps.insert(name.clone(), data.clone());
                 Ok(())
             }
-            _ => Err(ManifestError),
+            _ => Err(ManifestError::NonExistentTable),
+        }
+    }
+
+    /// Remove entry from a Cargo.toml.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # extern crate cargo_edit;
+    /// # extern crate toml;
+    /// # fn main() {
+    ///     use cargo_edit::Manifest;
+    ///     use toml;
+    ///
+    ///     let mut manifest = Manifest { data: toml::Table::new() };
+    ///     let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+    ///     let _ = manifest.insert_into_table("dependencies", &dep);
+    ///     assert!(manifest.remove_from_table("dependencies", &dep.0).is_ok());
+    ///     assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
+    /// # }
+    /// ```
+    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
+    pub fn remove_from_table(&mut self,
+                             table: &str,
+                             name: &str)
+                             -> Result<(), ManifestError> {
+        let ref mut manifest = self.data;
+        let entry = manifest.entry(String::from(table));
+
+        match entry {
+            Entry::Vacant(_) => Err(ManifestError::NonExistentTable),
+            Entry::Occupied(entry) => {
+                match *entry.into_mut() {
+                    toml::Value::Table(ref mut deps) => {
+                        deps.remove(name).map(|_| ()).ok_or(ManifestError::NonExistentDependency)
+                    }
+                    _ => Err(ManifestError::NonExistentTable)
+                }
+            }
         }
     }
 
@@ -177,5 +223,42 @@ impl str::FromStr for Manifest {
               .map_err(Option::unwrap)
               .map_err(From::from)
               .map(|data| Manifest { data: data })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+    use toml;
+
+    #[test]
+    fn add_remove_dependency() {
+        let mut manifest = Manifest { data: toml::Table::new() };
+        // Create a copy containing empty "dependencies" table because removing
+        //   the last entry in a table does not remove the section.
+        let mut copy = Manifest { data: toml::Table::new() };
+        copy.data.insert("dependencies".to_owned(), toml::Value::Table(BTreeMap::new()));
+        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        let _ = manifest.insert_into_table("dependencies", &dep);
+        assert!(manifest.remove_from_table("dependencies", &dep.0).is_ok());
+        assert_eq!(manifest, copy);
+    }
+
+    #[test]
+    fn remove_dependency_no_section() {
+        let mut manifest = Manifest { data: toml::Table::new() };
+        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
+    }
+
+    #[test]
+    fn remove_dependency_non_existent() {
+        let mut manifest = Manifest { data: toml::Table::new() };
+        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        let other_dep = ("other-dep".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        let _ = manifest.insert_into_table("dependencies", &other_dep);
+        assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
+
     }
 }

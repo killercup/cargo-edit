@@ -6,6 +6,7 @@ Currently available subcommands:
 
 - [`cargo add`](#cargo-add)
 - [`cargo list`](#cargo-list)
+- [`cargo rm`](#cargo-rm)
 
 [![Build Status](https://travis-ci.org/killercup/cargo-edit.svg?branch=master)](https://travis-ci.org/killercup/cargo-edit)
 [![Coverage Status](https://coveralls.io/repos/killercup/cargo-edit/badge.svg?branch=master&service=github)](https://coveralls.io/github/killercup/cargo-edit?branch=master)
@@ -122,6 +123,37 @@ Options:
     -h --help               Show this help page.
 
 Display a crate's dependencies using its Cargo.toml file.
+```
+
+### `cargo rm`
+
+Remove dependencies from your `Cargo.toml`.
+
+#### Examples
+
+```sh
+$ cargo rm regex
+$ cargo rm regex --dev
+$ cargo rm regex --build
+```
+
+#### Usage
+
+```plain
+$ cargo rm --help
+Usage:
+    cargo rm <crate> [--dev|--build] [options]
+    cargo rm (-h|--help)
+    cargo rm --version
+
+Options:
+    -D --dev                Remove crate as development dependency.
+    -B --build              Remove crate as build dependency.
+    --manifest-path=<path>  Path to the manifest to remove a dependency from.
+    -h --help               Show this help page.
+    --version               Show version.
+
+Remove a dependency to a Cargo.toml manifest file.
 ```
 
 ## License
