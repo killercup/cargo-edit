@@ -1,3 +1,4 @@
+use std::env;
 use rustc_serialize::json;
 use rustc_serialize::json::{BuilderError, Json};
 use curl::{ErrCode, http};
@@ -5,7 +6,20 @@ use curl::http::handle::{Method, Request};
 
 const REGISTRY_HOST: &'static str = "https://crates.io";
 
+/// Query latest version fromc crates.io
+///
+/// The latest version will be returned as a string. This will fail, when
+///
+/// - there is no Internet connection,
+/// - the response from crates.io was an error or in an incorrect format,
+/// - or when a crate with the given name does not exist on crates.io.
 pub fn get_latest_version(crate_name: &str) -> Result<String, FetchVersionError> {
+    if env::var("CARGO_IS_TEST").is_ok() {
+        // We are in a simulated reality. Nothing is real here. Wildcard dependecies are okay.
+        // FIXME: Use actual test handling code.
+        return Ok("*".into());
+    }
+
     let crate_data = try!(fetch(&format!("/crates/{}", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 

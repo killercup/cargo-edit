@@ -19,6 +19,7 @@ fn execute_command<S>(command: &[S], manifest: &str) where S: AsRef<OsStr> {
     let call = process::Command::new("target/debug/cargo-add")
         .args(command)
         .arg(format!("--manifest-path={}", manifest))
+        .env("CARGO_IS_TEST", "1")
         .output().unwrap();
 
     if !call.status.success() {
