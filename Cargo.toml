@@ -33,3 +33,4 @@ clippy = {version = "0.0.19", optional = true}
 
 [dev-dependencies]
 assert_cli = "0.1.0"
+tempdir = "0.3"
