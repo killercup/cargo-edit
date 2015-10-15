@@ -180,10 +180,7 @@ impl Manifest {
     ///     assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
     /// # }
     /// ```
-    pub fn remove_from_table(&mut self,
-                             table: &str,
-                             name: &str)
-                             -> Result<(), ManifestError> {
+    pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<(), ManifestError> {
         let ref mut manifest = self.data;
         let entry = manifest.entry(String::from(table));
 
@@ -192,9 +189,11 @@ impl Manifest {
             Entry::Occupied(entry) => {
                 match *entry.into_mut() {
                     toml::Value::Table(ref mut deps) => {
-                        deps.remove(name).map(|_| ()).ok_or(ManifestError::NonExistentDependency(name.into(), table.into()))
+                        deps.remove(name)
+                            .map(|_| ())
+                            .ok_or(ManifestError::NonExistentDependency(name.into(), table.into()))
                     }
-                    _ => Err(ManifestError::NonExistentTable(table.into()))
+                    _ => Err(ManifestError::NonExistentTable(table.into())),
                 }
             }
         }
@@ -237,8 +236,10 @@ mod tests {
         // Create a copy containing empty "dependencies" table because removing
         //   the last entry in a table does not remove the section.
         let mut copy = Manifest { data: toml::Table::new() };
-        copy.data.insert("dependencies".to_owned(), toml::Value::Table(BTreeMap::new()));
-        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        copy.data.insert("dependencies".to_owned(),
+                         toml::Value::Table(BTreeMap::new()));
+        let dep = ("cargo-edit".to_owned(),
+                   toml::Value::String("0.1.0".to_owned()));
         let _ = manifest.insert_into_table("dependencies", &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.0).is_ok());
         assert_eq!(manifest, copy);
@@ -247,15 +248,18 @@ mod tests {
     #[test]
     fn remove_dependency_no_section() {
         let mut manifest = Manifest { data: toml::Table::new() };
-        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        let dep = ("cargo-edit".to_owned(),
+                   toml::Value::String("0.1.0".to_owned()));
         assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
     }
 
     #[test]
     fn remove_dependency_non_existent() {
         let mut manifest = Manifest { data: toml::Table::new() };
-        let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
-        let other_dep = ("other-dep".to_owned(), toml::Value::String("0.1.0".to_owned()));
+        let dep = ("cargo-edit".to_owned(),
+                   toml::Value::String("0.1.0".to_owned()));
+        let other_dep = ("other-dep".to_owned(),
+                         toml::Value::String("0.1.0".to_owned()));
         let _ = manifest.insert_into_table("dependencies", &other_dep);
         assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
 
