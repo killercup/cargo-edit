@@ -20,14 +20,14 @@ quick_error! {
             display("Your Cargo.toml is missing.")
         }
         /// The TOML table could not be found.
-        NonExistentTable {
+        NonExistentTable(name: String) {
             description("non existent table")
-            display("The table could not be found.")
+            display("The table `{}` could not be found.", name)
         }
         /// The dependency could not be found.
-        NonExistentDependency {
+        NonExistentDependency(name: String) {
             description("non existent dependency")
-            display("The dependency could not be found.")
+            display("The dependency `{}` could not be found.", name)
         }
     }
 }
@@ -158,7 +158,7 @@ impl Manifest {
                 deps.insert(name.clone(), data.clone());
                 Ok(())
             }
-            _ => Err(ManifestError::NonExistentTable),
+            _ => Err(ManifestError::NonExistentTable(table.into())),
         }
     }
 
@@ -180,7 +180,6 @@ impl Manifest {
     ///     assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
     /// # }
     /// ```
-    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn remove_from_table(&mut self,
                              table: &str,
                              name: &str)
@@ -189,13 +188,13 @@ impl Manifest {
         let entry = manifest.entry(String::from(table));
 
         match entry {
-            Entry::Vacant(_) => Err(ManifestError::NonExistentTable),
+            Entry::Vacant(_) => Err(ManifestError::NonExistentTable(table.into())),
             Entry::Occupied(entry) => {
                 match *entry.into_mut() {
                     toml::Value::Table(ref mut deps) => {
-                        deps.remove(name).map(|_| ()).ok_or(ManifestError::NonExistentDependency)
+                        deps.remove(name).map(|_| ()).ok_or(ManifestError::NonExistentDependency(name.into()))
                     }
-                    _ => Err(ManifestError::NonExistentTable)
+                    _ => Err(ManifestError::NonExistentTable(table.into()))
                 }
             }
         }
