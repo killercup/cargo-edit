@@ -125,8 +125,7 @@ impl Manifest {
     }
 
     /// Overwrite a file with TOML data.
-    pub fn write_to_file<T: Seek + Write>(&self, file: &mut T) -> Result<(), Box<Error>> {
-        try!(file.seek(SeekFrom::Start(0)));
+    pub fn write_to_file(&self, file: &mut File) -> Result<(), Box<Error>> {
         let mut toml = self.data.clone();
 
         let (proj_header, proj_data) = try!(toml.remove("package")
@@ -136,11 +135,19 @@ impl Manifest {
                                                         .map(|data| ("project", data))
                                                 })
                                                 .ok_or(ManifestError::MissingManifest));
-        write!(file,
-               "[{}]\n{}{}",
-               proj_header,
-               proj_data,
-               toml::Value::Table(toml))
+
+        let new_contents = format!(
+          "[{}]\n{}{}",
+          proj_header,
+          proj_data,
+          toml::Value::Table(toml)
+        );
+        let new_contents_bytes = new_contents.as_bytes();
+
+        // We need to truncate the file, otherwise the new contents
+        // will be mixed up with the old ones.
+        file.set_len(new_contents_bytes.len() as u64).unwrap();
+        file.write_all(new_contents_bytes)
             .map_err(From::from)
     }
 
