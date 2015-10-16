@@ -3,7 +3,7 @@ use std::collections::btree_map::Entry;
 use std::{env, str};
 use std::error::Error;
 use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use toml;
 
@@ -146,7 +146,7 @@ impl Manifest {
 
         // We need to truncate the file, otherwise the new contents
         // will be mixed up with the old ones.
-        file.set_len(new_contents_bytes.len() as u64).unwrap();
+        try!(file.set_len(new_contents_bytes.len() as u64));
         file.write_all(new_contents_bytes)
             .map_err(From::from)
     }
