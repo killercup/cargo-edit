@@ -56,7 +56,7 @@ impl Args {
             parse_path(path.clone())
         } else {
             get_latest_version(&self.arg_crate)
-                .map(|v| toml::Value::String(v))
+                .map(toml::Value::String)
                 .map_err(From::from)
         };
 

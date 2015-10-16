@@ -91,7 +91,7 @@ fn get_packages(lock_file: &toml::Table) -> Result<Packages, Box<Error>> {
 }
 
 fn list_deps_helper(pkgs: &Packages,
-                    deps: &Dependencies,
+                    deps: &[Dependency],
                     levels: &mut Vec<bool>)
                     -> Result<String, Box<Error>> {
     let mut output = String::new();
@@ -126,7 +126,7 @@ fn list_deps_helper(pkgs: &Packages,
     Ok(output)
 }
 
-fn list_deps(pkgs: &Packages, deps: &Dependencies) -> Result<String, Box<Error>> {
+fn list_deps(pkgs: &Packages, deps: &[Dependency]) -> Result<String, Box<Error>> {
     list_deps_helper(pkgs, deps, &mut vec![])
 }
 
