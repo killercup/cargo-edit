@@ -180,6 +180,7 @@ impl Manifest {
     ///     assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
     /// # }
     /// ```
+    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<(), ManifestError> {
         let ref mut manifest = self.data;
         let entry = manifest.entry(String::from(table));
