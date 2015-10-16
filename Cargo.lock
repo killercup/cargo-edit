@@ -3,7 +3,7 @@ name = "cargo-edit"
 version = "0.1.0"
 dependencies = [
  "assert_cli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "curl 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.73 (registry+https://github.com/rust-lang/crates.io-index)",
  "pad 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -47,7 +47,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.19"
+version = "0.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-normalization 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -61,7 +61,7 @@ dependencies = [
  "curl-sys 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "openssl-sys 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "openssl-sys 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 0.2.37 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -73,7 +73,7 @@ dependencies = [
  "gcc 0.3.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "libz-sys 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "openssl-sys 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "openssl-sys 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -155,7 +155,7 @@ dependencies = [
 
 [[package]]
 name = "openssl-sys"
-version = "0.6.6"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.3.18 (registry+https://github.com/rust-lang/crates.io-index)",
