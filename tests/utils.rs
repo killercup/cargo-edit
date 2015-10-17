@@ -8,7 +8,8 @@ use std::ffi::OsStr;
 /// Create temporary working directory with Cargo.toml mainifest
 pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
     let tmpdir = tempdir::TempDir::new("cargo-add-test")
-        .ok().expect("failed to construct temporary directory");
+                     .ok()
+                     .expect("failed to construct temporary directory");
     fs::copy(source, tmpdir.path().join("Cargo.toml"))
         .unwrap_or_else(|err| panic!("could not copy test manifest: {}", err));
     let path = tmpdir.path().join("Cargo.toml").to_str().unwrap().to_string().clone();
@@ -17,14 +18,17 @@ pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
 }
 
 /// Execute localc cargo command, includes `--manifest-path`
-pub fn execute_command<S>(command: &[S], manifest: &str) where S: AsRef<OsStr> {
+pub fn execute_command<S>(command: &[S], manifest: &str)
+    where S: AsRef<OsStr>
+{
     let subcommand_name = &command[0].as_ref().to_str().unwrap();
 
     let call = process::Command::new(&format!("target/debug/cargo-{}", subcommand_name))
-        .args(command)
-        .arg(format!("--manifest-path={}", manifest))
-        .env("CARGO_IS_TEST", "1")
-        .output().unwrap();
+                   .args(command)
+                   .arg(format!("--manifest-path={}", manifest))
+                   .env("CARGO_IS_TEST", "1")
+                   .output()
+                   .unwrap();
 
     if !call.status.success() {
         println!("Status code: {:?}", call.status);

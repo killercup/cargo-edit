@@ -83,7 +83,7 @@ fn handle(response: Result<http::Response, ErrCode>) -> Result<String, CratesIoE
     };
     match json::decode::<ApiErrorList>(&body) {
         Ok(errors) => {
-            return Err(CratesIoError::Api(errors.errors.into_iter().map(|s| s.detail).collect()))
+            return Err(CratesIoError::Api(errors.errors.into_iter().map(|s| s.detail).collect()));
         }
         Err(..) => {}
     }
