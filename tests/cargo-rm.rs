@@ -1,9 +1,8 @@
+#[macro_use]
 extern crate assert_cli;
 
-use assert_cli::assert_cli_output;
-
 mod utils;
-use utils::*;
+use utils::{clone_out_test, execute_command, get_toml};
 
 // https://github.com/killercup/cargo-edit/issues/32
 #[test]
@@ -28,16 +27,47 @@ fn issue_32() {
     assert!(toml.lookup("dependencies.bar").is_none());
 }
 
+#[test]
+fn invalid_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
 
+    assert_cli!("target/debug/cargo-rm",
+                &["rm", "invalid_dependency_name", &format!("--manifest-path={}", manifest)]
+                => Error 1, "Could not edit `Cargo.toml`.
 
-
+ERROR: The dependency `invalid_dependency_name` could not be found in `dependencies`.")
+        .unwrap();
+}
 
 #[test]
-#[ignore]
+fn invalid_section() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+
+    assert_cli!("target/debug/cargo-rm",
+                &["rm", "semver", "--build", &format!("--manifest-path={}", manifest)]
+                => Error 1, "Could not edit `Cargo.toml`.
+
+ERROR: The table `build-dependencies` could not be found.")
+        .unwrap();
+}
+
+#[test]
+fn invalid_dependency_in_section() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+
+    assert_cli!("target/debug/cargo-rm",
+                &["rm", "semver", "--dev", &format!("--manifest-path={}", manifest)]
+                => Error 1, "Could not edit `Cargo.toml`.
+
+ERROR: The dependency `semver` could not be found in `dev-dependencies`.")
+        .unwrap();
+}
+
+#[test]
 fn no_argument() {
-    assert_cli_output("target/debug/cargo-rm",
-                      &["rm"],
-                      r"Invalid arguments.
+    assert_cli!("target/debug/cargo-rm", &["rm"] => Error 1,
+                r"Invalid arguments.
+
 Usage:
     cargo rm <crate> [--dev|--build] [options]
     cargo rm (-h|--help)
@@ -46,11 +76,9 @@ Usage:
 }
 
 #[test]
-#[ignore]
 fn unknown_flags() {
-    assert_cli_output("target/debug/cargo-rm",
-                      &["rm", "foo", "--flag"],
-                      r"Unknown flag: '--flag'
+    assert_cli!("target/debug/cargo-rm", &["rm", "foo", "--flag"] => Error 1,
+                r"Unknown flag: '--flag'
 
 Usage:
     cargo rm <crate> [--dev|--build] [options]

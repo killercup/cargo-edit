@@ -136,19 +136,16 @@ impl Manifest {
                                                 })
                                                 .ok_or(ManifestError::MissingManifest));
 
-        let new_contents = format!(
-          "[{}]\n{}{}",
-          proj_header,
-          proj_data,
-          toml::Value::Table(toml)
-        );
+        let new_contents = format!("[{}]\n{}{}",
+                                   proj_header,
+                                   proj_data,
+                                   toml::Value::Table(toml));
         let new_contents_bytes = new_contents.as_bytes();
 
         // We need to truncate the file, otherwise the new contents
         // will be mixed up with the old ones.
         try!(file.set_len(new_contents_bytes.len() as u64));
-        file.write_all(new_contents_bytes)
-            .map_err(From::from)
+        file.write_all(new_contents_bytes).map_err(From::from)
     }
 
     /// Add entry to a Cargo.toml.

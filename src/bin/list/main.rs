@@ -12,6 +12,7 @@ extern crate toml;
 
 use std::error::Error;
 use std::process;
+use std::io::{self, Write};
 
 extern crate cargo_edit;
 use cargo_edit::Manifest;
@@ -91,7 +92,7 @@ fn main() {
     }
 
     if let Err(err) = handle_list(&args) {
-        println!("{}", err);
+        write!(io::stderr(), "{}", err).unwrap();
         process::exit(1);
     }
 }
