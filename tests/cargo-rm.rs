@@ -1,4 +1,5 @@
-#[macro_use] extern crate assert_cli;
+#[macro_use]
+extern crate assert_cli;
 
 mod utils;
 use utils::{clone_out_test, execute_command, get_toml};
@@ -24,6 +25,42 @@ fn issue_32() {
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.foo").is_none());
     assert!(toml.lookup("dependencies.bar").is_none());
+}
+
+#[test]
+fn invalid_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+
+    assert_cli!("target/debug/cargo-rm",
+                &["rm", "invalid_dependency_name", &format!("--manifest-path={}", manifest)]
+                => Error 1, "Could not edit `Cargo.toml`.
+
+ERROR: The dependency `invalid_dependency_name` could not be found in `dependencies`.")
+        .unwrap();
+}
+
+#[test]
+fn invalid_section() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+
+    assert_cli!("target/debug/cargo-rm",
+                &["rm", "semver", "--build", &format!("--manifest-path={}", manifest)]
+                => Error 1, "Could not edit `Cargo.toml`.
+
+ERROR: The table `build-dependencies` could not be found.")
+        .unwrap();
+}
+
+#[test]
+fn invalid_dependency_in_section() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+
+    assert_cli!("target/debug/cargo-rm",
+                &["rm", "semver", "--dev", &format!("--manifest-path={}", manifest)]
+                => Error 1, "Could not edit `Cargo.toml`.
+
+ERROR: The dependency `semver` could not be found in `dev-dependencies`.")
+        .unwrap();
 }
 
 #[test]
