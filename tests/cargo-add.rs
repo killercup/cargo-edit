@@ -3,7 +3,7 @@ extern crate toml;
 
 use std::process;
 mod utils;
-use utils::*;
+use utils::{clone_out_test, execute_command, get_toml, no_manifest_failures};
 
 #[test]
 fn adds_dependencies() {

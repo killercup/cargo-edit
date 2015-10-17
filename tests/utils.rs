@@ -5,6 +5,7 @@ use std::{fs, process};
 use std::io::prelude::*;
 use std::ffi::OsStr;
 
+/// Create temporary working directory with Cargo.toml mainifest
 pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
     let tmpdir = tempdir::TempDir::new("cargo-add-test")
         .ok().expect("failed to construct temporary directory");
@@ -15,6 +16,7 @@ pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
     (tmpdir, path)
 }
 
+/// Execute localc cargo command, includes `--manifest-path`
 pub fn execute_command<S>(command: &[S], manifest: &str) where S: AsRef<OsStr> {
     let subcommand_name = &command[0].as_ref().to_str().unwrap();
 
@@ -32,6 +34,7 @@ pub fn execute_command<S>(command: &[S], manifest: &str) where S: AsRef<OsStr> {
     }
 }
 
+/// Parse a manifest file as TOML
 pub fn get_toml(manifest_path: &str) -> toml::Value {
     let mut f = fs::File::open(manifest_path).unwrap();
     let mut s = String::new();
@@ -39,7 +42,7 @@ pub fn get_toml(manifest_path: &str) -> toml::Value {
     toml::Value::Table(toml::Parser::new(&s).parse().unwrap())
 }
 
-/// 'failure' dep not present
+/// Assert 'failure' deps are not present
 pub fn no_manifest_failures(manifest: &toml::Value) -> bool {
     manifest.lookup("dependencies.failure").is_none() &&
     manifest.lookup("dev-dependencies.failure").is_none() &&

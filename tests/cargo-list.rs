@@ -1,12 +1,10 @@
-extern crate assert_cli;
-
-use assert_cli::assert_cli_output;
+#[macro_use] extern crate assert_cli;
 
 #[test]
 fn listing() {
-    assert_cli_output("target/debug/cargo-list",
-                      &["list", "--manifest-path=tests/fixtures/list/Cargo.toml"],
-                      r"clippy          git
+    assert_cli!("target/debug/cargo-list",
+                &["list", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
+                Success, r"clippy          git
 docopt          0.6
 pad             0.1
 rustc-serialize 0.3
@@ -17,9 +15,9 @@ toml            0.1")
 
 #[test]
 fn tree() {
-    assert_cli_output("target/debug/cargo-list",
-                      &["list", "--tree", "--manifest-path=tests/fixtures/tree/Cargo.lock"],
-                      r"├── clippy (0.0.5)
+    assert_cli!("target/debug/cargo-list",
+                &["list", "--tree", "--manifest-path=tests/fixtures/tree/Cargo.lock"] =>
+                Success, r"├── clippy (0.0.5)
 ├── docopt (0.6.67)
 │   ├── regex (0.1.38)
 │   │   ├── aho-corasick (0.2.1)

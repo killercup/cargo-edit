@@ -1,9 +1,7 @@
-extern crate assert_cli;
-
-use assert_cli::assert_cli_output;
+#[macro_use] extern crate assert_cli;
 
 mod utils;
-use utils::*;
+use utils::{clone_out_test, execute_command, get_toml};
 
 // https://github.com/killercup/cargo-edit/issues/32
 #[test]
@@ -28,16 +26,11 @@ fn issue_32() {
     assert!(toml.lookup("dependencies.bar").is_none());
 }
 
-
-
-
-
 #[test]
-#[ignore]
 fn no_argument() {
-    assert_cli_output("target/debug/cargo-rm",
-                      &["rm"],
-                      r"Invalid arguments.
+    assert_cli!("target/debug/cargo-rm", &["rm"] => Error 1,
+                r"Invalid arguments.
+
 Usage:
     cargo rm <crate> [--dev|--build] [options]
     cargo rm (-h|--help)
@@ -46,11 +39,9 @@ Usage:
 }
 
 #[test]
-#[ignore]
 fn unknown_flags() {
-    assert_cli_output("target/debug/cargo-rm",
-                      &["rm", "foo", "--flag"],
-                      r"Unknown flag: '--flag'
+    assert_cli!("target/debug/cargo-rm", &["rm", "foo", "--flag"] => Error 1,
+                r"Unknown flag: '--flag'
 
 Usage:
     cargo rm <crate> [--dev|--build] [options]
