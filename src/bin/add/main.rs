@@ -15,6 +15,7 @@ extern crate quick_error;
 
 use std::error::Error;
 use std::process;
+use std::io::{self, Write};
 
 extern crate cargo_edit;
 use cargo_edit::Manifest;
@@ -74,7 +75,7 @@ fn main() {
     }
 
     if let Err(err) = handle_add(&args) {
-        println!("Command failed due to unhandled error: {}", err);
+        write!(io::stderr(), "Command failed due to unhandled error: {}", err).unwrap();
         process::exit(1);
     }
 }

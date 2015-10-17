@@ -12,6 +12,7 @@ extern crate rustc_serialize;
 
 use std::error::Error;
 use std::process;
+use std::io::{self, Write};
 
 extern crate cargo_edit;
 use cargo_edit::Manifest;
@@ -46,10 +47,6 @@ fn handle_rm(args: &Args) -> Result<(), Box<Error>> {
                                                              .map(|s| &s[..])));
                 manifest.write_to_file(&mut file)
             })
-            .or_else(|err| {
-                println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
-                Err(err)
-            })
 }
 
 fn main() {
@@ -62,7 +59,8 @@ fn main() {
         process::exit(0);
     }
 
-    if let Err(_) = handle_rm(&args) {
+    if let Err(err) = handle_rm(&args) {
+        write!(io::stderr(), "Could not edit `Cargo.toml`.\n\nERROR: {}", err).unwrap();
         process::exit(1);
     }
 }

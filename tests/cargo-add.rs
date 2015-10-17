@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate assert_cli;
 extern crate tempdir;
 extern crate toml;
 
@@ -147,4 +149,28 @@ fn package_kinds_are_mutually_exclusive() {
 
     assert!(!call.status.success());
     assert!(no_manifest_failures(&get_toml(&manifest)));
+}
+
+#[test]
+fn no_argument() {
+    assert_cli!("target/debug/cargo-add", &["add"] => Error 1,
+                r"Invalid arguments.
+
+Usage:
+    cargo add <crate> [--dev|--build] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add (-h|--help)
+    cargo add --version")
+        .unwrap();
+}
+
+#[test]
+fn unknown_flags() {
+    assert_cli!("target/debug/cargo-add", &["add", "foo", "--flag"] => Error 1,
+                r"Unknown flag: '--flag'
+
+Usage:
+    cargo add <crate> [--dev|--build] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add (-h|--help)
+    cargo add --version")
+        .unwrap();
 }

@@ -1,4 +1,5 @@
-#[macro_use] extern crate assert_cli;
+#[macro_use]
+extern crate assert_cli;
 
 #[test]
 fn listing() {
@@ -34,5 +35,17 @@ fn tree() {
 ├── semver (0.1.19)
 └── toml (0.1.20)
     └── rustc-serialize (0.3.15)")
+        .unwrap();
+}
+
+#[test]
+fn unknown_flags() {
+    assert_cli!("target/debug/cargo-list", &["list", "foo", "--flag"] => Error 1,
+                r"Unknown flag: '--flag'
+
+Usage:
+    cargo list [<section>] [options]
+    cargo list (-h|--help)
+    cargo list --version")
         .unwrap();
 }
