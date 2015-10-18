@@ -67,7 +67,7 @@ impl Args {
             return parse_crate_name_with_version(&self.arg_crate);
         }
 
-        let dependency = Dependency::new(&self.arg_crate);
+        let dependency = Dependency::new(&self.arg_crate).set_optional(self.flag_optional);
 
         let dependency = if let Some(ref version) = self.flag_ver {
             try!(semver::VersionReq::parse(&version));
