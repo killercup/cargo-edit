@@ -8,10 +8,12 @@ use list_error::ListError;
 #[allow(deprecated)] // connect -> join
 pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, ListError> {
     let mut output = vec![];
+    let empty_list = Default::default();
 
     let list = try!(manifest.data
                             .get(section)
-                            .and_then(|field| field.as_table())
+                            .map(|field| field.as_table())
+                            .unwrap_or(Some(&empty_list))
                             .ok_or_else(|| ListError::SectionMissing(String::from(section))));
 
     let name_max_len = list.keys().map(|k| k.len()).max().unwrap_or(0);
@@ -76,10 +78,9 @@ lorem-ipsum 0.4.2");
     }
 
     #[test]
-    #[should_panic]
-    fn unknown_section() {
+    fn treat_unknown_section_as_empty() {
         let manifile: Manifest = DEFAULT_CARGO_TOML.parse().unwrap();
 
-        list_section(&manifile, "lol-dependencies").unwrap();
+        assert_eq!(list_section(&manifile, "lol-dependencies").unwrap(), "");
     }
 }
