@@ -1,11 +1,30 @@
 ///! Handle `cargo add` arguments
 
-use std::collections::BTreeMap;
-use std::error::Error;
-use toml;
 use semver;
+use std::error::Error;
 use cargo_edit::Dependency;
 use fetch_version::get_latest_version;
+
+macro_rules! toml_table {
+    ($($key:expr => $value:expr),+) => {
+        {
+            let mut dep = BTreeMap::new();
+            $(dep.insert(String::from($key), $value);)+
+            toml::Value::Table(dep)
+        }
+    }
+}
+
+/// Errors when parsing CLI arguments
+quick_error! {
+    #[derive(Debug)]
+    pub enum ArgParseError {
+        /// Internal error parsing args to TOML
+        BuildingDependency {
+            description("Error build a dependency description from arguments")
+        }
+    }
+}
 
 #[derive(Debug, RustcDecodable)]
 /// Docopts input args.
@@ -48,19 +67,21 @@ impl Args {
             return parse_crate_name_with_version(&self.arg_crate);
         }
 
-        let version = if let Some(ref version) = self.flag_ver {
-            parse_semver(version.clone())
+        let dependency = Dependency::new(&self.arg_crate);
+
+        let dependency = if let Some(ref version) = self.flag_ver {
+            try!(semver::VersionReq::parse(&version));
+            dependency.set_version(version)
         } else if let Some(ref repo) = self.flag_git {
-            parse_git(repo.clone())
+            dependency.set_git(repo)
         } else if let Some(ref path) = self.flag_path {
-            parse_path(path.clone())
+            dependency.set_path(path)
         } else {
-            get_latest_version(&self.arg_crate)
-                .map(toml::Value::String)
-                .map_err(From::from)
+            let v = try!(get_latest_version(&self.arg_crate));
+            dependency.set_version(&v)
         };
 
-        version.map(|data| (self.arg_crate.clone(), data))
+        Ok(dependency)
     }
 }
 
@@ -80,51 +101,21 @@ impl Default for Args {
     }
 }
 
-macro_rules! toml_table {
-    ($key:expr => $value:expr) => {
-        {
-            let mut dep = BTreeMap::new();
-            dep.insert(String::from($key), toml::Value::String($value));
-            toml::Value::Table(dep)
-        }
-    }
-}
-
 fn crate_name_has_version(name: &str) -> bool {
     name.contains("@")
 }
 
 fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
-    // if !crate_name_has_version(name) {
-    //     return Err("fuu");
-    // }
-
     let xs: Vec<&str> = name.splitn(2, "@").collect();
     let (name, version) = (xs[0], xs[1]);
-    let version = try!(parse_semver(version.to_owned()));
-
-    Ok((name.to_owned(), version))
-}
-
-/// Parse (and validate) a version requirement to the correct TOML data.
-fn parse_semver(version: String) -> Result<toml::Value, Box<Error>> {
     try!(semver::VersionReq::parse(&version));
-    Ok(toml::Value::String(version))
-}
 
-/// Parse a git source to the correct TOML data.
-fn parse_git(repo: String) -> Result<toml::Value, Box<Error>> {
-    Ok(toml_table!("git" => repo))
-}
-
-/// Parse a path to the correct TOML data.
-fn parse_path(path: String) -> Result<toml::Value, Box<Error>> {
-    Ok(toml_table!("path" => path))
+    Ok(Dependency::new(name).set_version(version))
 }
 
 #[cfg(test)]
 mod tests {
-    use toml;
+    use cargo_edit::Dependency;
     use super::*;
 
     #[test]
@@ -136,6 +127,6 @@ mod tests {
         };
 
         assert_eq!(args.parse_dependency().unwrap(),
-                   ("demo".to_owned(), toml::Value::String("0.4.2".to_owned())));
+                   Dependency::new("demo").set_version("0.4.2"));
     }
 }
