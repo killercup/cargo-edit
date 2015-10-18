@@ -26,7 +26,7 @@ use args::Args;
 
 static USAGE: &'static str = r"
 Usage:
-    cargo add <crate> [--dev|--build] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
     cargo add (-h|--help)
     cargo add --version
 
