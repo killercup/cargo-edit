@@ -48,19 +48,17 @@ struct Args {
 }
 
 impl Args {
-    pub fn get_section(&self) -> String {
-        let section = self.arg_section.clone().unwrap_or("dependencies".to_owned());
+    pub fn get_section(&self) -> &str {
+        let section = self.arg_section.as_ref().map(|s| &s[..]).unwrap_or("dependencies");
 
-        let toml_field = match &(section[..]) {
+        match section {
             // Handle shortcuts
             "deps" => "dependencies",
             "dev-deps" => "dev-dependencies",
             "build-deps" => "build-dependencies",
             // No shortcut
             field => field,
-        };
-
-        String::from(toml_field)
+        }
     }
 }
 

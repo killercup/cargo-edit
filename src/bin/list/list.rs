@@ -8,13 +8,13 @@ use list_error::ListError;
 
 /// List the dependencies for manifest section
 #[allow(deprecated)] // connect -> join
-pub fn list_section(manifest: &Manifest, section: String) -> Result<String, Box<Error>> {
+pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Error>> {
     let mut output = vec![];
 
     let list = try!(manifest.data
-                            .get(&section)
+                            .get(section)
                             .and_then(|field| field.as_table())
-                            .ok_or(ListError::SectionMissing(section)));
+                            .ok_or_else(|| ListError::SectionMissing(String::from(section))));
 
     let name_max_len = list.keys().map(|k| k.len()).max().unwrap_or(0);
 
@@ -58,7 +58,7 @@ lorem-ipsum = "0.4.2""#;
     fn basic_listing() {
         let manifile: Manifest = DEFAULT_CARGO_TOML.parse().unwrap();
 
-        assert_eq!(list_section(&manifile, "dependencies".to_owned()).unwrap(),
+        assert_eq!(list_section(&manifile, "dependencies").unwrap(),
                    "\
 foo-bar     0.1
 lorem-ipsum 0.4.2");
@@ -69,6 +69,6 @@ lorem-ipsum 0.4.2");
     fn unknown_section() {
         let manifile: Manifest = DEFAULT_CARGO_TOML.parse().unwrap();
 
-        list_section(&manifile, "lol-dependencies".to_owned()).unwrap();
+        list_section(&manifile, "lol-dependencies").unwrap();
     }
 }
