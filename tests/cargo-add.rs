@@ -80,6 +80,22 @@ fn adds_fixed_version() {
 }
 
 #[test]
+fn adds_fixed_version_with_inline_notation() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.versioned-package").is_none());
+
+    execute_command(&["add", "versioned-package@>=0.1.1"], &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.versioned-package").expect("not added");
+    assert_eq!(val.as_str().expect("not string"), ">=0.1.1");
+}
+
+#[test]
 fn adds_git_source() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -151,6 +167,22 @@ fn package_kinds_are_mutually_exclusive() {
 
     assert!(!call.status.success());
     assert!(no_manifest_failures(&get_toml(&manifest)));
+}
+
+#[test]
+fn adds_optional_dep() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.versioned-package").is_none());
+
+    execute_command(&["add", "versioned-package", "--ver", ">=0.1.1", "--optional"], &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.versioned-package.optional").expect("not added optionally");
+    assert_eq!(val.as_bool().expect("optional not a bool"), true);
 }
 
 #[test]
