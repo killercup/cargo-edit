@@ -31,7 +31,7 @@ Usage:
     cargo list --version
 
 Options:
-    --manifest-path=<path>  Path to the manifest to add a dependency to.
+    --manifest-path=<path>  Path to the manifest to list dependencies of.
     --tree                  List dependencies recursively as tree.
     -h --help               Show this help page.
 
