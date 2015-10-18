@@ -15,17 +15,6 @@ macro_rules! toml_table {
     }
 }
 
-/// Errors when parsing CLI arguments
-quick_error! {
-    #[derive(Debug)]
-    pub enum ArgParseError {
-        /// Internal error parsing args to TOML
-        BuildingDependency {
-            description("Error build a dependency description from arguments")
-        }
-    }
-}
-
 #[derive(Debug, RustcDecodable)]
 /// Docopts input args.
 pub struct Args {
