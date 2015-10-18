@@ -186,12 +186,26 @@ fn adds_optional_dep() {
 }
 
 #[test]
+#[should_panic]
+fn failt_to_add_optional_dev_dep() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.versioned-package").is_none());
+
+    // Fails because optional dependencies must be in `dependencies` table.
+    execute_command(&["add", "versioned-package", "--ver", ">=0.1.1", "--dev", "--optional"],
+                    &manifest);
+}
+
+#[test]
 fn no_argument() {
     assert_cli!("target/debug/cargo-add", &["add"] => Error 1,
                 r"Invalid arguments.
 
 Usage:
-    cargo add <crate> [--dev|--build] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
     cargo add (-h|--help)
     cargo add --version")
         .unwrap();
@@ -203,7 +217,7 @@ fn unknown_flags() {
                 r"Unknown flag: '--flag'
 
 Usage:
-    cargo add <crate> [--dev|--build] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
     cargo add (-h|--help)
     cargo add --version")
         .unwrap();
