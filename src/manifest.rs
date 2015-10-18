@@ -37,7 +37,7 @@ enum CargoFile {
 }
 
 /// A Cargo Manifest
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Manifest {
     /// Manifest contents as TOML data
     pub data: toml::Table,
@@ -233,17 +233,12 @@ impl str::FromStr for Manifest {
 mod tests {
     use super::*;
     use dependency::Dependency;
-    use std::collections::BTreeMap;
     use toml;
 
     #[test]
     fn add_remove_dependency() {
         let mut manifest = Manifest { data: toml::Table::new() };
-        // Create a copy containing empty "dependencies" table because removing
-        //   the last entry in a table does not remove the section.
-        let mut copy = Manifest { data: toml::Table::new() };
-        copy.data.insert("dependencies".to_owned(),
-                         toml::Value::Table(BTreeMap::new()));
+        let copy = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let _ = manifest.insert_into_table("dependencies", &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
@@ -264,6 +259,5 @@ mod tests {
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
         let _ = manifest.insert_into_table("dependencies", &other_dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
-
     }
 }
