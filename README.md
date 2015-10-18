@@ -52,7 +52,7 @@ $ cargo add local_experiment --path=lib/trial-and-error/
 ```plain
 $ cargo add --help
 Usage:
-    cargo add <crate> [--dev|--build] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
     cargo add (-h|--help)
     cargo add --version
 
@@ -64,6 +64,7 @@ Options:
                             `cargo add bitflags@0.3.2`.
     --git=<uri>             Specify a git repository to download the crate from.
     --path=<uri>            Specify the path the crate should be loaded from.
+    --optional              Add as an optional dependency (for use in features.)
     --manifest-path=<path>  Path to the manifest to add a dependency to.
     -h --help               Show this help page.
     --version               Show version.
