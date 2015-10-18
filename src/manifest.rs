@@ -7,8 +7,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use toml;
 
-/// A Crate Dependency
-pub type Dependency = (String, toml::Value);
+use dependency::Dependency;
 
 /// Enumeration of errors which can occur when working with a rust manifest.
 quick_error! {
@@ -152,8 +151,9 @@ impl Manifest {
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn insert_into_table(&mut self,
                              table: &str,
-                             &(ref name, ref data): &Dependency)
+                             dep: &Dependency)
                              -> Result<(), ManifestError> {
+        let (ref name, ref data) = dep.to_toml();
         let ref mut manifest = self.data;
         let entry = manifest.entry(String::from(table))
                             .or_insert(toml::Value::Table(BTreeMap::new()));
@@ -174,14 +174,14 @@ impl Manifest {
     /// # extern crate cargo_edit;
     /// # extern crate toml;
     /// # fn main() {
-    ///     use cargo_edit::Manifest;
+    ///     use cargo_edit::{Dependency, Manifest};
     ///     use toml;
     ///
     ///     let mut manifest = Manifest { data: toml::Table::new() };
-    ///     let dep = ("cargo-edit".to_owned(), toml::Value::String("0.1.0".to_owned()));
+    ///     let dep = Dependency::new("cargo-edit").set_version("0.1.0");
     ///     let _ = manifest.insert_into_table("dependencies", &dep);
-    ///     assert!(manifest.remove_from_table("dependencies", &dep.0).is_ok());
-    ///     assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
+    ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
+    ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     /// # }
     /// ```
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
@@ -232,6 +232,7 @@ impl str::FromStr for Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dependency::Dependency;
     use std::collections::BTreeMap;
     use toml;
 
@@ -243,30 +244,26 @@ mod tests {
         let mut copy = Manifest { data: toml::Table::new() };
         copy.data.insert("dependencies".to_owned(),
                          toml::Value::Table(BTreeMap::new()));
-        let dep = ("cargo-edit".to_owned(),
-                   toml::Value::String("0.1.0".to_owned()));
+        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let _ = manifest.insert_into_table("dependencies", &dep);
-        assert!(manifest.remove_from_table("dependencies", &dep.0).is_ok());
+        assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
         assert_eq!(manifest, copy);
     }
 
     #[test]
     fn remove_dependency_no_section() {
         let mut manifest = Manifest { data: toml::Table::new() };
-        let dep = ("cargo-edit".to_owned(),
-                   toml::Value::String("0.1.0".to_owned()));
-        assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
+        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
+        assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     }
 
     #[test]
     fn remove_dependency_non_existent() {
         let mut manifest = Manifest { data: toml::Table::new() };
-        let dep = ("cargo-edit".to_owned(),
-                   toml::Value::String("0.1.0".to_owned()));
-        let other_dep = ("other-dep".to_owned(),
-                         toml::Value::String("0.1.0".to_owned()));
+        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
+        let other_dep = Dependency::new("other-dep").set_version("0.1.0");
         let _ = manifest.insert_into_table("dependencies", &other_dep);
-        assert!(manifest.remove_from_table("dependencies", &dep.0).is_err());
+        assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
 
     }
 }

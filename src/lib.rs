@@ -11,5 +11,7 @@ extern crate quick_error;
 extern crate toml;
 
 mod manifest;
+mod dependency;
 
-pub use manifest::{Dependency, Manifest};
+pub use dependency::Dependency;
+pub use manifest::Manifest;
