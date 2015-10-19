@@ -182,6 +182,7 @@ impl Manifest {
     ///     let _ = manifest.insert_into_table("dependencies", &dep);
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
+    ///     assert!(manifest.data.is_empty());
     /// # }
     /// ```
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
@@ -191,8 +192,8 @@ impl Manifest {
 
         match entry {
             Entry::Vacant(_) => Err(ManifestError::NonExistentTable(table.into())),
-            Entry::Occupied(mut entry) => {
-                let result = match *entry.get_mut() {
+            Entry::Occupied(mut section) => {
+                let result = match *section.get_mut() {
                     toml::Value::Table(ref mut deps) => {
                         deps.remove(name)
                             .map(|_| ())
@@ -200,11 +201,11 @@ impl Manifest {
                     }
                     _ => Err(ManifestError::NonExistentTable(table.into())),
                 };
-                if let Some(b) = entry.get().as_table().and_then(|x| Some(x.is_empty())) {
-                    if b {
-                        entry.remove();
+                if let Some(empty) = section.get().as_table().and_then(|x| Some(x.is_empty())) {
+                    if empty {
+                        section.remove();
                     }
-                }
+                };
                 result
             }
         }
@@ -244,11 +245,11 @@ mod tests {
     #[test]
     fn add_remove_dependency() {
         let mut manifest = Manifest { data: toml::Table::new() };
-        let copy = manifest.clone();
+        let clone = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let _ = manifest.insert_into_table("dependencies", &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
-        assert_eq!(manifest, copy);
+        assert_eq!(manifest, clone);
     }
 
     #[test]
