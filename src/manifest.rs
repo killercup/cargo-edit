@@ -191,15 +191,21 @@ impl Manifest {
 
         match entry {
             Entry::Vacant(_) => Err(ManifestError::NonExistentTable(table.into())),
-            Entry::Occupied(entry) => {
-                match *entry.into_mut() {
+            Entry::Occupied(mut entry) => {
+                let result = match *entry.get_mut() {
                     toml::Value::Table(ref mut deps) => {
                         deps.remove(name)
                             .map(|_| ())
                             .ok_or(ManifestError::NonExistentDependency(name.into(), table.into()))
                     }
                     _ => Err(ManifestError::NonExistentTable(table.into())),
+                };
+                if let Some(b) = entry.get().as_table().and_then(|x| Some(x.is_empty())) {
+                    if b {
+                        entry.remove();
+                    }
                 }
+                result
             }
         }
     }
