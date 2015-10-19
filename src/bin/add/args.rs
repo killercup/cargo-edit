@@ -25,7 +25,7 @@ pub struct Args {
     /// build-dependency
     pub flag_build: bool,
     /// Version
-    pub flag_ver: Option<String>,
+    pub flag_vers: Option<String>,
     /// Git repo Path
     pub flag_git: Option<String>,
     /// Crate directory path
@@ -58,7 +58,7 @@ impl Args {
 
         let dependency = Dependency::new(&self.arg_crate).set_optional(self.flag_optional);
 
-        let dependency = if let Some(ref version) = self.flag_ver {
+        let dependency = if let Some(ref version) = self.flag_vers {
             try!(semver::VersionReq::parse(&version));
             dependency.set_version(version)
         } else if let Some(ref repo) = self.flag_git {
@@ -80,7 +80,7 @@ impl Default for Args {
             arg_crate: "demo".to_owned(),
             flag_dev: false,
             flag_build: false,
-            flag_ver: None,
+            flag_vers: None,
             flag_git: None,
             flag_path: None,
             flag_optional: false,
@@ -111,7 +111,7 @@ mod tests {
     fn test_dependency_parsing() {
         let args = Args {
             arg_crate: "demo".to_owned(),
-            flag_ver: Some("0.4.2".to_owned()),
+            flag_vers: Some("0.4.2".to_owned()),
             ..Args::default()
         };
 
