@@ -61,7 +61,7 @@ fn adds_fixed_version() {
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.versioned-package").is_none());
 
-    execute_command(&["add", "versioned-package", "--ver", ">=0.1.1"], &manifest);
+    execute_command(&["add", "versioned-package", "--vers", ">=0.1.1"], &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
@@ -70,7 +70,7 @@ fn adds_fixed_version() {
 
     // cannot run with both --dev and --build at the same time
     let call = process::Command::new("target/debug/cargo-add")
-                   .args(&["add", "failure", "--ver", "invalid version string"])
+                   .args(&["add", "failure", "--vers", "invalid version string"])
                    .arg(format!("--manifest-path={}", &manifest))
                    .output()
                    .unwrap();
@@ -158,7 +158,7 @@ fn package_kinds_are_mutually_exclusive() {
 
     let call = process::Command::new("target/debug/cargo-add")
                    .args(&["add", "failure"])
-                   .args(&["--ver", "0.4.3"])
+                   .args(&["--vers", "0.4.3"])
                    .args(&["--git", "git://git.git"])
                    .args(&["--path", "/path/here"])
                    .arg(format!("--manifest-path={}", &manifest))
@@ -177,7 +177,7 @@ fn adds_optional_dep() {
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.versioned-package").is_none());
 
-    execute_command(&["add", "versioned-package", "--ver", ">=0.1.1", "--optional"], &manifest);
+    execute_command(&["add", "versioned-package", "--vers", ">=0.1.1", "--optional"], &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
@@ -195,7 +195,7 @@ fn failt_to_add_optional_dev_dep() {
     assert!(toml.lookup("dependencies.versioned-package").is_none());
 
     // Fails because optional dependencies must be in `dependencies` table.
-    execute_command(&["add", "versioned-package", "--ver", ">=0.1.1", "--dev", "--optional"],
+    execute_command(&["add", "versioned-package", "--vers", ">=0.1.1", "--dev", "--optional"],
                     &manifest);
 }
 
@@ -205,7 +205,7 @@ fn no_argument() {
                 r"Invalid arguments.
 
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
     cargo add (-h|--help)
     cargo add --version")
         .unwrap();
@@ -217,7 +217,7 @@ fn unknown_flags() {
                 r"Unknown flag: '--flag'
 
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
     cargo add (-h|--help)
     cargo add --version")
         .unwrap();
