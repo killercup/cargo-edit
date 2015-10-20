@@ -4,6 +4,21 @@ extern crate assert_cli;
 mod utils;
 use utils::{clone_out_test, execute_command, get_toml};
 
+#[test]
+fn remove_section_after_removed_last_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dev-dependencies.regex").is_some());
+    assert_eq!(toml.lookup("dev-dependencies").unwrap().as_table().unwrap().len(), 1);
+
+    execute_command(&["rm", "-D", "regex"], &manifest);
+
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dev-dependencies.regex").is_none());
+    assert!(toml.lookup("dev-dependencies").is_none());
+}
+
 // https://github.com/killercup/cargo-edit/issues/32
 #[test]
 fn issue_32() {

@@ -37,7 +37,7 @@ enum CargoFile {
 }
 
 /// A Cargo Manifest
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Manifest {
     /// Manifest contents as TOML data
     pub data: toml::Table,
@@ -182,6 +182,7 @@ impl Manifest {
     ///     let _ = manifest.insert_into_table("dependencies", &dep);
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
+    ///     assert!(manifest.data.is_empty());
     /// # }
     /// ```
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
@@ -191,15 +192,21 @@ impl Manifest {
 
         match entry {
             Entry::Vacant(_) => Err(ManifestError::NonExistentTable(table.into())),
-            Entry::Occupied(entry) => {
-                match *entry.into_mut() {
+            Entry::Occupied(mut section) => {
+                let result = match *section.get_mut() {
                     toml::Value::Table(ref mut deps) => {
                         deps.remove(name)
                             .map(|_| ())
                             .ok_or(ManifestError::NonExistentDependency(name.into(), table.into()))
                     }
                     _ => Err(ManifestError::NonExistentTable(table.into())),
-                }
+                };
+                if let Some(empty) = section.get().as_table().and_then(|x| Some(x.is_empty())) {
+                    if empty {
+                        section.remove();
+                    }
+                };
+                result
             }
         }
     }
@@ -233,21 +240,16 @@ impl str::FromStr for Manifest {
 mod tests {
     use super::*;
     use dependency::Dependency;
-    use std::collections::BTreeMap;
     use toml;
 
     #[test]
     fn add_remove_dependency() {
         let mut manifest = Manifest { data: toml::Table::new() };
-        // Create a copy containing empty "dependencies" table because removing
-        //   the last entry in a table does not remove the section.
-        let mut copy = Manifest { data: toml::Table::new() };
-        copy.data.insert("dependencies".to_owned(),
-                         toml::Value::Table(BTreeMap::new()));
+        let clone = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let _ = manifest.insert_into_table("dependencies", &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
-        assert_eq!(manifest, copy);
+        assert_eq!(manifest, clone);
     }
 
     #[test]
@@ -264,6 +266,5 @@ mod tests {
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
         let _ = manifest.insert_into_table("dependencies", &other_dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
-
     }
 }
