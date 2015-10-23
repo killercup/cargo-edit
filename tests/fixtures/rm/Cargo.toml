@@ -6,9 +6,8 @@ version = "0.1.0"
 name = "main"
 path = "src/main.rs"
 
-[features]
-default = []
-dev = ["clippy"]
+[build-dependencies]
+semver = "0.1.0"
 
 [dependencies]
 docopt = "0.6"
