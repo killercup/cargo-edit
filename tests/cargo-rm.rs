@@ -5,6 +5,36 @@ mod utils;
 use utils::{clone_out_test, execute_command, get_toml};
 
 #[test]
+fn remove_existing_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.docopt").is_some());
+    execute_command(&["rm","docopt"], &manifest);
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.docopt").is_none());
+}
+
+#[test]
+fn remove_existing_dependency_from_specific_section() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+
+    // Test removing dev dependency.
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dev-dependencies.regex").is_some());
+    execute_command(&["rm", "--dev", "regex"], &manifest);
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dev-dependencies.regex").is_none());
+
+    // Test removing build dependency.
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("build-dependencies.semver").is_some());
+    execute_command(&["rm", "--build", "semver"], &manifest);
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("build-dependencies.semver").is_none());
+}
+
+#[test]
 fn remove_section_after_removed_last_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
 
@@ -12,7 +42,7 @@ fn remove_section_after_removed_last_dependency() {
     assert!(toml.lookup("dev-dependencies.regex").is_some());
     assert_eq!(toml.lookup("dev-dependencies").unwrap().as_table().unwrap().len(), 1);
 
-    execute_command(&["rm", "-D", "regex"], &manifest);
+    execute_command(&["rm", "--dev", "regex"], &manifest);
 
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dev-dependencies.regex").is_none());
@@ -58,6 +88,7 @@ ERROR: The dependency `invalid_dependency_name` could not be found in `dependenc
 fn invalid_section() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
 
+    execute_command(&["rm", "semver", "--build"], &manifest);
     assert_cli!("target/debug/cargo-rm",
                 &["rm", "semver", "--build", &format!("--manifest-path={}", manifest)]
                 => Error 1, "Could not edit `Cargo.toml`.
