@@ -8,6 +8,8 @@ extern crate docopt;
 extern crate rustc_serialize;
 extern crate pad;
 extern crate toml;
+#[macro_use]
+extern crate quick_error;
 
 use std::error::Error;
 use std::process;
@@ -25,7 +27,8 @@ use tree::parse_lock_file as list_tree;
 
 static USAGE: &'static str = r"
 Usage:
-    cargo list [<section>] [options]
+    cargo list [--dev|--build] [options]
+    cargo list --tree
     cargo list (-h|--help)
     cargo list --version
 
@@ -33,36 +36,41 @@ Options:
     --manifest-path=<path>  Path to the manifest to list dependencies of.
     --tree                  List dependencies recursively as tree.
     -h --help               Show this help page.
+    --version               Show version.
 
 Display a crate's dependencies using its Cargo.toml file.
 ";
 
-#[derive(Debug, RustcDecodable)]
 /// Docopts input args.
+#[derive(Debug, RustcDecodable)]
 struct Args {
-    arg_section: Option<String>,
-    flag_manifest_path: Option<String>,
+    /// dev-dependency
+    flag_dev: bool,
+    /// build-dependency
+    flag_build: bool,
+    /// Render tree of dependencies
     flag_tree: bool,
+    /// `Cargo.toml` path
+    flag_manifest_path: Option<String>,
+    /// `--version`
     flag_version: bool,
 }
 
 impl Args {
-    pub fn get_section(&self) -> &str {
-        let section = self.arg_section.as_ref().map(|s| &s[..]).unwrap_or("dependencies");
-
-        match section {
-            // Handle shortcuts
-            "deps" => "dependencies",
-            "dev-deps" => "dev-dependencies",
-            "build-deps" => "build-dependencies",
-            // No shortcut
-            field => field,
+    /// Get dependency section
+    fn get_section(&self) -> &'static str {
+        if self.flag_dev {
+            "dev-dependencies"
+        } else if self.flag_build {
+            "build-dependencies"
+        } else {
+            "dependencies"
         }
     }
 }
 
-fn handle_list(args: &Args) -> Result<(), Box<Error>> {
-    let listing = if args.flag_tree {
+fn handle_list(args: &Args) -> Result<String, Box<Error>> {
+    if args.flag_tree {
         let manifest = try!(Manifest::open_lock_file(&args.flag_manifest_path
                                                           .as_ref()
                                                           .map(|s| &s[..])));
@@ -70,12 +78,8 @@ fn handle_list(args: &Args) -> Result<(), Box<Error>> {
     } else {
         let manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
         list_section(&manifest, args.get_section())
-    };
-
-    listing.map(|listing| println!("{}", listing)).or_else(|err| {
-        println!("Could not list your stuff.\n\nERROR: {}", err);
-        Err(err)
-    })
+    }
+    .map_err(From::from)
 }
 
 fn main() {
@@ -88,8 +92,13 @@ fn main() {
         process::exit(0);
     }
 
-    if let Err(err) = handle_list(&args) {
-        write!(io::stderr(), "{}", err).unwrap();
-        process::exit(1);
+    match handle_list(&args) {
+        Ok(list) => {
+            println!("{}", list);
+        }
+        Err(err) => {
+            write!(io::stderr(), "{}\n", err).unwrap();
+            process::exit(1);
+        }
     }
 }
