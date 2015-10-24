@@ -10,7 +10,7 @@ fn remove_existing_dependency() {
 
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.docopt").is_some());
-    execute_command(&["rm","docopt"], &manifest);
+    execute_command(&["rm", "docopt"], &manifest);
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.docopt").is_none());
 }
@@ -40,7 +40,8 @@ fn remove_section_after_removed_last_dependency() {
 
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dev-dependencies.regex").is_some());
-    assert_eq!(toml.lookup("dev-dependencies").unwrap().as_table().unwrap().len(), 1);
+    assert_eq!(toml.lookup("dev-dependencies").unwrap().as_table().unwrap().len(),
+               1);
 
     execute_command(&["rm", "--dev", "regex"], &manifest);
 
