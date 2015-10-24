@@ -22,7 +22,7 @@ fn listing() {
     assert_cli!("target/debug/cargo-list",
                 &["list", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
                 Success, r#"cargo-edit      path: "../../../"
-clippy          git: "https://github.com/Manishearth/rust-clippy.git"
+clippy          git: "https://github.com/Manishearth/rust-clippy.git" (optional)
 docopt          0.6
 pad             0.1
 rustc-serialize 0.3

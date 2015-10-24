@@ -31,10 +31,23 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Er
             _ => String::from(""),
         };
 
-        output.push(format!("{name} {version}",
+        let optional = if let toml::Value::Table(_) = *val {
+            val.lookup("optional")
+               .and_then(|field| field.as_bool())
+               .unwrap_or(false)
+        } else {
+            false
+        };
+
+        output.push(format!("{name} {version}{optional}",
                             name = name.pad_to_width_with_alignment(name_max_len,
                                                                     Alignment::Left),
-                            version = version));
+                            version = version,
+                            optional = if optional {
+                                format!(" (optional)")
+                            } else {
+                                String::from("")
+                            }));
     }
 
     Ok(output.connect("\n"))
