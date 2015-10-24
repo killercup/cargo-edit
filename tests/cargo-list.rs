@@ -2,6 +2,20 @@
 extern crate assert_cli;
 
 #[test]
+fn listing() {
+    assert_cli!("target/debug/cargo-list",
+                &["list", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
+                Success, r#"cargo-edit      path: "../../../"
+clippy          git: "https://github.com/Manishearth/rust-clippy.git" (optional)
+docopt          0.6
+pad             0.1
+rustc-serialize 0.3
+semver          0.1
+toml            0.1"#)
+        .unwrap();
+}
+
+#[test]
 fn listing_dev() {
     assert_cli!("target/debug/cargo-list",
                 &["list", "--dev", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
@@ -18,17 +32,21 @@ fn listing_build() {
 }
 
 #[test]
-fn listing() {
+fn treat_missing_section_as_empty() {
+    // empty dependencies
     assert_cli!("target/debug/cargo-list",
-                &["list", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
-                Success, r#"cargo-edit      path: "../../../"
-clippy          git: "https://github.com/Manishearth/rust-clippy.git" (optional)
-docopt          0.6
-pad             0.1
-rustc-serialize 0.3
-semver          0.1
-toml            0.1"#)
-        .unwrap();
+                &["list", "--manifest-path=tests/fixtures/list-empty/Cargo.toml"] =>
+                Success, "\n").unwrap();
+
+    // empty dev-dependencies
+    assert_cli!("target/debug/cargo-list",
+                &["list", "--dev", "--manifest-path=tests/fixtures/list-empty/Cargo.toml"] =>
+                Success, "\n").unwrap();
+
+    // empty build-dependencies
+    assert_cli!("target/debug/cargo-list",
+                &["list", "--build", "--manifest-path=tests/fixtures/list-empty/Cargo.toml"] =>
+                Success, "\n").unwrap();
 }
 
 #[test]
