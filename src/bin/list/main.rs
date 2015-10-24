@@ -25,7 +25,8 @@ use tree::parse_lock_file as list_tree;
 
 static USAGE: &'static str = r"
 Usage:
-    cargo list [<section>] [options]
+    cargo list [--dev|--build] [options]
+    cargo list --tree
     cargo list (-h|--help)
     cargo list --version
 
@@ -33,30 +34,35 @@ Options:
     --manifest-path=<path>  Path to the manifest to list dependencies of.
     --tree                  List dependencies recursively as tree.
     -h --help               Show this help page.
+    --version               Show version.
 
 Display a crate's dependencies using its Cargo.toml file.
 ";
 
-#[derive(Debug, RustcDecodable)]
 /// Docopts input args.
+#[derive(Debug, RustcDecodable)]
 struct Args {
-    arg_section: Option<String>,
-    flag_manifest_path: Option<String>,
+    /// dev-dependency
+    flag_dev: bool,
+    /// build-dependency
+    flag_build: bool,
+    /// Render tree of dependencies
     flag_tree: bool,
+    /// `Cargo.toml` path
+    flag_manifest_path: Option<String>,
+    /// `--version`
     flag_version: bool,
 }
 
 impl Args {
-    pub fn get_section(&self) -> &str {
-        let section = self.arg_section.as_ref().map(|s| &s[..]).unwrap_or("dependencies");
-
-        match section {
-            // Handle shortcuts
-            "deps" => "dependencies",
-            "dev-deps" => "dev-dependencies",
-            "build-deps" => "build-dependencies",
-            // No shortcut
-            field => field,
+    /// Get dependency section
+    fn get_section(&self) -> &'static str {
+        if self.flag_dev {
+            "dev-dependencies"
+        } else if self.flag_build {
+            "build-dependencies"
+        } else {
+            "dependencies"
         }
     }
 }

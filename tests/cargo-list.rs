@@ -2,6 +2,14 @@
 extern crate assert_cli;
 
 #[test]
+fn listing_dev() {
+    assert_cli!("target/debug/cargo-list",
+                &["list", "--dev", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
+                Success, r"gcc 0.3.19")
+        .unwrap();
+}
+
+#[test]
 fn listing() {
     assert_cli!("target/debug/cargo-list",
                 &["list", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
@@ -44,7 +52,8 @@ fn unknown_flags() {
                 r"Unknown flag: '--flag'
 
 Usage:
-    cargo list [<section>] [options]
+    cargo list [--dev|--build] [options]
+    cargo list --tree
     cargo list (-h|--help)
     cargo list --version")
         .unwrap();

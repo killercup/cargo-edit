@@ -21,3 +21,6 @@ rustc-serialize = "0.3"
 semver = "0.1"
 toml = "0.1"
 clippy = {git = "https://github.com/Manishearth/rust-clippy.git", optional = true}
+
+[dev-dependencies]
+gcc = "0.3.19"
