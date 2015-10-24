@@ -22,11 +22,11 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Er
         let version = match *val {
             toml::Value::String(ref version) => version.clone(),
             toml::Value::Table(_) => {
-                let v = try!(val.lookup("version")
-                                .and_then(|field| field.as_str())
-                                .or_else(|| val.lookup("git").map(|_| "git"))
-                                .ok_or(ListError::VersionMissing(name.clone())));
-                String::from(v)
+                try!(val.lookup("version")
+                        .and_then(|field| field.as_str().map(|s| s.to_owned()))
+                        .or_else(|| val.lookup("git").map(|repo| format!("git: {}", repo)))
+                        .or_else(|| val.lookup("path").map(|path| format!("path: {}", path)))
+                        .ok_or(ListError::VersionMissing(name.clone())))
             }
             _ => String::from(""),
         };
