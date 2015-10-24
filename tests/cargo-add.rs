@@ -61,7 +61,8 @@ fn adds_fixed_version() {
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.versioned-package").is_none());
 
-    execute_command(&["add", "versioned-package", "--vers", ">=0.1.1"], &manifest);
+    execute_command(&["add", "versioned-package", "--vers", ">=0.1.1"],
+                    &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
@@ -177,7 +178,8 @@ fn adds_optional_dep() {
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.versioned-package").is_none());
 
-    execute_command(&["add", "versioned-package", "--vers", ">=0.1.1", "--optional"], &manifest);
+    execute_command(&["add", "versioned-package", "--vers", ">=0.1.1", "--optional"],
+                    &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
