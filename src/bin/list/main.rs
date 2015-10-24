@@ -24,6 +24,7 @@ mod list_error;
 mod tree;
 
 use list::list_section;
+use list_error::ListError;
 use tree::parse_lock_file as list_tree;
 
 static USAGE: &'static str = r"
@@ -79,6 +80,10 @@ fn handle_list(args: &Args) -> Result<String, Box<Error>> {
     } else {
         let manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
         list_section(&manifest, args.get_section())
+            .or_else(|err| match err {
+                ListError::SectionMissing(..) => Ok("".into()),
+                _ => Err(err),
+            })
     }
     .map_err(From::from)
 }
