@@ -205,7 +205,7 @@ impl Manifest {
                     if empty {
                         section.remove();
                     }
-                };
+                }
                 result
             }
         }

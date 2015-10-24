@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use pad::{Alignment, PadStr};
 use toml;
 
@@ -8,7 +6,7 @@ use list_error::ListError;
 
 /// List the dependencies for manifest section
 #[allow(deprecated)] // connect -> join
-pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Error>> {
+pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, ListError> {
     let mut output = vec![];
 
     let list = try!(manifest.data
@@ -26,7 +24,7 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, Box<Er
                         .and_then(|field| field.as_str().map(|s| s.to_owned()))
                         .or_else(|| val.lookup("git").map(|repo| format!("git: {}", repo)))
                         .or_else(|| val.lookup("path").map(|path| format!("path: {}", path)))
-                        .ok_or(ListError::VersionMissing(name.clone())))
+                        .ok_or_else(|| ListError::VersionMissing(name.clone(), section.to_owned())))
             }
             _ => String::from(""),
         };

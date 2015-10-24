@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::collections::BTreeMap;
 
 use toml;
@@ -28,7 +27,7 @@ fn parse_dep_from_str(input: &str) -> Option<Dependency> {
     Some((String::from(name), String::from(version)))
 }
 
-fn get_root_deps(lock_file: &toml::Table) -> Result<Vec<Dependency>, Box<Error>> {
+fn get_root_deps(lock_file: &toml::Table) -> Result<Vec<Dependency>, ListError> {
     let root_deps = try!(lock_file.get("root")
                                   .and_then(|field| field.lookup("dependencies"))
                                   .ok_or(ListError::SectionMissing("dependencies".to_owned())));
@@ -49,23 +48,21 @@ fn get_root_deps(lock_file: &toml::Table) -> Result<Vec<Dependency>, Box<Error>>
     Ok(output)
 }
 
-fn get_packages(lock_file: &toml::Table) -> Result<Packages, Box<Error>> {
-    let packages: &toml::Value = try!(lock_file.get("package")
-                                               .ok_or(ListError::SectionMissing("package"
-                                                                                    .to_owned())));
+fn get_packages(lock_file: &toml::Table) -> Result<Packages, ListError> {
+    let packages: &toml::Value = try!(lock_file.get("package").ok_or(ListError::PackagesMissing));
 
     let mut output = BTreeMap::new();
 
     for pkg in packages.as_slice().unwrap_or(&vec![]) {
-        let package = try!(pkg.as_table().ok_or(ListError::SectionMissing("package".to_owned())));
+        let package = try!(pkg.as_table().ok_or(ListError::PackageInvalid));
 
         let name = try!(package.get("name")
                                .and_then(|item| item.as_str())
-                               .ok_or(ListError::SectionMissing("name".to_owned())));
+                               .ok_or(ListError::PackageFieldMissing("name")));
 
         let version = try!(package.get("version")
                                   .and_then(|item| item.as_str())
-                                  .ok_or(ListError::SectionMissing("version".to_owned())));
+                                  .ok_or(ListError::PackageFieldMissing("version")));
 
         let deps: Dependencies = package.get("dependencies")
                                         .and_then(|item| {
@@ -93,10 +90,11 @@ fn get_packages(lock_file: &toml::Table) -> Result<Packages, Box<Error>> {
 fn list_deps_helper(pkgs: &Packages,
                     deps: &[Dependency],
                     levels: &mut Vec<bool>)
-                    -> Result<String, Box<Error>> {
+                    -> Result<String, ListError> {
     let mut output = String::new();
     for (i, dep) in deps.iter().enumerate() {
-        // For any indent level where the parent is the last dependency in the list, we don't want
+        // For any indent level where the parent is the last dependency in the list, we
+        // don't want
         // to print out a branch.
         for is_last in levels.iter().cloned() {
             let indent = if is_last {
@@ -126,12 +124,12 @@ fn list_deps_helper(pkgs: &Packages,
     Ok(output)
 }
 
-fn list_deps(pkgs: &Packages, deps: &[Dependency]) -> Result<String, Box<Error>> {
+fn list_deps(pkgs: &Packages, deps: &[Dependency]) -> Result<String, ListError> {
     list_deps_helper(pkgs, deps, &mut vec![])
 }
 
 /// Parse a `Cargo.lock` file and list its dependencies
-pub fn parse_lock_file(manifest: &Manifest) -> Result<String, Box<Error>> {
+pub fn parse_lock_file(manifest: &Manifest) -> Result<String, ListError> {
     let lock_file = &manifest.data;
 
     let root_deps = try!(get_root_deps(lock_file));

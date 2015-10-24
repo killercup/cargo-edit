@@ -1,27 +1,24 @@
-use std::fmt;
-use std::error::Error;
-
-#[derive(Debug)]
-pub enum ListError {
-    SectionMissing(String),
-    VersionMissing(String),
-}
-
-impl Error for ListError {
-    fn description(&self) -> &'static str {
-        match *self {
-            ListError::SectionMissing(_) => "Couldn't read section",
-            ListError::VersionMissing(_) => "Couldn't read version",
+quick_error! {
+    #[derive(Debug)]
+    pub enum ListError {
+        SectionMissing(section: String) {
+            description("Couldn't read section")
+            display("Couldn't read section `{}`.", section)
         }
-    }
-}
-
-impl fmt::Display for ListError {
-    fn fmt(&self, format: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let desc: String = match *self {
-            ListError::SectionMissing(ref name) => format!("Couldn't read section {}", name),
-            ListError::VersionMissing(ref name) => format!("Couldn't read version of {}", name),
-        };
-        format.write_str(&desc)
+        VersionMissing(dep: String, section: String) {
+            description("Couldn't read version")
+            display("Couldn't read version of `{}` in section `{}`.", dep, section)
+        }
+        PackagesMissing {
+            description("Couldn't read list of packages in `Cargo.lock` file.")
+        }
+        PackageInvalid {
+            description("Invalid package record")
+            display("Invalid package record in `Cargo.lock`")
+        }
+        PackageFieldMissing(field: &'static str) {
+            description("Field missing in package record")
+            display("Field `{}` missing in package record in `Cargo.lock`.", field)
+        }
     }
 }
