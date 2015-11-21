@@ -1,11 +1,17 @@
 [package]
-authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>"]
-description = "Edit your Cargo.toml from the command line."
-homepage = "https://github.com/killercup/cargo-edit"
-license = "Apache-2.0/MIT"
 name = "cargo-edit"
-repository = "https://github.com/killercup/cargo-edit"
+authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>"]
+
 version = "0.1.0"
+
+description = "This extends Cargo to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo list`."
+readme = "README.md"
+keywords = ["cargo", "cargo-subcommand", "cli", "dependencies", "crates"]
+license = "Apache-2.0/MIT"
+
+documentation = "http://killercup.github.io/cargo-edit/"
+homepage = "https://github.com/killercup/cargo-edit"
+repository = "https://github.com/killercup/cargo-edit"
 
 [[bin]]
 name = "cargo-list"
@@ -14,6 +20,7 @@ path = "src/bin/list/main.rs"
 [features]
 default = []
 dev = ["clippy"]
+
 [[bin]]
 name = "cargo-add"
 path = "src/bin/add/main.rs"
