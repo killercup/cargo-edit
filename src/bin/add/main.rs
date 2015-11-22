@@ -24,7 +24,7 @@ mod fetch_version;
 mod args;
 use args::Args;
 
-static USAGE: &'static str = r"
+static USAGE: &'static str = r#"
 Usage:
     cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
     cargo add (-h|--help)
@@ -49,7 +49,12 @@ Options:
     --version               Show version.
 
 This command allows you to add a dependency to a Cargo.toml manifest file.
-";
+
+Please note that Cargo treats versions like "1.2.3" as "^1.2.3" (and that "^1.2.3" is specified
+as ">=1.2.3 and <2.0.0"). By default, `cargo add` will use this format, as it is the one that the
+crates.io registry suggests. One goal of `cargo add` is to prevent you from using wildcard
+dependencies (version set to "*").
+"#;
 
 fn handle_add(args: &Args) -> Result<(), Box<Error>> {
     let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
