@@ -14,6 +14,18 @@ Currently available subcommands:
 
 ## Installation
 
+### Using `cargo install`
+
+If you have a recent version of `cargo`, you can use `cargo install` to get all the tools provided by `cargo-edit` in one simple step:
+
+```sh
+$ cargo install cargo-edit
+```
+
+(Please check `cargo`'s documentation to learn how `cargo install` works and how to set up your system so it finds binaries installed by `cargo`.)
+
+### Without `cargo install`
+
 You can build all commands of `cargo-edit` from the source available on GitHub:
 
 ```sh
