@@ -3,9 +3,9 @@ name = "cargo-edit"
 version = "0.1.1"
 dependencies = [
  "assert_cli 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "curl 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "docopt 0.6.76 (registry+https://github.com/rust-lang/crates.io-index)",
+ "docopt 0.6.78 (registry+https://github.com/rust-lang/crates.io-index)",
  "pad 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "quick-error 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "0.3.4"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "memchr 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -47,7 +47,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.24"
+version = "0.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-normalization 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -58,22 +58,22 @@ name = "curl"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "curl-sys 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "curl-sys 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "openssl-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "openssl-sys 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 0.2.38 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "curl-sys"
-version = "0.1.28"
+version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "gcc 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "libz-sys 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "openssl-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libz-sys 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "openssl-sys 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -87,17 +87,17 @@ dependencies = [
 
 [[package]]
 name = "docopt"
-version = "0.6.76"
+version = "0.6.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "regex 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "strsim 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "gcc"
-version = "0.3.19"
+version = "0.3.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "advapi32-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -107,11 +107,6 @@ dependencies = [
 [[package]]
 name = "getopts"
 version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "libc"
-version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -129,20 +124,20 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "0.1.9"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "gcc 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "log"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "libc 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -160,10 +155,9 @@ dependencies = [
 
 [[package]]
 name = "openssl-sys"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "gcc 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libressl-pnacl-sys 2.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -207,10 +201,10 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "0.1.41"
+version = "0.1.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "aho-corasick 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "aho-corasick 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex-syntax 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
