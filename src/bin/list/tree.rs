@@ -5,11 +5,11 @@ use toml;
 use cargo_edit::Manifest;
 use list_error::ListError;
 
-type PkgName = String;
-type PkgVersion = String;
-type Package = (PkgName, PkgVersion);
-type Dependency = Package;
-type Dependencies = Vec<Dependency>;
+pub type PkgName = String;
+pub type PkgVersion = String;
+pub type Package = (PkgName, PkgVersion);
+pub type Dependency = Package;
+pub type Dependencies = Vec<Dependency>;
 
 /// A package as declared in the lock file
 pub type Packages = BTreeMap<Package, Dependencies>;
