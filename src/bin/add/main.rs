@@ -9,9 +9,8 @@ extern crate docopt;
 extern crate toml;
 extern crate semver;
 extern crate rustc_serialize;
-extern crate curl;
-#[macro_use]
-extern crate quick_error;
+extern crate hyper;
+#[macro_use]extern crate quick_error;
 
 use std::error::Error;
 use std::process;
