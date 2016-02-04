@@ -2,7 +2,7 @@
 name = "cargo-edit"
 authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>"]
 
-version = "0.1.1"
+version = "0.1.2"
 
 description = "This extends Cargo to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo list`."
 readme = "README.md"
