@@ -54,7 +54,9 @@ impl Args {
     pub fn parse_dependency(&self) -> Result<Dependency, Box<Error>> {
         if crate_name_has_version(&self.arg_crate) {
             return parse_crate_name_with_version(&self.arg_crate);
-        }
+        } else if crate_name_has_tilde(&self.arg_crate) {
+			return parse_crate_name_with_tilde(&self.arg_crate); 
+		}
 
         let dependency = Dependency::new(&self.arg_crate).set_optional(self.flag_optional);
 
@@ -94,19 +96,40 @@ fn crate_name_has_version(name: &str) -> bool {
     name.contains("@")
 }
 
+fn crate_name_has_tilde(name: &str) -> bool {
+    name.ends_with("~")
+}
+
 fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
     let xs: Vec<&str> = name.splitn(2, "@").collect();
-    let (name, version) = (xs[0], xs[1]);
+    let mut version = "^".to_owned();
+    let (name, version_num) = (xs[0], xs[1]);
+    version.push_str(&*version_num);
+    if version_num.len() > 0 {
+		match version_num.chars().nth(0).unwrap() {
+			'0'...'9' => { }, // for simple numeric versions add caret prefix 
+			_ => version = version_num.into(), // this is not a simple numeric version, keep existing prefix
+		}
+	} // else, it will fail below
+	
     try!(semver::VersionReq::parse(&version));
 
-    Ok(Dependency::new(name).set_version(version))
+    Ok(Dependency::new(name).set_version(&*version))
+}
+
+fn parse_crate_name_with_tilde(name: &str) -> Result<Dependency, Box<Error>> {
+	let name_without_tilde = &name[..(name.len() - 1)];
+	let mut v = "~".to_owned();
+	v.push_str(&*try!(get_latest_version(name_without_tilde)));
+    Ok(Dependency::new(name_without_tilde).set_version(&*v))
 }
 
 #[cfg(test)]
 mod tests {
     use cargo_edit::Dependency;
     use super::*;
-
+    use fetch_version::get_latest_version; 
+    
     #[test]
     fn test_dependency_parsing() {
         let args = Args {
@@ -117,5 +140,19 @@ mod tests {
 
         assert_eq!(args.parse_dependency().unwrap(),
                    Dependency::new("demo").set_version("0.4.2"));
+    }
+    
+    #[test]
+    fn test_tilde_dependency_parsing() {
+        let args = Args {
+            arg_crate: "rand~".to_owned(),
+            flag_vers: None,
+            ..Args::default()
+        };
+        let mut v = "~".to_owned();
+		v.push_str(&*get_latest_version("rand").unwrap());
+        
+        assert_eq!(args.parse_dependency().unwrap(),
+			Dependency::new("rand").set_version(&*v));
     }
 }
