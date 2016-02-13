@@ -18,8 +18,10 @@ macro_rules! toml_table {
 #[derive(Debug, RustcDecodable)]
 /// Docopts input args.
 pub struct Args {
-    /// Crate name
+    /// Crate name (usage 1)
     pub arg_crate: String,
+    /// Crate names (usage 2)
+    pub arg_crates: Vec<String>,
     /// dev-dependency
     pub flag_dev: bool,
     /// build-dependency
@@ -50,27 +52,35 @@ impl Args {
         }
     }
 
-    /// Build depenency from arguments
-    pub fn parse_dependency(&self) -> Result<Dependency, Box<Error>> {
-        if crate_name_has_version(&self.arg_crate) {
-            return parse_crate_name_with_version(&self.arg_crate);
-        }
-
-        let dependency = Dependency::new(&self.arg_crate).set_optional(self.flag_optional);
-
-        let dependency = if let Some(ref version) = self.flag_vers {
-            try!(semver::VersionReq::parse(&version));
-            dependency.set_version(version)
-        } else if let Some(ref repo) = self.flag_git {
-            dependency.set_git(repo)
-        } else if let Some(ref path) = self.flag_path {
-            dependency.set_path(path)
+    /// Build dependencies from arguments
+    pub fn parse_dependencies(&self) -> Result<Vec<Dependency>, Box<Error>> {
+        if self.arg_crates.len() > 0 {
+            let mut result = Vec::<Dependency>::new();
+            for arg_crate in &self.arg_crates {
+                result.push(try!(parse_crate_name_with_version(arg_crate)));
+            }
+            Ok(result)
         } else {
-            let v = try!(get_latest_version(&self.arg_crate));
-            dependency.set_version(&v)
-        };
+            if crate_name_has_version(&self.arg_crate) {
+                return Ok(vec![try!(parse_crate_name_with_version(&self.arg_crate))]);
+            }
 
-        Ok(dependency)
+            let dependency = Dependency::new(&self.arg_crate).set_optional(self.flag_optional);
+
+            let dependency = if let Some(ref version) = self.flag_vers {
+                try!(semver::VersionReq::parse(&version));
+                dependency.set_version(version)
+            } else if let Some(ref repo) = self.flag_git {
+                dependency.set_git(repo)
+            } else if let Some(ref path) = self.flag_path {
+                dependency.set_path(path)
+            } else {
+                let v = try!(get_latest_version(&self.arg_crate));
+                dependency.set_version(&v)
+            };
+
+            Ok(vec![dependency])
+        }
     }
 }
 
@@ -78,6 +88,7 @@ impl Default for Args {
     fn default() -> Args {
         Args {
             arg_crate: "demo".to_owned(),
+            arg_crates: vec![],
             flag_dev: false,
             flag_build: false,
             flag_vers: None,
@@ -95,6 +106,8 @@ fn crate_name_has_version(name: &str) -> bool {
 }
 
 fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
+    assert!(crate_name_has_version(&name));
+
     let xs: Vec<&str> = name.splitn(2, "@").collect();
     let (name, version) = (xs[0], xs[1]);
     try!(semver::VersionReq::parse(&version));
@@ -115,7 +128,7 @@ mod tests {
             ..Args::default()
         };
 
-        assert_eq!(args.parse_dependency().unwrap(),
-                   Dependency::new("demo").set_version("0.4.2"));
+        assert_eq!(args.parse_dependencies().unwrap(),
+                   vec![Dependency::new("demo").set_version("0.4.2")]);
     }
 }
