@@ -208,7 +208,7 @@ fn no_argument() {
 
 Usage:
     cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
-    cargo add <crate>... [--dev|--build|--optional] [options]
+    cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
     cargo add --version")
         .unwrap();
@@ -221,7 +221,7 @@ fn unknown_flags() {
 
 Usage:
     cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
-    cargo add <crate>... [--dev|--build|--optional] [options]
+    cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
     cargo add --version")
         .unwrap();
