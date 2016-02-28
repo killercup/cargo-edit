@@ -57,30 +57,40 @@ impl Args {
         if self.arg_crates.len() > 0 {
             let mut result = Vec::<Dependency>::new();
             for arg_crate in &self.arg_crates {
-                result.push(try!(parse_crate_name_with_version(arg_crate)));
+                let le_crate = if crate_name_has_version(&arg_crate) {
+                    try!(parse_crate_name_with_version(arg_crate))
+                } else {
+                    let v = try!(get_latest_version(&self.arg_crate));
+                    Dependency::new(arg_crate).set_version(&v)
+                }.set_optional(self.flag_optional);
+
+                result.push(le_crate);
             }
-            Ok(result)
-        } else {
-            if crate_name_has_version(&self.arg_crate) {
-                return Ok(vec![try!(parse_crate_name_with_version(&self.arg_crate))]);
-            }
-
-            let dependency = Dependency::new(&self.arg_crate).set_optional(self.flag_optional);
-
-            let dependency = if let Some(ref version) = self.flag_vers {
-                try!(semver::VersionReq::parse(&version));
-                dependency.set_version(version)
-            } else if let Some(ref repo) = self.flag_git {
-                dependency.set_git(repo)
-            } else if let Some(ref path) = self.flag_path {
-                dependency.set_path(path)
-            } else {
-                let v = try!(get_latest_version(&self.arg_crate));
-                dependency.set_version(&v)
-            };
-
-            Ok(vec![dependency])
+            return Ok(result);
         }
+
+        if crate_name_has_version(&self.arg_crate) {
+            return Ok(vec![
+                try!(parse_crate_name_with_version(&self.arg_crate))
+                    .set_optional(self.flag_optional)
+            ]);
+        }
+
+        let dependency = Dependency::new(&self.arg_crate).set_optional(self.flag_optional);
+
+        let dependency = if let Some(ref version) = self.flag_vers {
+            try!(semver::VersionReq::parse(&version));
+            dependency.set_version(version)
+        } else if let Some(ref repo) = self.flag_git {
+            dependency.set_git(repo)
+        } else if let Some(ref path) = self.flag_path {
+            dependency.set_path(path)
+        } else {
+            let v = try!(get_latest_version(&self.arg_crate));
+            dependency.set_version(&v)
+        };
+
+        Ok(vec![dependency])
     }
 }
 
