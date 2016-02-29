@@ -20,7 +20,26 @@ fn adds_dependencies() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.my-package").unwrap();
-    assert_eq!(val.as_str().unwrap(), "*");
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+}
+
+#[test]
+fn adds_multiple_dependencies() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.my-package1").is_none());
+    assert!(toml.lookup("dependencies.my-package2").is_none());
+
+    execute_command(&["add", "my-package1", "my-package2"], &manifest);
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.my-package1").unwrap();
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    let val = toml.lookup("dependencies.my-package2").unwrap();
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
 }
 
 #[test]
@@ -38,9 +57,9 @@ fn adds_dev_build_dependencies() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = toml.lookup("dev-dependencies.my-dev-package").unwrap();
-    assert_eq!(val.as_str().unwrap(), "*");
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
     let val = toml.lookup("build-dependencies.my-build-package").unwrap();
-    assert_eq!(val.as_str().unwrap(), "*");
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
 
     // cannot run with both --dev and --build at the same time
     let call = process::Command::new("target/debug/cargo-add")
@@ -54,7 +73,33 @@ fn adds_dev_build_dependencies() {
 }
 
 #[test]
-fn adds_fixed_version() {
+fn adds_multiple_dev_build_dependencies() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dev-dependencies.my-dev-package1").is_none());
+    assert!(toml.lookup("dev-dependencies.my-dev-package2").is_none());
+    assert!(toml.lookup("build-dependencies.my-build-package1").is_none());
+    assert!(toml.lookup("build-dependencies.my-build-package2").is_none());
+
+    execute_command(&["add", "my-dev-package1", "my-dev-package2", "--dev"], &manifest);
+    execute_command(&["add", "my-build-package1", "--build", "my-build-package2"], &manifest);
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dev-dependencies.my-dev-package1").unwrap();
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    let val = toml.lookup("dev-dependencies.my-dev-package2").unwrap();
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    let val = toml.lookup("build-dependencies.my-build-package1").unwrap();
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    let val = toml.lookup("build-dependencies.my-build-package2").unwrap();
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+}
+
+#[test]
+fn adds_specified_version() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -81,7 +126,7 @@ fn adds_fixed_version() {
 }
 
 #[test]
-fn adds_fixed_version_with_inline_notation() {
+fn adds_specified_version_with_inline_notation() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -94,6 +139,44 @@ fn adds_fixed_version_with_inline_notation() {
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.versioned-package").expect("not added");
     assert_eq!(val.as_str().expect("not string"), ">=0.1.1");
+}
+
+#[test]
+fn adds_multiple_dependencies_with_versions() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.my-package1").is_none());
+    assert!(toml.lookup("dependencies.my-package2").is_none());
+
+    execute_command(&["add", "my-package1@>=0.1.1", "my-package2@0.2.3"], &manifest);
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.my-package1").expect("not added");
+    assert_eq!(val.as_str().expect("not string"), ">=0.1.1");
+    let val = toml.lookup("dependencies.my-package2").expect("not added");
+    assert_eq!(val.as_str().expect("not string"), "0.2.3");
+}
+
+#[test]
+fn adds_multiple_dependencies_with_some_versions() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.my-package1").is_none());
+    assert!(toml.lookup("dependencies.my-package2").is_none());
+
+    execute_command(&["add", "my-package1", "my-package2@0.2.3"], &manifest);
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.my-package1").expect("not added");
+    assert_eq!(val.as_str().expect("not string"), "CURRENT_VERSION_TEST");
+    let val = toml.lookup("dependencies.my-package2").expect("not added");
+    assert_eq!(val.as_str().expect("not string"), "0.2.3");
 }
 
 #[test]
@@ -171,7 +254,7 @@ fn package_kinds_are_mutually_exclusive() {
 }
 
 #[test]
-fn adds_optional_dep() {
+fn adds_optional_dependencies() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -188,8 +271,28 @@ fn adds_optional_dep() {
 }
 
 #[test]
+fn adds_multiple_optional_dependencies() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.my-package1").is_none());
+    assert!(toml.lookup("dependencies.my-package2").is_none());
+
+    execute_command(&["add", "--optional", "my-package1", "my-package2"],
+                    &manifest);
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.my-package1.optional").expect("not added optionally");
+    assert_eq!(val.as_bool().expect("optional not a bool"), true);
+    let val = toml.lookup("dependencies.my-package2.optional").expect("not added optionally");
+    assert_eq!(val.as_bool().expect("optional not a bool"), true);
+}
+
+#[test]
 #[should_panic]
-fn failt_to_add_optional_dev_dep() {
+fn failt_to_add_optional_dev_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand

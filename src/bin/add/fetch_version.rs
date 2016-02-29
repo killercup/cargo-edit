@@ -15,9 +15,9 @@ const REGISTRY_HOST: &'static str = "https://crates.io";
 /// - or when a crate with the given name does not exist on crates.io.
 pub fn get_latest_version(crate_name: &str) -> Result<String, FetchVersionError> {
     if env::var("CARGO_IS_TEST").is_ok() {
-        // We are in a simulated reality. Nothing is real here. Wildcard dependecies are okay.
+        // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
-        return Ok("*".into());
+        return Ok("CURRENT_VERSION_TEST".into());
     }
 
     let crate_data = try!(fetch(&format!("/crates/{}", crate_name)));
