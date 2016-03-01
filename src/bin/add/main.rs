@@ -27,6 +27,7 @@ use args::Args;
 static USAGE: &'static str = r#"
 Usage:
     cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
     cargo add --version
 
@@ -58,20 +59,17 @@ dependencies (version set to "*").
 
 fn handle_add(args: &Args) -> Result<(), Box<Error>> {
     let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
-    let dep = try!(args.parse_dependency());
+    let deps = try!(args.parse_dependencies());
 
-    manifest.insert_into_table(&args.get_section(), &dep)
-            .map_err(From::from)
-            .and_then(|_| {
-                let mut file = try!(Manifest::find_file(&args.flag_manifest_path
-                                                             .as_ref()
-                                                             .map(|s| &s[..])));
-                manifest.write_to_file(&mut file)
-            })
-            .or_else(|err| {
-                println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
-                Err(err)
-            })
+    for dep in deps {
+        if let Err(err) = manifest.insert_into_table(&args.get_section(), &dep) {
+            println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
+            return Err(From::from(err));
+        }
+    }
+
+    let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
+    manifest.write_to_file(&mut file)
 }
 
 fn main() {
