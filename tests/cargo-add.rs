@@ -8,7 +8,7 @@ mod utils;
 use utils::{clone_out_test, execute_command, get_toml, no_manifest_failures};
 
 #[test]
-fn adds_dependencies() {
+fn adds_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -43,7 +43,7 @@ fn adds_multiple_dependencies() {
 }
 
 #[test]
-fn adds_dev_build_dependencies() {
+fn adds_dev_build_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -254,7 +254,7 @@ fn package_kinds_are_mutually_exclusive() {
 }
 
 #[test]
-fn adds_optional_dependencies() {
+fn adds_optional_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
