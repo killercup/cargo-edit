@@ -306,12 +306,13 @@ fn fails_to_add_optional_dev_dependency() {
 
 #[test]
 #[should_panic]
-fn fails_to_add_multiple_optional_dev_dependency() {
+fn fails_to_add_multiple_optional_dev_dependencies() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    // dependency not present beforehand
+    // dependencies not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.versioned-package").is_none());
+    assert!(toml.lookup("dependencies.my-package1").is_none());
+    assert!(toml.lookup("dependencies.my-package2").is_none());
 
     // Fails because optional dependencies must be in `dependencies` table.
     execute_command(&["add", "--optional", "my-package1", "my-package2", "--dev"],
