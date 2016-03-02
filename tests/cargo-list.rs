@@ -4,7 +4,7 @@ extern crate assert_cli;
 #[test]
 fn listing() {
     assert_cli!("target/debug/cargo-list",
-                &["list", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
+                &["list", "--manifest-path=tests/fixtures/list/Cargo.toml.sample"] =>
                 Success, r#"cargo-edit      path: "../../../"
 clippy          git: "https://github.com/Manishearth/rust-clippy.git" (optional)
 docopt          0.6
@@ -18,7 +18,7 @@ toml            0.1"#)
 #[test]
 fn listing_dev() {
     assert_cli!("target/debug/cargo-list",
-                &["list", "--dev", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
+                &["list", "--dev", "--manifest-path=tests/fixtures/list/Cargo.toml.sample"] =>
                 Success, r#"term 0.2.12"#)
         .unwrap();
 }
@@ -26,7 +26,7 @@ fn listing_dev() {
 #[test]
 fn listing_build() {
     assert_cli!("target/debug/cargo-list",
-                &["list", "--build", "--manifest-path=tests/fixtures/list/Cargo.toml"] =>
+                &["list", "--build", "--manifest-path=tests/fixtures/list/Cargo.toml.sample"] =>
                 Success, r#"gcc 0.3.19"#)
         .unwrap();
 }
@@ -35,17 +35,17 @@ fn listing_build() {
 fn treat_missing_section_as_empty() {
     // empty dependencies
     assert_cli!("target/debug/cargo-list",
-                &["list", "--manifest-path=tests/fixtures/list-empty/Cargo.toml"] =>
+                &["list", "--manifest-path=tests/fixtures/list-empty/Cargo.toml.sample"] =>
                 Success, "\n").unwrap();
 
     // empty dev-dependencies
     assert_cli!("target/debug/cargo-list",
-                &["list", "--dev", "--manifest-path=tests/fixtures/list-empty/Cargo.toml"] =>
+                &["list", "--dev", "--manifest-path=tests/fixtures/list-empty/Cargo.toml.sample"] =>
                 Success, "\n").unwrap();
 
     // empty build-dependencies
     assert_cli!("target/debug/cargo-list",
-                &["list", "--build", "--manifest-path=tests/fixtures/list-empty/Cargo.toml"] =>
+                &["list", "--build", "--manifest-path=tests/fixtures/list-empty/Cargo.toml.sample"] =>
                 Success, "\n").unwrap();
 }
 

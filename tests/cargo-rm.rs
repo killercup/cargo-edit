@@ -6,7 +6,7 @@ use utils::{clone_out_test, execute_command, get_toml};
 
 #[test]
 fn remove_existing_dependency() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.docopt").is_some());
@@ -17,7 +17,7 @@ fn remove_existing_dependency() {
 
 #[test]
 fn remove_existing_dependency_from_specific_section() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     // Test removing dev dependency.
     let toml = get_toml(&manifest);
@@ -36,7 +36,7 @@ fn remove_existing_dependency_from_specific_section() {
 
 #[test]
 fn remove_section_after_removed_last_dependency() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dev-dependencies.regex").is_some());
@@ -53,7 +53,7 @@ fn remove_section_after_removed_last_dependency() {
 // https://github.com/killercup/cargo-edit/issues/32
 #[test]
 fn issue_32() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.foo").is_none());
@@ -75,7 +75,7 @@ fn issue_32() {
 
 #[test]
 fn invalid_dependency() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     assert_cli!("target/debug/cargo-rm",
                 &["rm", "invalid_dependency_name", &format!("--manifest-path={}", manifest)]
@@ -87,7 +87,7 @@ ERROR: The dependency `invalid_dependency_name` could not be found in `dependenc
 
 #[test]
 fn invalid_section() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     execute_command(&["rm", "semver", "--build"], &manifest);
     assert_cli!("target/debug/cargo-rm",
@@ -100,7 +100,7 @@ ERROR: The table `build-dependencies` could not be found.")
 
 #[test]
 fn invalid_dependency_in_section() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     assert_cli!("target/debug/cargo-rm",
                 &["rm", "semver", "--dev", &format!("--manifest-path={}", manifest)]
