@@ -23,6 +23,18 @@ pub fn get_latest_version(crate_name: &str) -> Result<String, FetchVersionError>
     let crate_data = try!(fetch(&format!("/crates/{}", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 
+    // issue 51
+    // return error if name in crates.io is different from what we have
+    let not_found = Err(FetchVersionError::CratesIo(CratesIoError::NotFound));
+    match crate_json.find_path(&["crate", "name"]).and_then(|n| n.as_string()) {
+        Some(name) => {
+            if name != crate_name {
+                return not_found;
+            }
+        }
+        None => return not_found,
+    }
+
     crate_json.as_object()
               .and_then(|c| c.get("crate"))
               .and_then(|c| c.as_object())
@@ -108,5 +120,26 @@ quick_error! {
         Api(e: Vec<String>)  {}
         Unauthorized  {}
         NotFound {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::get_latest_version;
+
+    #[test]
+    fn invalid_crate_name() {
+        assert!(match get_latest_version("error-def") {
+            Ok(_) => false,
+            Err(_) => true,
+        });
+    }
+
+    #[test]
+    fn valid_crate_name() {
+        assert!(match get_latest_version("error_def") {
+            Ok(_) => true,
+            Err(_) => false,
+        });
     }
 }
