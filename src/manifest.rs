@@ -156,7 +156,7 @@ impl Manifest {
         let (ref name, ref data) = dep.to_toml();
         let ref mut manifest = self.data;
         let entry = manifest.entry(String::from(table))
-                            .or_insert(toml::Value::Table(BTreeMap::new()));
+                            .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
         match *entry {
             toml::Value::Table(ref mut deps) => {
                 deps.insert(name.clone(), data.clone());
@@ -197,7 +197,7 @@ impl Manifest {
                     toml::Value::Table(ref mut deps) => {
                         deps.remove(name)
                             .map(|_| ())
-                            .ok_or(ManifestError::NonExistentDependency(name.into(), table.into()))
+                            .ok_or_else(|| ManifestError::NonExistentDependency(name.into(), table.into()))
                     }
                     _ => Err(ManifestError::NonExistentTable(table.into())),
                 };

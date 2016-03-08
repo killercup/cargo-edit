@@ -70,8 +70,7 @@ fn fetch(path: &str) -> Result<String, FetchVersionError> {
 fn handle(response: Result<http::Response, ErrCode>) -> Result<String, CratesIoError> {
     let response = try!(response.map_err(CratesIoError::Curl));
     match response.get_code() {
-        0 => {} // file upload url sometimes
-        200 => {}
+        0 | 200 => {},
         403 => return Err(CratesIoError::Unauthorized),
         404 => return Err(CratesIoError::NotFound),
         _ => return Err(CratesIoError::NotOkResponse(response)),
@@ -81,12 +80,11 @@ fn handle(response: Result<http::Response, ErrCode>) -> Result<String, CratesIoE
         Ok(body) => body,
         Err(..) => return Err(CratesIoError::NonUtf8Body),
     };
-    match json::decode::<ApiErrorList>(&body) {
-        Ok(errors) => {
-            return Err(CratesIoError::Api(errors.errors.into_iter().map(|s| s.detail).collect()));
-        }
-        Err(..) => {}
+
+    if let Ok(errors) = json::decode::<ApiErrorList>(&body) {
+        return Err(CratesIoError::Api(errors.errors.into_iter().map(|s| s.detail).collect()));
     }
+
     Ok(body)
 }
 
