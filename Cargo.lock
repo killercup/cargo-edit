@@ -3,7 +3,7 @@ name = "cargo-edit"
 version = "0.1.2"
 dependencies = [
  "assert_cli 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy 0.0.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.48 (registry+https://github.com/rust-lang/crates.io-index)",
  "curl 0.2.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.78 (registry+https://github.com/rust-lang/crates.io-index)",
  "pad 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -47,9 +47,11 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.29"
+version = "0.0.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+ "regex-syntax 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "semver 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-normalization 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -162,6 +164,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "nom"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "openssl-sys"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -233,6 +240,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "semver"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "semver"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "nom 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "strsim"
