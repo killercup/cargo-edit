@@ -30,15 +30,15 @@ quick_error! {
         }
         ParseError(error: String, loline: usize, locol: usize, hiline: usize, hicol: usize) {
             description("parse error")
-            display("{}:{}{} {}",
-                loline + 1, locol + 1,
-                if loline != hiline || locol != hicol {
-                    format!("-{}:{}", hiline + 1,
-                            hicol + 1)
+            display("{line}:{col}{upto} {error_msg}",
+                line = loline + 1,
+                col = locol + 1,
+                upto = if loline != hiline || locol != hicol {
+                    format!("-{}:{}", hiline + 1, hicol + 1)
                 } else {
                     "".to_string()
                 },
-                error)
+                error_msg = error)
         }
     }
 }
