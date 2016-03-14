@@ -249,14 +249,11 @@ impl str::FromStr for Manifest {
 }
 
 fn format_parse_error(mut parser: toml::Parser) -> Option<ManifestError> {
-    match parser.errors.pop() {
-        Some(error) => {
-            let (loline, locol) = parser.to_linecol(error.lo);
-            let (hiline, hicol) = parser.to_linecol(error.hi);
-            Some(ManifestError::ParseError(error.desc, loline, locol, hiline, hicol))       
-        },
-        None => None
-    }
+    parser.errors.pop().map(|error| {
+        let (loline, locol) = parser.to_linecol(error.lo);
+        let (hiline, hicol) = parser.to_linecol(error.hi);
+        ManifestError::ParseError(error.desc.clone(), loline, locol, hiline, hicol)
+    })
 }
 
 #[cfg(test)]
