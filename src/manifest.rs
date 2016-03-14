@@ -28,6 +28,18 @@ quick_error! {
             description("non existent dependency")
             display("The dependency `{}` could not be found in `{}`.", name, table)
         }
+        ParseError(error: String, loline: usize, locol: usize, hiline: usize, hicol: usize) {
+            description("parse error")
+            display("{line}:{col}{upto} {error_msg}",
+                line = loline + 1,
+                col = locol + 1,
+                upto = if loline != hiline || locol != hicol {
+                    format!("-{}:{}", hiline + 1, hicol + 1)
+                } else {
+                    "".to_string()
+                },
+                error_msg = error)
+        }
     }
 }
 
@@ -229,11 +241,19 @@ impl str::FromStr for Manifest {
         let mut parser = toml::Parser::new(&input);
 
         parser.parse()
-              .ok_or(parser.errors.pop())
+              .ok_or_else(|| format_parse_error(&parser))
               .map_err(Option::unwrap)
               .map_err(From::from)
               .map(|data| Manifest { data: data })
     }
+}
+
+fn format_parse_error(parser: &toml::Parser) -> Option<ManifestError> {
+    parser.errors.first().map(|error| {
+        let (loline, locol) = parser.to_linecol(error.lo);
+        let (hiline, hicol) = parser.to_linecol(error.hi);
+        ManifestError::ParseError(error.desc.clone(), loline, locol, hiline, hicol)
+    })
 }
 
 #[cfg(test)]
