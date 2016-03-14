@@ -241,15 +241,15 @@ impl str::FromStr for Manifest {
         let mut parser = toml::Parser::new(&input);
 
         parser.parse()
-              .ok_or(format_parse_error(parser))
+              .ok_or_else(|| format_parse_error(parser))
               .map_err(Option::unwrap)
               .map_err(From::from)
               .map(|data| Manifest { data: data })
     }
 }
 
-fn format_parse_error(mut parser: toml::Parser) -> Option<ManifestError> {
-    parser.errors.pop().map(|error| {
+fn format_parse_error(parser: toml::Parser) -> Option<ManifestError> {
+    parser.errors.first().map(|error| {
         let (loline, locol) = parser.to_linecol(error.lo);
         let (hiline, hicol) = parser.to_linecol(error.hi);
         ManifestError::ParseError(error.desc.clone(), loline, locol, hiline, hicol)
