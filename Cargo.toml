@@ -39,7 +39,7 @@ semver = "0.2"
 toml = "0.1"
 curl = "0.2.11"
 quick-error = "1.0.0"
-clippy = {version = "0.0.48", optional = true}
+clippy = {version = "0.0.51", optional = true}
 
 [dev-dependencies]
 assert_cli = "0.2.0"
