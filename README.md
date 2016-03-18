@@ -83,8 +83,8 @@ Options:
     -h --help               Show this help page.
     --version               Show version.
 
-Add a dependency to a Cargo.toml manifest file.  If <crate> is a github or gitlab repository url, or 
-a local path, `cargo add` will try to authomaticall get the crate name and authomatically set the 
+Add a dependency to a Cargo.toml manifest file.  If <crate> is a github or gitlab repository URL, or 
+a local path, `cargo add` will try to automatically get the crate name and authomatically set the 
 appropriate `--git` or `--path`. 
 ```
 
