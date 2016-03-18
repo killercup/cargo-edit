@@ -134,7 +134,7 @@ fn crate_name_is_gitlab_url(name: &str) -> bool {
 }
 
 fn crate_name_is_path(name: &str) -> bool {
-    // FIXME: accept only absolute paths, convert them to absolute or leave it as it is?
+    // FIXME: accept only absolute paths, convert path to absolute or leave as it is?
     Path::new(name).exists()
 }
 
