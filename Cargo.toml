@@ -39,6 +39,7 @@ semver = "0.2"
 toml = "0.1"
 curl = "0.2.11"
 quick-error = "1.0.0"
+regex = "0.1"
 clippy = {version = "0.0.51", optional = true}
 
 [dev-dependencies]

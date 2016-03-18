@@ -20,7 +20,9 @@ use std::io::{self, Write};
 extern crate cargo_edit;
 use cargo_edit::Manifest;
 
-mod fetch_version;
+extern crate regex;
+
+mod fetch;
 mod args;
 use args::Args;
 
