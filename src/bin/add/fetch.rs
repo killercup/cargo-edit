@@ -137,7 +137,7 @@ quick_error! {
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from github is an error or in an incorrect format.
 pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
-    let re = Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)/?$").unwrap();
+    let re = Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
 
     re.captures(repo)
       .ok_or(FetchGitError::ParseRegex)
