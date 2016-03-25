@@ -112,6 +112,22 @@ quick_error! {
     }
 }
 
+quick_error! {
+    #[derive(Debug)]
+    pub enum FetchGitError {
+        FetchGit(err: CratesIoError) {
+            from()
+            description("fetch error: ")
+            display("fetch error: {}", err)
+            cause(err)
+        }
+        ParseRegex { description("parse error: unable to parse git repo url") }
+        IncompleteCaptures { description("parse error: the git repo url seems incomplete") }
+        LocalCargoToml { description("path error: unable to open Cargo.toml") }
+        // RemoteCargoToml { description("path error: unable to open Cargo.toml from the provided repo") }
+        ParseCargoToml { description("parse error: unable to parse the external Cargo.toml") }
+    }
+}
 
 /// Query crate name by accessing a github repo Cargo.toml
 ///
@@ -120,25 +136,28 @@ quick_error! {
 /// - there is no Internet connection,
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from github is an error or in an incorrect format.
-pub fn get_crate_name_from_github(repo: &str) -> Option<String> {
+pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
     let re = Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)/?$").unwrap();
 
-    re.captures(repo).and_then(|cap| {
-        match (cap.at(1), cap.at(2)) {
-            (Some(ref user), Some(ref repo)) => {
-                let url = format!("https://raw.githubusercontent.com/{}/{}/master/Cargo.toml",
-                                  user,
-                                  repo);
+    re.captures(repo)
+      .ok_or(FetchGitError::ParseRegex)
+      .and_then(|cap| {
+          match (cap.at(1), cap.at(2)) {
+              (Some(ref user), Some(ref repo)) => {
+                  let url = format!("https://raw.githubusercontent.com/{}/{}/master/Cargo.toml",
+                                    user,
+                                    repo);
 
-                // FIXME: use Result or modify get_cargo_toml_from_git_url to return Option
-                let data: Option<Manifest> = get_cargo_toml_from_git_url(&url)
-                                                 .ok()
-                                                 .and_then(|m| m.parse().ok());
-                data.and_then(|ref manifest| get_name_from_manifest(manifest))
-            }
-            _ => None,
-        }
-    })
+                  // FIXME: use Result or modify get_cargo_toml_from_git_url to return Option
+                  let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url).and_then(|m| {
+                      m.parse()
+                       .map_err(|_| FetchGitError::ParseCargoToml)
+                  });
+                  data.and_then(|ref manifest| get_name_from_manifest(manifest))
+              }
+              _ => Err(FetchGitError::IncompleteCaptures),
+          }
+      })
 }
 
 /// Query crate name by accessing a gitlab repo Cargo.toml
@@ -148,73 +167,59 @@ pub fn get_crate_name_from_github(repo: &str) -> Option<String> {
 /// - there is no Internet connection,
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from gitlab is an error or in an incorrect format.
-pub fn get_crate_name_from_gitlab(repo: &str) -> Option<String> {
+pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String, FetchGitError> {
     let re = Regex::new(r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$")
                  .unwrap();
 
-    re.captures(repo).and_then(|cap| {
-        match (cap.at(1), cap.at(2)) {
-            (Some(ref user), Some(ref repo)) => {
-                let url = format!("https://gitlab.com/{}/{}/raw/master/Cargo.toml", user, repo);
+    re.captures(repo)
+      .ok_or(FetchGitError::ParseRegex)
+      .and_then(|cap| {
+          match (cap.at(1), cap.at(2)) {
+              (Some(ref user), Some(ref repo)) => {
+                  let url = format!("https://gitlab.com/{}/{}/raw/master/Cargo.toml", user, repo);
 
-                // FIXME: use Result or modify get_cargo_toml_from_git_url to return Option
-                let data: Option<Manifest> = get_cargo_toml_from_git_url(&url)
-                                                 .ok()
-                                                 .and_then(|m| m.parse().ok());
-                data.and_then(|ref manifest| get_name_from_manifest(manifest))
-            }
-            _ => None,
-        }
-    })
+                  // FIXME: use Result or modify get_cargo_toml_from_git_url to return Option
+                  let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url).and_then(|m| {
+                      m.parse()
+                       .map_err(|_| FetchGitError::ParseCargoToml)
+                  });
+                  data.and_then(|ref manifest| get_name_from_manifest(manifest))
+              }
+              _ => Err(FetchGitError::IncompleteCaptures),
+          }
+      })
 }
 
 /// Query crate name by accessing Cargo.toml in a local path
 ///
 /// The name will be returned as a string. This will fail, when
 /// Cargo.toml is not present in the root of the path.
-pub fn get_crate_name_from_path(path: &str) -> Option<String> {
+pub fn get_crate_name_from_path(path: &str) -> Result<String, FetchGitError> {
     let cargo_file = Path::new(path).join("Cargo.toml");
     Manifest::open(&cargo_file.to_str())
-        .ok()
+        .map_err(|_| FetchGitError::LocalCargoToml)
         .and_then(|ref manifest| get_name_from_manifest(manifest))
 }
 
-fn get_name_from_manifest(manifest: &Manifest) -> Option<String> {
+fn get_name_from_manifest(manifest: &Manifest) -> Result<String, FetchGitError> {
     manifest.data
             .get("package")
             .and_then(|m| m.lookup("name"))
             .and_then(|name| name.as_str().map(|s| s.to_string()))
+            .ok_or(FetchGitError::ParseCargoToml)
 }
 
 // FIXME: between the code above and below there is a lot of duplication.
-// FIXME: make a generic version of CratesIOError to use in all cases.
-// I am ignoring these FIXME waiting for the new fetch implementation using hyper to be merged
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String, FetchGitError> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
         return Ok("CURRENT_VERSION_TEST".into());
     }
-    fetch_git_url(url).or(Err(FetchGitError::GitIoError))
-}
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum FetchGitError {
-        FetchGit(err: CratesIoError) {
-            from()
-            description("git fetch Error")
-            display("git fetch Error: {}", err)
-            cause(err)
-        }
-        GitIoError { description("unable to download Cargo.toml from the provided git repo") }
-    }
-}
-
-fn fetch_git_url(path: &str) -> Result<String, FetchGitError> {
     let mut http_handle = http::Handle::new();
     let req = Request::new(&mut http_handle, Method::Get)
-                  .uri(path)
+                  .uri(url)
                   .header("Accept", "text/plain")
                   .content_type("text/plain");
     handle_git_url(req.exec()).map_err(From::from)

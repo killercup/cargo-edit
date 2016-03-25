@@ -134,7 +134,9 @@ fn crate_name_is_gitlab_url(name: &str) -> bool {
 }
 
 fn crate_name_is_path(name: &str) -> bool {
-    // FIXME: accept only absolute paths, convert path to absolute or leave as it is?
+    // FIXME: we could add the following to avoid confusion between
+    // local paths and crate names - also '.' could collide with path:
+    // (name.contains('.') || name.contains('/') || name.contains('\\')) &&
     Path::new(name).exists()
 }
 
@@ -150,25 +152,25 @@ fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
 
 fn parse_crate_name_from_uri(name: &str) -> Result<Dependency, Box<Error>> {
     if crate_name_is_github_url(name) {
-        if let Some(ref crate_name) = get_crate_name_from_github(name) {
+        if let Ok(ref crate_name) = get_crate_name_from_github(name) {
             return Ok(Dependency::new(crate_name).set_git(name));
         }
     } else if crate_name_is_gitlab_url(name) {
-        if let Some(ref crate_name) = get_crate_name_from_gitlab(name) {
+        if let Ok(ref crate_name) = get_crate_name_from_gitlab(name) {
             return Ok(Dependency::new(crate_name).set_git(name));
         }
     } else if crate_name_is_path(name) {
-        if let Some(ref crate_name) = get_crate_name_from_path(&name) {
+        if let Ok(ref crate_name) = get_crate_name_from_path(&name) {
             return Ok(Dependency::new(crate_name).set_path(name));
         }
     }
 
-    Err(::std::convert::From::from(format!("Unable to obtain crate informations from `{}`.\n",
-                                           name)))
+    Err(From::from(format!("Unable to obtain crate informations from `{}`.\n", name)))
 }
 
 #[cfg(test)]
 mod tests {
+    use std::env;
     use cargo_edit::Dependency;
     use super::*;
 
@@ -182,20 +184,30 @@ mod tests {
 
         assert_eq!(args.parse_dependencies().unwrap(),
                    vec![Dependency::new("demo").set_version("0.4.2")]);
+    }
 
-        let github_url = "https://github.com/killercup/cargo-edit/";
-        let args_github = Args { arg_crate: github_url.to_owned(), ..Args::default() };
-        assert_eq!(args_github.parse_dependencies().unwrap(),
-                   vec![Dependency::new("cargo-edit").set_git(github_url)]);
+    #[test]
+    fn test_repo_as_arg_parsing() {
+        // Skip remote tests if no network available
+        if env::var("NO_REMOTE_CARGO_TEST").is_err() {
+            let github_url = "https://github.com/killercup/cargo-edit/";
+            let args_github = Args { arg_crate: github_url.to_owned(), ..Args::default() };
+            assert_eq!(args_github.parse_dependencies().unwrap(),
+                       vec![Dependency::new("cargo-edit").set_git(github_url)]);
 
-        let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
-        let args_gitlab = Args { arg_crate: gitlab_url.to_owned(), ..Args::default() };
-        assert_eq!(args_gitlab.parse_dependencies().unwrap(),
-                   vec![Dependency::new("polly").set_git(gitlab_url)]);
+            let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
+            let args_gitlab = Args { arg_crate: gitlab_url.to_owned(), ..Args::default() };
+            assert_eq!(args_gitlab.parse_dependencies().unwrap(),
+                       vec![Dependency::new("polly").set_git(gitlab_url)]);
+        }
+    }
 
+    #[test]
+    fn test_path_as_arg_parsing() {
         let self_path = ".";
         let args_path = Args { arg_crate: self_path.to_owned(), ..Args::default() };
         assert_eq!(args_path.parse_dependencies().unwrap(),
                    vec![Dependency::new("cargo-edit").set_path(self_path)]);
     }
+
 }
