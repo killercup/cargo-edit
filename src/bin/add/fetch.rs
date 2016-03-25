@@ -1,11 +1,11 @@
 use std::env;
+use std::path::Path;
 use rustc_serialize::json;
 use rustc_serialize::json::{BuilderError, Json};
 use curl::{ErrCode, http};
 use curl::http::handle::{Method, Request};
 use cargo_edit::Manifest;
 use regex::Regex;
-use std::path::Path;
 
 const REGISTRY_HOST: &'static str = "https://crates.io";
 
@@ -67,10 +67,10 @@ fn fetch_cratesio(path: &str) -> Result<String, FetchVersionError> {
                   .uri(format!("{}/api/v1{}", REGISTRY_HOST, path))
                   .header("Accept", "application/json")
                   .content_type("application/json");
-    handle_cratesio(req.exec()).map_err(From::from)
+    handle_request(req.exec()).map_err(From::from)
 }
 
-fn handle_cratesio(response: Result<http::Response, ErrCode>) -> Result<String, CratesIoError> {
+fn handle_request(response: Result<http::Response, ErrCode>) -> Result<String, CratesIoError> {
     let response = try!(response.map_err(CratesIoError::Curl));
     match response.get_code() {
         0 | 200 => {}
@@ -112,6 +112,7 @@ quick_error! {
     }
 }
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 quick_error! {
     #[derive(Debug)]
     pub enum FetchGitError {
@@ -124,7 +125,7 @@ quick_error! {
         ParseRegex { description("parse error: unable to parse git repo url") }
         IncompleteCaptures { description("parse error: the git repo url seems incomplete") }
         LocalCargoToml { description("path error: unable to open Cargo.toml") }
-// RemoteCargoToml { description("path error: unable to open Cargo.toml from the provided repo") }
+        // RemoteCargoToml { description("path error: unable to open Cargo.toml from the provided repo") }
         ParseCargoToml { description("parse error: unable to parse the external Cargo.toml") }
     }
 }
@@ -208,34 +209,11 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String, FetchGitError> 
             .ok_or(FetchGitError::ParseCargoToml)
 }
 
-// FIXME: between the code above and below there is a lot of duplication.
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String, FetchGitError> {
-
     let mut http_handle = http::Handle::new();
     let req = Request::new(&mut http_handle, Method::Get)
                   .uri(url)
                   .header("Accept", "text/plain")
                   .content_type("text/plain");
-    handle_git_url(req.exec()).map_err(From::from)
-}
-
-fn handle_git_url(response: Result<http::Response, ErrCode>) -> Result<String, CratesIoError> {
-    let response = try!(response.map_err(CratesIoError::Curl));
-    match response.get_code() {
-        0 | 200 => {}
-        403 => return Err(CratesIoError::Unauthorized),
-        404 => return Err(CratesIoError::NotFound),
-        _ => return Err(CratesIoError::NotOkResponse(response)),
-    }
-
-    let body = match String::from_utf8(response.move_body()) {
-        Ok(body) => body,
-        Err(..) => return Err(CratesIoError::NonUtf8Body),
-    };
-
-    if let Ok(errors) = json::decode::<ApiErrorList>(&body) {
-        return Err(CratesIoError::Api(errors.errors.into_iter().map(|s| s.detail).collect()));
-    }
-
-    Ok(body)
+    handle_request(req.exec()).map_err(From::from)
 }
