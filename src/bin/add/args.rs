@@ -1,7 +1,6 @@
 ///! Handle `cargo add` arguments
 use semver;
 use std::error::Error;
-use std::path::Path;
 use cargo_edit::Dependency;
 use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
             get_latest_version};
