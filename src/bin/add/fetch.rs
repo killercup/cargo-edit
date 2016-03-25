@@ -148,7 +148,6 @@ pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
                                     user,
                                     repo);
 
-                  // FIXME: use Result or modify get_cargo_toml_from_git_url to return Option
                   let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url).and_then(|m| {
                       m.parse()
                        .map_err(|_| FetchGitError::ParseCargoToml)
@@ -178,7 +177,6 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String, FetchGitError> {
               (Some(ref user), Some(ref repo)) => {
                   let url = format!("https://gitlab.com/{}/{}/raw/master/Cargo.toml", user, repo);
 
-                  // FIXME: use Result or modify get_cargo_toml_from_git_url to return Option
                   let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url).and_then(|m| {
                       m.parse()
                        .map_err(|_| FetchGitError::ParseCargoToml)
@@ -211,12 +209,7 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String, FetchGitError> 
 
 // FIXME: between the code above and below there is a lot of duplication.
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String, FetchGitError> {
-    if env::var("CARGO_IS_TEST").is_ok() {
-        // We are in a simulated reality. Nothing is real here.
-        // FIXME: Use actual test handling code.
-        return Ok("CURRENT_VERSION_TEST".into());
-    }
-
+    
     let mut http_handle = http::Handle::new();
     let req = Request::new(&mut http_handle, Method::Get)
                   .uri(url)
