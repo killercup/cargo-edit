@@ -133,7 +133,7 @@ fn crate_name_is_gitlab_url(name: &str) -> bool {
 }
 
 fn crate_name_is_path(name: &str) -> bool {
-    // FIXME: how else can we check if the name is a path?
+    // FIXME: how else can we check if the name is a (possibly invalid) path?
     name.contains('.') || name.contains('/') || name.contains('\\')
 }
 
