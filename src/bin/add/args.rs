@@ -134,10 +134,8 @@ fn crate_name_is_gitlab_url(name: &str) -> bool {
 }
 
 fn crate_name_is_path(name: &str) -> bool {
-    // FIXME: we could add the following to avoid confusion between
-    // local paths and crate names - also '.' could collide with path:
-    // (name.contains('.') || name.contains('/') || name.contains('\\')) &&
-    Path::new(name).exists()
+    // FIXME: how else can we check if the name is a path?
+    name.contains('.') || name.contains('/') || name.contains('\\') 
 }
 
 fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
