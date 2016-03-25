@@ -3,6 +3,7 @@ extern crate assert_cli;
 extern crate tempdir;
 extern crate toml;
 
+use std::env;
 use std::process;
 mod utils;
 use utils::{clone_out_test, execute_command, get_toml, no_manifest_failures};
@@ -180,7 +181,7 @@ fn adds_multiple_dependencies_with_some_versions() {
 }
 
 #[test]
-fn adds_git_source() {
+fn adds_git_source_using_flag() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -209,7 +210,7 @@ fn adds_git_source() {
 }
 
 #[test]
-fn adds_local_source() {
+fn adds_local_source_using_flag() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -234,6 +235,68 @@ fn adds_local_source() {
     let val = toml.lookup("dev-dependencies.local-dev").unwrap();
     assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
                "/path/to/pkg-dev");
+}
+
+#[test]
+fn adds_git_source_without_flag() {
+    // Skip remote tests if no network available
+    if env::var("NO_REMOTE_CARGO_TEST").is_err() {
+        let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+        // dependency not present beforehand
+        let toml = get_toml(&manifest);
+        assert!(toml.lookup("dependencies.cargo-edit").is_none());
+        
+        execute_command(&["add", "https://github.com/killercup/cargo-edit.git"],
+                        &manifest);
+
+        let toml = get_toml(&manifest);
+        let val = toml.lookup("dependencies.cargo-edit").unwrap();
+        assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
+                "https://github.com/killercup/cargo-edit.git");
+
+        // check this works with other flags (e.g. --dev) as well
+        let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+        let toml = get_toml(&manifest);
+        assert!(toml.lookup("dev-dependencies.cargo-edit").is_none());
+
+        execute_command(&["add", "https://github.com/killercup/cargo-edit.git", "--dev"],
+                        &manifest);
+
+        let toml = get_toml(&manifest);
+        let val = toml.lookup("dev-dependencies.cargo-edit").unwrap();
+        assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
+                "https://github.com/killercup/cargo-edit.git");
+    }
+}
+
+#[test]
+fn adds_local_source_without_flag() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.foo-crate").is_none());
+
+    execute_command(&["add", "./tests/fixtures/add/local"], &manifest);
+    
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.foo-crate").unwrap();
+    assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
+               "./tests/fixtures/add/local");
+
+    // check this works with other flags (e.g. --dev) as well
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dev-dependencies.foo-crate").is_none());
+
+    execute_command(&["add", "./tests/fixtures/add/local", "--dev"],
+                    &manifest);
+
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dev-dependencies.foo-crate").unwrap();
+    assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
+               "./tests/fixtures/add/local");
 }
 
 #[test]
@@ -317,6 +380,34 @@ fn fails_to_add_multiple_optional_dev_dependencies() {
     // Fails because optional dependencies must be in `dependencies` table.
     execute_command(&["add", "--optional", "my-package1", "my-package2", "--dev"],
                     &manifest);
+}
+
+#[test]
+#[should_panic]
+fn fails_to_add_inexistent_git_source_without_flag() {
+    // Skip remote tests if no network available
+    if env::var("NO_REMOTE_CARGO_TEST").is_err() {
+        let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+        // dependency not present beforehand
+        let toml = get_toml(&manifest);
+        assert!(toml.lookup("dependencies.cargo-edit").is_none());
+        
+        execute_command(&["add", "https://github.com/killercup/fake-git-repo.git"],
+                        &manifest);
+    } else { panic!("") }
+}
+
+#[test]
+#[should_panic]
+fn fails_to_add_inexistent_local_source_without_flag() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.foo-crate").is_none());
+
+    execute_command(&["add", "./tests/fixtures/local"], &manifest);
 }
 
 #[test]
