@@ -124,7 +124,7 @@ quick_error! {
         ParseRegex { description("parse error: unable to parse git repo url") }
         IncompleteCaptures { description("parse error: the git repo url seems incomplete") }
         LocalCargoToml { description("path error: unable to open Cargo.toml") }
-        // RemoteCargoToml { description("path error: unable to open Cargo.toml from the provided repo") }
+// RemoteCargoToml { description("path error: unable to open Cargo.toml from the provided repo") }
         ParseCargoToml { description("parse error: unable to parse the external Cargo.toml") }
     }
 }
@@ -137,7 +137,8 @@ quick_error! {
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from github is an error or in an incorrect format.
 pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
-    let re = Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
+    let re = Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$")
+                 .unwrap();
 
     re.captures(repo)
       .ok_or(FetchGitError::ParseRegex)
@@ -209,7 +210,7 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String, FetchGitError> 
 
 // FIXME: between the code above and below there is a lot of duplication.
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String, FetchGitError> {
-    
+
     let mut http_handle = http::Handle::new();
     let req = Request::new(&mut http_handle, Method::Get)
                   .uri(url)

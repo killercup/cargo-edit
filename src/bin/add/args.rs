@@ -134,7 +134,7 @@ fn crate_name_is_gitlab_url(name: &str) -> bool {
 
 fn crate_name_is_path(name: &str) -> bool {
     // FIXME: how else can we check if the name is a path?
-    name.contains('.') || name.contains('/') || name.contains('\\') 
+    name.contains('.') || name.contains('/') || name.contains('\\')
 }
 
 fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
