@@ -42,9 +42,9 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, ListEr
                                                                     Alignment::Left),
                             version = version,
                             optional = if optional {
-                                format!(" (optional)")
+                                " (optional)"
                             } else {
-                                String::from("")
+                                ""
                             }));
     }
 

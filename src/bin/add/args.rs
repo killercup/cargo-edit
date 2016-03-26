@@ -54,7 +54,7 @@ impl Args {
 
     /// Build dependencies from arguments
     pub fn parse_dependencies(&self) -> Result<Vec<Dependency>, Box<Error>> {
-        if self.arg_crates.len() > 0 {
+        if !self.arg_crates.is_empty() {
             let mut result = Vec::<Dependency>::new();
             for arg_crate in &self.arg_crates {
                 let le_crate = if crate_name_has_version(&arg_crate) {
@@ -110,13 +110,13 @@ impl Default for Args {
 }
 
 fn crate_name_has_version(name: &str) -> bool {
-    name.contains("@")
+    name.contains('@')
 }
 
 fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
     assert!(crate_name_has_version(&name));
 
-    let xs: Vec<&str> = name.splitn(2, "@").collect();
+    let xs: Vec<&str> = name.splitn(2, '@').collect();
     let (name, version) = (xs[0], xs[1]);
     try!(semver::VersionReq::parse(&version));
 

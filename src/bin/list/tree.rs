@@ -33,7 +33,7 @@ fn get_root_deps(lock_file: &toml::Table) -> Result<Vec<Dependency>, ListError> 
                                   .ok_or(ListError::SectionMissing("dependencies".to_owned())));
 
     let output = root_deps.as_slice()
-                          .unwrap_or(&vec![])
+                          .unwrap_or(&[])
                           .iter()
                           .filter_map(|dep| {
                               let dep = dep.clone();
@@ -53,7 +53,7 @@ fn get_packages(lock_file: &toml::Table) -> Result<Packages, ListError> {
 
     let mut output = BTreeMap::new();
 
-    for pkg in packages.as_slice().unwrap_or(&vec![]) {
+    for pkg in packages.as_slice().unwrap_or(&[]) {
         let package = try!(pkg.as_table().ok_or(ListError::PackageInvalid));
 
         let name = try!(package.get("name")
@@ -79,7 +79,7 @@ fn get_packages(lock_file: &toml::Table) -> Result<Packages, ListError> {
                                                       .filter_map(parse_dep_from_str)
                                                       .collect::<Dependencies>())
                                         })
-                                        .unwrap_or(vec![]);
+                                        .unwrap_or_else(|| vec![]);
 
         output.insert((name.to_owned(), version.to_owned()), deps);
     }
@@ -106,10 +106,10 @@ fn list_deps_helper(pkgs: &Packages,
         }
 
         let is_last = i == deps.len() - 1;
-        let branch = if !is_last {
-            "├──"
-        } else {
+        let branch = if is_last {
             "└──"
+        } else {
+            "├──"
         };
 
         output.push_str(&format!("{} {} ({})\n", branch, dep.0, dep.1));
