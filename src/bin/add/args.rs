@@ -60,8 +60,7 @@ impl Args {
                 let le_crate = if crate_name_has_version(&arg_crate) {
                     try!(parse_crate_name_with_version(arg_crate))
                 } else {
-                    let v = try!(get_latest_version(&self.arg_crate));
-                    Dependency::new(arg_crate).set_version(&v)
+                    try!(get_latest_version(&self.arg_crate))
                 }.set_optional(self.flag_optional);
 
                 result.push(le_crate);
@@ -86,8 +85,7 @@ impl Args {
         } else if let Some(ref path) = self.flag_path {
             dependency.set_path(path)
         } else {
-            let v = try!(get_latest_version(&self.arg_crate));
-            dependency.set_version(&v)
+            try!(get_latest_version(&self.arg_crate))
         };
 
         Ok(vec![dependency])

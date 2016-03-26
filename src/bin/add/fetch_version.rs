@@ -3,45 +3,39 @@ use rustc_serialize::json;
 use rustc_serialize::json::{BuilderError, Json};
 use curl::{ErrCode, http};
 use curl::http::handle::{Method, Request};
+use cargo_edit::Dependency;
 
 const REGISTRY_HOST: &'static str = "https://crates.io";
 
 /// Query latest version fromc crates.io
 ///
-/// The latest version will be returned as a string. This will fail, when
+/// The latest version will be returned as a dependency. This will fail, when
 ///
 /// - there is no Internet connection,
 /// - the response from crates.io was an error or in an incorrect format,
 /// - or when a crate with the given name does not exist on crates.io.
-pub fn get_latest_version(crate_name: &str) -> Result<String, FetchVersionError> {
+pub fn get_latest_version(crate_name: &str) -> Result<Dependency, FetchVersionError> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
-        return Ok("CURRENT_VERSION_TEST".into());
+        return Ok(Dependency::default());
     }
 
     let crate_data = try!(fetch(&format!("/crates/{}", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 
-    // issue 51
-    // return error if name in crates.io is different from what we have
-    let not_found = Err(FetchVersionError::CratesIo(CratesIoError::NotFound));
-    match crate_json.find_path(&["crate", "name"]).and_then(|n| n.as_string()) {
-        Some(name) => {
-            if name != crate_name {
-                return not_found;
-            }
-        }
-        None => return not_found,
+    let name = try!(crate_json.find_path(&["crate", "name"])
+                              .and_then(|n| n.as_string())
+                              .ok_or(FetchVersionError::CratesIo(CratesIoError::NotFound)));
+    if name != crate_name {
+        println!("STDOUT: Added {} instead of {}", name, crate_name)
     }
 
-    crate_json.as_object()
-              .and_then(|c| c.get("crate"))
-              .and_then(|c| c.as_object())
-              .and_then(|c| c.get("max_version"))
-              .and_then(|v| v.as_string())
-              .map(|v| v.to_owned())
-              .ok_or(FetchVersionError::GetVersion)
+    let version = try!(crate_json.find_path(&["crate", "max_version"])
+                                 .and_then(|v| v.as_string())
+                                 .ok_or(FetchVersionError::CratesIo(CratesIoError::NotFound)));
+
+    Ok(Dependency::new(name).set_version(version))
 }
 
 quick_error! {
@@ -130,7 +124,7 @@ mod tests {
     #[test]
     fn invalid_crate_name() {
         assert!(match get_latest_version("error-def") {
-            Ok(_) => false,
+            Ok(dependency) => dependency.name == "error_def",
             Err(_) => true,
         });
     }
