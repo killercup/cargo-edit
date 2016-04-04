@@ -291,6 +291,25 @@ fn adds_multiple_optional_dependencies() {
 }
 
 #[test]
+fn adds_dependency_with_target_triple() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1").is_none());
+
+    execute_command(&["add", "--target", "i686-unknown-linux-gnu", "my-package1"],
+                    &manifest);
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+
+    let val = toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1")
+                  .expect("target dependency not added");
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+}
+
+#[test]
 #[should_panic]
 fn fails_to_add_optional_dev_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");

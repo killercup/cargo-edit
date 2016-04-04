@@ -167,15 +167,21 @@ impl Manifest {
                              -> Result<(), ManifestError> {
         let (ref name, ref data) = dep.to_toml();
         let ref mut manifest = self.data;
-        let entry = manifest.entry(String::from(table))
-                            .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
-        match *entry {
-            toml::Value::Table(ref mut deps) => {
-                deps.insert(name.clone(), data.clone());
-                Ok(())
+
+        // TODO: replace with toml::Parser::new(table).lookup() once it lands, to handle quoted parts (e.g. targets)
+        let parts = table.split(".");
+        let mut entry = manifest;
+        for part in parts {
+            let tmp_entry = entry; // Make the borrow checker happy
+            let value = tmp_entry.entry(String::from(part))
+                                 .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
+            match *value {
+                toml::Value::Table(ref mut table) => entry = table,
+                _ => return Err(ManifestError::NonExistentTable(part.into())),
             }
-            _ => Err(ManifestError::NonExistentTable(table.into())),
         }
+        entry.insert(name.clone(), data.clone());
+        Ok(())
     }
 
     /// Remove entry from a Cargo.toml.
