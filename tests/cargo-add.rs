@@ -273,30 +273,33 @@ fn adds_git_source_without_flag() {
 #[test]
 fn adds_local_source_without_flag() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
-
+    let (tmpdir, _) = clone_out_test("tests/fixtures/add/local/Cargo.toml.sample");
+    let tmppath = tmpdir.into_path();
+    let tmpdirstr = tmppath.to_str().unwrap();
+    
     // dependency not present beforehand
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.foo-crate").is_none());
 
-    execute_command(&["add", "./tests/fixtures/add/local"], &manifest);
+    execute_command(&["add", tmpdirstr], &manifest);
     
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.foo-crate").unwrap();
     assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
-               "./tests/fixtures/add/local");
+               tmpdirstr);
 
     // check this works with other flags (e.g. --dev) as well
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dev-dependencies.foo-crate").is_none());
 
-    execute_command(&["add", "./tests/fixtures/add/local", "--dev"],
+    execute_command(&["add",  tmpdirstr, "--dev"],
                     &manifest);
 
     let toml = get_toml(&manifest);
     let val = toml.lookup("dev-dependencies.foo-crate").unwrap();
     assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
-               "./tests/fixtures/add/local");
+                tmpdirstr);
 }
 
 #[test]
