@@ -20,7 +20,9 @@ use std::io::{self, Write};
 extern crate cargo_edit;
 use cargo_edit::Manifest;
 
-mod fetch_version;
+extern crate regex;
+
+mod fetch;
 mod args;
 use args::Args;
 
@@ -49,7 +51,9 @@ Options:
     -h --help               Show this help page.
     --version               Show version.
 
-This command allows you to add a dependency to a Cargo.toml manifest file.
+This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
+or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name
+and set the appropriate `--git` or `--path` value. 
 
 Please note that Cargo treats versions like "1.2.3" as "^1.2.3" (and that "^1.2.3" is specified
 as ">=1.2.3 and <2.0.0"). By default, `cargo add` will use this format, as it is the one that the
