@@ -22,6 +22,7 @@ path = "src/bin/list/main.rs"
 [features]
 default = []
 dev = ["clippy"]
+test-external-apis = []
 
 [[bin]]
 name = "cargo-add"

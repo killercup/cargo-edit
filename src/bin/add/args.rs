@@ -167,7 +167,6 @@ fn parse_crate_name_from_uri(name: &str) -> Result<Dependency, Box<Error>> {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
     use cargo_edit::Dependency;
     use super::*;
 
@@ -184,19 +183,17 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature="test-external-apis")]
     fn test_repo_as_arg_parsing() {
-        // Skip remote tests if no network available
-        if env::var("NO_REMOTE_CARGO_TEST").is_err() {
-            let github_url = "https://github.com/killercup/cargo-edit/";
-            let args_github = Args { arg_crate: github_url.to_owned(), ..Args::default() };
-            assert_eq!(args_github.parse_dependencies().unwrap(),
-                       vec![Dependency::new("cargo-edit").set_git(github_url)]);
+        let github_url = "https://github.com/killercup/cargo-edit/";
+        let args_github = Args { arg_crate: github_url.to_owned(), ..Args::default() };
+        assert_eq!(args_github.parse_dependencies().unwrap(),
+                    vec![Dependency::new("cargo-edit").set_git(github_url)]);
 
-            let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
-            let args_gitlab = Args { arg_crate: gitlab_url.to_owned(), ..Args::default() };
-            assert_eq!(args_gitlab.parse_dependencies().unwrap(),
-                       vec![Dependency::new("polly").set_git(gitlab_url)]);
-        }
+        let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
+        let args_gitlab = Args { arg_crate: gitlab_url.to_owned(), ..Args::default() };
+        assert_eq!(args_gitlab.parse_dependencies().unwrap(),
+                    vec![Dependency::new("polly").set_git(gitlab_url)]);
     }
 
     #[test]

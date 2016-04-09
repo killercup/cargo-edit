@@ -3,7 +3,6 @@ extern crate assert_cli;
 extern crate tempdir;
 extern crate toml;
 
-use std::env;
 use std::process;
 mod utils;
 use utils::{clone_out_test, execute_command, get_toml, no_manifest_failures};
@@ -238,41 +237,40 @@ fn adds_local_source_using_flag() {
 }
 
 #[test]
+#[cfg(feature="test-external-apis")]
 fn adds_git_source_without_flag() {
-    // Skip remote tests if no network available
-    if env::var("NO_REMOTE_CARGO_TEST").is_err() {
-        let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-        // dependency not present beforehand
-        let toml = get_toml(&manifest);
-        assert!(toml.lookup("dependencies.cargo-edit").is_none());
-        
-        execute_command(&["add", "https://github.com/killercup/cargo-edit.git"],
-                        &manifest);
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.cargo-edit").is_none());
+    
+    execute_command(&["add", "https://github.com/killercup/cargo-edit.git"],
+                    &manifest);
 
-        let toml = get_toml(&manifest);
-        let val = toml.lookup("dependencies.cargo-edit").unwrap();
-        assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
-                "https://github.com/killercup/cargo-edit.git");
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.cargo-edit").unwrap();
+    assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
+            "https://github.com/killercup/cargo-edit.git");
 
-        // check this works with other flags (e.g. --dev) as well
-        let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
-        let toml = get_toml(&manifest);
-        assert!(toml.lookup("dev-dependencies.cargo-edit").is_none());
+    // check this works with other flags (e.g. --dev) as well
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dev-dependencies.cargo-edit").is_none());
 
-        execute_command(&["add", "https://github.com/killercup/cargo-edit.git", "--dev"],
-                        &manifest);
+    execute_command(&["add", "https://github.com/killercup/cargo-edit.git", "--dev"],
+                    &manifest);
 
-        let toml = get_toml(&manifest);
-        let val = toml.lookup("dev-dependencies.cargo-edit").unwrap();
-        assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
-                "https://github.com/killercup/cargo-edit.git");
-    }
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dev-dependencies.cargo-edit").unwrap();
+    assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
+            "https://github.com/killercup/cargo-edit.git");
 }
 
 #[test]
 fn adds_local_source_without_flag() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    
     let (tmpdir, _) = clone_out_test("tests/fixtures/add/local/Cargo.toml.sample");
     let tmppath = tmpdir.into_path();
     let tmpdirstr = tmppath.to_str().unwrap();
@@ -387,18 +385,16 @@ fn fails_to_add_multiple_optional_dev_dependencies() {
 
 #[test]
 #[should_panic]
+#[cfg(feature="test-external-apis")]
 fn fails_to_add_inexistent_git_source_without_flag() {
-    // Skip remote tests if no network available
-    if env::var("NO_REMOTE_CARGO_TEST").is_err() {
-        let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-        // dependency not present beforehand
-        let toml = get_toml(&manifest);
-        assert!(toml.lookup("dependencies.cargo-edit").is_none());
-        
-        execute_command(&["add", "https://github.com/killercup/fake-git-repo.git"],
-                        &manifest);
-    } else { panic!("") }
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.cargo-edit").is_none());
+    
+    execute_command(&["add", "https://github.com/killercup/fake-git-repo.git"],
+                    &manifest);
 }
 
 #[test]
