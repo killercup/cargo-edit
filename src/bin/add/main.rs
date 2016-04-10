@@ -45,6 +45,8 @@ Specify where to add the crate:
     -B --build              Add crate as build dependency.
     --optional              Add as an optional dependency (for use in features). This does not work
                             for `dev-dependencies` or `build-dependencies`.
+    --target <target>       Add as dependency to the given target platform. This does not work
+                            for `dev-dependencies` or `build-dependencies`.
 
 Options:
     --manifest-path=<path>  Path to the manifest to add a dependency to.

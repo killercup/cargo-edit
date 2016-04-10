@@ -162,20 +162,24 @@ impl Manifest {
     /// Add entry to a Cargo.toml.
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn insert_into_table(&mut self,
-                             table: &str,
+                             table: &[String],
                              dep: &Dependency)
                              -> Result<(), ManifestError> {
         let (ref name, ref data) = dep.to_toml();
         let ref mut manifest = self.data;
-        let entry = manifest.entry(String::from(table))
-                            .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
-        match *entry {
-            toml::Value::Table(ref mut deps) => {
-                deps.insert(name.clone(), data.clone());
-                Ok(())
+
+        let mut entry = manifest;
+        for part in table {
+            let tmp_entry = entry; // Make the borrow checker happy
+            let value = tmp_entry.entry(part.clone())
+                                 .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
+            match *value {
+                toml::Value::Table(ref mut table) => entry = table,
+                _ => return Err(ManifestError::NonExistentTable(part.clone())),
             }
-            _ => Err(ManifestError::NonExistentTable(table.into())),
         }
+        entry.insert(name.clone(), data.clone());
+        Ok(())
     }
 
     /// Remove entry from a Cargo.toml.
@@ -191,7 +195,7 @@ impl Manifest {
     ///
     ///     let mut manifest = Manifest { data: toml::Table::new() };
     ///     let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-    ///     let _ = manifest.insert_into_table("dependencies", &dep);
+    ///     let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     ///     assert!(manifest.data.is_empty());
@@ -224,7 +228,7 @@ impl Manifest {
     }
 
     /// Add multiple dependencies to manifest
-    pub fn add_deps(&mut self, table: &str, deps: &[Dependency]) -> Result<(), Box<Error>> {
+    pub fn add_deps(&mut self, table: &Vec<String>, deps: &[Dependency]) -> Result<(), Box<Error>> {
         deps.iter()
             .map(|dep| self.insert_into_table(table, &dep))
             .collect::<Result<Vec<_>, _>>()
@@ -267,7 +271,7 @@ mod tests {
         let mut manifest = Manifest { data: toml::Table::new() };
         let clone = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        let _ = manifest.insert_into_table("dependencies", &dep);
+        let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
         assert_eq!(manifest, clone);
     }
@@ -284,7 +288,7 @@ mod tests {
         let mut manifest = Manifest { data: toml::Table::new() };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
-        let _ = manifest.insert_into_table("dependencies", &other_dep);
+        let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &other_dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     }
 }

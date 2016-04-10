@@ -32,6 +32,8 @@ pub struct Args {
     pub flag_git: Option<String>,
     /// Crate directory path
     pub flag_path: Option<String>,
+    /// Crate directory path
+    pub flag_target: Option<String>,
     /// Optional dependency
     pub flag_optional: bool,
     /// `Cargo.toml` path
@@ -42,13 +44,20 @@ pub struct Args {
 
 impl Args {
     /// Get depenency section
-    pub fn get_section(&self) -> &'static str {
+    pub fn get_section(&self) -> Vec<String> {
         if self.flag_dev {
-            "dev-dependencies"
+            vec!["dev-dependencies".to_owned()]
         } else if self.flag_build {
-            "build-dependencies"
+            vec!["build-dependencies".to_owned()]
         } else {
-            "dependencies"
+            if let Some(ref target) = self.flag_target {
+                if target.is_empty() {
+                    panic!("Target specification may not be empty");
+                }
+                vec!["target".to_owned(), target.clone(), "dependencies".to_owned()]
+            } else {
+                vec!["dependencies".to_owned()]
+            }
         }
     }
 
@@ -109,6 +118,7 @@ impl Default for Args {
             flag_vers: None,
             flag_git: None,
             flag_path: None,
+            flag_target: None,
             flag_optional: false,
             flag_manifest_path: None,
             flag_version: false,

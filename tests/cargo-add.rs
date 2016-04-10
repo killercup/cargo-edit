@@ -355,6 +355,79 @@ fn adds_multiple_optional_dependencies() {
 }
 
 #[test]
+fn adds_dependency_with_target_triple() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1").is_none());
+
+    execute_command(&["add", "--target", "i686-unknown-linux-gnu", "my-package1"],
+                    &manifest);
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+
+    let val = toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1")
+                  .expect("target dependency not added");
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+}
+
+#[test]
+fn adds_dependency_with_target_cfg() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1").is_none());
+
+    execute_command(&["add", "--target", "'cfg(unix)'", "my-package1"],
+                    &manifest);
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+
+    let val = toml.lookup("target.'cfg(unix)'.dependencies.my-package1")
+                  .expect("target dependency not added");
+    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+}
+
+#[test]
+fn adds_dependency_with_custom_target() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    execute_command(&["add", "--target", "x86_64/windows.json", "my-package1"],
+                    &manifest);
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+    // Get package by hand because toml-rs does not currently handle escaping dots in lookup()
+    let target = toml.lookup("target").expect("target dependency not added");
+    if let &toml::Value::Table(ref table) = target {
+        let win_target = table.get("x86_64/windows.json").expect("target spec not found");
+        let val = win_target.lookup("dependencies.my-package1")
+                      .expect("target dependency not added");
+        assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    } else {
+        panic!("target is not a table");
+    }
+
+}
+
+
+#[test]
+#[should_panic]
+fn fails_to_add_dependency_with_empty_target() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Fails because target parameter must be a valid target
+    execute_command(&["add", "--target", "", "my-package1"],
+                    &manifest);
+}
+
+
+
+#[test]
 #[should_panic]
 fn fails_to_add_optional_dev_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
