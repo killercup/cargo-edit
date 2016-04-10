@@ -162,7 +162,7 @@ impl Manifest {
     /// Add entry to a Cargo.toml.
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn insert_into_table(&mut self,
-                             table: &Vec<String>,
+                             table: &[String],
                              dep: &Dependency)
                              -> Result<(), ManifestError> {
         let (ref name, ref data) = dep.to_toml();
@@ -195,7 +195,7 @@ impl Manifest {
     ///
     ///     let mut manifest = Manifest { data: toml::Table::new() };
     ///     let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-    ///     let _ = manifest.insert_into_table(&vec!("dependencies".to_owned()), &dep);
+    ///     let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     ///     assert!(manifest.data.is_empty());
@@ -271,7 +271,7 @@ mod tests {
         let mut manifest = Manifest { data: toml::Table::new() };
         let clone = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        let _ = manifest.insert_into_table(&vec!("dependencies".to_owned()), &dep);
+        let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
         assert_eq!(manifest, clone);
     }
@@ -288,7 +288,7 @@ mod tests {
         let mut manifest = Manifest { data: toml::Table::new() };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
-        let _ = manifest.insert_into_table(&vec!("dependencies".to_owned()), &other_dep);
+        let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &other_dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     }
 }
