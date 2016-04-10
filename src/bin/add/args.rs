@@ -44,16 +44,19 @@ pub struct Args {
 
 impl Args {
     /// Get depenency section
-    pub fn get_section(&self) -> String {
+    pub fn get_section(&self) -> Vec<String> {
         if self.flag_dev {
-            "dev-dependencies".to_owned()
+            vec!("dev-dependencies".to_owned())
         } else if self.flag_build {
-            "build-dependencies".to_owned()
+            vec!("build-dependencies".to_owned())
         } else {
             if let Some(ref target) = self.flag_target {
-                format!("target.{}.dependencies", target)
+                if target.is_empty() {
+                    panic!("Target specification may not be empty");
+                }
+                vec!("target".to_owned(), target.clone(), "dependencies".to_owned())
             } else {
-                "dependencies".to_owned()
+                vec!("dependencies".to_owned())
             }
         }
     }
