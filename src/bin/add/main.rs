@@ -52,6 +52,8 @@ Options:
     --manifest-path=<path>  Path to the manifest to add a dependency to.
     -h --help               Show this help page.
     --version               Show version.
+    --upgrade=<method>      Chose method of semantic version upgrade. Must be one of 
+                            none, patch, minor or all.
 
 This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
 or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name

@@ -40,6 +40,8 @@ pub struct Args {
     pub flag_manifest_path: Option<String>,
     /// `--version`
     pub flag_version: bool,
+    /// `---upgrade`
+    pub flag_upgrade: Option<String>,
 }
 
 impl Args {
@@ -122,6 +124,7 @@ impl Default for Args {
             flag_optional: false,
             flag_manifest_path: None,
             flag_version: false,
+            flag_upgrade: None,
         }
     }
 }
