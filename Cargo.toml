@@ -1,18 +1,28 @@
 [package]
-authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>", "Jonas Platte <mail@jonasplatte.de>"]
+name = "cargo-edit"
+authors = ["Without Boats <lee@libertad.ucsd.edu>",
+           "Pascal Hertleif <killercup@gmail.com>",
+           "Jonas Platte <mail@jonasplatte.de>"]
+
+version = "0.1.2"
+
 description = "This extends Cargo to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo list`."
-documentation = "http://killercup.github.io/cargo-edit/"
-homepage = "https://github.com/killercup/cargo-edit"
+readme = "README.md"
 keywords = ["cargo", "cargo-subcommand", "cli", "dependencies", "crates"]
 license = "Apache-2.0/MIT"
-name = "cargo-edit"
-readme = "README.md"
+
+documentation = "http://killercup.github.io/cargo-edit/"
+homepage = "https://github.com/killercup/cargo-edit"
 repository = "https://github.com/killercup/cargo-edit"
-version = "0.1.2"
 
 [[bin]]
 name = "cargo-list"
 path = "src/bin/list/main.rs"
+
+[features]
+default = []
+dev = ["clippy"]
+test-external-apis = []
 
 [[bin]]
 name = "cargo-add"
@@ -23,24 +33,16 @@ name = "cargo-rm"
 path = "src/bin/rm/main.rs"
 
 [dependencies]
-curl = "0.2.18"
 docopt = "0.6"
 pad = "0.1"
-quick-error = "1.0.0"
-regex = "0.1"
 rustc-serialize = "0.3"
 semver = "0.2"
 toml = "0.1"
-
-[dependencies.clippy]
-optional = true
-version = "0.0.51"
+curl = "0.2.18"
+quick-error = "1.0.0"
+regex = "0.1"
+clippy = {version = "0.0.51", optional = true}
 
 [dev-dependencies]
 assert_cli = "0.2.0"
 tempdir = "0.3"
-
-[features]
-default = []
-dev = ["clippy"]
-test-external-apis = []
