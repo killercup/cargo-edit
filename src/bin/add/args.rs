@@ -98,7 +98,8 @@ impl Args {
                              } else if let Some(ref path) = self.flag_path {
                                  dependency.set_path(path)
                              } else {
-                                 let v = try!(get_latest_version(&self.arg_crate));
+                                 let mut v = try!(get_latest_version(&self.arg_crate));
+                                 v = self.get_upgrade_prefix().to_owned() + &v;
                                  dependency.set_version(&v)
                              }
                          } else {
@@ -107,6 +108,22 @@ impl Args {
                          .set_optional(self.flag_optional);
 
         Ok(vec![dependency])
+    }
+
+    fn get_upgrade_prefix(&self) -> &'static str {
+        match self.flag_upgrade {
+            None => &"",
+            Some(ref u) => match u.to_uppercase().as_ref() {
+                "NONE" => &"=",
+                "PATCH" => &"~",
+                "MINOR" => &"^",
+                "ALL" => &">=",
+                _ => {
+                    println!("WARN: cannot understand upgrade option \"{}\", using default", u);
+                    &""
+                },
+            },
+        }
     }
 }
 
