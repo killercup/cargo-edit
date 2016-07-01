@@ -23,6 +23,42 @@ fn adds_dependency() {
     assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
 }
 
+fn upgrade_test_helper(upgrade_method : &str , expected_prefix : &str) {
+	let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.my-package").is_none());
+
+	let upgrade_arg = format!("--upgrade={0}", upgrade_method); 
+	
+    execute_command(&["add", "my-package", upgrade_arg.as_str()], &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.my-package").unwrap();
+    
+	let expected_result = format!("{0}CURRENT_VERSION_TEST", expected_prefix);
+    assert_eq!(val.as_str().unwrap(), expected_result);
+}
+
+#[test]
+fn adds_dependency_with_upgrade_none() {
+    upgrade_test_helper("none", "=");
+}
+#[test]
+fn adds_dependency_with_upgrade_patch() {
+    upgrade_test_helper("patch", "~");
+}
+#[test]
+fn adds_dependency_with_upgrade_minor() {
+    upgrade_test_helper("minor", "^");
+}
+#[test]
+fn adds_dependency_with_upgrade_all() {
+    upgrade_test_helper("all", ">=");
+}
+
 #[test]
 fn adds_multiple_dependencies() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
