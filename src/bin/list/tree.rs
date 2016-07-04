@@ -29,21 +29,21 @@ fn parse_dep_from_str(input: &str) -> Option<Dependency> {
 
 fn get_root_deps(lock_file: &toml::Table) -> Result<Vec<Dependency>, ListError> {
     let root_deps = try!(lock_file.get("root")
-                                  .and_then(|field| field.lookup("dependencies"))
-                                  .ok_or(ListError::SectionMissing("dependencies".to_owned())));
+        .and_then(|field| field.lookup("dependencies"))
+        .ok_or(ListError::SectionMissing("dependencies".to_owned())));
 
     let output = root_deps.as_slice()
-                          .unwrap_or(&[])
-                          .iter()
-                          .filter_map(|dep| {
-                              let dep = dep.clone();
-                              if let toml::Value::String(pkg_desc) = dep {
-                                  parse_dep_from_str(&pkg_desc)
-                              } else {
-                                  None
-                              }
-                          })
-                          .collect::<Vec<Dependency>>();
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(|dep| {
+            let dep = dep.clone();
+            if let toml::Value::String(pkg_desc) = dep {
+                parse_dep_from_str(&pkg_desc)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<Dependency>>();
 
     Ok(output)
 }
@@ -57,29 +57,29 @@ fn get_packages(lock_file: &toml::Table) -> Result<Packages, ListError> {
         let package = try!(pkg.as_table().ok_or(ListError::PackageInvalid));
 
         let name = try!(package.get("name")
-                               .and_then(|item| item.as_str())
-                               .ok_or(ListError::PackageFieldMissing("name")));
+            .and_then(|item| item.as_str())
+            .ok_or(ListError::PackageFieldMissing("name")));
 
         let version = try!(package.get("version")
-                                  .and_then(|item| item.as_str())
-                                  .ok_or(ListError::PackageFieldMissing("version")));
+            .and_then(|item| item.as_str())
+            .ok_or(ListError::PackageFieldMissing("version")));
 
         let deps: Dependencies = package.get("dependencies")
-                                        .and_then(|item| {
-                                            let item = item.clone();
-                                            if let toml::Value::Array(d) = item {
-                                                Some(d)
-                                            } else {
-                                                None
-                                            }
-                                        })
-                                        .and_then(|items| {
-                                            Some(items.iter()
-                                                      .filter_map(|i| i.as_str())
-                                                      .filter_map(parse_dep_from_str)
-                                                      .collect::<Dependencies>())
-                                        })
-                                        .unwrap_or_else(|| vec![]);
+            .and_then(|item| {
+                let item = item.clone();
+                if let toml::Value::Array(d) = item {
+                    Some(d)
+                } else {
+                    None
+                }
+            })
+            .and_then(|items| {
+                Some(items.iter()
+                    .filter_map(|i| i.as_str())
+                    .filter_map(parse_dep_from_str)
+                    .collect::<Dependencies>())
+            })
+            .unwrap_or_else(|| vec![]);
 
         output.insert((name.to_owned(), version.to_owned()), deps);
     }

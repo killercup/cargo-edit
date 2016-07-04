@@ -82,8 +82,8 @@ fn handle_add(args: &Args) -> Result<(), Box<Error>> {
 
 fn main() {
     let args = docopt::Docopt::new(USAGE)
-                   .and_then(|d| d.decode::<Args>())
-                   .unwrap_or_else(|err| err.exit());
+        .and_then(|d| d.decode::<Args>())
+        .unwrap_or_else(|err| err.exit());
 
     if args.flag_version {
         println!("cargo-add version {}", env!("CARGO_PKG_VERSION"));
