@@ -23,6 +23,47 @@ fn adds_dependency() {
     assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
 }
 
+fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.my-package").is_none());
+
+    let upgrade_arg = format!("--upgrade={0}", upgrade_method);
+
+    execute_command(&["add", "my-package", upgrade_arg.as_str()], &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.my-package").unwrap();
+
+    let expected_result = format!("{0}CURRENT_VERSION_TEST", expected_prefix);
+    assert_eq!(val.as_str().unwrap(), expected_result);
+}
+
+#[test]
+fn adds_dependency_with_upgrade_none() {
+    upgrade_test_helper("none", "=");
+}
+#[test]
+fn adds_dependency_with_upgrade_patch() {
+    upgrade_test_helper("patch", "~");
+}
+#[test]
+fn adds_dependency_with_upgrade_minor() {
+    upgrade_test_helper("minor", "^");
+}
+#[test]
+fn adds_dependency_with_upgrade_all() {
+    upgrade_test_helper("all", ">=");
+}
+
+#[test]
+fn adds_dependency_with_upgrade_bad() {
+   upgrade_test_helper("an_invalid_string", ""); 
+}
+
 #[test]
 fn adds_multiple_dependencies() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
@@ -63,10 +104,10 @@ fn adds_dev_build_dependency() {
 
     // cannot run with both --dev and --build at the same time
     let call = process::Command::new("target/debug/cargo-add")
-                   .args(&["add", "failure", "--dev", "--build"])
-                   .arg(format!("--manifest-path={}", &manifest))
-                   .output()
-                   .unwrap();
+        .args(&["add", "failure", "--dev", "--build"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
 
     assert!(!call.status.success());
     assert!(no_manifest_failures(&get_toml(&manifest)));
@@ -83,8 +124,10 @@ fn adds_multiple_dev_build_dependencies() {
     assert!(toml.lookup("build-dependencies.my-build-package1").is_none());
     assert!(toml.lookup("build-dependencies.my-build-package2").is_none());
 
-    execute_command(&["add", "my-dev-package1", "my-dev-package2", "--dev"], &manifest);
-    execute_command(&["add", "my-build-package1", "--build", "my-build-package2"], &manifest);
+    execute_command(&["add", "my-dev-package1", "my-dev-package2", "--dev"],
+                    &manifest);
+    execute_command(&["add", "my-build-package1", "--build", "my-build-package2"],
+                    &manifest);
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
@@ -116,10 +159,10 @@ fn adds_specified_version() {
 
     // cannot run with both --dev and --build at the same time
     let call = process::Command::new("target/debug/cargo-add")
-                   .args(&["add", "failure", "--vers", "invalid version string"])
-                   .arg(format!("--manifest-path={}", &manifest))
-                   .output()
-                   .unwrap();
+        .args(&["add", "failure", "--vers", "invalid version string"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
 
     assert!(!call.status.success());
     assert!(no_manifest_failures(&get_toml(&manifest)));
@@ -150,7 +193,8 @@ fn adds_multiple_dependencies_with_versions() {
     assert!(toml.lookup("dependencies.my-package1").is_none());
     assert!(toml.lookup("dependencies.my-package2").is_none());
 
-    execute_command(&["add", "my-package1@>=0.1.1", "my-package2@0.2.3"], &manifest);
+    execute_command(&["add", "my-package1@>=0.1.1", "my-package2@0.2.3"],
+                    &manifest);
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
@@ -244,14 +288,14 @@ fn adds_git_source_without_flag() {
     // dependency not present beforehand
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.cargo-edit").is_none());
-    
+
     execute_command(&["add", "https://github.com/killercup/cargo-edit.git"],
                     &manifest);
 
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.cargo-edit").unwrap();
     assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
-            "https://github.com/killercup/cargo-edit.git");
+               "https://github.com/killercup/cargo-edit.git");
 
     // check this works with other flags (e.g. --dev) as well
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
@@ -264,23 +308,23 @@ fn adds_git_source_without_flag() {
     let toml = get_toml(&manifest);
     let val = toml.lookup("dev-dependencies.cargo-edit").unwrap();
     assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
-            "https://github.com/killercup/cargo-edit.git");
+               "https://github.com/killercup/cargo-edit.git");
 }
 
 #[test]
 fn adds_local_source_without_flag() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
-    
+
     let (tmpdir, _) = clone_out_test("tests/fixtures/add/local/Cargo.toml.sample");
     let tmppath = tmpdir.into_path();
     let tmpdirstr = tmppath.to_str().unwrap();
-    
+
     // dependency not present beforehand
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.foo-crate").is_none());
 
     execute_command(&["add", tmpdirstr], &manifest);
-    
+
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.foo-crate").unwrap();
     assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
@@ -291,13 +335,12 @@ fn adds_local_source_without_flag() {
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dev-dependencies.foo-crate").is_none());
 
-    execute_command(&["add",  tmpdirstr, "--dev"],
-                    &manifest);
+    execute_command(&["add", tmpdirstr, "--dev"], &manifest);
 
     let toml = get_toml(&manifest);
     let val = toml.lookup("dev-dependencies.foo-crate").unwrap();
     assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
-                tmpdirstr);
+               tmpdirstr);
 }
 
 #[test]
@@ -305,13 +348,13 @@ fn package_kinds_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     let call = process::Command::new("target/debug/cargo-add")
-                   .args(&["add", "failure"])
-                   .args(&["--vers", "0.4.3"])
-                   .args(&["--git", "git://git.git"])
-                   .args(&["--path", "/path/here"])
-                   .arg(format!("--manifest-path={}", &manifest))
-                   .output()
-                   .unwrap();
+        .args(&["add", "failure"])
+        .args(&["--vers", "0.4.3"])
+        .args(&["--git", "git://git.git"])
+        .args(&["--path", "/path/here"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
 
     assert!(!call.status.success());
     assert!(no_manifest_failures(&get_toml(&manifest)));
@@ -369,7 +412,7 @@ fn adds_dependency_with_target_triple() {
     let toml = get_toml(&manifest);
 
     let val = toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1")
-                  .expect("target dependency not added");
+        .expect("target dependency not added");
     assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
 }
 
@@ -388,7 +431,7 @@ fn adds_dependency_with_target_cfg() {
     let toml = get_toml(&manifest);
 
     let val = toml.lookup("target.'cfg(unix)'.dependencies.my-package1")
-                  .expect("target dependency not added");
+        .expect("target dependency not added");
     assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
 }
 
@@ -406,7 +449,7 @@ fn adds_dependency_with_custom_target() {
     if let &toml::Value::Table(ref table) = target {
         let win_target = table.get("x86_64/windows.json").expect("target spec not found");
         let val = win_target.lookup("dependencies.my-package1")
-                      .expect("target dependency not added");
+            .expect("target dependency not added");
         assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
     } else {
         panic!("target is not a table");
@@ -421,8 +464,7 @@ fn fails_to_add_dependency_with_empty_target() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // Fails because target parameter must be a valid target
-    execute_command(&["add", "--target", "", "my-package1"],
-                    &manifest);
+    execute_command(&["add", "--target", "", "my-package1"], &manifest);
 }
 
 
@@ -465,7 +507,7 @@ fn fails_to_add_inexistent_git_source_without_flag() {
     // dependency not present beforehand
     let toml = get_toml(&manifest);
     assert!(toml.lookup("dependencies.cargo-edit").is_none());
-    
+
     execute_command(&["add", "https://github.com/killercup/fake-git-repo.git"],
                     &manifest);
 }

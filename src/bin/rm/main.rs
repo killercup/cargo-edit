@@ -40,19 +40,19 @@ fn handle_rm(args: &Args) -> Result<(), Box<Error>> {
     let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
 
     manifest.remove_from_table(args.get_section(), &args.arg_crate.as_ref())
-            .map_err(From::from)
-            .and_then(|_| {
-                let mut file = try!(Manifest::find_file(&args.flag_manifest_path
-                                                             .as_ref()
-                                                             .map(|s| &s[..])));
-                manifest.write_to_file(&mut file)
-            })
+        .map_err(From::from)
+        .and_then(|_| {
+            let mut file = try!(Manifest::find_file(&args.flag_manifest_path
+                .as_ref()
+                .map(|s| &s[..])));
+            manifest.write_to_file(&mut file)
+        })
 }
 
 fn main() {
     let args = docopt::Docopt::new(USAGE)
-                   .and_then(|d| d.decode::<Args>())
-                   .unwrap_or_else(|err| err.exit());
+        .and_then(|d| d.decode::<Args>())
+        .unwrap_or_else(|err| err.exit());
 
     if args.flag_version {
         println!("cargo-rm version {}", env!("CARGO_PKG_VERSION"));

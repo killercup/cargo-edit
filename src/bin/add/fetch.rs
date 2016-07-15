@@ -27,12 +27,12 @@ pub fn get_latest_version(crate_name: &str) -> Result<String, FetchVersionError>
     let crate_json = try!(Json::from_str(&crate_data));
 
     crate_json.as_object()
-              .and_then(|c| c.get("crate"))
-              .and_then(|c| c.as_object())
-              .and_then(|c| c.get("max_version"))
-              .and_then(|v| v.as_string())
-              .map(|v| v.to_owned())
-              .ok_or(FetchVersionError::GetVersion)
+        .and_then(|c| c.get("crate"))
+        .and_then(|c| c.as_object())
+        .and_then(|c| c.get("max_version"))
+        .and_then(|v| v.as_string())
+        .map(|v| v.to_owned())
+        .ok_or(FetchVersionError::GetVersion)
 }
 
 quick_error! {
@@ -64,9 +64,9 @@ quick_error! {
 fn fetch_cratesio(path: &str) -> Result<String, FetchVersionError> {
     let mut http_handle = http::Handle::new();
     let req = Request::new(&mut http_handle, Method::Get)
-                  .uri(format!("{}/api/v1{}", REGISTRY_HOST, path))
-                  .header("Accept", "application/json")
-                  .content_type("application/json");
+        .uri(format!("{}/api/v1{}", REGISTRY_HOST, path))
+        .header("Accept", "application/json")
+        .content_type("application/json");
     handle_request(req.exec()).map_err(From::from)
 }
 
@@ -139,26 +139,27 @@ quick_error! {
 /// - the response from github is an error or in an incorrect format.
 pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
     let re = Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$")
-                 .unwrap();
+        .unwrap();
 
     re.captures(repo)
-      .ok_or(FetchGitError::ParseRegex)
-      .and_then(|cap| {
-          match (cap.at(1), cap.at(2)) {
-              (Some(ref user), Some(ref repo)) => {
-                  let url = format!("https://raw.githubusercontent.com/{}/{}/master/Cargo.toml",
-                                    user,
-                                    repo);
+        .ok_or(FetchGitError::ParseRegex)
+        .and_then(|cap| {
+            match (cap.at(1), cap.at(2)) {
+                (Some(ref user), Some(ref repo)) => {
+                    let url = format!("https://raw.githubusercontent.com/{}/{}/master/Cargo.toml",
+                                      user,
+                                      repo);
 
-                  let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url).and_then(|m| {
-                      m.parse()
-                       .map_err(|_| FetchGitError::ParseCargoToml)
-                  });
-                  data.and_then(|ref manifest| get_name_from_manifest(manifest))
-              }
-              _ => Err(FetchGitError::IncompleteCaptures),
-          }
-      })
+                    let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url)
+                        .and_then(|m| {
+                            m.parse()
+                                .map_err(|_| FetchGitError::ParseCargoToml)
+                        });
+                    data.and_then(|ref manifest| get_name_from_manifest(manifest))
+                }
+                _ => Err(FetchGitError::IncompleteCaptures),
+            }
+        })
 }
 
 /// Query crate name by accessing a gitlab repo Cargo.toml
@@ -170,24 +171,25 @@ pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
 /// - the response from gitlab is an error or in an incorrect format.
 pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String, FetchGitError> {
     let re = Regex::new(r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$")
-                 .unwrap();
+        .unwrap();
 
     re.captures(repo)
-      .ok_or(FetchGitError::ParseRegex)
-      .and_then(|cap| {
-          match (cap.at(1), cap.at(2)) {
-              (Some(ref user), Some(ref repo)) => {
-                  let url = format!("https://gitlab.com/{}/{}/raw/master/Cargo.toml", user, repo);
+        .ok_or(FetchGitError::ParseRegex)
+        .and_then(|cap| {
+            match (cap.at(1), cap.at(2)) {
+                (Some(ref user), Some(ref repo)) => {
+                    let url = format!("https://gitlab.com/{}/{}/raw/master/Cargo.toml", user, repo);
 
-                  let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url).and_then(|m| {
-                      m.parse()
-                       .map_err(|_| FetchGitError::ParseCargoToml)
-                  });
-                  data.and_then(|ref manifest| get_name_from_manifest(manifest))
-              }
-              _ => Err(FetchGitError::IncompleteCaptures),
-          }
-      })
+                    let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url)
+                        .and_then(|m| {
+                            m.parse()
+                                .map_err(|_| FetchGitError::ParseCargoToml)
+                        });
+                    data.and_then(|ref manifest| get_name_from_manifest(manifest))
+                }
+                _ => Err(FetchGitError::IncompleteCaptures),
+            }
+        })
 }
 
 /// Query crate name by accessing Cargo.toml in a local path
@@ -203,17 +205,17 @@ pub fn get_crate_name_from_path(path: &str) -> Result<String, FetchGitError> {
 
 fn get_name_from_manifest(manifest: &Manifest) -> Result<String, FetchGitError> {
     manifest.data
-            .get("package")
-            .and_then(|m| m.lookup("name"))
-            .and_then(|name| name.as_str().map(|s| s.to_string()))
-            .ok_or(FetchGitError::ParseCargoToml)
+        .get("package")
+        .and_then(|m| m.lookup("name"))
+        .and_then(|name| name.as_str().map(|s| s.to_string()))
+        .ok_or(FetchGitError::ParseCargoToml)
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String, FetchGitError> {
     let mut http_handle = http::Handle::new();
     let req = Request::new(&mut http_handle, Method::Get)
-                  .uri(url)
-                  .header("Accept", "text/plain")
-                  .content_type("text/plain");
+        .uri(url)
+        .header("Accept", "text/plain")
+        .content_type("text/plain");
     handle_request(req.exec()).map_err(From::from)
 }

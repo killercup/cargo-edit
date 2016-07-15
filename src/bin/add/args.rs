@@ -1,4 +1,4 @@
-///! Handle `cargo add` arguments
+/// ! Handle `cargo add` arguments
 use semver;
 use std::error::Error;
 use cargo_edit::Dependency;
@@ -40,6 +40,8 @@ pub struct Args {
     pub flag_manifest_path: Option<String>,
     /// `--version`
     pub flag_version: bool,
+    /// `---upgrade`
+    pub flag_upgrade: Option<String>,
 }
 
 impl Args {
@@ -67,12 +69,12 @@ impl Args {
             let mut result = Vec::<Dependency>::new();
             for arg_crate in &self.arg_crates {
                 let le_crate = if crate_name_has_version(&arg_crate) {
-                                   try!(parse_crate_name_with_version(arg_crate))
-                               } else {
-                                   let v = try!(get_latest_version(&self.arg_crate));
-                                   Dependency::new(arg_crate).set_version(&v)
-                               }
-                               .set_optional(self.flag_optional);
+                        try!(parse_crate_name_with_version(arg_crate))
+                    } else {
+                        let v = try!(get_latest_version(&self.arg_crate));
+                        Dependency::new(arg_crate).set_version(&v)
+                    }
+                    .set_optional(self.flag_optional);
 
                 result.push(le_crate);
             }
@@ -86,25 +88,41 @@ impl Args {
 
 
         let dependency = if !crate_name_is_url_or_path(&self.arg_crate) {
-                             let dependency = Dependency::new(&self.arg_crate);
+                let dependency = Dependency::new(&self.arg_crate);
 
-                             if let Some(ref version) = self.flag_vers {
-                                 try!(semver::VersionReq::parse(&version));
-                                 dependency.set_version(version)
-                             } else if let Some(ref repo) = self.flag_git {
-                                 dependency.set_git(repo)
-                             } else if let Some(ref path) = self.flag_path {
-                                 dependency.set_path(path)
-                             } else {
-                                 let v = try!(get_latest_version(&self.arg_crate));
-                                 dependency.set_version(&v)
-                             }
-                         } else {
-                             try!(parse_crate_name_from_uri(&self.arg_crate))
-                         }
-                         .set_optional(self.flag_optional);
+                if let Some(ref version) = self.flag_vers {
+                    try!(semver::VersionReq::parse(&version));
+                    dependency.set_version(version)
+                } else if let Some(ref repo) = self.flag_git {
+                    dependency.set_git(repo)
+                } else if let Some(ref path) = self.flag_path {
+                    dependency.set_path(path)
+                } else {
+                    let v = format!("{prefix}{version}",
+                                    prefix = self.get_upgrade_prefix().unwrap_or(""),
+                                    version = try!(get_latest_version(&self.arg_crate)));
+                    dependency.set_version(&v)
+                }
+            } else {
+                try!(parse_crate_name_from_uri(&self.arg_crate))
+            }
+            .set_optional(self.flag_optional);
 
         Ok(vec![dependency])
+    }
+
+    fn get_upgrade_prefix(&self) -> Option<&'static str> {
+        self.flag_upgrade.clone().and_then(|flag| match flag.to_uppercase().as_ref() {
+            "NONE" => Some("="),
+            "PATCH" => Some("~"),
+            "MINOR" => Some("^"),
+            "ALL" => Some(">="),
+            _ => {
+                println!("WARN: cannot understand upgrade option \"{}\", using default",
+                         flag);
+                None
+            }
+        })
     }
 }
 
@@ -122,6 +140,7 @@ impl Default for Args {
             flag_optional: false,
             flag_manifest_path: None,
             flag_version: false,
+            flag_upgrade: None,
         }
     }
 }
@@ -198,12 +217,12 @@ mod tests {
         let github_url = "https://github.com/killercup/cargo-edit/";
         let args_github = Args { arg_crate: github_url.to_owned(), ..Args::default() };
         assert_eq!(args_github.parse_dependencies().unwrap(),
-                    vec![Dependency::new("cargo-edit").set_git(github_url)]);
+                   vec![Dependency::new("cargo-edit").set_git(github_url)]);
 
         let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
         let args_gitlab = Args { arg_crate: gitlab_url.to_owned(), ..Args::default() };
         assert_eq!(args_gitlab.parse_dependencies().unwrap(),
-                    vec![Dependency::new("polly").set_git(gitlab_url)]);
+                   vec![Dependency::new("polly").set_git(gitlab_url)]);
     }
 
     #[test]

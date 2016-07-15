@@ -140,12 +140,12 @@ impl Manifest {
         let mut toml = self.data.clone();
 
         let (proj_header, proj_data) = try!(toml.remove("package")
-                                                .map(|data| ("package", data))
-                                                .or_else(|| {
-                                                    toml.remove("project")
-                                                        .map(|data| ("project", data))
-                                                })
-                                                .ok_or(ManifestError::MissingManifest));
+            .map(|data| ("package", data))
+            .or_else(|| {
+                toml.remove("project")
+                    .map(|data| ("project", data))
+            })
+            .ok_or(ManifestError::MissingManifest));
 
         let new_contents = format!("[{}]\n{}{}",
                                    proj_header,
@@ -172,7 +172,7 @@ impl Manifest {
         for part in table {
             let tmp_entry = entry; // Make the borrow checker happy
             let value = tmp_entry.entry(part.clone())
-                                 .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
+                .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
             match *value {
                 toml::Value::Table(ref mut table) => entry = table,
                 _ => return Err(ManifestError::NonExistentTable(part.clone())),
@@ -213,7 +213,9 @@ impl Manifest {
                     toml::Value::Table(ref mut deps) => {
                         deps.remove(name)
                             .map(|_| ())
-                            .ok_or_else(|| ManifestError::NonExistentDependency(name.into(), table.into()))
+                            .ok_or_else(|| {
+                                ManifestError::NonExistentDependency(name.into(), table.into())
+                            })
                     }
                     _ => Err(ManifestError::NonExistentTable(table.into())),
                 };
@@ -245,10 +247,10 @@ impl str::FromStr for Manifest {
         let mut parser = toml::Parser::new(&input);
 
         parser.parse()
-              .ok_or_else(|| format_parse_error(&parser))
-              .map_err(Option::unwrap)
-              .map_err(From::from)
-              .map(|data| Manifest { data: data })
+            .ok_or_else(|| format_parse_error(&parser))
+            .map_err(Option::unwrap)
+            .map_err(From::from)
+            .map(|data| Manifest { data: data })
     }
 }
 
