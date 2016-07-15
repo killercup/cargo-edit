@@ -61,7 +61,7 @@ fn adds_dependency_with_upgrade_all() {
 
 #[test]
 fn adds_dependency_with_upgrade_bad() {
-   upgrade_test_helper("an_invalid_string", ""); 
+   upgrade_test_helper("an_invalid_string", "");
 }
 
 #[test]
@@ -424,7 +424,7 @@ fn adds_dependency_with_target_cfg() {
     let toml = get_toml(&manifest);
     assert!(toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1").is_none());
 
-    execute_command(&["add", "--target", "'cfg(unix)'", "my-package1"],
+    execute_command(&["add", "--target", "cfg(unix)", "my-package1"],
                     &manifest);
 
     // dependencies present afterwards

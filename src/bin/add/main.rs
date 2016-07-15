@@ -49,15 +49,16 @@ Specify where to add the crate:
                             for `dev-dependencies` or `build-dependencies`.
 
 Options:
+    --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
+                            "none" (exact version), "patch" (`~` modifier), "minor"
+                            (`^` modifier, default), or "all" (`>=`).
     --manifest-path=<path>  Path to the manifest to add a dependency to.
     -h --help               Show this help page.
     --version               Show version.
-    --upgrade=<method>      Chose method of semantic version upgrade. Must be one of 
-                            none, patch, minor or all.
 
 This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
 or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name
-and set the appropriate `--git` or `--path` value. 
+and set the appropriate `--git` or `--path` value.
 
 Please note that Cargo treats versions like "1.2.3" as "^1.2.3" (and that "^1.2.3" is specified
 as ">=1.2.3 and <2.0.0"). By default, `cargo add` will use this format, as it is the one that the
