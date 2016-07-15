@@ -1,4 +1,4 @@
-/// ! Handle `cargo add` arguments
+//! Handle `cargo add` arguments
 use semver;
 use std::error::Error;
 use cargo_edit::Dependency;
