@@ -145,7 +145,7 @@ pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
         .ok_or(FetchGitError::ParseRegex)
         .and_then(|cap| {
             match (cap.at(1), cap.at(2)) {
-                (Some(ref user), Some(ref repo)) => {
+                (Some(user), Some(repo)) => {
                     let url = format!("https://raw.githubusercontent.com/{}/{}/master/Cargo.toml",
                                       user,
                                       repo);
@@ -177,7 +177,7 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String, FetchGitError> {
         .ok_or(FetchGitError::ParseRegex)
         .and_then(|cap| {
             match (cap.at(1), cap.at(2)) {
-                (Some(ref user), Some(ref repo)) => {
+                (Some(user), Some(repo)) => {
                     let url = format!("https://gitlab.com/{}/{}/raw/master/Cargo.toml", user, repo);
 
                     let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url)
