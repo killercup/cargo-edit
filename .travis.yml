@@ -2,7 +2,7 @@ sudo: false
 language: rust
 rust:
 - nightly
-- nightly-2016-03-11
+- nightly-2016-12-19
 - beta
 - stable
 matrix:

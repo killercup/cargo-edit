@@ -41,7 +41,7 @@ toml = "0.1"
 curl = "0.2.18"
 quick-error = "1.0.0"
 regex = "0.1"
-clippy = {version = "0.0.51", optional = true}
+clippy = {version = "0.0.104", optional = true}
 
 [dev-dependencies]
 assert_cli = "0.2.0"
