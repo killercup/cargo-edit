@@ -230,9 +230,9 @@ impl Manifest {
     }
 
     /// Add multiple dependencies to manifest
-    pub fn add_deps(&mut self, table: &Vec<String>, deps: &[Dependency]) -> Result<(), Box<Error>> {
+    pub fn add_deps(&mut self, table: &[String], deps: &[Dependency]) -> Result<(), Box<Error>> {
         deps.iter()
-            .map(|dep| self.insert_into_table(table, &dep))
+            .map(|dep| self.insert_into_table(table, dep))
             .collect::<Result<Vec<_>, _>>()
             .map_err(From::from)
             .map(|_| ())
@@ -244,7 +244,7 @@ impl str::FromStr for Manifest {
 
     /// Read manifest data from string
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let mut parser = toml::Parser::new(&input);
+        let mut parser = toml::Parser::new(input);
 
         parser.parse()
             .ok_or_else(|| format_parse_error(&parser))
@@ -273,7 +273,7 @@ mod tests {
         let mut manifest = Manifest { data: toml::Table::new() };
         let clone = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
+        let _ = manifest.insert_into_table(&["dependencies".to_owned()], &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
         assert_eq!(manifest, clone);
     }
@@ -290,7 +290,7 @@ mod tests {
         let mut manifest = Manifest { data: toml::Table::new() };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
-        let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &other_dep);
+        let _ = manifest.insert_into_table(&["dependencies".to_owned()], &other_dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     }
 }

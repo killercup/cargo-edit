@@ -51,15 +51,13 @@ impl Args {
             vec!["dev-dependencies".to_owned()]
         } else if self.flag_build {
             vec!["build-dependencies".to_owned()]
-        } else {
-            if let Some(ref target) = self.flag_target {
-                if target.is_empty() {
-                    panic!("Target specification may not be empty");
-                }
-                vec!["target".to_owned(), target.clone(), "dependencies".to_owned()]
-            } else {
-                vec!["dependencies".to_owned()]
+        } else if let Some(ref target) = self.flag_target {
+            if target.is_empty() {
+                panic!("Target specification may not be empty");
             }
+            vec!["target".to_owned(), target.clone(), "dependencies".to_owned()]
+        } else {
+            vec!["dependencies".to_owned()]
         }
     }
 
@@ -68,7 +66,7 @@ impl Args {
         if !self.arg_crates.is_empty() {
             let mut result = Vec::<Dependency>::new();
             for arg_crate in &self.arg_crates {
-                let le_crate = if crate_name_has_version(&arg_crate) {
+                let le_crate = if crate_name_has_version(arg_crate) {
                         try!(parse_crate_name_with_version(arg_crate))
                     } else {
                         let v = try!(get_latest_version(&self.arg_crate));
@@ -186,7 +184,7 @@ fn parse_crate_name_from_uri(name: &str) -> Result<Dependency, Box<Error>> {
             return Ok(Dependency::new(crate_name).set_git(name));
         }
     } else if crate_name_is_path(name) {
-        if let Ok(ref crate_name) = get_crate_name_from_path(&name) {
+        if let Ok(ref crate_name) = get_crate_name_from_path(name) {
             return Ok(Dependency::new(crate_name).set_path(name));
         }
     }
