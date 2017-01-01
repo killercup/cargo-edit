@@ -67,6 +67,15 @@ impl Dependency {
         self
     }
 
+    /// Get version of dependency
+    pub fn version(&self) -> Option<&str> {
+        if let DependencySource::Version(ref version) = self.source {
+            Some(&version)
+        } else {
+            None
+        }
+    }
+
     /// Convert dependency to TOML
     ///
     /// Returns a tuple with the dependency's name and either the version as a String or the

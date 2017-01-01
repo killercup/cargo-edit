@@ -4,35 +4,40 @@ use rustc_serialize::json;
 use rustc_serialize::json::{BuilderError, Json};
 use curl::{ErrCode, http};
 use curl::http::handle::{Method, Request};
-use cargo_edit::Manifest;
+use cargo_edit::{Dependency, Manifest};
 use regex::Regex;
 
 const REGISTRY_HOST: &'static str = "https://crates.io";
 
 /// Query latest version from crates.io
 ///
-/// The latest version will be returned as a string. This will fail, when
+/// The latest version will be returned as a `Dependency`. This will fail, when
 ///
 /// - there is no Internet connection,
 /// - the response from crates.io is an error or in an incorrect format,
 /// - or when a crate with the given name does not exist on crates.io.
-pub fn get_latest_version(crate_name: &str) -> Result<String, FetchVersionError> {
+pub fn get_latest_dependency(crate_name: &str) -> Result<Dependency, FetchVersionError> {
     if env::var("CARGO_IS_TEST").is_ok() {
-        // We are in a simulated reality. Nothing is real here.
-        // FIXME: Use actual test handling code.
-        return Ok("CURRENT_VERSION_TEST".into());
+        return Ok(Dependency::new(crate_name).set_version("CURRENT_VERSION_TEST".into()));
     }
 
     let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 
-    crate_json.as_object()
-        .and_then(|c| c.get("crate"))
-        .and_then(|c| c.as_object())
-        .and_then(|c| c.get("max_version"))
+    let name = try!(crate_json.find_path(&["crate", "name"])
+        .and_then(|n| n.as_string())
+        .ok_or(FetchVersionError::CratesIo(CratesIoError::NotFound)));
+
+    if name != crate_name {
+        println!("WARN: Added {} instead of {}", name, crate_name);
+    }
+
+    let version = try!(crate_json.find_path(&["crate", "max_version"])
         .and_then(|v| v.as_string())
         .map(|v| v.to_owned())
-        .ok_or(FetchVersionError::GetVersion)
+        .ok_or(FetchVersionError::GetVersion));
+
+    Ok(Dependency::new(name).set_version(&version))
 }
 
 quick_error! {

@@ -459,6 +459,24 @@ fn adds_dependency_with_custom_target() {
 
 
 #[test]
+#[cfg(feature="test-external-apis")]
+fn adds_dependency_normalized_name() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.linked-hash-map").is_none());
+
+    assert_cli!("target/debug/cargo-add", &["add", "linked_hash_map", &format!("--manifest-path={}", manifest)] => Success,
+            "WARN: Added linked-hash-map instead of linked_hash_map").unwrap();
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.linked-hash-map").is_some());
+}
+
+
+#[test]
 #[should_panic]
 fn fails_to_add_dependency_with_empty_target() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
