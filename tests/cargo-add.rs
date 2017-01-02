@@ -446,7 +446,7 @@ fn adds_dependency_with_custom_target() {
     let toml = get_toml(&manifest);
     // Get package by hand because toml-rs does not currently handle escaping dots in lookup()
     let target = toml.lookup("target").expect("target dependency not added");
-    if let &toml::Value::Table(ref table) = target {
+    if let toml::Value::Table(ref table) = *target {
         let win_target = table.get("x86_64/windows.json").expect("target spec not found");
         let val = win_target.lookup("dependencies.my-package1")
             .expect("target dependency not added");

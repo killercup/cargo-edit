@@ -8,7 +8,6 @@ use std::ffi::OsStr;
 /// Create temporary working directory with Cargo.toml mainifest
 pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
     let tmpdir = tempdir::TempDir::new("cargo-add-test")
-        .ok()
         .expect("failed to construct temporary directory");
     fs::copy(source, tmpdir.path().join("Cargo.toml"))
         .unwrap_or_else(|err| panic!("could not copy test manifest: {}", err));
