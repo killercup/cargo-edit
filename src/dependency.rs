@@ -70,7 +70,7 @@ impl Dependency {
     /// Get version of dependency
     pub fn version(&self) -> Option<&str> {
         if let DependencySource::Version(ref version) = self.source {
-            Some(&version)
+            Some(version)
         } else {
             None
         }

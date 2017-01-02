@@ -165,7 +165,7 @@ impl Manifest {
                              dep: &Dependency)
                              -> Result<(), ManifestError> {
         let (ref name, ref data) = dep.to_toml();
-        let ref mut manifest = self.data;
+        let manifest = &mut self.data;
 
         let mut entry = manifest;
         for part in table {
@@ -202,7 +202,7 @@ impl Manifest {
     /// ```
     #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<(), ManifestError> {
-        let ref mut manifest = self.data;
+        let manifest = &mut self.data;
         let entry = manifest.entry(String::from(table));
 
         match entry {
