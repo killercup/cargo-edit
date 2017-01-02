@@ -23,13 +23,25 @@ pub fn get_latest_version(crate_name: &str) -> Result<String, FetchVersionError>
         return Ok("CURRENT_VERSION_TEST".into());
     }
 
-    let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
+    let crate_data = try!(fetch_cratesio(&format!("/crates/{}/versions", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 
     crate_json.as_object()
-        .and_then(|c| c.get("crate"))
-        .and_then(|c| c.as_object())
-        .and_then(|c| c.get("max_version"))
+        .and_then(|c| c.get("versions"))
+        .and_then(|c| c.as_array())
+        .and_then(|c| {
+            for version in c {
+                let version_object = version.as_object();
+                let yanked = version_object
+                    .and_then(|v| v.get("yanked"))
+                    .and_then(|v| v.as_boolean());
+                if let Some(false) = yanked {
+                    return version_object;
+                }
+            }
+            return None;
+        })
+        .and_then(|v| v.get("num"))
         .and_then(|v| v.as_string())
         .map(|v| v.to_owned())
         .ok_or(FetchVersionError::GetVersion)
