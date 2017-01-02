@@ -47,6 +47,46 @@ fn read_latest_version(crate_json: Json) -> Result<String, FetchVersionError> {
         .ok_or(FetchVersionError::GetVersion)
 }
 
+#[test]
+fn get_latest_version_from_json_test() {
+    let json = Json::from_str(r#"{
+  "versions": [
+    {
+      "crate": "treexml",
+      "num": "0.3.1",
+      "yanked": true
+    },
+    {
+      "crate": "treexml",
+      "num": "0.3.0",
+      "yanked": false
+    }
+  ]
+}"#).unwrap();
+
+    assert_eq!(read_latest_version(json).unwrap(), "0.3.0");
+}
+
+#[test]
+fn get_no_latest_version_from_json_when_all_are_yanked() {
+    let json = Json::from_str(r#"{
+  "versions": [
+    {
+      "crate": "treexml",
+      "num": "0.3.1",
+      "yanked": true
+    },
+    {
+      "crate": "treexml",
+      "num": "0.3.0",
+      "yanked": true
+    }
+  ]
+}"#).unwrap();
+
+    assert!(read_latest_version(json).is_err());
+}
+
 quick_error! {
     #[derive(Debug)]
     pub enum FetchVersionError {
