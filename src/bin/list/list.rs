@@ -1,8 +1,9 @@
-use pad::{Alignment, PadStr};
-use toml;
+
 
 use cargo_edit::Manifest;
 use list_error::ListError;
+use pad::{Alignment, PadStr};
+use toml;
 
 /// List the dependencies for manifest section
 #[allow(deprecated)] // connect -> join
@@ -41,11 +42,7 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, ListEr
                             name =
                                 name.pad_to_width_with_alignment(name_max_len, Alignment::Left),
                             version = version,
-                            optional = if optional {
-                                " (optional)"
-                            } else {
-                                ""
-                            }));
+                            optional = if optional { " (optional)" } else { "" }));
     }
 
     Ok(output.connect("\n"))

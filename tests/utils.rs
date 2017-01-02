@@ -2,8 +2,8 @@ extern crate tempdir;
 extern crate toml;
 
 use std::{fs, process};
-use std::io::prelude::*;
 use std::ffi::OsStr;
+use std::io::prelude::*;
 
 /// Create temporary working directory with Cargo.toml mainifest
 pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {

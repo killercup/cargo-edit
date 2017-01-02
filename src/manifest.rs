@@ -1,13 +1,12 @@
+use dependency::Dependency;
+use std::{env, str};
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
-use std::{env, str};
 use std::error::Error;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use toml;
-
-use dependency::Dependency;
 
 /// Enumeration of errors which can occur when working with a rust manifest.
 quick_error! {
@@ -264,8 +263,8 @@ fn format_parse_error(parser: &toml::Parser) -> Option<ManifestError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use dependency::Dependency;
+    use super::*;
     use toml;
 
     #[test]

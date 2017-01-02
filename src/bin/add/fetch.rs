@@ -1,11 +1,12 @@
-use std::env;
-use std::path::Path;
-use rustc_serialize::json;
-use rustc_serialize::json::{BuilderError, Json};
+
+use cargo_edit::{Dependency, Manifest};
 use curl::{ErrCode, http};
 use curl::http::handle::{Method, Request};
-use cargo_edit::{Dependency, Manifest};
 use regex::Regex;
+use rustc_serialize::json;
+use rustc_serialize::json::{BuilderError, Json};
+use std::env;
+use std::path::Path;
 
 const REGISTRY_HOST: &'static str = "https://crates.io";
 
@@ -20,7 +21,8 @@ pub fn get_latest_dependency(crate_name: &str) -> Result<Dependency, FetchVersio
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
-        return Ok(Dependency::new(crate_name).set_version(&format!("{}--CURRENT_VERSION_TEST", crate_name)));
+        return Ok(Dependency::new(crate_name)
+            .set_version(&format!("{}--CURRENT_VERSION_TEST", crate_name)));
     }
 
     let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
@@ -66,39 +68,40 @@ fn read_latest_version(crate_json: Json) -> Result<Dependency, FetchVersionError
 #[test]
 fn get_latest_version_from_json_test() {
     let json = Json::from_str(r#"{
-  "versions": [
-    {
-      "crate": "treexml",
-      "num": "0.3.1",
-      "yanked": true
-    },
-    {
-      "crate": "treexml",
-      "num": "0.3.0",
-      "yanked": false
-    }
-  ]
-}"#).unwrap();
+      "versions": [
+        {
+          "crate": "treexml",
+          "num": "0.3.1",
+          "yanked": true
+        },
+        {
+          "crate": "treexml",
+          "num": "0.3.0",
+          "yanked": false
+        }
+      ]
+    }"#).unwrap();
 
-    assert_eq!(read_latest_version(json).unwrap().version().unwrap(), "0.3.0");
+    assert_eq!(read_latest_version(json).unwrap().version().unwrap(),
+               "0.3.0");
 }
 
 #[test]
 fn get_no_latest_version_from_json_when_all_are_yanked() {
     let json = Json::from_str(r#"{
-  "versions": [
-    {
-      "crate": "treexml",
-      "num": "0.3.1",
-      "yanked": true
-    },
-    {
-      "crate": "treexml",
-      "num": "0.3.0",
-      "yanked": true
-    }
-  ]
-}"#).unwrap();
+      "versions": [
+        {
+          "crate": "treexml",
+          "num": "0.3.1",
+          "yanked": true
+        },
+        {
+          "crate": "treexml",
+          "num": "0.3.0",
+          "yanked": true
+        }
+      ]
+    }"#).unwrap();
 
     assert!(read_latest_version(json).is_err());
 }
