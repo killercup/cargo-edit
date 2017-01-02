@@ -20,7 +20,7 @@ pub fn get_latest_version(crate_name: &str) -> Result<String, FetchVersionError>
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
-        return Ok("CURRENT_VERSION_TEST".into());
+        return Ok(format!("{}--CURRENT_VERSION_TEST", crate_name));
     }
 
     let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
