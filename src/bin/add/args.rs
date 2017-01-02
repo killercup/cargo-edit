@@ -69,7 +69,7 @@ impl Args {
                 let le_crate = if crate_name_has_version(arg_crate) {
                         try!(parse_crate_name_with_version(arg_crate))
                     } else {
-                        let v = try!(get_latest_version(&self.arg_crate));
+                        let v = try!(get_latest_version(arg_crate));
                         Dependency::new(arg_crate).set_version(&v)
                     }
                     .set_optional(self.flag_optional);
