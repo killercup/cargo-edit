@@ -14,8 +14,8 @@ extern crate curl;
 extern crate quick_error;
 
 use std::error::Error;
-use std::process;
 use std::io::{self, Write};
+use std::process;
 
 extern crate cargo_edit;
 use cargo_edit::Manifest;

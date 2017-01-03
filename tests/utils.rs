@@ -2,13 +2,12 @@ extern crate tempdir;
 extern crate toml;
 
 use std::{fs, process};
-use std::io::prelude::*;
 use std::ffi::OsStr;
+use std::io::prelude::*;
 
 /// Create temporary working directory with Cargo.toml mainifest
 pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
     let tmpdir = tempdir::TempDir::new("cargo-add-test")
-        .ok()
         .expect("failed to construct temporary directory");
     fs::copy(source, tmpdir.path().join("Cargo.toml"))
         .unwrap_or_else(|err| panic!("could not copy test manifest: {}", err));

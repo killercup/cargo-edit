@@ -1,9 +1,10 @@
 //! Handle `cargo add` arguments
-use semver;
-use std::error::Error;
+
 use cargo_edit::Dependency;
 use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
-            get_latest_version};
+            get_latest_dependency};
+use semver;
+use std::error::Error;
 
 macro_rules! toml_table {
     ($($key:expr => $value:expr),+) => {
@@ -69,8 +70,7 @@ impl Args {
                 let le_crate = if crate_name_has_version(arg_crate) {
                         try!(parse_crate_name_with_version(arg_crate))
                     } else {
-                        let v = try!(get_latest_version(&self.arg_crate));
-                        Dependency::new(arg_crate).set_version(&v)
+                        try!(get_latest_dependency(arg_crate))
                     }
                     .set_optional(self.flag_optional);
 
@@ -96,10 +96,13 @@ impl Args {
                 } else if let Some(ref path) = self.flag_path {
                     dependency.set_path(path)
                 } else {
+                    let dep = try!(get_latest_dependency(&self.arg_crate));
                     let v = format!("{prefix}{version}",
                                     prefix = self.get_upgrade_prefix().unwrap_or(""),
-                                    version = try!(get_latest_version(&self.arg_crate)));
-                    dependency.set_version(&v)
+                                    // if version is unavailable
+                                    // `get_latest_dependency` must have returned `Err(FetchVersionError::GetVersion)`
+                                    version = dep.version().unwrap_or_else(|| unreachable!()));
+                    dep.set_version(&v)
                 }
             } else {
                 try!(parse_crate_name_from_uri(&self.arg_crate))

@@ -20,7 +20,7 @@ fn adds_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.my-package").unwrap();
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "my-package--CURRENT_VERSION_TEST");
 }
 
 fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
@@ -38,7 +38,7 @@ fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.my-package").unwrap();
 
-    let expected_result = format!("{0}CURRENT_VERSION_TEST", expected_prefix);
+    let expected_result = format!("{0}my-package--CURRENT_VERSION_TEST", expected_prefix);
     assert_eq!(val.as_str().unwrap(), expected_result);
 }
 
@@ -61,7 +61,7 @@ fn adds_dependency_with_upgrade_all() {
 
 #[test]
 fn adds_dependency_with_upgrade_bad() {
-   upgrade_test_helper("an_invalid_string", "");
+    upgrade_test_helper("an_invalid_string", "");
 }
 
 #[test]
@@ -78,9 +78,9 @@ fn adds_multiple_dependencies() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.my-package1").unwrap();
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
     let val = toml.lookup("dependencies.my-package2").unwrap();
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "my-package2--CURRENT_VERSION_TEST");
 }
 
 #[test]
@@ -98,9 +98,11 @@ fn adds_dev_build_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = toml.lookup("dev-dependencies.my-dev-package").unwrap();
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(),
+               "my-dev-package--CURRENT_VERSION_TEST");
     let val = toml.lookup("build-dependencies.my-build-package").unwrap();
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(),
+               "my-build-package--CURRENT_VERSION_TEST");
 
     // cannot run with both --dev and --build at the same time
     let call = process::Command::new("target/debug/cargo-add")
@@ -132,13 +134,17 @@ fn adds_multiple_dev_build_dependencies() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     let val = toml.lookup("dev-dependencies.my-dev-package1").unwrap();
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(),
+               "my-dev-package1--CURRENT_VERSION_TEST");
     let val = toml.lookup("dev-dependencies.my-dev-package2").unwrap();
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(),
+               "my-dev-package2--CURRENT_VERSION_TEST");
     let val = toml.lookup("build-dependencies.my-build-package1").unwrap();
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(),
+               "my-build-package1--CURRENT_VERSION_TEST");
     let val = toml.lookup("build-dependencies.my-build-package2").unwrap();
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(),
+               "my-build-package2--CURRENT_VERSION_TEST");
 }
 
 #[test]
@@ -218,7 +224,8 @@ fn adds_multiple_dependencies_with_some_versions() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     let val = toml.lookup("dependencies.my-package1").expect("not added");
-    assert_eq!(val.as_str().expect("not string"), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().expect("not string"),
+               "my-package1--CURRENT_VERSION_TEST");
     let val = toml.lookup("dependencies.my-package2").expect("not added");
     assert_eq!(val.as_str().expect("not string"), "0.2.3");
 }
@@ -413,7 +420,7 @@ fn adds_dependency_with_target_triple() {
 
     let val = toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1")
         .expect("target dependency not added");
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
 }
 
 #[test]
@@ -424,15 +431,14 @@ fn adds_dependency_with_target_cfg() {
     let toml = get_toml(&manifest);
     assert!(toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1").is_none());
 
-    execute_command(&["add", "--target", "cfg(unix)", "my-package1"],
-                    &manifest);
+    execute_command(&["add", "--target", "cfg(unix)", "my-package1"], &manifest);
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
 
     let val = toml.lookup("target.'cfg(unix)'.dependencies.my-package1")
         .expect("target dependency not added");
-    assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
 }
 
 #[test]
@@ -446,15 +452,33 @@ fn adds_dependency_with_custom_target() {
     let toml = get_toml(&manifest);
     // Get package by hand because toml-rs does not currently handle escaping dots in lookup()
     let target = toml.lookup("target").expect("target dependency not added");
-    if let &toml::Value::Table(ref table) = target {
+    if let toml::Value::Table(ref table) = *target {
         let win_target = table.get("x86_64/windows.json").expect("target spec not found");
         let val = win_target.lookup("dependencies.my-package1")
             .expect("target dependency not added");
-        assert_eq!(val.as_str().unwrap(), "CURRENT_VERSION_TEST");
+        assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
     } else {
         panic!("target is not a table");
     }
 
+}
+
+
+#[test]
+#[cfg(feature="test-external-apis")]
+fn adds_dependency_normalized_name() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.linked-hash-map").is_none());
+
+    assert_cli!("target/debug/cargo-add", &["add", "linked_hash_map", &format!("--manifest-path={}", manifest)] => Success,
+            "WARN: Added `linked-hash-map` instead of `linked_hash_map`").unwrap();
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    assert!(toml.lookup("dependencies.linked-hash-map").is_some());
 }
 
 

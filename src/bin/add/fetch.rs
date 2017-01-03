@@ -1,38 +1,109 @@
-use std::env;
-use std::path::Path;
-use rustc_serialize::json;
-use rustc_serialize::json::{BuilderError, Json};
+
+use cargo_edit::{Dependency, Manifest};
 use curl::{ErrCode, http};
 use curl::http::handle::{Method, Request};
-use cargo_edit::Manifest;
 use regex::Regex;
+use rustc_serialize::json;
+use rustc_serialize::json::{BuilderError, Json};
+use std::env;
+use std::path::Path;
 
 const REGISTRY_HOST: &'static str = "https://crates.io";
 
 /// Query latest version from crates.io
 ///
-/// The latest version will be returned as a string. This will fail, when
+/// The latest version will be returned as a `Dependency`. This will fail, when
 ///
 /// - there is no Internet connection,
 /// - the response from crates.io is an error or in an incorrect format,
 /// - or when a crate with the given name does not exist on crates.io.
-pub fn get_latest_version(crate_name: &str) -> Result<String, FetchVersionError> {
+pub fn get_latest_dependency(crate_name: &str) -> Result<Dependency, FetchVersionError> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
-        return Ok("CURRENT_VERSION_TEST".into());
+        return Ok(Dependency::new(crate_name)
+            .set_version(&format!("{}--CURRENT_VERSION_TEST", crate_name)));
     }
 
     let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 
-    crate_json.as_object()
-        .and_then(|c| c.get("crate"))
-        .and_then(|c| c.as_object())
-        .and_then(|c| c.get("max_version"))
-        .and_then(|v| v.as_string())
-        .map(|v| v.to_owned())
-        .ok_or(FetchVersionError::GetVersion)
+    let dep = try!(read_latest_version(crate_json));
+
+    if dep.name != crate_name {
+        println!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
+    }
+
+    Ok(dep)
+}
+
+/// Read latest version from JSON structure
+///
+/// Assumes the version are sorted so that the first non-yanked version is the
+/// latest, and thus the one we want.
+fn read_latest_version(crate_json: Json) -> Result<Dependency, FetchVersionError> {
+    let versions = try!(crate_json.as_object()
+        .and_then(|c| c.get("versions"))
+        .and_then(Json::as_array)
+        .ok_or(FetchVersionError::GetVersion));
+
+    let latest = try!(versions.iter()
+        .filter_map(Json::as_object)
+        .find(|&v| !v.get("yanked").and_then(Json::as_boolean).unwrap_or(true))
+        .ok_or(FetchVersionError::AllYanked));
+
+    let name = try!(latest.get("crate")
+        .and_then(Json::as_string)
+        .map(String::from)
+        .ok_or(FetchVersionError::CratesIo(CratesIoError::NotFound)));
+
+    let version = try!(latest.get("num")
+        .and_then(Json::as_string)
+        .map(String::from)
+        .ok_or(FetchVersionError::GetVersion));
+
+    Ok(Dependency::new(&name).set_version(&version))
+}
+
+#[test]
+fn get_latest_version_from_json_test() {
+    let json = Json::from_str(r#"{
+      "versions": [
+        {
+          "crate": "treexml",
+          "num": "0.3.1",
+          "yanked": true
+        },
+        {
+          "crate": "treexml",
+          "num": "0.3.0",
+          "yanked": false
+        }
+      ]
+    }"#).unwrap();
+
+    assert_eq!(read_latest_version(json).unwrap().version().unwrap(),
+               "0.3.0");
+}
+
+#[test]
+fn get_no_latest_version_from_json_when_all_are_yanked() {
+    let json = Json::from_str(r#"{
+      "versions": [
+        {
+          "crate": "treexml",
+          "num": "0.3.1",
+          "yanked": true
+        },
+        {
+          "crate": "treexml",
+          "num": "0.3.0",
+          "yanked": true
+        }
+      ]
+    }"#).unwrap();
+
+    assert!(read_latest_version(json).is_err());
 }
 
 quick_error! {
@@ -51,6 +122,7 @@ quick_error! {
             cause(err)
         }
         GetVersion { description("get version error") }
+        AllYanked { description("No non-yanked version found") }
     }
 }
 

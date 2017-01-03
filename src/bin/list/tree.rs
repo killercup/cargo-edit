@@ -1,9 +1,10 @@
-use std::collections::BTreeMap;
 
-use toml;
 
 use cargo_edit::Manifest;
 use list_error::ListError;
+use std::collections::BTreeMap;
+
+use toml;
 
 pub type PkgName = String;
 pub type PkgVersion = String;
@@ -97,20 +98,12 @@ fn list_deps_helper(pkgs: &Packages,
         // don't want
         // to print out a branch.
         for is_last in levels.iter().cloned() {
-            let indent = if is_last {
-                "    "
-            } else {
-                "│   "
-            };
+            let indent = if is_last { "    " } else { "│   " };
             output.push_str(indent);
         }
 
         let is_last = i == deps.len() - 1;
-        let branch = if is_last {
-            "└──"
-        } else {
-            "├──"
-        };
+        let branch = if is_last { "└──" } else { "├──" };
 
         output.push_str(&format!("{} {} ({})\n", branch, dep.0, dep.1));
 
