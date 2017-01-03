@@ -4,7 +4,7 @@ authors = ["Without Boats <lee@libertad.ucsd.edu>",
            "Pascal Hertleif <killercup@gmail.com>",
            "Jonas Platte <mail@jonasplatte.de>"]
 
-version = "0.1.4"
+version = "0.1.5"
 
 description = "This extends Cargo to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo list`."
 readme = "README.md"
