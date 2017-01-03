@@ -1,4 +1,3 @@
-
 use cargo_edit::{Dependency, Manifest};
 use curl::{ErrCode, http};
 use curl::http::handle::{Method, Request};
@@ -80,7 +79,8 @@ fn get_latest_version_from_json_test() {
           "yanked": false
         }
       ]
-    }"#).unwrap();
+    }"#)
+        .unwrap();
 
     assert_eq!(read_latest_version(json).unwrap().version().unwrap(),
                "0.3.0");
@@ -101,7 +101,8 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
           "yanked": true
         }
       ]
-    }"#).unwrap();
+    }"#)
+        .unwrap();
 
     assert!(read_latest_version(json).is_err());
 }
@@ -216,11 +217,11 @@ pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
     re.captures(repo)
         .ok_or(FetchGitError::ParseRegex)
         .and_then(|cap| {
-            match (cap.at(1), cap.at(2)) {
+            match (cap.get(1), cap.get(2)) {
                 (Some(user), Some(repo)) => {
                     let url = format!("https://raw.githubusercontent.com/{}/{}/master/Cargo.toml",
-                                      user,
-                                      repo);
+                                      user.as_str(),
+                                      repo.as_str());
 
                     let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url)
                         .and_then(|m| {
@@ -248,9 +249,11 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String, FetchGitError> {
     re.captures(repo)
         .ok_or(FetchGitError::ParseRegex)
         .and_then(|cap| {
-            match (cap.at(1), cap.at(2)) {
+            match (cap.get(1), cap.get(2)) {
                 (Some(user), Some(repo)) => {
-                    let url = format!("https://gitlab.com/{}/{}/raw/master/Cargo.toml", user, repo);
+                    let url = format!("https://gitlab.com/{}/{}/raw/master/Cargo.toml",
+                                      user.as_str(),
+                                      repo.as_str());
 
                     let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url)
                         .and_then(|m| {
