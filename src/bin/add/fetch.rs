@@ -17,7 +17,7 @@ const REGISTRY_HOST: &'static str = "https://crates.io";
 /// - there is no Internet connection,
 /// - the response from crates.io is an error or in an incorrect format,
 /// - or when a crate with the given name does not exist on crates.io.
-pub fn get_latest_dependency(crate_name: &str, flag_fetch_prereleases: bool) -> Result<Dependency, FetchVersionError> {
+pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> Result<Dependency, FetchVersionError> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
@@ -28,7 +28,7 @@ pub fn get_latest_dependency(crate_name: &str, flag_fetch_prereleases: bool) -> 
     let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 
-    let dep = try!(read_latest_version(crate_json, flag_fetch_prereleases));
+    let dep = try!(read_latest_version(crate_json, flag_allow_prerelease));
 
     if dep.name != crate_name {
         println!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
@@ -50,7 +50,7 @@ fn version_is_stable(version: &Object) -> bool {
 ///
 /// Assumes the version are sorted so that the first non-yanked version is the
 /// latest, and thus the one we want.
-fn read_latest_version(crate_json: Json, flag_fetch_prereleases: bool) -> Result<Dependency, FetchVersionError> {
+fn read_latest_version(crate_json: Json, flag_allow_prerelease: bool) -> Result<Dependency, FetchVersionError> {
     let versions = try!(crate_json.as_object()
         .and_then(|c| c.get("versions"))
         .and_then(Json::as_array)
@@ -58,7 +58,7 @@ fn read_latest_version(crate_json: Json, flag_fetch_prereleases: bool) -> Result
 
     let latest = try!(versions.iter()
         .filter_map(Json::as_object)
-        .filter(|&v| flag_fetch_prereleases || version_is_stable(v))
+        .filter(|&v| flag_allow_prerelease || version_is_stable(v))
         .find(|&v| !v.get("yanked").and_then(Json::as_boolean).unwrap_or(true))
         .ok_or(FetchVersionError::NoneAvailable));
 

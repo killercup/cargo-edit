@@ -53,7 +53,7 @@ Options:
                             "none" (exact version), "patch" (`~` modifier), "minor"
                             (`^` modifier, default), or "all" (`>=`).
     --manifest-path=<path>  Path to the manifest to add a dependency to.
-    --fetch-prereleases     Include prerelease versions when fetching from crates.io (e.g.
+    --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.
     -h --help               Show this help page.
     --version               Show version.

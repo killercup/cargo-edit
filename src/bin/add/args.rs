@@ -44,7 +44,7 @@ pub struct Args {
     /// `---upgrade`
     pub flag_upgrade: Option<String>,
     /// '--fetch-prereleases'
-    pub flag_fetch_prereleases: bool,
+    pub flag_allow_prerelease: bool,
 }
 
 impl Args {
@@ -72,7 +72,7 @@ impl Args {
                 let le_crate = if crate_name_has_version(arg_crate) {
                         try!(parse_crate_name_with_version(arg_crate))
                     } else {
-                        try!(get_latest_dependency(arg_crate, self.flag_fetch_prereleases))
+                        try!(get_latest_dependency(arg_crate, self.flag_allow_prerelease))
                     }
                     .set_optional(self.flag_optional);
 
@@ -98,7 +98,7 @@ impl Args {
                 } else if let Some(ref path) = self.flag_path {
                     dependency.set_path(path)
                 } else {
-                    let dep = try!(get_latest_dependency(&self.arg_crate, self.flag_fetch_prereleases));
+                    let dep = try!(get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease));
                     let v = format!("{prefix}{version}",
                                     prefix = self.get_upgrade_prefix().unwrap_or(""),
                                     // if version is unavailable
@@ -144,7 +144,7 @@ impl Default for Args {
             flag_manifest_path: None,
             flag_version: false,
             flag_upgrade: None,
-            flag_fetch_prereleases: false,
+            flag_allow_prerelease: false,
         }
     }
 }
