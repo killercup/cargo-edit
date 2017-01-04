@@ -2,6 +2,7 @@
 name = "cargo-edit"
 authors = ["Without Boats <lee@libertad.ucsd.edu>",
            "Pascal Hertleif <killercup@gmail.com>",
+           "Sebastian Garrido <sebasgarcep@gmail.com>",
            "Jonas Platte <mail@jonasplatte.de>"]
 
 version = "0.1.5"
