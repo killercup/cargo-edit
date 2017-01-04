@@ -4,9 +4,9 @@ use curl::http::handle::{Method, Request};
 use regex::Regex;
 use rustc_serialize::json;
 use rustc_serialize::json::{BuilderError, Json, Object};
+use semver::Version;
 use std::env;
 use std::path::Path;
-use semver::Version;
 
 const REGISTRY_HOST: &'static str = "https://crates.io";
 
@@ -38,9 +38,12 @@ pub fn get_latest_dependency(crate_name: &str, flag_fetch_prereleases: bool) -> 
 }
 
 // Checks whether a version object is a stable release
-fn version_is_stable (version: &Object) -> bool {
-    version.get("num").and_then(Json::as_string).and_then(|s| Version::parse(s).ok())
-        .map(|s| !s.is_prerelease()).unwrap_or(false)
+fn version_is_stable(version: &Object) -> bool {
+    version.get("num")
+        .and_then(Json::as_string)
+        .and_then(|s| Version::parse(s).ok())
+        .map(|s| !s.is_prerelease())
+        .unwrap_or(false)
 }
 
 /// Read latest version from JSON structure
@@ -73,7 +76,7 @@ fn read_latest_version(crate_json: Json, flag_fetch_prereleases: bool) -> Result
 }
 
 #[test]
-fn get_latest_stable_version_from_json () {
+fn get_latest_stable_version_from_json() {
     let json = Json::from_str(r#"{
       "versions": [
         {
@@ -95,7 +98,7 @@ fn get_latest_stable_version_from_json () {
 }
 
 #[test]
-fn get_latest_unstable_or_stable_version_from_json () {
+fn get_latest_unstable_or_stable_version_from_json() {
     let json = Json::from_str(r#"{
       "versions": [
         {
