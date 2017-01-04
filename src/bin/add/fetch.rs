@@ -3,9 +3,10 @@ use curl::{ErrCode, http};
 use curl::http::handle::{Method, Request};
 use regex::Regex;
 use rustc_serialize::json;
-use rustc_serialize::json::{BuilderError, Json};
+use rustc_serialize::json::{BuilderError, Json, Object};
 use std::env;
 use std::path::Path;
+use semver::Version;
 
 const REGISTRY_HOST: &'static str = "https://crates.io";
 
@@ -16,7 +17,7 @@ const REGISTRY_HOST: &'static str = "https://crates.io";
 /// - there is no Internet connection,
 /// - the response from crates.io is an error or in an incorrect format,
 /// - or when a crate with the given name does not exist on crates.io.
-pub fn get_latest_dependency(crate_name: &str) -> Result<Dependency, FetchVersionError> {
+pub fn get_latest_dependency(crate_name: &str, flag_fetch_prereleases: bool) -> Result<Dependency, FetchVersionError> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
@@ -27,7 +28,7 @@ pub fn get_latest_dependency(crate_name: &str) -> Result<Dependency, FetchVersio
     let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 
-    let dep = try!(read_latest_version(crate_json));
+    let dep = try!(read_latest_version(crate_json, flag_fetch_prereleases));
 
     if dep.name != crate_name {
         println!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
@@ -36,11 +37,17 @@ pub fn get_latest_dependency(crate_name: &str) -> Result<Dependency, FetchVersio
     Ok(dep)
 }
 
+// Checks whether a version object is a stable release
+fn version_is_stable (version: &Object) -> bool {
+    version.get("num").and_then(Json::as_string).and_then(|s| Version::parse(s).ok())
+        .map(|s| !s.is_prerelease()).unwrap_or(false)
+}
+
 /// Read latest version from JSON structure
 ///
 /// Assumes the version are sorted so that the first non-yanked version is the
 /// latest, and thus the one we want.
-fn read_latest_version(crate_json: Json) -> Result<Dependency, FetchVersionError> {
+fn read_latest_version(crate_json: Json, flag_fetch_prereleases: bool) -> Result<Dependency, FetchVersionError> {
     let versions = try!(crate_json.as_object()
         .and_then(|c| c.get("versions"))
         .and_then(Json::as_array)
@@ -48,8 +55,9 @@ fn read_latest_version(crate_json: Json) -> Result<Dependency, FetchVersionError
 
     let latest = try!(versions.iter()
         .filter_map(Json::as_object)
+        .filter(|&v| flag_fetch_prereleases || version_is_stable(v))
         .find(|&v| !v.get("yanked").and_then(Json::as_boolean).unwrap_or(true))
-        .ok_or(FetchVersionError::AllYanked));
+        .ok_or(FetchVersionError::NoneAvailable));
 
     let name = try!(latest.get("crate")
         .and_then(Json::as_string)
@@ -62,6 +70,50 @@ fn read_latest_version(crate_json: Json) -> Result<Dependency, FetchVersionError
         .ok_or(FetchVersionError::GetVersion));
 
     Ok(Dependency::new(&name).set_version(&version))
+}
+
+#[test]
+fn get_latest_stable_version_from_json () {
+    let json = Json::from_str(r#"{
+      "versions": [
+        {
+          "crate": "foo",
+          "num": "0.6.0-alpha",
+          "yanked": false
+        },
+        {
+          "crate": "foo",
+          "num": "0.5.0",
+          "yanked": false
+        }
+      ]
+    }"#)
+        .unwrap();
+
+    assert_eq!(read_latest_version(json, false).unwrap().version().unwrap(),
+               "0.5.0");
+}
+
+#[test]
+fn get_latest_unstable_or_stable_version_from_json () {
+    let json = Json::from_str(r#"{
+      "versions": [
+        {
+          "crate": "foo",
+          "num": "0.6.0-alpha",
+          "yanked": false
+        },
+        {
+          "crate": "foo",
+          "num": "0.5.0",
+          "yanked": false
+        }
+      ]
+    }"#)
+        .unwrap();
+
+    assert_eq!(read_latest_version(json, true).unwrap().version().unwrap(),
+               "0.6.0-alpha");
 }
 
 #[test]
@@ -82,7 +134,7 @@ fn get_latest_version_from_json_test() {
     }"#)
         .unwrap();
 
-    assert_eq!(read_latest_version(json).unwrap().version().unwrap(),
+    assert_eq!(read_latest_version(json, false).unwrap().version().unwrap(),
                "0.3.0");
 }
 
@@ -104,7 +156,7 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     }"#)
         .unwrap();
 
-    assert!(read_latest_version(json).is_err());
+    assert!(read_latest_version(json, false).is_err());
 }
 
 quick_error! {
@@ -123,7 +175,9 @@ quick_error! {
             cause(err)
         }
         GetVersion { description("get version error") }
-        AllYanked { description("No non-yanked version found") }
+        NoneAvailable { description("No available versions exist. Either all were yanked or only \
+            prerelease versions exist. Trying with the --fetch-prereleases flag might solve \
+            the issue.") }
     }
 }
 
