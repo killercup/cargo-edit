@@ -88,6 +88,7 @@ fn handle_list(args: &Args) -> Result<String, Box<Error>> {
 }
 
 fn main() {
+    println!("\n\n    WARNING: cargo list is deprecated and slated to be removed when cargo-edit reaches 0.2\n\n");
     let args = docopt::Docopt::new(USAGE)
         .and_then(|d| d.decode::<Args>())
         .unwrap_or_else(|err| err.exit());
