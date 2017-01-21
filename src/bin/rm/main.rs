@@ -60,9 +60,9 @@ fn main() {
     }
 
     if let Err(err) = handle_rm(&args) {
-        write!(io::stderr(),
-               "Could not edit `Cargo.toml`.\n\nERROR: {}",
-               err)
+        writeln!(io::stderr(),
+                 "Could not edit `Cargo.toml`.\n\nERROR: {}",
+                 err)
             .unwrap();
         process::exit(1);
     }
