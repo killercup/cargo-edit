@@ -102,7 +102,7 @@ fn main() {
             println!("{}", list);
         }
         Err(err) => {
-            write!(io::stderr(), "{}\n", err).unwrap();
+            writeln!(io::stderr(), "{}", err).unwrap();
             process::exit(1);
         }
     }

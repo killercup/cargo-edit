@@ -94,9 +94,9 @@ fn main() {
     }
 
     if let Err(err) = handle_add(&args) {
-        write!(io::stderr(),
-               "Command failed due to unhandled error: {}",
-               err)
+        writeln!(io::stderr(),
+                 "Command failed due to unhandled error: {}",
+                 err)
             .unwrap();
         process::exit(1);
     }
