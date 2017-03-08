@@ -56,7 +56,7 @@ Options:
     --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.
     -h --help               Show this help page.
-    --version               Show version.
+    -V --version            Show version.
 
 This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
 or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name
