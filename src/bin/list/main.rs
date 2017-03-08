@@ -38,7 +38,7 @@ Options:
     --manifest-path=<path>  Path to the manifest to list dependencies of.
     --tree                  List dependencies recursively as tree.
     -h --help               Show this help page.
-    --version               Show version.
+    -V --version            Show version.
 
 Display a crate's dependencies using its Cargo.toml file.
 ";
