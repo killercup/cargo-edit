@@ -31,7 +31,7 @@ Options:
     -B --build              Remove crate as build dependency.
     --manifest-path=<path>  Path to the manifest to remove a dependency from.
     -h --help               Show this help page.
-    --version               Show version.
+    -V --version            Show version.
 
 Remove a dependency to a Cargo.toml manifest file.
 ";
