@@ -52,6 +52,7 @@ Options:
     --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
                             "none" (exact version), "patch" (`~` modifier), "minor"
                             (`^` modifier, default), or "all" (`>=`).
+    --update-only           Only add the updated dependency if it already exists.
     --manifest-path=<path>  Path to the manifest to add a dependency to.
     --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.
@@ -72,12 +73,17 @@ fn handle_add(args: &Args) -> Result<(), Box<Error>> {
     let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
     let deps = try!(args.parse_dependencies());
 
-    for dep in deps {
-        if let Err(err) = manifest.insert_into_table(&args.get_section(), &dep) {
+    deps
+        .iter()
+        .map(|dep| if args.flag_update_only {
+            manifest.update_table_entry(&args.get_section(), &dep)
+        } else {
+            manifest.insert_into_table(&args.get_section(), &dep)})
+        .collect::<Result<Vec<_>,_>>()
+        .map_err(|err| {
             println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
-            return Err(From::from(err));
-        }
-    }
+            err
+        })?;
 
     let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
     manifest.write_to_file(&mut file)
