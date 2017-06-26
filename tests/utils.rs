@@ -44,10 +44,3 @@ pub fn get_toml(manifest_path: &str) -> toml::Value {
     f.read_to_string(&mut s).unwrap();
     s.parse().unwrap()
 }
-
-/// Assert 'failure' deps are not present
-pub fn no_manifest_failures(manifest: &toml::Value) -> bool {
-    manifest.get("dependencies.failure").is_none() &&
-    manifest.get("dev-dependencies.failure").is_none() &&
-    manifest.get("build-dependencies.failure").is_none()
-}

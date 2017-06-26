@@ -5,7 +5,14 @@ extern crate toml;
 
 use std::process;
 mod utils;
-use utils::{clone_out_test, execute_command, get_toml, no_manifest_failures};
+use utils::{clone_out_test, execute_command, get_toml};
+
+/// Check 'failure' deps are not present
+fn no_manifest_failures(manifest: &toml::Value) -> bool {
+    manifest.get("dependencies.failure").is_none() &&
+    manifest.get("dev-dependencies.failure").is_none() &&
+    manifest.get("build-dependencies.failure").is_none()
+}
 
 #[test]
 fn adds_dependency() {
