@@ -28,7 +28,7 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
     let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 
-    let dep = try!(read_latest_version(crate_json, flag_allow_prerelease));
+    let dep = try!(read_latest_version(&crate_json, flag_allow_prerelease));
 
     if dep.name != crate_name {
         println!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
@@ -50,7 +50,7 @@ fn version_is_stable(version: &Object) -> bool {
 ///
 /// Assumes the version are sorted so that the first non-yanked version is the
 /// latest, and thus the one we want.
-fn read_latest_version(crate_json: Json, flag_allow_prerelease: bool) -> Result<Dependency, FetchVersionError> {
+fn read_latest_version(crate_json: &Json, flag_allow_prerelease: bool) -> Result<Dependency, FetchVersionError> {
     let versions = try!(crate_json.as_object()
         .and_then(|c| c.get("versions"))
         .and_then(Json::as_array)
