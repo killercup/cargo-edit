@@ -583,7 +583,7 @@ fn upgrade_dependency_version() {
 
     // Verify that `versioned-package` has been updated successfully.
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.versioned-package").expect("not added");
+    let val = toml.get("dependencies").unwrap().get("versioned-package").expect("not added");
     assert_eq!(val.as_str().expect("not string"), "versioned-package--CURRENT_VERSION_TEST");
 }
 
@@ -598,7 +598,7 @@ fn fails_to_update_missing_dependency() {
 
     // Verify that `failure` has not been added
     assert!(no_manifest_failures(&get_toml(&manifest)));
-    get_toml(&manifest).lookup("dependencies.failure").expect("not added");
+    get_toml(&manifest).get("dependencies").unwrap().get("failure").expect("not added");
 }
 
 #[test]

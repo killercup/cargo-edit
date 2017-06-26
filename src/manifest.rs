@@ -292,7 +292,7 @@ mod tests {
 
     #[test]
     fn update_dependency() {
-        let mut manifest = Manifest { data: toml::Table::new() };
+        let mut manifest = Manifest { data: toml::value::Table::new() };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         manifest.insert_into_table(&["dependencies".to_owned()], &dep).unwrap();
 
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn update_wrong_dependency() {
-        let mut manifest = Manifest { data: toml::Table::new() };
+        let mut manifest = Manifest { data: toml::value::Table::new() };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         manifest.insert_into_table(&["dependencies".to_owned()], &dep).unwrap();
         let original = manifest.clone();
