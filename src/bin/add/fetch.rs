@@ -338,7 +338,7 @@ pub fn get_crate_name_from_path(path: &str) -> Result<String, FetchGitError> {
 fn get_name_from_manifest(manifest: &Manifest) -> Result<String, FetchGitError> {
     manifest.data
         .get("package")
-        .and_then(|m| m.lookup("name"))
+        .and_then(|m| m.get("name"))
         .and_then(|name| name.as_str().map(|s| s.to_string()))
         .ok_or(FetchGitError::ParseCargoToml)
 }

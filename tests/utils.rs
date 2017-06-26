@@ -42,12 +42,12 @@ pub fn get_toml(manifest_path: &str) -> toml::Value {
     let mut f = fs::File::open(manifest_path).unwrap();
     let mut s = String::new();
     f.read_to_string(&mut s).unwrap();
-    toml::Value::Table(toml::Parser::new(&s).parse().unwrap())
+    s.parse().unwrap()
 }
 
 /// Assert 'failure' deps are not present
 pub fn no_manifest_failures(manifest: &toml::Value) -> bool {
-    manifest.lookup("dependencies.failure").is_none() &&
-    manifest.lookup("dev-dependencies.failure").is_none() &&
-    manifest.lookup("build-dependencies.failure").is_none()
+    manifest.get("dependencies.failure").is_none() &&
+    manifest.get("dev-dependencies.failure").is_none() &&
+    manifest.get("build-dependencies.failure").is_none()
 }

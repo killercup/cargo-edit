@@ -13,13 +13,13 @@ fn adds_dependency() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.my-package").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "my-package"], &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.my-package").unwrap();
+    let val = toml.get("dependencies").unwrap().get("my-package").unwrap();
     assert_eq!(val.as_str().unwrap(), "my-package--CURRENT_VERSION_TEST");
 }
 
@@ -28,7 +28,7 @@ fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.my-package").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     let upgrade_arg = format!("--upgrade={0}", upgrade_method);
 
@@ -36,7 +36,7 @@ fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.my-package").unwrap();
+    let val = toml.get("dependencies").unwrap().get("my-package").unwrap();
 
     let expected_result = format!("{0}my-package--CURRENT_VERSION_TEST", expected_prefix);
     assert_eq!(val.as_str().unwrap(), expected_result);
@@ -70,16 +70,15 @@ fn adds_multiple_dependencies() {
 
     // dependencies not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.my-package1").is_none());
-    assert!(toml.lookup("dependencies.my-package2").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "my-package1", "my-package2"], &manifest);
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.my-package1").unwrap();
+    let val = toml.get("dependencies").unwrap().get("my-package1").unwrap();
     assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
-    let val = toml.lookup("dependencies.my-package2").unwrap();
+    let val = toml.get("dependencies").unwrap().get("my-package2").unwrap();
     assert_eq!(val.as_str().unwrap(), "my-package2--CURRENT_VERSION_TEST");
 }
 
@@ -89,18 +88,18 @@ fn adds_dev_build_dependency() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dev-dependencies.my-dev-package").is_none());
-    assert!(toml.lookup("build-dependencies.my-build-package").is_none());
+    assert!(toml.get("dev-dependencies").is_none());
+    assert!(toml.get("build-dependencies").is_none());
 
     execute_command(&["add", "my-dev-package", "--dev"], &manifest);
     execute_command(&["add", "my-build-package", "--build"], &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dev-dependencies.my-dev-package").unwrap();
+    let val = toml.get("dev-dependencies").unwrap().get("my-dev-package").unwrap();
     assert_eq!(val.as_str().unwrap(),
                "my-dev-package--CURRENT_VERSION_TEST");
-    let val = toml.lookup("build-dependencies.my-build-package").unwrap();
+    let val = toml.get("build-dependencies").unwrap().get("my-build-package").unwrap();
     assert_eq!(val.as_str().unwrap(),
                "my-build-package--CURRENT_VERSION_TEST");
 
@@ -121,10 +120,10 @@ fn adds_multiple_dev_build_dependencies() {
 
     // dependencies not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dev-dependencies.my-dev-package1").is_none());
-    assert!(toml.lookup("dev-dependencies.my-dev-package2").is_none());
-    assert!(toml.lookup("build-dependencies.my-build-package1").is_none());
-    assert!(toml.lookup("build-dependencies.my-build-package2").is_none());
+    assert!(toml.get("dev-dependencies").is_none());
+    assert!(toml.get("dev-dependencies").is_none());
+    assert!(toml.get("build-dependencies").is_none());
+    assert!(toml.get("build-dependencies").is_none());
 
     execute_command(&["add", "my-dev-package1", "my-dev-package2", "--dev"],
                     &manifest);
@@ -133,16 +132,16 @@ fn adds_multiple_dev_build_dependencies() {
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dev-dependencies.my-dev-package1").unwrap();
+    let val = toml.get("dev-dependencies").unwrap().get("my-dev-package1").unwrap();
     assert_eq!(val.as_str().unwrap(),
                "my-dev-package1--CURRENT_VERSION_TEST");
-    let val = toml.lookup("dev-dependencies.my-dev-package2").unwrap();
+    let val = toml.get("dev-dependencies").unwrap().get("my-dev-package2").unwrap();
     assert_eq!(val.as_str().unwrap(),
                "my-dev-package2--CURRENT_VERSION_TEST");
-    let val = toml.lookup("build-dependencies.my-build-package1").unwrap();
+    let val = toml.get("build-dependencies").unwrap().get("my-build-package1").unwrap();
     assert_eq!(val.as_str().unwrap(),
                "my-build-package1--CURRENT_VERSION_TEST");
-    let val = toml.lookup("build-dependencies.my-build-package2").unwrap();
+    let val = toml.get("build-dependencies").unwrap().get("my-build-package2").unwrap();
     assert_eq!(val.as_str().unwrap(),
                "my-build-package2--CURRENT_VERSION_TEST");
 }
@@ -153,14 +152,14 @@ fn adds_specified_version() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.versioned-package").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "versioned-package", "--vers", ">=0.1.1"],
                     &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.versioned-package").expect("not added");
+    let val = toml.get("dependencies").unwrap().get("versioned-package").expect("not added");
     assert_eq!(val.as_str().expect("not string"), ">=0.1.1");
 
     // cannot run with both --dev and --build at the same time
@@ -180,13 +179,13 @@ fn adds_specified_version_with_inline_notation() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.versioned-package").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "versioned-package@>=0.1.1"], &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.versioned-package").expect("not added");
+    let val = toml.get("dependencies").unwrap().get("versioned-package").expect("not added");
     assert_eq!(val.as_str().expect("not string"), ">=0.1.1");
 }
 
@@ -196,17 +195,17 @@ fn adds_multiple_dependencies_with_versions() {
 
     // dependencies not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.my-package1").is_none());
-    assert!(toml.lookup("dependencies.my-package2").is_none());
+    assert!(toml.get("dependencies").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "my-package1@>=0.1.1", "my-package2@0.2.3"],
                     &manifest);
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.my-package1").expect("not added");
+    let val = toml.get("dependencies").unwrap().get("my-package1").expect("not added");
     assert_eq!(val.as_str().expect("not string"), ">=0.1.1");
-    let val = toml.lookup("dependencies.my-package2").expect("not added");
+    let val = toml.get("dependencies").unwrap().get("my-package2").expect("not added");
     assert_eq!(val.as_str().expect("not string"), "0.2.3");
 }
 
@@ -216,17 +215,17 @@ fn adds_multiple_dependencies_with_some_versions() {
 
     // dependencies not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.my-package1").is_none());
-    assert!(toml.lookup("dependencies.my-package2").is_none());
+    assert!(toml.get("dependencies").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "my-package1", "my-package2@0.2.3"], &manifest);
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.my-package1").expect("not added");
+    let val = toml.get("dependencies").unwrap().get("my-package1").expect("not added");
     assert_eq!(val.as_str().expect("not string"),
                "my-package1--CURRENT_VERSION_TEST");
-    let val = toml.lookup("dependencies.my-package2").expect("not added");
+    let val = toml.get("dependencies").unwrap().get("my-package2").expect("not added");
     assert_eq!(val.as_str().expect("not string"), "0.2.3");
 }
 
@@ -236,25 +235,25 @@ fn adds_git_source_using_flag() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.git-package").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "git-package", "--git", "http://localhost/git-package.git"],
                     &manifest);
 
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.git-package").unwrap();
+    let val = toml.get("dependencies").unwrap().get("git-package").unwrap();
     assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
                "http://localhost/git-package.git");
 
     // check this works with other flags (e.g. --dev) as well
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dev-dependencies.git-dev-pkg").is_none());
+    assert!(toml.get("dev-dependencies").is_none());
 
     execute_command(&["add", "git-dev-pkg", "--git", "http://site/gp.git", "--dev"],
                     &manifest);
 
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dev-dependencies.git-dev-pkg").unwrap();
+    let val = toml.get("dev-dependencies").unwrap().get("git-dev-pkg").unwrap();
     assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
                "http://site/gp.git");
 }
@@ -265,24 +264,24 @@ fn adds_local_source_using_flag() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.local").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "local", "--path", "/path/to/pkg"], &manifest);
 
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.local").unwrap();
+    let val = toml.get("dependencies").unwrap().get("local").unwrap();
     assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
                "/path/to/pkg");
 
     // check this works with other flags (e.g. --dev) as well
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dev-dependencies.local-dev").is_none());
+    assert!(toml.get("dev-dependencies").is_none());
 
     execute_command(&["add", "local-dev", "--path", "/path/to/pkg-dev", "--dev"],
                     &manifest);
 
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dev-dependencies.local-dev").unwrap();
+    let val = toml.get("dev-dependencies").unwrap().get("local-dev").unwrap();
     assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
                "/path/to/pkg-dev");
 }
@@ -294,26 +293,26 @@ fn adds_git_source_without_flag() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.cargo-edit").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "https://github.com/killercup/cargo-edit.git"],
                     &manifest);
 
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.cargo-edit").unwrap();
+    let val = toml.get("dependencies").unwrap().get("cargo-edit").unwrap();
     assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
                "https://github.com/killercup/cargo-edit.git");
 
     // check this works with other flags (e.g. --dev) as well
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dev-dependencies.cargo-edit").is_none());
+    assert!(toml.get("dev-dependencies").is_none());
 
     execute_command(&["add", "https://github.com/killercup/cargo-edit.git", "--dev"],
                     &manifest);
 
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dev-dependencies.cargo-edit").unwrap();
+    let val = toml.get("dev-dependencies").unwrap().get("cargo-edit").unwrap();
     assert_eq!(val.as_table().unwrap().get("git").unwrap().as_str().unwrap(),
                "https://github.com/killercup/cargo-edit.git");
 }
@@ -328,24 +327,24 @@ fn adds_local_source_without_flag() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.foo-crate").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", tmpdirstr], &manifest);
 
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.foo-crate").unwrap();
+    let val = toml.get("dependencies").unwrap().get("foo-crate").unwrap();
     assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
                tmpdirstr);
 
     // check this works with other flags (e.g. --dev) as well
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dev-dependencies.foo-crate").is_none());
+    assert!(toml.get("dev-dependencies").is_none());
 
     execute_command(&["add", tmpdirstr, "--dev"], &manifest);
 
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dev-dependencies.foo-crate").unwrap();
+    let val = toml.get("dev-dependencies").unwrap().get("foo-crate").unwrap();
     assert_eq!(val.as_table().unwrap().get("path").unwrap().as_str().unwrap(),
                tmpdirstr);
 }
@@ -373,14 +372,19 @@ fn adds_optional_dependency() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.versioned-package").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "versioned-package", "--vers", ">=0.1.1", "--optional"],
                     &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.versioned-package.optional").expect("not added optionally");
+    let val = toml.get("dependencies")
+                  .unwrap()
+                  .get("versioned-package")
+                  .unwrap()
+                  .get("optional")
+                  .expect("not added optionally");
     assert_eq!(val.as_bool().expect("optional not a bool"), true);
 }
 
@@ -390,18 +394,27 @@ fn adds_multiple_optional_dependencies() {
 
     // dependencies not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.my-package1").is_none());
-    assert!(toml.lookup("dependencies.my-package2").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "--optional", "my-package1", "my-package2"],
                     &manifest);
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
-    let val = toml.lookup("dependencies.my-package1.optional").expect("not added optionally");
-    assert_eq!(val.as_bool().expect("optional not a bool"), true);
-    let val = toml.lookup("dependencies.my-package2.optional").expect("not added optionally");
-    assert_eq!(val.as_bool().expect("optional not a bool"), true);
+    assert!(toml.get("dependencies")
+                .unwrap()
+                .get("my-package1")
+                .unwrap()
+                .get("optional")
+                .expect("not added optionally").as_bool().expect("optional not a bool"));
+    assert!(toml.get("dependencies")
+                .unwrap()
+                .get("my-package2")
+                .unwrap()
+                .get("optional")
+                .expect("not added optionally")
+                .as_bool()
+                .expect("optional not a bool"));
 }
 
 #[test]
@@ -410,7 +423,7 @@ fn adds_dependency_with_target_triple() {
 
     // dependencies not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1").is_none());
+    assert!(toml.get("target").is_none());
 
     execute_command(&["add", "--target", "i686-unknown-linux-gnu", "my-package1"],
                     &manifest);
@@ -418,7 +431,13 @@ fn adds_dependency_with_target_triple() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
 
-    let val = toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1")
+    let val = toml.get("target")
+        .unwrap()
+        .get("i686-unknown-linux-gnu")
+        .unwrap()
+        .get("dependencies")
+        .unwrap()
+        .get("my-package1")
         .expect("target dependency not added");
     assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
 }
@@ -429,14 +448,14 @@ fn adds_dependency_with_target_cfg() {
 
     // dependencies not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("target.i686-unknown-linux-gnu.dependencies.my-package1").is_none());
+    assert!(toml.get("target").is_none());
 
     execute_command(&["add", "--target", "cfg(unix)", "my-package1"], &manifest);
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
 
-    let val = toml.lookup("target.'cfg(unix)'.dependencies.my-package1")
+    let val = toml.get("target").unwrap().get("cfg(unix)").unwrap().get("dependencies").unwrap().get("my-package1")
         .expect("target dependency not added");
     assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
 }
@@ -450,12 +469,14 @@ fn adds_dependency_with_custom_target() {
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
-    // Get package by hand because toml-rs does not currently handle escaping dots in lookup()
-    let target = toml.lookup("target").expect("target dependency not added");
+    // Get package by hand because toml-rs does not currently handle escaping dots in get()
+    let target = toml.get("target").expect("target dependency not added");
     if let toml::Value::Table(ref table) = *target {
-        let win_target = table.get("x86_64/windows.json").expect("target spec not found");
-        let val = win_target.lookup("dependencies.my-package1")
-            .expect("target dependency not added");
+        let win_target = table.get("x86_64/windows.json") .expect("target spec not found");
+        let val = win_target.get("dependencies")
+                            .unwrap()
+                            .get("my-package1")
+                            .expect("target dependency not added");
         assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
     } else {
         panic!("target is not a table");
@@ -471,14 +492,14 @@ fn adds_dependency_normalized_name() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.linked-hash-map").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     assert_cli!("target/debug/cargo-add", &["add", "linked_hash_map", &format!("--manifest-path={}", manifest)] => Success,
             "WARN: Added `linked-hash-map` instead of `linked_hash_map`").unwrap();
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.linked-hash-map").is_some());
+    assert!(toml.get("dependencies").unwrap().get("linked-hash-map").is_some());
 }
 
 
@@ -500,7 +521,7 @@ fn fails_to_add_optional_dev_dependency() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.versioned-package").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     // Fails because optional dependencies must be in `dependencies` table.
     execute_command(&["add", "versioned-package", "--vers", ">=0.1.1", "--dev", "--optional"],
@@ -514,8 +535,8 @@ fn fails_to_add_multiple_optional_dev_dependencies() {
 
     // dependencies not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.my-package1").is_none());
-    assert!(toml.lookup("dependencies.my-package2").is_none());
+    assert!(toml.get("dependencies").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     // Fails because optional dependencies must be in `dependencies` table.
     execute_command(&["add", "--optional", "my-package1", "my-package2", "--dev"],
@@ -530,7 +551,7 @@ fn fails_to_add_inexistent_git_source_without_flag() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.cargo-edit").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "https://github.com/killercup/fake-git-repo.git"],
                     &manifest);
@@ -543,7 +564,7 @@ fn fails_to_add_inexistent_local_source_without_flag() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.lookup("dependencies.foo-crate").is_none());
+    assert!(toml.get("dependencies").is_none());
 
     execute_command(&["add", "./tests/fixtures/local"], &manifest);
 }

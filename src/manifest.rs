@@ -51,7 +51,7 @@ enum CargoFile {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Manifest {
     /// Manifest contents as TOML data
-    pub data: toml::Table,
+    pub data: toml::value::Table,
 }
 
 /// If a manifest is specified, return that one, otherise perform a manifest search starting from
@@ -192,7 +192,7 @@ impl Manifest {
     ///     use cargo_edit::{Dependency, Manifest};
     ///     use toml;
     ///
-    ///     let mut manifest = Manifest { data: toml::Table::new() };
+    ///     let mut manifest = Manifest { data: toml::value::Table::new() };
     ///     let dep = Dependency::new("cargo-edit").set_version("0.1.0");
     ///     let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
@@ -243,22 +243,12 @@ impl str::FromStr for Manifest {
 
     /// Read manifest data from string
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let mut parser = toml::Parser::new(input);
+        let d: toml::value::Value = input.parse()?;
+        let e = d.as_table()
+                 .ok_or_else(|| ManifestError::NonExistentTable(String::from("Main")))?;
 
-        parser.parse()
-            .ok_or_else(|| format_parse_error(&parser))
-            .map_err(Option::unwrap)
-            .map_err(From::from)
-            .map(|data| Manifest { data: data })
+        Ok(Self{data: e.to_owned()})
     }
-}
-
-fn format_parse_error(parser: &toml::Parser) -> Option<ManifestError> {
-    parser.errors.first().map(|error| {
-        let (loline, locol) = parser.to_linecol(error.lo);
-        let (hiline, hicol) = parser.to_linecol(error.hi);
-        ManifestError::ParseError(error.desc.clone(), loline, locol, hiline, hicol)
-    })
 }
 
 #[cfg(test)]
@@ -269,7 +259,7 @@ mod tests {
 
     #[test]
     fn add_remove_dependency() {
-        let mut manifest = Manifest { data: toml::Table::new() };
+        let mut manifest = Manifest { data: toml::value::Table::new() };
         let clone = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let _ = manifest.insert_into_table(&["dependencies".to_owned()], &dep);
@@ -279,14 +269,14 @@ mod tests {
 
     #[test]
     fn remove_dependency_no_section() {
-        let mut manifest = Manifest { data: toml::Table::new() };
+        let mut manifest = Manifest { data: toml::value::Table::new() };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     }
 
     #[test]
     fn remove_dependency_non_existent() {
-        let mut manifest = Manifest { data: toml::Table::new() };
+        let mut manifest = Manifest { data: toml::value::Table::new() };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
         let _ = manifest.insert_into_table(&["dependencies".to_owned()], &other_dep);
