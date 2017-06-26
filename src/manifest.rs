@@ -247,7 +247,7 @@ impl str::FromStr for Manifest {
         let e = d.as_table()
                  .ok_or_else(|| ManifestError::NonExistentTable(String::from("Main")))?;
 
-        Ok(Self{data: e.to_owned()})
+        Ok(Manifest{data: e.to_owned()})
     }
 }
 
