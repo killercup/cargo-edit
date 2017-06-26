@@ -28,33 +28,30 @@ fn parse_dep_from_str(input: &str) -> Option<Dependency> {
     Some((String::from(name), String::from(version)))
 }
 
-fn get_root_deps(lock_file: &toml::Table) -> Result<Vec<Dependency>, ListError> {
+fn get_root_deps(lock_file: &toml::value::Table) -> Result<Vec<Dependency>, ListError> {
     let root_deps = try!(lock_file.get("root")
-        .and_then(|field| field.lookup("dependencies"))
+        .and_then(|field| field.get("dependencies").to_owned())
         .ok_or(ListError::SectionMissing("dependencies".to_owned())));
 
-    let output = root_deps.as_slice()
-        .unwrap_or(&[])
-        .iter()
+    Ok(root_deps.as_array()
+        .into_iter()
+        .flat_map(|p| p.iter())
         .filter_map(|dep| {
-            let dep = dep.clone();
-            if let toml::Value::String(pkg_desc) = dep {
+            if let toml::Value::String(pkg_desc) = dep.clone() {
                 parse_dep_from_str(&pkg_desc)
             } else {
                 None
             }
         })
-        .collect::<Vec<Dependency>>();
-
-    Ok(output)
+        .collect())
 }
 
-fn get_packages(lock_file: &toml::Table) -> Result<Packages, ListError> {
+fn get_packages(lock_file: &toml::value::Table) -> Result<Packages, ListError> {
     let packages: &toml::Value = try!(lock_file.get("package").ok_or(ListError::PackagesMissing));
 
     let mut output = BTreeMap::new();
 
-    for pkg in packages.as_slice().unwrap_or(&[]) {
+    for pkg in packages.as_array().into_iter().flat_map(|p| p.iter()) {
         let package = try!(pkg.as_table().ok_or(ListError::PackageInvalid));
 
         let name = try!(package.get("name")
@@ -80,7 +77,7 @@ fn get_packages(lock_file: &toml::Table) -> Result<Packages, ListError> {
                     .filter_map(parse_dep_from_str)
                     .collect::<Dependencies>())
             })
-            .unwrap_or_else(|| vec![]);
+            .unwrap_or_default();
 
         output.insert((name.to_owned(), version.to_owned()), deps);
     }
