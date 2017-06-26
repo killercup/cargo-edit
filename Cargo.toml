@@ -39,7 +39,7 @@ pad = "0.1"
 rustc-serialize = "0.3"
 semver = "0.2"
 toml = "0.4"
-curl = "0.2.18"
+curl = "0.4.7"
 quick-error = "1.0.0"
 regex = "0.2"
 clippy = {version = "0.0.140", optional = true}
