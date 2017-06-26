@@ -9,10 +9,10 @@ fn remove_existing_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(toml.get("dependencies").unwrap().get("docopt").is_some());
+    assert!(toml["dependencies"].get("docopt").is_some());
     execute_command(&["rm", "docopt"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml.get("dependencies").unwrap().get("docopt").is_none());
+    assert!(toml["dependencies"].get("docopt").is_none());
 }
 
 #[test]
@@ -21,14 +21,14 @@ fn remove_existing_dependency_from_specific_section() {
 
     // Test removing dev dependency.
     let toml = get_toml(&manifest);
-    assert!(toml.get("dev-dependencies").unwrap().get("regex").is_some());
+    assert!(toml["dev-dependencies"].get("regex").is_some());
     execute_command(&["rm", "--dev", "regex"], &manifest);
     let toml = get_toml(&manifest);
     assert!(toml.get("dev-dependencies").is_none());
 
     // Test removing build dependency.
     let toml = get_toml(&manifest);
-    assert!(toml.get("build-dependencies").unwrap().get("semver").is_some());
+    assert!(toml["build-dependencies"].get("semver").is_some());
     execute_command(&["rm", "--build", "semver"], &manifest);
     let toml = get_toml(&manifest);
     assert!(toml.get("build-dependencies").is_none());
@@ -39,8 +39,8 @@ fn remove_section_after_removed_last_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(toml.get("dev-dependencies").unwrap().get("regex").is_some());
-    assert_eq!(toml.get("dev-dependencies").unwrap().as_table().unwrap().len(),
+    assert!(toml["dev-dependencies"].get("regex").is_some());
+    assert_eq!(toml["dev-dependencies"].as_table().unwrap().len(),
                1);
 
     execute_command(&["rm", "--dev", "regex"], &manifest);
@@ -55,21 +55,21 @@ fn issue_32() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(toml.get("dependencies").unwrap().get("foo").is_none());
+    assert!(toml["dependencies"].get("foo").is_none());
 
     execute_command(&["add", "foo@1.0"], &manifest);
     execute_command(&["add", "bar@1.0.7"], &manifest);
 
     let toml = get_toml(&manifest);
-    assert!(toml.get("dependencies").unwrap().get("foo").is_some());
-    assert!(toml.get("dependencies").unwrap().get("bar").is_some());
+    assert!(toml["dependencies"].get("foo").is_some());
+    assert!(toml["dependencies"].get("bar").is_some());
 
     execute_command(&["rm", "foo"], &manifest);
     execute_command(&["rm", "bar"], &manifest);
 
     let toml = get_toml(&manifest);
-    assert!(toml.get("dependencies").unwrap().get("foo").is_none());
-    assert!(toml.get("dependencies").unwrap().get("bar").is_none());
+    assert!(toml["dependencies"].get("foo").is_none());
+    assert!(toml["dependencies"].get("bar").is_none());
 }
 
 #[test]
