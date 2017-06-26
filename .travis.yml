@@ -15,6 +15,7 @@ before_script:
 script:
 - |
   travis-cargo build &&
+  travis-cargo --only nightly-2017-06-25 build -- --features dev &&
   travis-cargo test -- --features test-external-apis &&
   travis-cargo bench &&
   travis-cargo --only stable doc
