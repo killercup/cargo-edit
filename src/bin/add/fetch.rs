@@ -93,7 +93,7 @@ fn get_latest_stable_version_from_json() {
     }"#)
         .unwrap();
 
-    assert_eq!(read_latest_version(json, false).unwrap().version().unwrap(),
+    assert_eq!(read_latest_version(&json, false).unwrap().version().unwrap(),
                "0.5.0");
 }
 
@@ -115,7 +115,7 @@ fn get_latest_unstable_or_stable_version_from_json() {
     }"#)
         .unwrap();
 
-    assert_eq!(read_latest_version(json, true).unwrap().version().unwrap(),
+    assert_eq!(read_latest_version(&json, true).unwrap().version().unwrap(),
                "0.6.0-alpha");
 }
 
@@ -137,7 +137,7 @@ fn get_latest_version_from_json_test() {
     }"#)
         .unwrap();
 
-    assert_eq!(read_latest_version(json, false).unwrap().version().unwrap(),
+    assert_eq!(read_latest_version(&json, false).unwrap().version().unwrap(),
                "0.3.0");
 }
 
@@ -159,7 +159,7 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     }"#)
         .unwrap();
 
-    assert!(read_latest_version(json, false).is_err());
+    assert!(read_latest_version(&json, false).is_err());
 }
 
 quick_error! {
