@@ -570,6 +570,38 @@ fn fails_to_add_inexistent_local_source_without_flag() {
 }
 
 #[test]
+fn upgrade_dependency_version() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Setup manifest with the dependency `versioned-package@0.1.1`
+    execute_command(&["add", "versioned-package", "--vers", "0.1.1"],
+                    &manifest);
+
+    // Now, update `versioned-package` to the latest version
+    execute_command(&["add", "versioned-package", "--update-only"],
+                    &manifest);
+
+    // Verify that `versioned-package` has been updated successfully.
+    let toml = get_toml(&manifest);
+    let val = toml.lookup("dependencies.versioned-package").expect("not added");
+    assert_eq!(val.as_str().expect("not string"), "versioned-package--CURRENT_VERSION_TEST");
+}
+
+#[test]
+#[should_panic(expected = "not added")]
+fn fails_to_update_missing_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Update the non-existent `failure` to the latest version
+    execute_command(&["add", "failure", "--update-only"],
+                    &manifest);
+
+    // Verify that `failure` has not been added
+    assert!(no_manifest_failures(&get_toml(&manifest)));
+    get_toml(&manifest).lookup("dependencies.failure").expect("not added");
+}
+
+#[test]
 fn no_argument() {
     assert_cli!("target/debug/cargo-add", &["add"] => Error 1,
                 r"Invalid arguments.

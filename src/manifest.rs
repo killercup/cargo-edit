@@ -165,9 +165,8 @@ impl Manifest {
                              dep: &Dependency)
                              -> Result<(), ManifestError> {
         let (ref name, ref data) = dep.to_toml();
-        let manifest = &mut self.data;
 
-        let mut entry = manifest;
+        let mut entry = &mut self.data;
         for part in table {
             let tmp_entry = entry; // Make the borrow checker happy
             let value = tmp_entry.entry(part.clone())
@@ -178,6 +177,30 @@ impl Manifest {
             }
         }
         entry.insert(name.clone(), data.clone());
+        Ok(())
+    }
+
+    /// Update an entry in Cargo.toml.
+    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
+    pub fn update_table_entry(&mut self,
+                              table: &[String],
+                              dep: &Dependency)
+                              -> Result<(), ManifestError> {
+        let (ref name, ref data) = dep.to_toml();
+
+        let mut entry = &mut self.data;
+        for part in table {
+            let tmp_entry = entry; // Make the borrow checker happy
+            let value = tmp_entry.entry(part.clone())
+                .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
+            match *value {
+                toml::Value::Table(ref mut table) => entry = table,
+                _ => return Err(ManifestError::NonExistentTable(part.clone())),
+            }
+        }
+        if entry.contains_key(name) {
+            entry.insert(name.clone(), data.clone());
+        }
         Ok(())
     }
 
@@ -265,6 +288,29 @@ mod tests {
         let _ = manifest.insert_into_table(&["dependencies".to_owned()], &dep);
         assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
         assert_eq!(manifest, clone);
+    }
+
+    #[test]
+    fn update_dependency() {
+        let mut manifest = Manifest { data: toml::Table::new() };
+        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
+        manifest.insert_into_table(&["dependencies".to_owned()], &dep).unwrap();
+
+        let new_dep = Dependency::new("cargo-edit").set_version("0.2.0");
+        manifest.update_table_entry(&["dependencies".to_owned()], &new_dep).unwrap();
+    }
+
+    #[test]
+    fn update_wrong_dependency() {
+        let mut manifest = Manifest { data: toml::Table::new() };
+        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
+        manifest.insert_into_table(&["dependencies".to_owned()], &dep).unwrap();
+        let original = manifest.clone();
+
+        let new_dep = Dependency::new("wrong-dep").set_version("0.2.0");
+        manifest.update_table_entry(&["dependencies".to_owned()], &new_dep).unwrap();
+
+        assert_eq!(manifest, original);
     }
 
     #[test]
