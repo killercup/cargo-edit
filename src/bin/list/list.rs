@@ -21,17 +21,17 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, ListEr
         let version = match *val {
             toml::Value::String(ref version) => version.clone(),
             toml::Value::Table(_) => {
-                try!(val.lookup("version")
+                try!(val.get("version")
                     .and_then(|field| field.as_str().map(|s| s.to_owned()))
-                    .or_else(|| val.lookup("git").map(|repo| format!("git: {}", repo)))
-                    .or_else(|| val.lookup("path").map(|path| format!("path: {}", path)))
+                    .or_else(|| val.get("git").map(|repo| format!("git: {}", repo)))
+                    .or_else(|| val.get("path").map(|path| format!("path: {}", path)))
                     .ok_or_else(|| ListError::VersionMissing(name.clone(), section.to_owned())))
             }
             _ => String::from(""),
         };
 
         let optional = if let toml::Value::Table(_) = *val {
-            val.lookup("optional")
+            val.get("optional")
                 .and_then(|field| field.as_bool())
                 .unwrap_or(false)
         } else {
