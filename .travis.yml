@@ -35,3 +35,11 @@ env:
   global:
   - TRAVIS_CARGO_NIGHTLY_FEATURE=dev
   - secure: XXYE8x015gOSJ+DD9FeCdEKQTeU6mZ5j47Nh1ncZTkdN6+RnrN/DxAwccvh9u6t8/V6WN868AHIvTc0nA031mqwnh6vcQDr3Ak8ydJCTM8KFgwsuESokSZYkbiiQd/FWTBri/P9H5jejCw3aSFQZUVeCpu2Zxp0N9/Jn3ky7NVknBOVdz21jRC/KivBkpbvOCj8iEtGZuYSQu3Gpq1wbuZaqDdgg6JVvrYy7LbUNGe0rHMjCcyuiutqp6R8zIQoC7p2kmoHkXrTaDKQrpmSi+uLJJE7KqML9tFFnvjvmgroRYDCk0gc/fr/GunikvUkcczBBSsVXWj66EpriQxwdEnI1uhNtKUOGALIAMiLz2k0rbLl1wFLOvFlhEPhDGvt+mw+h2BIxoyy9mwVioYym7V8pksw0UuCuLuyAp1Rc89iT6/N3HfMFPZeTBeudktUb5ijHgJyobVwakxKXgKqELbrhUhmzBf8fwtmPH+Lnganyrz4qcKBnuUl2fSp6MIaGIeSZZwigggV8QSXw9u/1c32RhQs47ZDRJX2lzEzVyAVZ0liyn32hWFI6Ctur4jNV7LWtOcDqdYZZfqyZOL/HehNFtDoJfrYsp/KZvmBipmOkrNsKCKEAdvUoeTDXo4ME31tjGtiPbHIdRuBJJqt38gm1AKyoVJKp2KFGDsI0djA=
+branches:
+  only:
+    # This is where pull requests from "bors r+" are built.
+    - staging
+    # This is where pull requests from "bors try" are built.
+    - trying
+    # Uncomment this to enable building pull requests.
+    - master
