@@ -31,7 +31,7 @@ fn parse_dep_from_str(input: &str) -> Option<Dependency> {
 fn get_root_deps(lock_file: &toml::value::Table) -> Result<Vec<Dependency>, ListError> {
     let root_deps = try!(lock_file.get("root")
         .and_then(|field| field.get("dependencies").to_owned())
-        .ok_or(ListError::SectionMissing("dependencies".to_owned())));
+        .ok_or_else(|| ListError::SectionMissing("dependencies".to_owned())));
 
     Ok(root_deps.as_array()
         .into_iter()

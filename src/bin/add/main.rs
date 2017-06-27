@@ -76,9 +76,9 @@ fn handle_add(args: &Args) -> Result<(), Box<Error>> {
     deps
         .iter()
         .map(|dep| if args.flag_update_only {
-            manifest.update_table_entry(&args.get_section(), &dep)
+            manifest.update_table_entry(&args.get_section(), dep)
         } else {
-            manifest.insert_into_table(&args.get_section(), &dep)})
+            manifest.insert_into_table(&args.get_section(), dep)})
         .collect::<Result<Vec<_>,_>>()
         .map_err(|err| {
             println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);

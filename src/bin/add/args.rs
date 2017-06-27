@@ -6,16 +6,6 @@ use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_na
 use semver;
 use std::error::Error;
 
-macro_rules! toml_table {
-    ($($key:expr => $value:expr),+) => {
-        {
-            let mut dep = BTreeMap::new();
-            $(dep.insert(String::from($key), $value);)+
-            toml::Value::Table(dep)
-        }
-    }
-}
-
 #[derive(Debug, RustcDecodable)]
 /// Docopts input args.
 pub struct Args {
@@ -93,7 +83,7 @@ impl Args {
                 let dependency = Dependency::new(&self.arg_crate);
 
                 if let Some(ref version) = self.flag_vers {
-                    try!(semver::VersionReq::parse(&version));
+                    try!(semver::VersionReq::parse(version));
                     dependency.set_version(version)
                 } else if let Some(ref repo) = self.flag_git {
                     dependency.set_git(repo)
@@ -174,11 +164,11 @@ fn crate_name_is_path(name: &str) -> bool {
 }
 
 fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
-    assert!(crate_name_has_version(&name));
+    assert!(crate_name_has_version(name));
 
     let xs: Vec<&str> = name.splitn(2, '@').collect();
     let (name, version) = (xs[0], xs[1]);
-    try!(semver::VersionReq::parse(&version));
+    try!(semver::VersionReq::parse(version));
 
     Ok(Dependency::new(name).set_version(version))
 }

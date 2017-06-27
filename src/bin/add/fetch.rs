@@ -28,7 +28,7 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
     let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
     let crate_json = try!(Json::from_str(&crate_data));
 
-    let dep = try!(read_latest_version(crate_json, flag_allow_prerelease));
+    let dep = try!(read_latest_version(&crate_json, flag_allow_prerelease));
 
     if dep.name != crate_name {
         println!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
@@ -50,7 +50,7 @@ fn version_is_stable(version: &Object) -> bool {
 ///
 /// Assumes the version are sorted so that the first non-yanked version is the
 /// latest, and thus the one we want.
-fn read_latest_version(crate_json: Json, flag_allow_prerelease: bool) -> Result<Dependency, FetchVersionError> {
+fn read_latest_version(crate_json: &Json, flag_allow_prerelease: bool) -> Result<Dependency, FetchVersionError> {
     let versions = try!(crate_json.as_object()
         .and_then(|c| c.get("versions"))
         .and_then(Json::as_array)
@@ -93,7 +93,7 @@ fn get_latest_stable_version_from_json() {
     }"#)
         .unwrap();
 
-    assert_eq!(read_latest_version(json, false).unwrap().version().unwrap(),
+    assert_eq!(read_latest_version(&json, false).unwrap().version().unwrap(),
                "0.5.0");
 }
 
@@ -115,7 +115,7 @@ fn get_latest_unstable_or_stable_version_from_json() {
     }"#)
         .unwrap();
 
-    assert_eq!(read_latest_version(json, true).unwrap().version().unwrap(),
+    assert_eq!(read_latest_version(&json, true).unwrap().version().unwrap(),
                "0.6.0-alpha");
 }
 
@@ -137,7 +137,7 @@ fn get_latest_version_from_json_test() {
     }"#)
         .unwrap();
 
-    assert_eq!(read_latest_version(json, false).unwrap().version().unwrap(),
+    assert_eq!(read_latest_version(&json, false).unwrap().version().unwrap(),
                "0.3.0");
 }
 
@@ -159,7 +159,7 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     }"#)
         .unwrap();
 
-    assert!(read_latest_version(json, false).is_err());
+    assert!(read_latest_version(&json, false).is_err());
 }
 
 quick_error! {
