@@ -1,8 +1,7 @@
 use cargo_edit::{Dependency, Manifest};
-use curl::{ErrCode, http};
-use curl::http::handle::{Method, Request};
+use curl;
+use curl::easy::Easy;
 use regex::Regex;
-use rustc_serialize::json;
 use rustc_serialize::json::{BuilderError, Json, Object};
 use semver::Version;
 use std::env;
@@ -65,7 +64,7 @@ fn read_latest_version(crate_json: &Json, flag_allow_prerelease: bool) -> Result
     let name = try!(latest.get("crate")
         .and_then(Json::as_string)
         .map(String::from)
-        .ok_or(FetchVersionError::CratesIo(CratesIoError::NotFound)));
+        .ok_or(FetchVersionError::NotFound));
 
     let version = try!(latest.get("num")
         .and_then(Json::as_string)
@@ -165,12 +164,19 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
 quick_error! {
     #[derive(Debug)]
     pub enum FetchVersionError {
-        CratesIo(err: CratesIoError) {
+        Curl(err: curl::Error) {
             from()
-            description("crates.io Error")
-            display("crates.io Error: {}", err)
+            description("Curl error")
+            display("Curl error: {}", err)
             cause(err)
         }
+        NonUtf8(err: ::std::string::FromUtf8Error) {
+            from()
+            description("Curl error")
+            display("Curl error: {}", err)
+            cause(err)
+        }
+        NotFound {}
         Json(err: BuilderError) {
             from()
             description("JSON Error")
@@ -192,64 +198,45 @@ quick_error! {
 // ---
 
 fn fetch_cratesio(path: &str) -> Result<String, FetchVersionError> {
-    let mut http_handle = http::Handle::new();
-    let req = Request::new(&mut http_handle, Method::Get)
-        .uri(format!("{}/api/v1{}", REGISTRY_HOST, path))
-        .header("Accept", "application/json")
-        .content_type("application/json");
-    handle_request(req.exec()).map_err(From::from)
-}
+    let mut easy = Easy::new();
+    easy.url(&format!("{}/api/v1{}", REGISTRY_HOST, path))?;
+    easy.get(true)?;
+    easy.accept_encoding("application/json")?;
 
-fn handle_request(response: Result<http::Response, ErrCode>) -> Result<String, CratesIoError> {
-    let response = try!(response.map_err(CratesIoError::Curl));
-    match response.get_code() {
-        0 | 200 => {}
-        403 => return Err(CratesIoError::Unauthorized),
-        404 => return Err(CratesIoError::NotFound),
-        _ => return Err(CratesIoError::NotOkResponse(response)),
+    let mut html = Vec::new();
+    {
+        let mut transfer = easy.transfer();
+        transfer.write_function(|data| {
+            html.extend_from_slice(data);
+                    Ok(data.len())
+        })?;
+
+
+        transfer.perform()?;
     }
 
-    let body = match String::from_utf8(response.move_body()) {
-        Ok(body) => body,
-        Err(..) => return Err(CratesIoError::NonUtf8Body),
-    };
-
-    if let Ok(errors) = json::decode::<ApiErrorList>(&body) {
-        return Err(CratesIoError::Api(errors.errors.into_iter().map(|s| s.detail).collect()));
-    }
-
-    Ok(body)
-}
-
-#[derive(RustcDecodable)]
-struct ApiErrorList {
-    errors: Vec<ApiError>,
-}
-#[derive(RustcDecodable)]
-struct ApiError {
-    detail: String,
-}
-
-quick_error! {
-    #[derive(Debug)]
-    pub enum CratesIoError {
-        Curl(e: ErrCode) {}
-        NotOkResponse(e: http::Response)  {}
-        NonUtf8Body  {}
-        Api(e: Vec<String>)  {}
-        Unauthorized  {}
-        NotFound {}
-    }
+    String::from_utf8(html).map_err(FetchVersionError::NonUtf8)
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 quick_error! {
     #[derive(Debug)]
     pub enum FetchGitError {
-        FetchGit(err: CratesIoError) {
+        FetchGit(err: curl::Error) {
             from()
             description("fetch error: ")
             display("fetch error: {}", err)
+            cause(err)
+        }
+        StringWrite(err: curl::easy::WriteError) {
+            from()
+            description("string write error: ")
+            display("string write error: {:?}", err)
+        }
+        NonUtf8(err: ::std::string::FromUtf8Error) {
+            from()
+            description("Curl error")
+            display("Curl error: {}", err)
             cause(err)
         }
         ParseRegex { description("parse error: unable to parse git repo url") }
@@ -344,10 +331,22 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String, FetchGitError> 
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String, FetchGitError> {
-    let mut http_handle = http::Handle::new();
-    let req = Request::new(&mut http_handle, Method::Get)
-        .uri(url)
-        .header("Accept", "text/plain")
-        .content_type("text/plain");
-    handle_request(req.exec()).map_err(From::from)
+    let mut easy = Easy::new();
+    easy.url(url)?;
+    easy.get(true)?;
+    easy.accept_encoding("text/plain")?;
+
+    let mut html = Vec::new();
+    {
+        let mut transfer = easy.transfer();
+        transfer.write_function(|data| {
+            html.extend_from_slice(data);
+                    Ok(data.len())
+        })?;
+
+
+        transfer.perform()?;
+    }
+
+    String::from_utf8(html).map_err(FetchGitError::NonUtf8)
 }

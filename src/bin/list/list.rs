@@ -38,7 +38,8 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, ListEr
             false
         };
 
-        output.push(format!("{name} {version}{optional}",
+        output.push(format!("{name}{}{version}{optional}",
+                            if version.is_empty() { "" } else { " " },
                             name =
                                 name.pad_to_width_with_alignment(name_max_len, Alignment::Left),
                             version = version,
