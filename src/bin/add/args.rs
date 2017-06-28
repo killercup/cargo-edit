@@ -6,7 +6,7 @@ use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_na
 use semver;
 use std::error::Error;
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 /// Docopts input args.
 pub struct Args {
     /// Crate name (usage 1)

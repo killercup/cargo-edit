@@ -1,16 +1,6 @@
 use std::collections::BTreeMap;
 use toml;
 
-macro_rules! toml_table {
-    ($($key:expr => $value:expr),+) => {
-        {
-            let mut dep = BTreeMap::new();
-            $(dep.insert(String::from($key), $value);)+
-            toml::Value::Table(dep)
-        }
-    }
-}
-
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 enum DependencySource {
     Version(String),

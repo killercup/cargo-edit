@@ -2,7 +2,7 @@ use cargo_edit::{Dependency, Manifest};
 use curl;
 use curl::easy::Easy;
 use regex::Regex;
-use rustc_serialize::json::{BuilderError, Json, Object};
+use serde_json as json;
 use semver::Version;
 use std::env;
 use std::path::Path;
@@ -25,7 +25,7 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
     }
 
     let crate_data = try!(fetch_cratesio(&format!("/crates/{}", crate_name)));
-    let crate_json = try!(Json::from_str(&crate_data));
+    let crate_json = try!(json::from_str(&crate_data));
 
     let dep = try!(read_latest_version(&crate_json, flag_allow_prerelease));
 
@@ -37,9 +37,9 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
 }
 
 // Checks whether a version object is a stable release
-fn version_is_stable(version: &Object) -> bool {
+fn version_is_stable(version: &json::Value) -> bool {
     version.get("num")
-        .and_then(Json::as_string)
+        .and_then(json::Value::as_str)
         .and_then(|s| Version::parse(s).ok())
         .map(|s| !s.is_prerelease())
         .unwrap_or(false)
@@ -49,25 +49,25 @@ fn version_is_stable(version: &Object) -> bool {
 ///
 /// Assumes the version are sorted so that the first non-yanked version is the
 /// latest, and thus the one we want.
-fn read_latest_version(crate_json: &Json, flag_allow_prerelease: bool) -> Result<Dependency, FetchVersionError> {
+fn read_latest_version(crate_json: &json::Value, flag_allow_prerelease: bool) -> Result<Dependency, FetchVersionError> {
     let versions = try!(crate_json.as_object()
         .and_then(|c| c.get("versions"))
-        .and_then(Json::as_array)
+        .and_then(json::Value::as_array)
         .ok_or(FetchVersionError::GetVersion));
 
     let latest = try!(versions.iter()
-        .filter_map(Json::as_object)
+        .filter(|v| json::Value::is_object(*v))
         .filter(|&v| flag_allow_prerelease || version_is_stable(v))
-        .find(|&v| !v.get("yanked").and_then(Json::as_boolean).unwrap_or(true))
+        .find(|&v| !v.get("yanked").and_then(json::Value::as_bool).unwrap_or(true))
         .ok_or(FetchVersionError::NoneAvailable));
 
     let name = try!(latest.get("crate")
-        .and_then(Json::as_string)
+        .and_then(json::Value::as_str)
         .map(String::from)
         .ok_or(FetchVersionError::NotFound));
 
     let version = try!(latest.get("num")
-        .and_then(Json::as_string)
+        .and_then(json::Value::as_str)
         .map(String::from)
         .ok_or(FetchVersionError::GetVersion));
 
@@ -76,7 +76,7 @@ fn read_latest_version(crate_json: &Json, flag_allow_prerelease: bool) -> Result
 
 #[test]
 fn get_latest_stable_version_from_json() {
-    let json = Json::from_str(r#"{
+    let json = json::from_str(r#"{
       "versions": [
         {
           "crate": "foo",
@@ -98,7 +98,7 @@ fn get_latest_stable_version_from_json() {
 
 #[test]
 fn get_latest_unstable_or_stable_version_from_json() {
-    let json = Json::from_str(r#"{
+    let json = json::from_str(r#"{
       "versions": [
         {
           "crate": "foo",
@@ -120,7 +120,7 @@ fn get_latest_unstable_or_stable_version_from_json() {
 
 #[test]
 fn get_latest_version_from_json_test() {
-    let json = Json::from_str(r#"{
+    let json = json::from_str(r#"{
       "versions": [
         {
           "crate": "treexml",
@@ -142,7 +142,7 @@ fn get_latest_version_from_json_test() {
 
 #[test]
 fn get_no_latest_version_from_json_when_all_are_yanked() {
-    let json = Json::from_str(r#"{
+    let json = json::from_str(r#"{
       "versions": [
         {
           "crate": "treexml",
@@ -177,7 +177,7 @@ quick_error! {
             cause(err)
         }
         NotFound {}
-        Json(err: BuilderError) {
+        Json(err: json::Error) {
             from()
             description("JSON Error")
             display("Error parsing JSON: {}", err)
