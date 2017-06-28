@@ -8,7 +8,8 @@
 extern crate docopt;
 extern crate toml;
 extern crate semver;
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_derive;
 
 use std::error::Error;
 use std::io::{self, Write};
@@ -51,7 +52,7 @@ fn handle_rm(args: &Args) -> Result<(), Box<Error>> {
 
 fn main() {
     let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode::<Args>())
+        .and_then(|d| d.deserialize::<Args>())
         .unwrap_or_else(|err| err.exit());
 
     if args.flag_version {

@@ -1,4 +1,4 @@
-//! `cargo add`
+//! `cargo list`
 
 #![deny(missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts, trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces, unused_qualifications)]
 #![cfg_attr(feature = "dev", allow(unstable_features))]
@@ -6,7 +6,8 @@
 #![cfg_attr(feature = "dev", plugin(clippy))]
 
 extern crate docopt;
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_derive;
 extern crate pad;
 extern crate toml;
 #[macro_use]
@@ -44,7 +45,7 @@ Display a crate's dependencies using its Cargo.toml file.
 ";
 
 /// Docopts input args.
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 struct Args {
     /// dev-dependency
     flag_dev: bool,
@@ -89,7 +90,7 @@ fn handle_list(args: &Args) -> Result<String, Box<Error>> {
 
 fn main() {
     let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode::<Args>())
+        .and_then(|d| d.deserialize::<Args>())
         .unwrap_or_else(|err| err.exit());
 
     if args.flag_version {

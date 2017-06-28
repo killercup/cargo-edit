@@ -1,5 +1,5 @@
 /// ! Handle `cargo rm` arguments
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 /// Docopts input args.
 pub struct Args {
     /// Crate name

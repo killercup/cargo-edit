@@ -5,11 +5,13 @@
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]
 
+extern crate curl;
 extern crate docopt;
 extern crate toml;
 extern crate semver;
-extern crate rustc_serialize;
-extern crate curl;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 #[macro_use]
 extern crate quick_error;
 
@@ -91,7 +93,7 @@ fn handle_add(args: &Args) -> Result<(), Box<Error>> {
 
 fn main() {
     let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode::<Args>())
+        .and_then(|d| d.deserialize::<Args>())
         .unwrap_or_else(|err| err.exit());
 
     if args.flag_version {
