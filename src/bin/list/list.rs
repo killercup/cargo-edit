@@ -10,10 +10,10 @@ use toml;
 pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, ListError> {
     let mut output = vec![];
 
-    let list = try!(manifest.data
+    let list = manifest.data
         .get(section)
         .and_then(|field| field.as_table())
-        .ok_or_else(|| ListError::SectionMissing(String::from(section))));
+        .ok_or_else(|| ListError::SectionMissing(String::from(section)))?;
 
     let name_max_len = list.keys().map(|k| k.len()).max().unwrap_or(0);
 
@@ -21,11 +21,11 @@ pub fn list_section(manifest: &Manifest, section: &str) -> Result<String, ListEr
         let version = match *val {
             toml::Value::String(ref version) => version.clone(),
             toml::Value::Table(_) => {
-                try!(val.get("version")
+                val.get("version")
                     .and_then(|field| field.as_str().map(|s| s.to_owned()))
                     .or_else(|| val.get("git").map(|repo| format!("git: {}", repo)))
                     .or_else(|| val.get("path").map(|path| format!("path: {}", path)))
-                    .ok_or_else(|| ListError::VersionMissing(name.clone(), section.to_owned())))
+                    .ok_or_else(|| ListError::VersionMissing(name.clone(), section.to_owned()))?
             }
             _ => String::from(""),
         };

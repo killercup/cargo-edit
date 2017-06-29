@@ -38,14 +38,14 @@ Remove a dependency to a Cargo.toml manifest file.
 ";
 
 fn handle_rm(args: &Args) -> Result<(), Box<Error>> {
-    let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
+    let mut manifest = Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..]))?;
 
     manifest.remove_from_table(args.get_section(), args.arg_crate.as_ref())
         .map_err(From::from)
         .and_then(|_| {
-            let mut file = try!(Manifest::find_file(&args.flag_manifest_path
+            let mut file = Manifest::find_file(&args.flag_manifest_path
                 .as_ref()
-                .map(|s| &s[..])));
+                .map(|s| &s[..]))?;
             manifest.write_to_file(&mut file)
         })
 }

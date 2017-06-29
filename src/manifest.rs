@@ -63,7 +63,7 @@ fn find(specified: &Option<&str>, file: CargoFile) -> Result<PathBuf, Box<Error>
     let file_path = specified.map(PathBuf::from);
 
     if let Some(path) = file_path {
-        if try!(fs::metadata(&path)).is_file() {
+        if fs::metadata(&path)?.is_file() {
             Ok(path)
         } else {
             search(&path, file).map_err(From::from)
@@ -118,18 +118,18 @@ impl Manifest {
 
     /// Open the `Cargo.toml` for a path (or the process' `cwd`)
     pub fn open(path: &Option<&str>) -> Result<Manifest, Box<Error>> {
-        let mut file = try!(Manifest::find_file(path));
+        let mut file = Manifest::find_file(path)?;
         let mut data = String::new();
-        try!(file.read_to_string(&mut data));
+        file.read_to_string(&mut data)?;
 
         data.parse()
     }
 
     /// Open the `Cargo.lock` for a path (or the process' `cwd`)
     pub fn open_lock_file(path: &Option<&str>) -> Result<Manifest, Box<Error>> {
-        let mut file = try!(Manifest::find_lock_file(path));
+        let mut file = Manifest::find_lock_file(path)?;
         let mut data = String::new();
-        try!(file.read_to_string(&mut data));
+        file.read_to_string(&mut data)?;
 
         data.parse()
     }
@@ -138,13 +138,13 @@ impl Manifest {
     pub fn write_to_file(&self, file: &mut File) -> Result<(), Box<Error>> {
         let mut toml = self.data.clone();
 
-        let (proj_header, proj_data) = try!(toml.remove("package")
+        let (proj_header, proj_data) = toml.remove("package")
             .map(|data| ("package", data))
             .or_else(|| {
                 toml.remove("project")
                     .map(|data| ("project", data))
             })
-            .ok_or(ManifestError::MissingManifest));
+            .ok_or(ManifestError::MissingManifest)?;
 
         let new_contents = format!("[{}]\n{}{}",
                                    proj_header,
@@ -154,7 +154,7 @@ impl Manifest {
 
         // We need to truncate the file, otherwise the new contents
         // will be mixed up with the old ones.
-        try!(file.set_len(new_contents_bytes.len() as u64));
+        file.set_len(new_contents_bytes.len() as u64)?;
         file.write_all(new_contents_bytes).map_err(From::from)
     }
 

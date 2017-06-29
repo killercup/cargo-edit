@@ -29,9 +29,9 @@ fn parse_dep_from_str(input: &str) -> Option<Dependency> {
 }
 
 fn get_root_deps(lock_file: &toml::value::Table) -> Result<Vec<Dependency>, ListError> {
-    let root_deps = try!(lock_file.get("root")
+    let root_deps = lock_file.get("root")
         .and_then(|field| field.get("dependencies").to_owned())
-        .ok_or_else(|| ListError::SectionMissing("dependencies".to_owned())));
+        .ok_or_else(|| ListError::SectionMissing("dependencies".to_owned()))?;
 
     Ok(root_deps.as_array()
         .into_iter()
@@ -47,20 +47,20 @@ fn get_root_deps(lock_file: &toml::value::Table) -> Result<Vec<Dependency>, List
 }
 
 fn get_packages(lock_file: &toml::value::Table) -> Result<Packages, ListError> {
-    let packages: &toml::Value = try!(lock_file.get("package").ok_or(ListError::PackagesMissing));
+    let packages: &toml::Value = lock_file.get("package").ok_or(ListError::PackagesMissing)?;
 
     let mut output = BTreeMap::new();
 
     for pkg in packages.as_array().into_iter().flat_map(|p| p.iter()) {
-        let package = try!(pkg.as_table().ok_or(ListError::PackageInvalid));
+        let package = pkg.as_table().ok_or(ListError::PackageInvalid)?;
 
-        let name = try!(package.get("name")
+        let name = package.get("name")
             .and_then(|item| item.as_str())
-            .ok_or(ListError::PackageFieldMissing("name")));
+            .ok_or(ListError::PackageFieldMissing("name"))?;
 
-        let version = try!(package.get("version")
+        let version = package.get("version")
             .and_then(|item| item.as_str())
-            .ok_or(ListError::PackageFieldMissing("version")));
+            .ok_or(ListError::PackageFieldMissing("version"))?;
 
         let deps: Dependencies = package.get("dependencies")
             .and_then(|item| {
@@ -106,7 +106,7 @@ fn list_deps_helper(pkgs: &Packages,
 
         if let Some(subdeps) = pkgs.get(dep) {
             levels.push(is_last);
-            let sublist = try!(list_deps_helper(pkgs, subdeps, levels));
+            let sublist = list_deps_helper(pkgs, subdeps, levels)?;
             output.push_str(&sublist);
             levels.pop();
         }
@@ -122,8 +122,8 @@ fn list_deps(pkgs: &Packages, deps: &[Dependency]) -> Result<String, ListError> 
 pub fn parse_lock_file(manifest: &Manifest) -> Result<String, ListError> {
     let lock_file = &manifest.data;
 
-    let root_deps = try!(get_root_deps(lock_file));
-    let pkgs = try!(get_packages(lock_file));
+    let root_deps = get_root_deps(lock_file)?;
+    let pkgs = get_packages(lock_file)?;
 
     list_deps(&pkgs, &root_deps)
 }

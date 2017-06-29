@@ -5,12 +5,13 @@
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]
 
-extern crate curl;
+extern crate reqwest;
 extern crate docopt;
 extern crate toml;
-extern crate semver;
 #[macro_use]
 extern crate serde_derive;
+extern crate semver;
+extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate quick_error;
@@ -72,8 +73,8 @@ dependencies (version set to "*").
 "#;
 
 fn handle_add(args: &Args) -> Result<(), Box<Error>> {
-    let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
-    let deps = try!(args.parse_dependencies());
+    let mut manifest = Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..]))?;
+    let deps = args.parse_dependencies()?;
 
     deps
         .iter()
@@ -87,7 +88,7 @@ fn handle_add(args: &Args) -> Result<(), Box<Error>> {
             err
         })?;
 
-    let mut file = try!(Manifest::find_file(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
+    let mut file = Manifest::find_file(&args.flag_manifest_path.as_ref().map(|s| &s[..]))?;
     manifest.write_to_file(&mut file)
 }
 
@@ -103,7 +104,7 @@ fn main() {
 
     if let Err(err) = handle_add(&args) {
         writeln!(io::stderr(),
-                 "Command failed due to unhandled error: {}",
+                 "Command failed due to unhandled error: {}\n",
                  err)
             .unwrap();
         process::exit(1);
