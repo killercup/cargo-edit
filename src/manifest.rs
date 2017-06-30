@@ -84,7 +84,7 @@ fn search(dir: &Path, file: CargoFile) -> Result<PathBuf, ManifestError> {
 
     fs::metadata(&manifest)
         .map(|_| manifest)
-        .or(dir.parent().ok_or(ManifestError::MissingManifest).and_then(|dir| search(dir, file)))
+        .or_else(|_| dir.parent().ok_or(ManifestError::MissingManifest).and_then(|dir| search(dir, file)))
 }
 
 impl Manifest {
