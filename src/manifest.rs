@@ -159,7 +159,6 @@ impl Manifest {
     }
 
     /// Add entry to a Cargo.toml.
-    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn insert_into_table(&mut self,
                              table: &[String],
                              dep: &Dependency)
@@ -181,7 +180,6 @@ impl Manifest {
     }
 
     /// Update an entry in Cargo.toml.
-    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn update_table_entry(&mut self,
                               table: &[String],
                               dep: &Dependency)
@@ -223,7 +221,6 @@ impl Manifest {
     ///     assert!(manifest.data.is_empty());
     /// # }
     /// ```
-    #[cfg_attr(feature = "dev", allow(toplevel_ref_arg))]
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<(), ManifestError> {
         let manifest = &mut self.data;
         let entry = manifest.entry(String::from(table));

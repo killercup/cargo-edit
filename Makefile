@@ -1,4 +1,4 @@
-FEATURES ?= --feature "dev"
+FEATURES ?= #--features "dev"
 
 build:
 	cargo build $(FEATURES)
