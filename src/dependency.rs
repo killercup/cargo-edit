@@ -30,7 +30,10 @@ impl Default for Dependency {
 impl Dependency {
     /// Create a new dependency with a name
     pub fn new(name: &str) -> Dependency {
-        Dependency { name: name.into(), ..Dependency::default() }
+        Dependency {
+            name: name.into(),
+            ..Dependency::default()
+        }
     }
 
     /// Set dependency to a given version

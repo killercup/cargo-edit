@@ -40,8 +40,7 @@ fn remove_section_after_removed_last_dependency() {
 
     let toml = get_toml(&manifest);
     assert!(toml["dev-dependencies"].get("regex").is_some());
-    assert_eq!(toml["dev-dependencies"].as_table().unwrap().len(),
-               1);
+    assert_eq!(toml["dev-dependencies"].as_table().unwrap().len(), 1);
 
     execute_command(&["rm", "--dev", "regex"], &manifest);
 
@@ -93,8 +92,7 @@ fn invalid_section() {
                 &["rm", "semver", "--build", &format!("--manifest-path={}", manifest)]
                 => Error 1, "Could not edit `Cargo.toml`.
 
-ERROR: The table `build-dependencies` could not be found.")
-        .unwrap();
+ERROR: The table `build-dependencies` could not be found.").unwrap();
 }
 
 #[test]
@@ -105,8 +103,7 @@ fn invalid_dependency_in_section() {
                 &["rm", "semver", "--dev", &format!("--manifest-path={}", manifest)]
                 => Error 1, "Could not edit `Cargo.toml`.
 
-ERROR: The dependency `semver` could not be found in `dev-dependencies`.")
-        .unwrap();
+ERROR: The dependency `semver` could not be found in `dev-dependencies`.").unwrap();
 }
 
 #[test]
@@ -117,8 +114,7 @@ fn no_argument() {
 Usage:
     cargo rm <crate> [--dev|--build] [options]
     cargo rm (-h|--help)
-    cargo rm --version")
-        .unwrap();
+    cargo rm --version").unwrap();
 }
 
 #[test]
@@ -129,6 +125,5 @@ fn unknown_flags() {
 Usage:
     cargo rm <crate> [--dev|--build] [options]
     cargo rm (-h|--help)
-    cargo rm --version")
-        .unwrap();
+    cargo rm --version").unwrap();
 }

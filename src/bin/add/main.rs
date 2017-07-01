@@ -73,13 +73,13 @@ fn handle_add(args: &Args) -> Result<(), Box<Error>> {
     let mut manifest = Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..]))?;
     let deps = args.parse_dependencies()?;
 
-    deps
-        .iter()
+    deps.iter()
         .map(|dep| if args.flag_update_only {
             manifest.update_table_entry(&args.get_section(), dep)
         } else {
-            manifest.insert_into_table(&args.get_section(), dep)})
-        .collect::<Result<Vec<_>,_>>()
+            manifest.insert_into_table(&args.get_section(), dep)
+        })
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|err| {
             println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
             err
@@ -100,10 +100,11 @@ fn main() {
     }
 
     if let Err(err) = handle_add(&args) {
-        writeln!(io::stderr(),
-                 "Command failed due to unhandled error: {}\n",
-                 err)
-            .unwrap();
+        writeln!(
+            io::stderr(),
+            "Command failed due to unhandled error: {}\n",
+            err
+        ).unwrap();
         process::exit(1);
     }
 }
