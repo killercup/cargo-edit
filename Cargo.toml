@@ -1,25 +1,14 @@
 [package]
-name = "cargo-edit"
-authors = ["Without Boats <lee@libertad.ucsd.edu>",
-           "Pascal Hertleif <killercup@gmail.com>",
-           "Sebastian Garrido <sebasgarcep@gmail.com>",
-           "Jonas Platte <mail@jonasplatte.de>"]
-
-version = "0.1.6"
-
+authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>", "Sebastian Garrido <sebasgarcep@gmail.com>", "Jonas Platte <mail@jonasplatte.de>"]
 description = "This extends Cargo to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo list`."
-readme = "README.md"
-keywords = ["cargo", "cargo-subcommand", "cli", "dependencies", "crates"]
-license = "Apache-2.0/MIT"
-
 documentation = "http://killercup.github.io/cargo-edit/"
 homepage = "https://github.com/killercup/cargo-edit"
+keywords = ["cargo", "cargo-subcommand", "cli", "dependencies", "crates"]
+license = "Apache-2.0/MIT"
+name = "cargo-edit"
+readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
-
-[features]
-default = []
-test-external-apis = []
-unstable = []
+version = "0.1.6"
 
 [[bin]]
 name = "cargo-add"
@@ -32,15 +21,23 @@ path = "src/bin/rm/main.rs"
 [dependencies]
 docopt = "0.8"
 pad = "0.1"
-serde = "1.0"
-serde_derive = "1.0"
-serde_json = "1.0"
-semver = { version = "0.7", features = ["serde"] }
-toml = "0.4"
 quick-error = "1.0.0"
 regex = "0.2"
 reqwest = "0.6"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+toml = "0.4"
+
+[dependencies.semver]
+features = ["serde"]
+version = "0.7"
 
 [dev-dependencies]
 assert_cli = "0.2.0"
 tempdir = "0.3"
+
+[features]
+default = []
+test-external-apis = []
+unstable = []
