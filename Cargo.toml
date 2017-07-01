@@ -16,10 +16,6 @@ documentation = "http://killercup.github.io/cargo-edit/"
 homepage = "https://github.com/killercup/cargo-edit"
 repository = "https://github.com/killercup/cargo-edit"
 
-[[bin]]
-name = "cargo-list"
-path = "src/bin/list/main.rs"
-
 [features]
 default = []
 test-external-apis = []

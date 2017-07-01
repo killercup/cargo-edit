@@ -91,63 +91,6 @@ a local path, `cargo add` will try to automatically get the crate name and set t
 appropriate `--git` or `--path` value. 
 ```
 
-### `cargo list`
-
-#### Examples
-
-```plain
-$ cargo list
-clippy          0.0.19
-docopt          0.6
-pad             0.1
-rustc-serialize 0.3
-semver          0.1
-toml            0.1
-```
-
-```plain
-$ cargo list --tree
-├── assert_cli (0.1.0)
-│   ├── ansi_term (0.6.3)
-│   └── difference (0.4.1)
-│       └── getopts (0.2.14)
-├── clippy (0.0.19)
-│   └── unicode-normalization (0.1.1)
-├── docopt (0.6.73)
-│   ├── regex (0.1.41)
-│   │   ├── aho-corasick (0.3.2)
-│   │   │   └── memchr (0.1.6)
-│   │   │       └── libc (0.1.10)
-│   │   ├── memchr (0.1.6)
-│   │   │   └── libc (0.1.10)
-│   │   └── regex-syntax (0.2.2)
-│   ├── rustc-serialize (0.3.16)
-│   └── strsim (0.3.0)
-├── pad (0.1.4)
-│   └── unicode-width (0.1.3)
-├── rustc-serialize (0.3.16)
-├── semver (0.1.20)
-└── toml (0.1.23)
-    └── rustc-serialize (0.3.16)
-```
-
-#### Usage
-
-```plain
-$ cargo list --help
-Usage:
-    cargo list [<section>] [options]
-    cargo list (-h|--help)
-    cargo list --version
-
-Options:
-    --manifest-path=<path>  Path to the manifest to add a dependency to.
-    --tree                  List dependencies recursively as tree.
-    -h --help               Show this help page.
-
-Display a crate's dependencies using its Cargo.toml file.
-```
-
 ### `cargo rm`
 
 Remove dependencies from your `Cargo.toml`.
