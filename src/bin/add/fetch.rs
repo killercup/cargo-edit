@@ -39,10 +39,10 @@ pub fn get_latest_dependency(
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
-        return Ok(Dependency::new(crate_name).set_version(&format!(
-            "{}--CURRENT_VERSION_TEST",
-            crate_name
-        )));
+        return Ok(
+            Dependency::new(crate_name)
+                .set_version(&format!("{}--CURRENT_VERSION_TEST", crate_name)),
+        );
     }
 
     let crate_versions = fetch_cratesio(&format!("/crates/{}", crate_name))?;
@@ -214,7 +214,8 @@ quick_error! {
 fn fetch_cratesio(path: &str) -> Result<Versions, FetchVersionError> {
     let url = format!("{host}/api/v1{path}", host = REGISTRY_HOST, path = path);
     let response = get_with_timeout(&url, get_default_timeout())?;
-    let versions: Versions = json::from_reader(response).map_err(FetchVersionError::Json)?;
+    let versions: Versions = json::from_reader(response)
+        .map_err(FetchVersionError::Json)?;
     Ok(versions)
 }
 
@@ -256,9 +257,8 @@ where
         .and_then(|cap| match (cap.get(1), cap.get(2)) {
             (Some(user), Some(repo)) => {
                 let url = url_template(user.as_str(), repo.as_str());
-                let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url).and_then(|m| {
-                    m.parse().map_err(|_| FetchGitError::ParseCargoToml)
-                });
+                let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url)
+                    .and_then(|m| m.parse().map_err(|_| FetchGitError::ParseCargoToml));
                 data.and_then(|ref manifest| get_name_from_manifest(manifest))
             }
             _ => Err(FetchGitError::IncompleteCaptures),

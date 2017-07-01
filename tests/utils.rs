@@ -11,14 +11,21 @@ pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
         .expect("failed to construct temporary directory");
     fs::copy(source, tmpdir.path().join("Cargo.toml"))
         .unwrap_or_else(|err| panic!("could not copy test manifest: {}", err));
-    let path = tmpdir.path().join("Cargo.toml").to_str().unwrap().to_string().clone();
+    let path = tmpdir
+        .path()
+        .join("Cargo.toml")
+        .to_str()
+        .unwrap()
+        .to_string()
+        .clone();
 
     (tmpdir, path)
 }
 
 /// Execute localc cargo command, includes `--manifest-path`
 pub fn execute_command<S>(command: &[S], manifest: &str)
-    where S: AsRef<OsStr>
+where
+    S: AsRef<OsStr>,
 {
     let subcommand_name = &command[0].as_ref().to_str().unwrap();
 
