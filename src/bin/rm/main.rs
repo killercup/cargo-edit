@@ -1,9 +1,6 @@
 //! `cargo rm`
 
-#![deny(missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts, trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces, unused_qualifications)]
-#![cfg_attr(feature = "dev", allow(unstable_features))]
-#![cfg_attr(feature = "dev", feature(plugin))]
-#![cfg_attr(feature = "dev", plugin(clippy))]
+#![warn(missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts, trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces, unused_qualifications)]
 
 extern crate docopt;
 extern crate toml;
@@ -38,14 +35,14 @@ Remove a dependency to a Cargo.toml manifest file.
 ";
 
 fn handle_rm(args: &Args) -> Result<(), Box<Error>> {
-    let mut manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
+    let mut manifest = Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..]))?;
 
     manifest.remove_from_table(args.get_section(), args.arg_crate.as_ref())
         .map_err(From::from)
         .and_then(|_| {
-            let mut file = try!(Manifest::find_file(&args.flag_manifest_path
+            let mut file = Manifest::find_file(&args.flag_manifest_path
                 .as_ref()
-                .map(|s| &s[..])));
+                .map(|s| &s[..]))?;
             manifest.write_to_file(&mut file)
         })
 }

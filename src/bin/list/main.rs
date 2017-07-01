@@ -1,9 +1,6 @@
 //! `cargo list`
 
-#![deny(missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts, trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces, unused_qualifications)]
-#![cfg_attr(feature = "dev", allow(unstable_features))]
-#![cfg_attr(feature = "dev", feature(plugin))]
-#![cfg_attr(feature = "dev", plugin(clippy))]
+#![warn(missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts, trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces, unused_qualifications)]
 
 extern crate docopt;
 #[macro_use]
@@ -74,12 +71,12 @@ impl Args {
 
 fn handle_list(args: &Args) -> Result<String, Box<Error>> {
     if args.flag_tree {
-            let manifest = try!(Manifest::open_lock_file(&args.flag_manifest_path
+            let manifest = Manifest::open_lock_file(&args.flag_manifest_path
                 .as_ref()
-                .map(|s| &s[..])));
+                .map(|s| &s[..]))?;
             list_tree(&manifest)
         } else {
-            let manifest = try!(Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..])));
+            let manifest = Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..]))?;
             list_section(&manifest, args.get_section()).or_else(|err| match err {
                 ListError::SectionMissing(..) => Ok("".into()),
                 _ => Err(err),

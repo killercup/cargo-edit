@@ -62,9 +62,9 @@ impl Args {
             let mut result = Vec::<Dependency>::new();
             for arg_crate in &self.arg_crates {
                 let le_crate = if crate_name_has_version(arg_crate) {
-                        try!(parse_crate_name_with_version(arg_crate))
+                        parse_crate_name_with_version(arg_crate)?
                     } else {
-                        try!(get_latest_dependency(arg_crate, self.flag_allow_prerelease))
+                        get_latest_dependency(arg_crate, self.flag_allow_prerelease)?
                     }
                     .set_optional(self.flag_optional);
 
@@ -74,7 +74,7 @@ impl Args {
         }
 
         if crate_name_has_version(&self.arg_crate) {
-            return Ok(vec![try!(parse_crate_name_with_version(&self.arg_crate))
+            return Ok(vec![parse_crate_name_with_version(&self.arg_crate)?
                                .set_optional(self.flag_optional)]);
         }
 
@@ -83,14 +83,14 @@ impl Args {
                 let dependency = Dependency::new(&self.arg_crate);
 
                 if let Some(ref version) = self.flag_vers {
-                    try!(semver::VersionReq::parse(version));
+                    semver::VersionReq::parse(version)?;
                     dependency.set_version(version)
                 } else if let Some(ref repo) = self.flag_git {
                     dependency.set_git(repo)
                 } else if let Some(ref path) = self.flag_path {
                     dependency.set_path(path)
                 } else {
-                    let dep = try!(get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease));
+                    let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease)?;
                     let v = format!("{prefix}{version}",
                                     prefix = self.get_upgrade_prefix().unwrap_or(""),
                                     // if version is unavailable
@@ -99,7 +99,7 @@ impl Args {
                     dep.set_version(&v)
                 }
             } else {
-                try!(parse_crate_name_from_uri(&self.arg_crate))
+                parse_crate_name_from_uri(&self.arg_crate)?
             }
             .set_optional(self.flag_optional);
 
@@ -168,7 +168,7 @@ fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
 
     let xs: Vec<&str> = name.splitn(2, '@').collect();
     let (name, version) = (xs[0], xs[1]);
-    try!(semver::VersionReq::parse(version));
+    semver::VersionReq::parse(version)?;
 
     Ok(Dependency::new(name).set_version(version))
 }
