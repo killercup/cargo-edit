@@ -5,6 +5,7 @@ use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_na
             get_latest_dependency};
 use semver;
 use std::error::Error;
+use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 /// Docopts input args.
@@ -22,13 +23,13 @@ pub struct Args {
     /// Git repo Path
     pub flag_git: Option<String>,
     /// Crate directory path
-    pub flag_path: Option<String>,
+    pub flag_path: Option<PathBuf>,
     /// Crate directory path
     pub flag_target: Option<String>,
     /// Optional dependency
     pub flag_optional: bool,
     /// `Cargo.toml` path
-    pub flag_manifest_path: Option<String>,
+    pub flag_manifest_path: Option<PathBuf>,
     /// `--version`
     pub flag_version: bool,
     /// `---upgrade`
@@ -40,7 +41,7 @@ pub struct Args {
 }
 
 impl Args {
-    /// Get depenency section
+    /// Get dependency section
     pub fn get_section(&self) -> Vec<String> {
         if self.flag_dev {
             vec!["dev-dependencies".to_owned()]
@@ -93,7 +94,7 @@ impl Args {
                 } else if let Some(ref repo) = self.flag_git {
                     dependency.set_git(repo)
                 } else if let Some(ref path) = self.flag_path {
-                    dependency.set_path(path)
+                    dependency.set_path(path.to_str().unwrap())
                 } else {
                     let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease)?;
                     let v = format!("{prefix}{version}",
@@ -175,7 +176,7 @@ fn crate_name_is_path(name: &str) -> bool {
 fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
     assert!(crate_name_has_version(name));
 
-    let xs: Vec<&str> = name.splitn(2, '@').collect();
+    let xs: Vec<_> = name.splitn(2, '@').collect();
     let (name, version) = (xs[0], xs[1]);
     semver::VersionReq::parse(version)?;
 
