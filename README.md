@@ -66,28 +66,45 @@ $ cargo add lib/trial-and-error/
 ```plain
 $ cargo add --help
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--ver=<semver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
     cargo add --version
 
-Options:
-    -D --dev                Add crate as development dependency.
-    -B --build              Add crate as build dependency.
-    --ver=<semver>          Specify the version to grab from the registry (crates.io).
+Specify what crate to add:
+    --vers <ver>            Specify the version to grab from the registry (crates.io).
                             You can also specify versions as part of the name, e.g
                             `cargo add bitflags@0.3.2`.
-    --git=<uri>             Specify a git repository to download the crate from.
-    --path=<uri>            Specify the path the crate should be loaded from.
-    --optional              Add as an optional dependency (for use in features.)
-    --manifest-path=<path>  Path to the manifest to add a dependency to.
-    -h --help               Show this help page.
-    --version               Show version.
+    --git <uri>             Specify a git repository to download the crate from.
+    --path <uri>            Specify the path the crate should be loaded from.
+
+Specify where to add the crate:
+    -D --dev                Add crate as development dependency.
+    -B --build              Add crate as build dependency.
+    --optional              Add as an optional dependency (for use in features). This does not work
+                            for `dev-dependencies` or `build-dependencies`.
+    --target <target>       Add as dependency to the given target platform. This does not work
+                            for `dev-dependencies` or `build-dependencies`.
+
+Options:
     --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
                             "none" (exact version), "patch" (`~` modifier), "minor"
                             (`^` modifier, default), or "all" (`>=`).
+    --update-only           Only add the updated dependency if it already exists.
+    --manifest-path=<path>  Path to the manifest to add a dependency to.
+    --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
+                            '0.6.0-alpha'). Defaults to false.
+    -h --help               Show this help page.
+    -V --version            Show version.
 
-Add a dependency to a Cargo.toml manifest file.  If <crate> is a github or gitlab repository URL, or
-a local path, `cargo add` will try to automatically get the crate name and set the
+This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
+or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name
+and set the appropriate `--git` or `--path` value.
+
+Please note that Cargo treats versions like "1.2.3" as "^1.2.3" (and that "^1.2.3" is specified
+as ">=1.2.3 and <2.0.0"). By default, `cargo add` will use this format, as it is the one that the
+crates.io registry suggests. One goal of `cargo add` is to prevent you from using wildcard
+dependencies (version set to "*").tomatically get the crate name and set the
 appropriate `--git` or `--path` value. 
 ```
 
@@ -117,9 +134,9 @@ Options:
     -B --build              Remove crate as build dependency.
     --manifest-path=<path>  Path to the manifest to remove a dependency from.
     -h --help               Show this help page.
-    --version               Show version.
+    -V --version            Show version.
 
-Remove a dependency to a Cargo.toml manifest file.
+Remove a dependency from a Cargo.toml manifest file.
 ```
 
 ## License

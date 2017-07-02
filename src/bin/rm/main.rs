@@ -31,7 +31,7 @@ Options:
     -h --help               Show this help page.
     -V --version            Show version.
 
-Remove a dependency to a Cargo.toml manifest file.
+Remove a dependency from a Cargo.toml manifest file.
 ";
 
 fn handle_rm(args: &Args) -> Result<(), Box<Error>> {
