@@ -1,11 +1,10 @@
 # cargo edit
 
-This tool extends [Cargo](http://doc.crates.io/) to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line.
+This tool extends [Cargo](http://doc.crates.io/) to allow you to add and remove dependencies by modifying your `Cargo.toml` file from the command line
 
 Currently available subcommands:
 
 - [`cargo add`](#cargo-add)
-- [`cargo list`](#cargo-list)
 - [`cargo rm`](#cargo-rm)
 
 [![Build Status](https://travis-ci.org/killercup/cargo-edit.svg?branch=master)](https://travis-ci.org/killercup/cargo-edit)

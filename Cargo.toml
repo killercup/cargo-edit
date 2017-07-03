@@ -1,6 +1,6 @@
 [package]
 authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>", "Sebastian Garrido <sebasgarcep@gmail.com>", "Jonas Platte <mail@jonasplatte.de>"]
-description = "This extends Cargo to allow you to add and list dependencies by reading/writing to your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo list`."
+description = "This extends Cargo to allow you to add and remove dependencies by modifying your `Cargo.toml` file from the command line. It contains `cargo add` and `cargo rm`."
 documentation = "http://killercup.github.io/cargo-edit/"
 homepage = "https://github.com/killercup/cargo-edit"
 keywords = ["cargo", "cargo-subcommand", "cli", "dependencies", "crates"]
