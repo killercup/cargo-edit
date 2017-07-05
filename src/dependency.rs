@@ -71,8 +71,8 @@ impl Dependency {
 
     /// Convert dependency to TOML
     ///
-    /// Returns a tuple with the dependency's name and either the version as a String or the
-    /// the path/git repository as a table. (If the dependency is set as `optional`, a tables is
+    /// Returns a tuple with the dependency's name and either the version as a `String` or the
+    /// path/git repository as a `Table`. (If the dependency is set as `optional`, a `Table` is
     /// returned in any case.)
     pub fn to_toml(&self) -> (String, toml::Value) {
         let data: toml::Value = match (self.optional, self.source.clone()) {
@@ -93,7 +93,9 @@ impl Dependency {
                         data.insert("path".into(), toml::Value::String(v));
                     }
                 }
-                data.insert("optional".into(), toml::Value::Boolean(optional));
+                if self.optional {
+                    data.insert("optional".into(), toml::Value::Boolean(optional));
+                }
 
                 toml::Value::Table(data)
             }

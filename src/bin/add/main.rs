@@ -52,7 +52,8 @@ Options:
     --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
                             "none" (exact version), "patch" (`~` modifier), "minor"
                             (`^` modifier, default), or "all" (`>=`).
-    --update-only           Only add the updated dependency if it already exists.
+    --update-only           If the dependency already exists, it will have its version updated,
+                            preserving all other fields. The dependency will not be added if absent.
     --manifest-path=<path>  Path to the manifest to add a dependency to.
     --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.
@@ -70,8 +71,9 @@ dependencies (version set to "*").
 "#;
 
 fn handle_add(args: &Args) -> Result<(), Box<Error>> {
-    let mut manifest = Manifest::open(&args.flag_manifest_path.as_ref().map(|s| &s[..]))?;
-    let deps = args.parse_dependencies()?;
+    let manifest_path = args.flag_manifest_path.as_ref().map(From::from);
+    let mut manifest = Manifest::open(&manifest_path)?;
+    let deps = &args.parse_dependencies()?;
 
     deps.iter()
         .map(|dep| if args.flag_update_only {
@@ -85,7 +87,7 @@ fn handle_add(args: &Args) -> Result<(), Box<Error>> {
             err
         })?;
 
-    let mut file = Manifest::find_file(&args.flag_manifest_path.as_ref().map(|s| &s[..]))?;
+    let mut file = Manifest::find_file(&manifest_path)?;
     manifest.write_to_file(&mut file)
 }
 

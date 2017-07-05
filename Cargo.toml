@@ -18,7 +18,6 @@ appveyor = { repository = "killercup/cargo-edit" }
 [[bin]]
 name = "cargo-add"
 path = "src/bin/add/main.rs"
-
 [[bin]]
 name = "cargo-rm"
 path = "src/bin/rm/main.rs"
@@ -40,6 +39,7 @@ version = "0.7"
 
 [dev-dependencies]
 assert_cli = "0.2.0"
+pretty_assertions = "0.2.1"
 tempdir = "0.3"
 
 [features]

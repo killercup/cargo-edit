@@ -311,7 +311,7 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String, FetchGitError> {
 /// Cargo.toml is not present in the root of the path.
 pub fn get_crate_name_from_path(path: &str) -> Result<String, FetchGitError> {
     let cargo_file = Path::new(path).join("Cargo.toml");
-    Manifest::open(&cargo_file.to_str())
+    Manifest::open(&Some(cargo_file))
         .map_err(|_| FetchGitError::LocalCargoToml)
         .and_then(|ref manifest| get_name_from_manifest(manifest))
 }

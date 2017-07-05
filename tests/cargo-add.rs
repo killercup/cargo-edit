@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate assert_cli;
+#[macro_use]
+extern crate pretty_assertions;
 extern crate tempdir;
 extern crate toml;
 
@@ -529,7 +531,6 @@ fn adds_dependency_with_custom_target() {
     } else {
         panic!("target is not a table");
     }
-
 }
 
 
@@ -542,8 +543,9 @@ fn adds_dependency_normalized_name() {
     let toml = get_toml(&manifest);
     assert!(toml.get("dependencies").is_none());
 
-    assert_cli!("target/debug/cargo-add", &["add", "linked_hash_map", &format!("--manifest-path={}", manifest)] => Success,
-            "WARN: Added `linked-hash-map` instead of `linked_hash_map`").unwrap();
+    assert_cli!("target/debug/cargo-add",
+                &["add", "linked_hash_map", &format!("--manifest-path={}", manifest)] => Success,
+                "WARN: Added `linked-hash-map` instead of `linked_hash_map`").unwrap();
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
@@ -559,8 +561,6 @@ fn fails_to_add_dependency_with_empty_target() {
     // Fails because target parameter must be a valid target
     execute_command(&["add", "--target", "", "my-package1"], &manifest);
 }
-
-
 
 #[test]
 #[should_panic]
@@ -662,6 +662,127 @@ fn fails_to_update_missing_dependency() {
     get_toml(&manifest)["dependencies"]
         .get("failure")
         .expect("not added");
+}
+
+#[test]
+fn update_optional_dependency() {
+    // Set up a Cargo.toml with an optional dependency. `test_optional_dependency` verifies that
+    // this is correct.
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    execute_command(
+        &[
+            "add",
+            "versioned-package",
+            "--vers",
+            ">=0.1.1",
+            "--optional",
+        ],
+        &manifest,
+    );
+
+    // Now, update without including the `optional` flag.
+    execute_command(&["add", "versioned-package", "--update-only"], &manifest);
+
+    // Dependency present afterwards - correct version, and still optional.
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["versioned-package"];
+    assert_eq!(
+        val["version"].as_str().expect("not string"),
+        "versioned-package--CURRENT_VERSION_TEST"
+    );
+    assert_eq!(
+        val["optional"].as_bool().expect("optional not a bool"),
+        true
+    );
+}
+
+fn overwite_dependency_test(first_command: &[&str], second_command: &[&str], expected: &str) {
+    // First, add a dependency.
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    execute_command(first_command, &manifest);
+
+    // Then, overwite with the latest version
+    execute_command(second_command, &manifest);
+
+    // Verify that the dependency is as expected.
+    let toml = get_toml(&manifest);
+    let expected = r#"
+        [package]
+        name = "cargo-list-test-fixture"
+        version = "0.0.0"
+    "#.to_string() + expected;
+    let expected_dep: toml::Value = toml::from_str(&expected).unwrap();
+    assert_eq!(expected_dep, toml);
+}
+
+#[test]
+fn overwrite_version_with_version() {
+    overwite_dependency_test(
+        &["add", "versioned-package", "--vers", "0.1.1", "--optional"],
+        &["add", "versioned-package"],
+        r#"
+            [dependencies.versioned-package]
+            version = "versioned-package--CURRENT_VERSION_TEST"
+            optional = true
+        "#,
+    )
+}
+
+#[test]
+fn overwrite_version_with_git() {
+    overwite_dependency_test(
+        &["add", "versioned-package", "--vers", "0.1.1", "--optional"],
+        &["add", "versioned-package", "--git", "git://git.git"],
+        r#"
+            [dependencies.versioned-package]
+            git = "git://git.git"
+            optional = true
+        "#,
+    )
+}
+
+#[test]
+fn overwrite_version_with_path() {
+    overwite_dependency_test(
+        &["add", "versioned-package", "--vers", "0.1.1", "--optional"],
+        &["add", "versioned-package", "--path", "../foo"],
+        r#"
+            [dependencies.versioned-package]
+            path = "../foo"
+            optional = true
+        "#,
+    )
+}
+
+#[test]
+fn overwrite_git_with_path() {
+    overwite_dependency_test(
+        &[
+            "add",
+            "versioned-package",
+            "--git",
+            "git://git.git",
+            "--optional",
+        ],
+        &["add", "versioned-package", "--path", "../foo"],
+        r#"
+            [dependencies.versioned-package]
+            path = "../foo"
+            optional = true
+        "#,
+    )
+}
+
+#[test]
+fn overwrite_path_with_version() {
+    overwite_dependency_test(
+        &["add", "versioned-package", "--path", "../foo"],
+        &["add", "versioned-package"],
+        r#"
+            [dependencies]
+            versioned-package = "versioned-package--CURRENT_VERSION_TEST"
+        "#,
+    )
 }
 
 #[test]

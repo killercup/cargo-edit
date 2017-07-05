@@ -1,6 +1,6 @@
 use dependency::Dependency;
 use std::{env, str};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::collections::btree_map::Entry;
 use std::error::Error;
 use std::fs::{self, File, OpenOptions};
@@ -47,6 +47,15 @@ enum CargoFile {
     Lock,
 }
 
+impl CargoFile {
+    fn name(&self) -> &str {
+        match *self {
+            CargoFile::Config => "Cargo.toml",
+            CargoFile::Lock => "Cargo.lock",
+        }
+    }
+}
+
 /// A Cargo Manifest
 #[derive(Debug, Clone, PartialEq)]
 pub struct Manifest {
@@ -59,34 +68,72 @@ pub struct Manifest {
 /// If a manifest is specified, return that one. If a path is specified, perform a manifest search
 /// starting from there. If nothing is specified, start searching from the current directory
 /// (`cwd`).
-fn find(specified: &Option<&str>, file: CargoFile) -> Result<PathBuf, Box<Error>> {
-    let file_path = specified.map(PathBuf::from);
-
-    if let Some(path) = file_path {
-        if fs::metadata(&path)?.is_file() {
-            Ok(path)
-        } else {
-            search(&path, file).map_err(From::from)
-        }
-    } else {
-        env::current_dir()
-            .map_err(From::from)
-            .and_then(|ref dir| search(dir, file).map_err(From::from))
-    }
+fn find(specified: &Option<PathBuf>, file: CargoFile) -> Result<PathBuf, Box<Error>> {
+    match *specified {
+        Some(ref path) if fs::metadata(&path)?.is_file() => Ok(path.to_owned()),
+        Some(ref path) => search(path, file),
+        None => search(&env::current_dir()?, file),
+    }.map_err(From::from)
 }
 
 /// Search for Cargo.toml in this directory and recursively up the tree until one is found.
 fn search(dir: &Path, file: CargoFile) -> Result<PathBuf, ManifestError> {
-    let manifest = match file {
-        CargoFile::Config => dir.join("Cargo.toml"),
-        CargoFile::Lock => dir.join("Cargo.lock"),
-    };
+    let manifest = dir.join(file.name());
 
-    fs::metadata(&manifest).map(|_| manifest).or_else(|_| {
+    if fs::metadata(&manifest).is_ok() {
+        Ok(manifest)
+    } else {
         dir.parent()
             .ok_or(ManifestError::MissingManifest)
             .and_then(|dir| search(dir, file))
-    })
+    }
+}
+
+/// Merge a new dependency into an old entry. See `Dependency::to_toml` for what the format of the
+/// new dependency will be.
+fn merge_dependencies(old_dep: &mut toml::value::Value, new: &Dependency) {
+    let mut new_toml = new.to_toml().1;
+
+    if old_dep.is_str() || old_dep.as_table().map(|o| o.len() == 1).unwrap_or(false) {
+        // The old dependency is just a version/git/path. We are safe to overwrite.
+        ::std::mem::replace(old_dep, new_toml);
+    } else if let Some(old) = old_dep.as_table_mut() {
+        // Get rid of the old version field, whatever form that takes.
+        old.remove("version");
+        old.remove("path");
+        old.remove("git");
+
+        // Overwrite update the old dependency with the relevant fields from the new one.
+        match new_toml {
+            toml::Value::Table(ref mut n) => old.append(n),
+            v @ toml::Value::String(_) => {
+                // The new dependency is only a string if it is a plain version.
+                old.insert("version".to_string(), v.to_owned());
+            }
+            n => unreachable!("Invalid new dependency type: {:?}", n),
+        }
+    } else {
+        unreachable!("Invalid old dependency type");
+    }
+}
+
+/// Descend into a manifest until the required table is found.
+fn descend<'a>(
+    input: &'a mut BTreeMap<String, toml::Value>,
+    mut path: VecDeque<&String>,
+) -> Result<&'a mut BTreeMap<String, toml::Value>, ManifestError> {
+    if let Some(segment) = path.pop_front() {
+        let value = match *input
+            .entry(segment.to_owned())
+            .or_insert_with(|| toml::Value::Table(BTreeMap::new())) {
+            toml::Value::Table(ref mut t) => t,
+            _ => return Err(ManifestError::NonExistentTable(segment.clone())),
+        };
+
+        descend(value, path)
+    } else {
+        Ok(input)
+    }
 }
 
 impl Manifest {
@@ -94,7 +141,7 @@ impl Manifest {
     ///
     /// Starts at the given path an goes into its parent directories until the manifest file is
     /// found. If no path is given, the process's working directory is used as a starting point.
-    pub fn find_file(path: &Option<&str>) -> Result<File, Box<Error>> {
+    pub fn find_file(path: &Option<PathBuf>) -> Result<File, Box<Error>> {
         find(path, CargoFile::Config).and_then(|path| {
             OpenOptions::new()
                 .read(true)
@@ -108,7 +155,7 @@ impl Manifest {
     ///
     /// Starts at the given path an goes into its parent directories until the manifest file is
     /// found. If no path is given, the process' working directory is used as a starting point.
-    pub fn find_lock_file(path: &Option<&str>) -> Result<File, Box<Error>> {
+    pub fn find_lock_file(path: &Option<PathBuf>) -> Result<File, Box<Error>> {
         find(path, CargoFile::Lock).and_then(|path| {
             OpenOptions::new()
                 .read(true)
@@ -119,7 +166,7 @@ impl Manifest {
     }
 
     /// Open the `Cargo.toml` for a path (or the process' `cwd`)
-    pub fn open(path: &Option<&str>) -> Result<Manifest, Box<Error>> {
+    pub fn open(path: &Option<PathBuf>) -> Result<Manifest, Box<Error>> {
         let mut file = Manifest::find_file(path)?;
         let mut data = String::new();
         file.read_to_string(&mut data)?;
@@ -128,7 +175,7 @@ impl Manifest {
     }
 
     /// Open the `Cargo.lock` for a path (or the process' `cwd`)
-    pub fn open_lock_file(path: &Option<&str>) -> Result<Manifest, Box<Error>> {
+    pub fn open_lock_file(path: &Option<PathBuf>) -> Result<Manifest, Box<Error>> {
         let mut file = Manifest::find_lock_file(path)?;
         let mut data = String::new();
         file.read_to_string(&mut data)?;
@@ -162,48 +209,36 @@ impl Manifest {
     /// Add entry to a Cargo.toml.
     pub fn insert_into_table(
         &mut self,
-        table: &[String],
+        table_path: &[String],
         dep: &Dependency,
     ) -> Result<(), ManifestError> {
-        let (ref name, ref data) = dep.to_toml();
+        let (ref name, ref mut new_dependency) = dep.to_toml();
 
-        let mut entry = &mut self.data;
-        for part in table {
-            let tmp_entry = entry; // Make the borrow checker happy
-            let value = tmp_entry
-                .entry(part.clone())
-                .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
-            match *value {
-                toml::Value::Table(ref mut table) => entry = table,
-                _ => return Err(ManifestError::NonExistentTable(part.clone())),
-            }
-        }
-        entry.insert(name.clone(), data.clone());
+        let mut table = descend(&mut self.data, table_path.into_iter().collect())?;
+
+        table
+            .get_mut(&dep.name)
+            // If there exists an old entry, update it.
+            .map(|old_dependency| merge_dependencies(old_dependency, dep))
+            // Otherwise insert.
+            .unwrap_or_else(|| { table.insert(name.clone(), new_dependency.clone()); });
+
         Ok(())
     }
 
     /// Update an entry in Cargo.toml.
     pub fn update_table_entry(
         &mut self,
-        table: &[String],
+        table_path: &[String],
         dep: &Dependency,
     ) -> Result<(), ManifestError> {
-        let (ref name, ref data) = dep.to_toml();
+        let mut table = descend(&mut self.data, table_path.into_iter().collect())?;
 
-        let mut entry = &mut self.data;
-        for part in table {
-            let tmp_entry = entry; // Make the borrow checker happy
-            let value = tmp_entry
-                .entry(part.clone())
-                .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
-            match *value {
-                toml::Value::Table(ref mut table) => entry = table,
-                _ => return Err(ManifestError::NonExistentTable(part.clone())),
-            }
-        }
-        if entry.contains_key(name) {
-            entry.insert(name.clone(), data.clone());
-        }
+        // If (and only if) there is an old entry, merge the new one in.
+        table
+            .get_mut(&dep.name)
+            .map(|old_dependency| merge_dependencies(old_dependency, dep));
+
         Ok(())
     }
 
@@ -241,10 +276,8 @@ impl Manifest {
                     }
                     _ => Err(ManifestError::NonExistentTable(table.into())),
                 };
-                if let Some(empty) = section.get().as_table().and_then(|x| Some(x.is_empty())) {
-                    if empty {
-                        section.remove();
-                    }
+                if section.get().as_table().map(|x| x.is_empty()) == Some(true) {
+                    section.remove();
                 }
                 result
             }
@@ -255,9 +288,9 @@ impl Manifest {
     pub fn add_deps(&mut self, table: &[String], deps: &[Dependency]) -> Result<(), Box<Error>> {
         deps.iter()
             .map(|dep| self.insert_into_table(table, dep))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(From::from)
-            .map(|_| ())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(())
     }
 }
 
