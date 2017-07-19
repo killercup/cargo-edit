@@ -7,8 +7,8 @@ use std::io::prelude::*;
 
 /// Create temporary working directory with Cargo.toml mainifest
 pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
-    let tmpdir = tempdir::TempDir::new("cargo-add-test")
-        .expect("failed to construct temporary directory");
+    let tmpdir =
+        tempdir::TempDir::new("cargo-add-test").expect("failed to construct temporary directory");
     fs::copy(source, tmpdir.path().join("Cargo.toml"))
         .unwrap_or_else(|err| panic!("could not copy test manifest: {}", err));
     let path = tmpdir
