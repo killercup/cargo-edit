@@ -1,4 +1,4 @@
-use cargo_edit::{Dependency, Manifest};
+use {Dependency, Manifest};
 use regex::Regex;
 use reqwest;
 use semver;
@@ -238,7 +238,6 @@ quick_error! {
         ParseRegex { description("parse error: unable to parse git repo url") }
         IncompleteCaptures { description("parse error: the git repo url seems incomplete") }
         LocalCargoToml { description("path error: unable to open Cargo.toml") }
-        // RemoteCargoToml { description("path error: unable to open Cargo.toml from the provided repo") }
         ParseCargoToml { description("parse error: unable to parse the external Cargo.toml") }
     }
 }

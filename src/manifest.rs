@@ -1,6 +1,6 @@
 use dependency::Dependency;
 use std::{env, str};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::error::Error;
 use std::fs::{self, File, OpenOptions};
@@ -117,25 +117,6 @@ fn merge_dependencies(old_dep: &mut toml::value::Value, new: &Dependency) {
     }
 }
 
-/// Descend into a manifest until the required table is found.
-fn descend<'a>(
-    input: &'a mut BTreeMap<String, toml::Value>,
-    mut path: VecDeque<&String>,
-) -> Result<&'a mut BTreeMap<String, toml::Value>, ManifestError> {
-    if let Some(segment) = path.pop_front() {
-        let value = match *input
-            .entry(segment.to_owned())
-            .or_insert_with(|| toml::Value::Table(BTreeMap::new())) {
-            toml::Value::Table(ref mut t) => t,
-            _ => return Err(ManifestError::NonExistentTable(segment.clone())),
-        };
-
-        descend(value, path)
-    } else {
-        Ok(input)
-    }
-}
-
 impl Manifest {
     /// Look for a `Cargo.toml` file
     ///
@@ -183,6 +164,75 @@ impl Manifest {
         data.parse()
     }
 
+    /// Get the specified table from the manifest.
+    pub fn get_table<'a>(
+        &'a mut self,
+        table_path: &[String],
+    ) -> Result<&'a mut BTreeMap<String, toml::Value>, ManifestError> {
+
+        /// Descend into a manifest until the required table is found.
+        fn descend<'a>(
+            input: &'a mut BTreeMap<String, toml::Value>,
+            path: &[String],
+        ) -> Result<&'a mut BTreeMap<String, toml::Value>, ManifestError> {
+            if let Some(segment) = path.get(0) {
+                let value = input
+                    .entry(segment.to_owned())
+                    .or_insert_with(|| toml::Value::Table(BTreeMap::new()));
+
+                match *value {
+                    toml::Value::Table(ref mut table) => descend(table, &path[1..]),
+                    _ => Err(ManifestError::NonExistentTable(segment.clone())),
+                }
+            } else {
+                Ok(input)
+            }
+        }
+
+        descend(&mut self.data, table_path)
+    }
+
+    /// Get all sections in the manifest that exist and might contain dependencies.
+    pub fn get_sections(&self) -> Vec<(Vec<String>, BTreeMap<String, toml::Value>)> {
+        let mut sections = Vec::new();
+
+        for dependency_type in &["dev-dependencies", "build-dependencies", "dependencies"] {
+            // Dependencies can be in the three standard sections...
+            self.data
+                .get(&dependency_type.to_string())
+                .and_then(toml::Value::as_table)
+                .map(|table| {
+                    sections.push((vec![dependency_type.to_string()], table.clone()))
+                });
+
+            // ... and in `target.<target>.(build-/dev-)dependencies`.
+            let target_sections = self.data
+                .get("target")
+                .and_then(toml::Value::as_table)
+                .into_iter()
+                .flat_map(|target_tables| target_tables.into_iter())
+                .filter_map(|(target_name, target_table)| {
+                    target_table
+                        .get(dependency_type)
+                        .and_then(toml::Value::as_table)
+                        .map(|dependency_table| {
+                            (
+                                vec![
+                                    "target".to_string(),
+                                    target_name.to_string(),
+                                    dependency_type.to_string(),
+                                ],
+                                dependency_table.to_owned(),
+                            )
+                        })
+                });
+
+            sections.extend(target_sections);
+        }
+
+        sections
+    }
+
     /// Overwrite a file with TOML data.
     pub fn write_to_file(&self, file: &mut File) -> Result<(), Box<Error>> {
         let mut toml = self.data.clone();
@@ -212,16 +262,18 @@ impl Manifest {
         table_path: &[String],
         dep: &Dependency,
     ) -> Result<(), ManifestError> {
-        let (ref name, ref mut new_dependency) = dep.to_toml();
-
-        let mut table = descend(&mut self.data, table_path.into_iter().collect())?;
+        let mut table = self.get_table(table_path)?;
 
         table
             .get_mut(&dep.name)
             // If there exists an old entry, update it.
             .map(|old_dependency| merge_dependencies(old_dependency, dep))
             // Otherwise insert.
-            .unwrap_or_else(|| { table.insert(name.clone(), new_dependency.clone()); });
+            .unwrap_or_else(|| {
+                let (ref name, ref mut new_dependency) = dep.to_toml();
+
+                table.insert(name.clone(), new_dependency.clone());
+            });
 
         Ok(())
     }
@@ -232,7 +284,7 @@ impl Manifest {
         table_path: &[String],
         dep: &Dependency,
     ) -> Result<(), ManifestError> {
-        let mut table = descend(&mut self.data, table_path.into_iter().collect())?;
+        let mut table = self.get_table(table_path)?;
 
         // If (and only if) there is an old entry, merge the new one in.
         table
@@ -315,7 +367,9 @@ mod tests {
 
     #[test]
     fn add_remove_dependency() {
-        let mut manifest = Manifest { data: toml::value::Table::new() };
+        let mut manifest = Manifest {
+            data: toml::value::Table::new(),
+        };
         let clone = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let _ = manifest.insert_into_table(&["dependencies".to_owned()], &dep);
@@ -329,7 +383,9 @@ mod tests {
 
     #[test]
     fn update_dependency() {
-        let mut manifest = Manifest { data: toml::value::Table::new() };
+        let mut manifest = Manifest {
+            data: toml::value::Table::new(),
+        };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         manifest
             .insert_into_table(&["dependencies".to_owned()], &dep)
@@ -343,7 +399,9 @@ mod tests {
 
     #[test]
     fn update_wrong_dependency() {
-        let mut manifest = Manifest { data: toml::value::Table::new() };
+        let mut manifest = Manifest {
+            data: toml::value::Table::new(),
+        };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         manifest
             .insert_into_table(&["dependencies".to_owned()], &dep)
@@ -360,7 +418,9 @@ mod tests {
 
     #[test]
     fn remove_dependency_no_section() {
-        let mut manifest = Manifest { data: toml::value::Table::new() };
+        let mut manifest = Manifest {
+            data: toml::value::Table::new(),
+        };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         assert!(
             manifest
@@ -371,7 +431,9 @@ mod tests {
 
     #[test]
     fn remove_dependency_non_existent() {
-        let mut manifest = Manifest { data: toml::value::Table::new() };
+        let mut manifest = Manifest {
+            data: toml::value::Table::new(),
+        };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
         let _ = manifest.insert_into_table(&["dependencies".to_owned()], &other_dep);

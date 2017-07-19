@@ -21,6 +21,9 @@ path = "src/bin/add/main.rs"
 [[bin]]
 name = "cargo-rm"
 path = "src/bin/rm/main.rs"
+[[bin]]
+name = "cargo-upgrade"
+path = "src/bin/upgrade/main.rs"
 
 [dependencies]
 docopt = "0.8"

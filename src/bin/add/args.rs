@@ -1,8 +1,8 @@
 //! Handle `cargo add` arguments
 
 use cargo_edit::Dependency;
-use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
-            get_latest_dependency};
+use cargo_edit::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
+                 get_latest_dependency};
 use semver;
 use std::error::Error;
 use std::path::PathBuf;
@@ -34,8 +34,6 @@ pub struct Args {
     pub flag_version: bool,
     /// `---upgrade`
     pub flag_upgrade: Option<String>,
-    /// `--update-only`
-    pub flag_update_only: bool,
     /// '--fetch-prereleases'
     pub flag_allow_prerelease: bool,
 }
@@ -86,28 +84,29 @@ impl Args {
 
 
         let dependency = if !crate_name_is_url_or_path(&self.arg_crate) {
-                let dependency = Dependency::new(&self.arg_crate);
+            let dependency = Dependency::new(&self.arg_crate);
 
-                if let Some(ref version) = self.flag_vers {
-                    semver::VersionReq::parse(version)?;
-                    dependency.set_version(version)
-                } else if let Some(ref repo) = self.flag_git {
-                    dependency.set_git(repo)
-                } else if let Some(ref path) = self.flag_path {
-                    dependency.set_path(path.to_str().unwrap())
-                } else {
-                    let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease)?;
-                    let v = format!("{prefix}{version}",
-                                    prefix = self.get_upgrade_prefix().unwrap_or(""),
-                                    // if version is unavailable
-                                    // `get_latest_dependency` must have returned `Err(FetchVersionError::GetVersion)`
-                                    version = dep.version().unwrap_or_else(|| unreachable!()));
-                    dep.set_version(&v)
-                }
+            if let Some(ref version) = self.flag_vers {
+                semver::VersionReq::parse(version)?;
+                dependency.set_version(version)
+            } else if let Some(ref repo) = self.flag_git {
+                dependency.set_git(repo)
+            } else if let Some(ref path) = self.flag_path {
+                dependency.set_path(path.to_str().unwrap())
             } else {
-                parse_crate_name_from_uri(&self.arg_crate)?
+                let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease)?;
+                let v = format!(
+                    "{prefix}{version}",
+                    prefix = self.get_upgrade_prefix().unwrap_or(""),
+                    // If version is unavailable `get_latest_dependency` must have
+                    // returned `Err(FetchVersionError::GetVersion)`
+                    version = dep.version().unwrap_or_else(|| unreachable!())
+                );
+                dep.set_version(&v)
             }
-            .set_optional(self.flag_optional);
+        } else {
+            parse_crate_name_from_uri(&self.arg_crate)?
+        }.set_optional(self.flag_optional);
 
         Ok(vec![dependency])
     }
@@ -146,7 +145,6 @@ impl Default for Args {
             flag_manifest_path: None,
             flag_version: false,
             flag_upgrade: None,
-            flag_update_only: false,
             flag_allow_prerelease: false,
         }
     }

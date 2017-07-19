@@ -1,4 +1,5 @@
-/// ! Handle `cargo rm` arguments
+//! Handle `cargo rm` arguments
+
 #[derive(Debug, Deserialize)]
 /// Docopts input args.
 pub struct Args {
