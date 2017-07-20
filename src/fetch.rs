@@ -329,9 +329,9 @@ fn get_default_timeout() -> Duration {
 }
 
 fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Response> {
-    let mut client = reqwest::Client::new()?;
-    client.timeout(timeout);
-    client.get(url).send()
+    let client = reqwest::ClientBuilder::new()?.timeout(timeout).build()?;
+
+    client.get(url)?.send()
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String, FetchGitError> {
