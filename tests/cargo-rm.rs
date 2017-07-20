@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate assert_cli;
 
 mod utils;
@@ -75,11 +74,17 @@ fn issue_32() {
 fn invalid_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
-    assert_cli!("target/debug/cargo-rm",
-                &["rm", "invalid_dependency_name", &format!("--manifest-path={}", manifest)]
-                => Error 1, "Could not edit `Cargo.toml`.
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-rm",
+        "rm",
+        "invalid_dependency_name",
+        &format!("--manifest-path={}", manifest),
+    ]).fails_with(1)
+        .prints_error_exactly(
+            "Could not edit `Cargo.toml`.
 
-ERROR: The dependency `invalid_dependency_name` could not be found in `dependencies`.")
+ERROR: The dependency `invalid_dependency_name` could not be found in `dependencies`.",
+        )
         .unwrap();
 }
 
@@ -88,42 +93,66 @@ fn invalid_section() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     execute_command(&["rm", "semver", "--build"], &manifest);
-    assert_cli!("target/debug/cargo-rm",
-                &["rm", "semver", "--build", &format!("--manifest-path={}", manifest)]
-                => Error 1, "Could not edit `Cargo.toml`.
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-rm",
+        "rm",
+        "semver",
+        "--build",
+        &format!("--manifest-path={}", manifest),
+    ]).fails_with(1)
+        .prints_error_exactly(
+            "Could not edit `Cargo.toml`.
 
-ERROR: The table `build-dependencies` could not be found.").unwrap();
+ERROR: The table `build-dependencies` could not be found.",
+        )
+        .unwrap();
 }
 
 #[test]
 fn invalid_dependency_in_section() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
-    assert_cli!("target/debug/cargo-rm",
-                &["rm", "semver", "--dev", &format!("--manifest-path={}", manifest)]
-                => Error 1, "Could not edit `Cargo.toml`.
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-rm",
+        "rm",
+        "semver",
+        "--dev",
+        &format!("--manifest-path={}", manifest),
+    ]).fails_with(1)
+        .prints_error_exactly(
+            "Could not edit `Cargo.toml`.
 
-ERROR: The dependency `semver` could not be found in `dev-dependencies`.").unwrap();
+ERROR: The dependency `semver` could not be found in `dev-dependencies`.",
+        )
+        .unwrap();
 }
 
 #[test]
 fn no_argument() {
-    assert_cli!("target/debug/cargo-rm", &["rm"] => Error 1,
-                r"Invalid arguments.
+    assert_cli::Assert::command(&["target/debug/cargo-rm", "rm"])
+        .fails_with(1)
+        .prints_error_exactly(
+            r"Invalid arguments.
 
 Usage:
     cargo rm <crate> [--dev|--build] [options]
     cargo rm (-h|--help)
-    cargo rm --version").unwrap();
+    cargo rm --version",
+        )
+        .unwrap();
 }
 
 #[test]
 fn unknown_flags() {
-    assert_cli!("target/debug/cargo-rm", &["rm", "foo", "--flag"] => Error 1,
-                r"Unknown flag: '--flag'
+    assert_cli::Assert::command(&["target/debug/cargo-rm", "rm", "foo", "--flag"])
+        .fails_with(1)
+        .prints_error_exactly(
+            r"Unknown flag: '--flag'
 
 Usage:
     cargo rm <crate> [--dev|--build] [options]
     cargo rm (-h|--help)
-    cargo rm --version").unwrap();
+    cargo rm --version",
+        )
+        .unwrap();
 }

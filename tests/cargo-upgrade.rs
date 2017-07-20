@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate assert_cli;
 #[macro_use]
 extern crate pretty_assertions;
@@ -115,11 +114,15 @@ fn upgrade_optional_dependency() {
 
 #[test]
 fn unknown_flags() {
-    assert_cli!("target/debug/cargo-upgrade", &["upgrade", "foo", "--flag"] => Error 1,
-                r"Unknown flag: '--flag'
+    assert_cli::Assert::command(&["target/debug/cargo-upgrade", "upgrade", "foo", "--flag"])
+        .fails_with(1)
+        .prints_error_exactly(
+            r"Unknown flag: '--flag'
 
 Usage:
     cargo upgrade [--dependency <dep>...] [--manifest-path <path>]
     cargo upgrade (-h | --help)
-    cargo upgrade (-V | --version)").unwrap();
+    cargo upgrade (-V | --version)",
+        )
+        .unwrap();
 }
