@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate assert_cli;
 #[macro_use]
 extern crate pretty_assertions;
@@ -543,9 +542,14 @@ fn adds_dependency_normalized_name() {
     let toml = get_toml(&manifest);
     assert!(toml.get("dependencies").is_none());
 
-    assert_cli!("target/debug/cargo-add",
-                &["add", "linked_hash_map", &format!("--manifest-path={}", manifest)] => Success,
-                "WARN: Added `linked-hash-map` instead of `linked_hash_map`").unwrap();
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "linked_hash_map",
+        &format!("--manifest-path={}", manifest),
+    ]).succeeds()
+        .prints("WARN: Added `linked-hash-map` instead of `linked_hash_map`")
+        .unwrap();
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
@@ -721,24 +725,32 @@ fn overwrite_path_with_version() {
 
 #[test]
 fn no_argument() {
-    assert_cli!("target/debug/cargo-add", &["add"] => Error 1,
-                r"Invalid arguments.
+    assert_cli::Assert::command(&["target/debug/cargo-add", "add"])
+        .fails_with(1)
+        .prints_error_exactly(
+            r"Invalid arguments.
 
 Usage:
     cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
     cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
-    cargo add --version").unwrap();
+    cargo add --version",
+        )
+        .unwrap();
 }
 
 #[test]
 fn unknown_flags() {
-    assert_cli!("target/debug/cargo-add", &["add", "foo", "--flag"] => Error 1,
-                r"Unknown flag: '--flag'
+    assert_cli::Assert::command(&["target/debug/cargo-add", "add", "foo", "--flag"])
+        .fails_with(1)
+        .prints_error_exactly(
+            r"Unknown flag: '--flag'
 
 Usage:
     cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
     cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
-    cargo add --version").unwrap();
+    cargo add --version",
+        )
+        .unwrap();
 }
