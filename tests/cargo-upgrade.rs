@@ -126,3 +126,18 @@ Usage:
         )
         .unwrap();
 }
+
+#[test]
+fn upgrade_prints_messages() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.source");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-upgrade",
+        "upgrade",
+        "-d",
+        "docopt",
+        &format!("--manifest-path={}", manifest),
+    ]).succeeds()
+        .prints("docopt v0.8 -> v")
+        .unwrap();
+}
