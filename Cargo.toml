@@ -1,7 +1,7 @@
 [package]
-authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>", "Sebastian Garrido <sebasgarcep@gmail.com>", "Jonas Platte <mail@jonasplatte.de>"]
+authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>", "Sebastian Garrido <sebasgarcep@gmail.com>", "Jonas Platte <mail@jonasplatte.de>", "Benjamin Gill <git@bgill.eu>", "Andronik Ordian <write@reusable.software>"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
-description = "This extends Cargo to allow you to add and remove dependencies by modifying your `Cargo.toml` file from the command line. It contains `cargo add` and `cargo rm`."
+description = "This extends Cargo to allow you to add and remove dependencies by modifying your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo upgrade`."
 documentation = "http://killercup.github.io/cargo-edit/"
 homepage = "https://github.com/killercup/cargo-edit"
 keywords = ["cargo", "cargo-subcommand", "cli", "dependencies", "crates"]
@@ -9,7 +9,7 @@ license = "Apache-2.0/MIT"
 name = "cargo-edit"
 readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
-version = "0.1.6"
+version = "0.2.0"
 [[bin]]
 name = "cargo-add"
 path = "src/bin/add/main.rs"
