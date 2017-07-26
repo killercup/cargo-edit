@@ -1,6 +1,6 @@
 [root]
 name = "cargo-edit"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "assert_cli 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
