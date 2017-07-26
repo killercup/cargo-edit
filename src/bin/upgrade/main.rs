@@ -1,8 +1,7 @@
 //! `cargo upgrade`
-
 #![warn(missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts,
-        trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
-        unused_qualifications)]
+       trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
+       unused_qualifications)]
 
 extern crate docopt;
 extern crate pad;
@@ -15,7 +14,7 @@ use std::io::{self, Write};
 use std::process;
 
 extern crate cargo_edit;
-use cargo_edit::{Manifest, get_latest_dependency};
+use cargo_edit::{get_latest_dependency, Manifest};
 
 static USAGE: &'static str = r"
 Upgrade all dependencies in a manifest file to the latest version.
