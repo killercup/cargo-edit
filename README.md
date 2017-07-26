@@ -16,33 +16,11 @@ Currently available subcommands:
 
 ## Installation
 
-### Using `cargo install`
-
-If you have a recent version of `cargo`, you can use `cargo install` to get all the tools provided by `cargo-edit` in one simple step:
-
 ```sh
 $ cargo install cargo-edit
 ```
 
-(Please check `cargo`'s documentation to learn how `cargo install` works and how to set up your system so it finds binaries installed by `cargo`.)
-
-### Without `cargo install`
-
-You can build all commands of `cargo-edit` from the source available on GitHub:
-
-```sh
-$ git clone https://github.com/killercup/cargo-edit.git
-$ cd cargo-edit
-$ cargo build --release
-```
-
-Once you have the executables, you can move them to a directory in your `$PATH`, e.g.
-
-```sh
-$ cp target/release/cargo-* ~/.bin/
-```
-
-You should be able to use the new Cargo subcommands now.
+(Please check [`cargo`'s documentation](http://doc.crates.io/) to learn how `cargo install` works and how to set up your system so it finds binaries installed by `cargo`.)
 
 ## Available Subcommands
 
