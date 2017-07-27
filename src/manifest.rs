@@ -7,6 +7,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use toml;
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 /// Enumeration of errors which can occur when working with a rust manifest.
 quick_error! {
@@ -115,6 +116,47 @@ fn merge_dependencies(old_dep: &mut toml::value::Value, new: &Dependency) {
     } else {
         unreachable!("Invalid old dependency type");
     }
+}
+
+/// Print a message if the new dependency version is different from the old one.
+fn print_upgrade_if_necessary(
+    crate_name: &str,
+    old_dep: &toml::Value,
+    new_version: &toml::Value,
+) -> Result<(), Box<Error>> {
+    let old_version =
+        if old_dep.is_str() || old_dep.as_table().map(|o| o.len() == 1).unwrap_or(false) {
+            old_dep.clone()
+        } else if let Some(old) = old_dep.as_table() {
+            if let Some(old_dep) = old.clone().remove("version") {
+                old_dep
+            } else {
+                return Err(From::from("Missing version field"));
+            }
+        } else {
+            unreachable!("Invalid old dependency type");
+        };
+
+    if let (Some(old_version), Some(new_version)) = (old_version.as_str(), new_version.as_str()) {
+        if old_version == new_version {
+            return Ok(());
+        }
+        let bufwtr = BufferWriter::stdout(ColorChoice::Always);
+        let mut buffer = bufwtr.buffer();
+        buffer
+            .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+        write!(&mut buffer, "Upgrading ")?;
+        buffer.set_color(&ColorSpec::new())?;
+        write!(
+            &mut buffer,
+            "{} v{} -> v{}\n",
+            crate_name,
+            old_version,
+            new_version,
+        )?;
+        bufwtr.print(&buffer)?;
+    }
+    Ok(())
 }
 
 impl Manifest {
@@ -285,11 +327,16 @@ impl Manifest {
         dep: &Dependency,
     ) -> Result<(), ManifestError> {
         let mut table = self.get_table(table_path)?;
+        let new_dep = dep.to_toml().1;
 
         // If (and only if) there is an old entry, merge the new one in.
-        table
-            .get_mut(&dep.name)
-            .map(|old_dependency| merge_dependencies(old_dependency, dep));
+        let old_dependency = table.get_mut(&dep.name);
+        if let Some(old_dependency) = old_dependency {
+            if let Err(e) = print_upgrade_if_necessary(&dep.name, old_dependency, &new_dep) {
+                eprintln!("Error while displaying upgrade message, {}", e);
+            }
+            merge_dependencies(old_dependency, dep);
+        }
 
         Ok(())
     }

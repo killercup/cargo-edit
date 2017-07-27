@@ -148,11 +148,12 @@ $ cargo upgrade -d libc --dependency serde
 Upgrade all dependencies in a manifest file to the latest version.
 
 Usage:
-    cargo upgrade [--dependency <dep>...] [--manifest-path <path>]
+    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>]
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)
 
 Options:
+    --all                       Upgrade all packages in the workspace.
     -d --dependency <dep>       Specific dependency to upgrade. If this option is used, only the
                                 specified dependencies will be upgraded.
     --manifest-path <path>      Path to the manifest to upgrade.
@@ -161,6 +162,9 @@ Options:
 
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.
+
+All packages in the workspace will be upgraded if the `--all` flag is supplied. The `--all` flag may
+be supplied in the presence of a virtual manifest.
 ```
 
 ## License
