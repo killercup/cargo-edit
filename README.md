@@ -12,37 +12,27 @@ Currently available subcommands:
 [![Build status](https://ci.appveyor.com/api/projects/status/m23rnkaxhipb23i9/branch/master?svg=true)](https://ci.appveyor.com/project/killercup/cargo-edit/branch/master)
 [![Coverage Status](https://coveralls.io/repos/killercup/cargo-edit/badge.svg?branch=master&service=github)](https://coveralls.io/github/killercup/cargo-edit?branch=master)
 [![crates.io](https://img.shields.io/crates/v/cargo-edit.svg)](https://crates.io/crates/cargo-edit)
+[![Join the chat at https://gitter.im/cargo-edit/Lobby](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/cargo-edit/Lobby)
 
+## Contribution
+
+Thanks for your interest - we gratefully welcome contributions.
+
+Questions can be asked in [issues](https://github.com/killercup/cargo-edit/issues), or on [Gitter](https://gitter.im/cargo-edit/Lobby).
+
+To help us help you get pull requests merged quickly and smoothly, open an issue before submitted large changes. Please keep the contents of pull requests and commits short. Commit messages should include the intent of the commit.
+
+`cargo-edit` has a moderately comprehensive test suite. Contributions that add/improve tests are awesome. Please add tests for every change.
+
+`cargo-edit` uses [`rustfmt-nightly`](https://github.com/rust-lang-nursery/rustfmt) for formatting and [`clippy`](https://github.com/rust-lang-nursery/rust-clippy) for linting.
 
 ## Installation
-
-### Using `cargo install`
-
-If you have a recent version of `cargo`, you can use `cargo install` to get all the tools provided by `cargo-edit` in one simple step:
 
 ```sh
 $ cargo install cargo-edit
 ```
 
-(Please check `cargo`'s documentation to learn how `cargo install` works and how to set up your system so it finds binaries installed by `cargo`.)
-
-### Without `cargo install`
-
-You can build all commands of `cargo-edit` from the source available on GitHub:
-
-```sh
-$ git clone https://github.com/killercup/cargo-edit.git
-$ cd cargo-edit
-$ cargo build --release
-```
-
-Once you have the executables, you can move them to a directory in your `$PATH`, e.g.
-
-```sh
-$ cp target/release/cargo-* ~/.bin/
-```
-
-You should be able to use the new Cargo subcommands now.
+(Please check [`cargo`'s documentation](http://doc.crates.io/) to learn how `cargo install` works and how to set up your system so it finds binaries installed by `cargo`.)
 
 ## Available Subcommands
 
