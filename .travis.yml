@@ -25,6 +25,7 @@ script:
   travis-cargo test -- --features test-external-apis &&
   travis-cargo bench &&
   travis-cargo --only stable doc
+- git diff --exit-code
 addons:
   apt:
     packages:
