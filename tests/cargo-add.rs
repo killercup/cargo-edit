@@ -10,9 +10,14 @@ use utils::{clone_out_test, execute_command, get_toml};
 
 /// Check 'failure' deps are not present
 fn no_manifest_failures(manifest: &toml::Value) -> bool {
-    manifest.get("dependencies.failure").is_none() &&
-        manifest.get("dev-dependencies.failure").is_none() &&
-        manifest.get("build-dependencies.failure").is_none()
+    let no_failure_key_in = |section| {
+        manifest
+            .get(section)
+            .map(|m| m.get("failure").is_none())
+            .unwrap_or(true)
+    };
+    no_failure_key_in("dependencies") && no_failure_key_in("dev-dependencies") &&
+        no_failure_key_in("build-dependencies")
 }
 
 #[test]
