@@ -1,0 +1,10 @@
+[package]
+name = "two"
+version = "0.1.0"
+
+[[bin]]
+name = "two"
+path = "../dummy.rs"
+
+[dependencies]
+libc = "0.2.28"
