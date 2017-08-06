@@ -13,12 +13,15 @@ version = "0.2.0"
 [[bin]]
 name = "cargo-add"
 path = "src/bin/add/main.rs"
+required-features = ["add"]
 [[bin]]
 name = "cargo-rm"
 path = "src/bin/rm/main.rs"
+required-features = ["rm"]
 [[bin]]
 name = "cargo-upgrade"
 path = "src/bin/upgrade/main.rs"
+required-features = ["upgrade"]
 [badges.appveyor]
 repository = "killercup/cargo-edit"
 
@@ -47,6 +50,9 @@ pretty_assertions = "0.2.1"
 tempdir = "0.3"
 
 [features]
-default = []
+default = ["add", "rm", "upgrade"]
 test-external-apis = []
 unstable = []
+add = []
+rm = []
+upgrade = []
