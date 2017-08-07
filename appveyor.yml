@@ -1,4 +1,6 @@
-# Appveyor config copied from https://github.com/seanmonstar/reqwest
+# Appveyor config originally copied from https://github.com/seanmonstar/reqwest
+#
+# appveyor-retry makes us more resilient to random network failures.
 environment:
   matrix:
   - TARGET: x86_64-pc-windows-msvc
@@ -6,14 +8,14 @@ environment:
   - TARGET: x86_64-pc-windows-gnu
   - TARGET: i686-pc-windows-gnu
 install:
-  - curl -sSf -o rustup-init.exe https://win.rustup.rs/
-  - rustup-init.exe -y --default-host %TARGET%
+  - appveyor-retry curl -sSf -o rustup-init.exe https://win.rustup.rs/
+  - appveyor-retry rustup-init.exe -y --default-host %TARGET%
   - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
   - rustc -vV
   - cargo -vV
 build: false
 test_script:
-  - cargo build --verbose
+  - appveyor-retry cargo build --verbose
   - cargo test --verbose
 branches:
   except:
