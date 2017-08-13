@@ -36,6 +36,22 @@ fn adds_dependency() {
     assert_eq!(val.as_str().unwrap(), "my-package--CURRENT_VERSION_TEST");
 }
 
+#[test]
+fn adds_prerelease_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml.get("dependencies").is_none());
+
+    execute_command(&["add", "my-package", "--allow-prerelease"], &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["my-package"];
+    assert_eq!(val.as_str().unwrap(), "my-package--PRERELEASE_VERSION_TEST");  
+}
+
 fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
