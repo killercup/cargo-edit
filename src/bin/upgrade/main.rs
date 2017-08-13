@@ -21,7 +21,7 @@ static USAGE: &'static str = r"
 Upgrade all dependencies in a manifest file to the latest version.
 
 Usage:
-    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>]
+    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)
 
