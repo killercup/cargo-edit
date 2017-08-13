@@ -39,17 +39,13 @@ pub fn get_latest_dependency(
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
-        if flag_allow_prerelease {
-            return Ok(
-                Dependency::new(crate_name)
-                    .set_version(&format!("{}--PRERELEASE_VERSION_TEST", crate_name)),
-            );
+        let new_version = if flag_allow_prerelease {
+            format!("{}--PRERELEASE_VERSION_TEST", crate_name)
         } else {
-            return Ok(
-                Dependency::new(crate_name)
-                    .set_version(&format!("{}--CURRENT_VERSION_TEST", crate_name)),
-            );
-        }
+            format!("{}--CURRENT_VERSION_TEST", crate_name)
+        };
+
+        return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
 
     let crate_versions = fetch_cratesio(&format!("/crates/{}", crate_name))?;
