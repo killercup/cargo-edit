@@ -49,7 +49,7 @@ fn adds_prerelease_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package"];
-    assert_eq!(val.as_str().unwrap(), "my-package--PRERELEASE_VERSION_TEST");  
+    assert_eq!(val.as_str().unwrap(), "my-package--PRERELEASE_VERSION_TEST");
 }
 
 fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {

@@ -140,13 +140,21 @@ fn main() {
     let output = if args.flag_all {
         get_workspace_manifests(&args.flag_manifest_path).and_then(|manifests| {
             for manifest in manifests {
-                update_manifest(&Some(manifest), &args.flag_dependency, args.flag_allow_prerelease)?
+                update_manifest(
+                    &Some(manifest),
+                    &args.flag_dependency,
+                    args.flag_allow_prerelease,
+                )?
             }
 
             Ok(())
         })
     } else {
-        update_manifest(&args.flag_manifest_path, &args.flag_dependency, args.flag_allow_prerelease)
+        update_manifest(
+            &args.flag_manifest_path,
+            &args.flag_dependency,
+            args.flag_allow_prerelease,
+        )
     };
 
     if let Err(err) = output {

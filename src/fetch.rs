@@ -43,7 +43,7 @@ pub fn get_latest_dependency(
             return Ok(
                 Dependency::new(crate_name)
                     .set_version(&format!("{}--PRERELEASE_VERSION_TEST", crate_name)),
-            );  
+            );
         } else {
             return Ok(
                 Dependency::new(crate_name)
