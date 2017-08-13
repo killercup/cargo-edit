@@ -40,6 +40,23 @@ fn upgrade_all() {
 }
 
 #[test]
+fn upgrade_all_allow_prerelease() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Setup manifest with the dependency `versioned-package@0.1.1`
+    execute_command(&["add", "versioned-package", "--vers", "0.1.1"], &manifest);
+
+    // Now, upgrade `versioned-package` to the latest version
+    execute_command(&["upgrade", "--allow-prerelease"], &manifest);
+
+    // Verify that `versioned-package` has been updated successfully.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["versioned-package"],
+        toml::value::Value::String("versioned-package--PRERELEASE_VERSION_TEST".to_string())
+    );
+}
+
+#[test]
 fn upgrade_specified_only() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -178,7 +195,7 @@ fn unknown_flags() {
             r"Unknown flag: '--flag'
 
 Usage:
-    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>]
+    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)",
         )

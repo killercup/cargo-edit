@@ -159,6 +159,8 @@ Options:
     -d --dependency <dep>       Specific dependency to upgrade. If this option is used, only the
                                 specified dependencies will be upgraded.
     --manifest-path <path>      Path to the manifest to upgrade.
+    --allow-prerelease          Include prerelease versions when fetching from crates.io (e.g.
+                                '0.6.0-alpha'). Defaults to false.
     -h --help                   Show this help page.
     -V --version                Show version.
 

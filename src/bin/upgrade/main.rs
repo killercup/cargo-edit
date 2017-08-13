@@ -21,7 +21,7 @@ static USAGE: &'static str = r"
 Upgrade all dependencies in a manifest file to the latest version.
 
 Usage:
-    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>]
+    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)
 
@@ -30,6 +30,8 @@ Options:
     -d --dependency <dep>       Specific dependency to upgrade. If this option is used, only the
                                 specified dependencies will be upgraded.
     --manifest-path <path>      Path to the manifest to upgrade.
+    --allow-prerelease          Include prerelease versions when fetching from crates.io (e.g.
+                                '0.6.0-alpha'). Defaults to false.
     -h --help                   Show this help page.
     -V --version                Show version.
 
@@ -51,6 +53,8 @@ struct Args {
     flag_version: bool,
     /// `--all`
     flag_all: bool,
+    /// `--allow-prerelease`
+    flag_allow_prerelease: bool,
 }
 
 fn is_version_dependency(dep: &toml::Value) -> bool {
@@ -64,6 +68,7 @@ fn is_version_dependency(dep: &toml::Value) -> bool {
 fn update_manifest(
     manifest_path: &Option<String>,
     only_update: &[String],
+    allow_prerelease: bool,
 ) -> Result<(), Box<Error>> {
     let manifest_path = manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path).unwrap();
@@ -73,7 +78,7 @@ fn update_manifest(
             if (only_update.is_empty() || only_update.contains(name)) &&
                 is_version_dependency(old_value)
             {
-                let latest_version = get_latest_dependency(name, false)?;
+                let latest_version = get_latest_dependency(name, allow_prerelease)?;
 
                 manifest.update_table_entry(&table_path, &latest_version)?;
             }
@@ -135,13 +140,21 @@ fn main() {
     let output = if args.flag_all {
         get_workspace_manifests(&args.flag_manifest_path).and_then(|manifests| {
             for manifest in manifests {
-                update_manifest(&Some(manifest), &args.flag_dependency)?
+                update_manifest(
+                    &Some(manifest),
+                    &args.flag_dependency,
+                    args.flag_allow_prerelease,
+                )?
             }
 
             Ok(())
         })
     } else {
-        update_manifest(&args.flag_manifest_path, &args.flag_dependency)
+        update_manifest(
+            &args.flag_manifest_path,
+            &args.flag_dependency,
+            args.flag_allow_prerelease,
+        )
     };
 
     if let Err(err) = output {
