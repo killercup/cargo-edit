@@ -7,6 +7,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use toml;
+use serde::Serialize;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 /// Enumeration of errors which can occur when working with a rust manifest.
@@ -62,6 +63,16 @@ impl CargoFile {
 pub struct Manifest {
     /// Manifest contents as TOML data
     pub data: toml::value::Table,
+}
+
+fn toml_pretty(value: &toml::Value) -> Result<String, Box<Error>> {
+    let mut out = String::new();
+    {
+        let mut ser = toml::Serializer::pretty(&mut out);
+        ser.pretty_string_literal(false);
+        value.serialize(&mut ser)?;
+    }
+    Ok(out)
 }
 
 /// If a manifest is specified, return that one, otherise perform a manifest search starting from
@@ -285,10 +296,10 @@ impl Manifest {
             .ok_or(ManifestError::MissingManifest)?;
 
         let new_contents = format!(
-            "[{}]\n{}{}",
+            "[{}]\n{}\n{}",
             proj_header,
-            proj_data,
-            toml::Value::Table(toml)
+            toml_pretty(&proj_data)?,
+            toml_pretty(&toml::Value::Table(toml))?,
         );
         let new_contents_bytes = new_contents.as_bytes();
 
