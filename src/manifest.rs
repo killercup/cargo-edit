@@ -315,7 +315,7 @@ impl Manifest {
         table_path: &[String],
         dep: &Dependency,
     ) -> Result<(), ManifestError> {
-        let mut table = self.get_table(table_path)?;
+        let table = self.get_table(table_path)?;
 
         table
             .get_mut(&dep.name)
@@ -337,7 +337,7 @@ impl Manifest {
         table_path: &[String],
         dep: &Dependency,
     ) -> Result<(), ManifestError> {
-        let mut table = self.get_table(table_path)?;
+        let table = self.get_table(table_path)?;
         let new_dep = dep.to_toml().1;
 
         // If (and only if) there is an old entry, merge the new one in.
