@@ -9,15 +9,15 @@ extern crate docopt;
 extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 extern crate toml;
 
+use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::Path;
 use std::process;
 
 extern crate cargo_edit;
-use cargo_edit::{get_latest_dependency, Manifest};
+use cargo_edit::{get_latest_dependency, Dependency, Manifest};
 
 mod errors {
     error_chain!{
@@ -107,6 +107,33 @@ fn update_manifest(
     Ok(())
 }
 
+fn update_manifest_from_cache(
+    manifest_path: &Option<String>,
+    only_update: &[String],
+    _allow_prerelease: bool,
+    new_deps: &HashMap<String, Dependency>,
+) -> Result<()> {
+    let manifest_path = manifest_path.as_ref().map(From::from);
+    let mut manifest = Manifest::open(&manifest_path)?;
+
+    for (table_path, table) in manifest.get_sections() {
+        for (name, old_value) in &table {
+            if (only_update.is_empty() || only_update.contains(name)) &&
+                is_version_dependency(old_value)
+            {
+                let latest_version = &new_deps[name];
+
+                manifest.update_table_entry(&table_path, latest_version)?;
+            }
+        }
+    }
+
+    let mut file = Manifest::find_file(&manifest_path)?;
+    manifest
+        .write_to_file(&mut file)
+        .chain_err(|| "Failed to write new manifest contents")
+}
+
 /// Get a list of the paths of all the (non-virtual) manifests in the workspace.
 fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>> {
     Ok(
@@ -117,6 +144,48 @@ fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>
             .map(|p| p.manifest_path.clone())
             .collect(),
     )
+}
+
+/// Look up all current direct crates.io dependencies in the workspace. Then get the latest version
+/// for each.
+// cargo-metadata: would be nice to have dependency version and type. Also, manifest path more
+// accepting
+fn get_all_new_deps(manifest_path: &Option<String>) -> Result<HashMap<String, Dependency>> {
+    let mut new_deps = HashMap::new();
+
+    cargo_metadata::metadata_deps(manifest_path.as_ref().map(|p| Path::new(p)), true)
+        .chain_err(|| "Failed to get metadata")?
+        .packages
+        .iter()
+        .flat_map(|package| package.dependencies.to_owned())
+        .map(|dependency| {
+            if !new_deps.contains_key(&dependency.name) {
+                new_deps.insert(
+                    dependency.name.clone(),
+                    get_latest_dependency(&dependency.name, false)?,
+                );
+            }
+            Ok(())
+        })
+        .collect::<Result<Vec<()>>>()?;
+
+    Ok(new_deps)
+}
+
+fn update_workspace_manifests(
+    manifest_path: &Option<String>,
+    only_update: &[String],
+    allow_prerelease: bool,
+) -> Result<()> {
+    let new_deps = get_all_new_deps(manifest_path)?;
+
+    get_workspace_manifests(manifest_path).and_then(|manifests| {
+        for manifest in manifests {
+            update_manifest_from_cache(&Some(manifest), only_update, allow_prerelease, &new_deps)?
+        }
+
+        Ok(())
+    })
 }
 
 fn main() {
@@ -130,17 +199,11 @@ fn main() {
     }
 
     let output = if args.flag_all {
-        get_workspace_manifests(&args.flag_manifest_path).and_then(|manifests| {
-            for manifest in manifests {
-                update_manifest(
-                    &Some(manifest),
-                    &args.flag_dependency,
-                    args.flag_allow_prerelease,
-                )?
-            }
-
-            Ok(())
-        })
+        update_workspace_manifests(
+            &args.flag_manifest_path,
+            &args.flag_dependency,
+            args.flag_allow_prerelease,
+        )
     } else {
         update_manifest(
             &args.flag_manifest_path,
