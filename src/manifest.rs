@@ -61,8 +61,7 @@ fn find(specified: &Option<PathBuf>, file: CargoFile) -> Result<PathBuf> {
         }
         Some(ref path) => search(path, file),
         None => search(
-            &env::current_dir()
-                .chain_err(|| "Failed to get current directory")?,
+            &env::current_dir().chain_err(|| "Failed to get current directory")?,
             file,
         ),
     }.map_err(From::from)
@@ -137,8 +136,7 @@ fn print_upgrade_if_necessary(
         buffer
             .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
             .chain_err(|| "Failed to set output colour")?;
-        write!(&mut buffer, "Upgrading ")
-            .chain_err(|| "Failed to write upgrade message")?;
+        write!(&mut buffer, "Upgrading ").chain_err(|| "Failed to write upgrade message")?;
         buffer
             .set_color(&ColorSpec::new())
             .chain_err(|| "Failed to clear output colour")?;
@@ -360,11 +358,9 @@ impl Manifest {
             Entry::Vacant(_) => Err(ErrorKind::NonExistentTable(table.into())),
             Entry::Occupied(mut section) => {
                 let result = match *section.get_mut() {
-                    toml::Value::Table(ref mut deps) => {
-                        deps.remove(name).map(|_| ()).ok_or_else(|| {
-                            ErrorKind::NonExistentDependency(name.into(), table.into())
-                        })
-                    }
+                    toml::Value::Table(ref mut deps) => deps.remove(name).map(|_| ()).ok_or_else(
+                        || ErrorKind::NonExistentDependency(name.into(), table.into()),
+                    ),
                     _ => Err(ErrorKind::NonExistentTable(table.into())),
                 };
                 if section.get().as_table().map(|x| x.is_empty()) == Some(true) {

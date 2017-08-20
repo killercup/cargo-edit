@@ -3,6 +3,7 @@
        trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
        unused_qualifications)]
 
+extern crate cargo_metadata;
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
@@ -12,7 +13,8 @@ extern crate serde_json;
 extern crate toml;
 
 use std::io::{self, Write};
-use std::process::{self, Command};
+use std::path::Path;
+use std::process;
 
 extern crate cargo_edit;
 use cargo_edit::{get_latest_dependency, Manifest};
@@ -21,6 +23,11 @@ mod errors {
     error_chain!{
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
+        }
+
+        foreign_links {
+            // cargo-metadata doesn't (yet) export `ErrorKind`)
+            Metadata(::cargo_metadata::Error);
         }
     }
 }
@@ -102,43 +109,14 @@ fn update_manifest(
 
 /// Get a list of the paths of all the (non-virtual) manifests in the workspace.
 fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>> {
-    let mut metadata_gatherer = Command::new("cargo");
-    metadata_gatherer.args(&["metadata", "--no-deps", "--format-version", "1", "-q"]);
-
-    if let Some(ref manifest_path) = *manifest_path {
-        metadata_gatherer.args(&["--manifest-path", manifest_path]);
-    }
-
-    let output = metadata_gatherer
-        .output()
-        .chain_err(|| "Failed to run `cargo metadata`")?;
-
-    if output.status.success() {
-        let metadata: serde_json::Value = serde_json::from_str(
-            &String::from_utf8_lossy(&output.stdout),
-        ).chain_err(|| "Cargo metadata not valid JSON")?;
-
-        let workspace_members = metadata["packages"]
-            .as_array()
-            .ok_or("No packages in workspace")?;
-
-        workspace_members
+    Ok(
+        cargo_metadata::metadata_deps(manifest_path.as_ref().map(|p| Path::new(p)), true)
+            .chain_err(|| "Failed to get metadata")?
+            .packages
             .iter()
-            .map(|package| {
-                package["manifest_path"]
-                    .as_str()
-                    .map(Into::into)
-                    .ok_or_else(|| "Invalid manifest path".into())
-            })
-            .collect()
-    } else {
-        Err(
-            format!(
-                "Failed to get metadata: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ).into(),
-        )
-    }
+            .map(|p| p.manifest_path.clone())
+            .collect(),
+    )
 }
 
 fn main() {
