@@ -4,12 +4,11 @@
        unused_qualifications)]
 
 extern crate docopt;
-extern crate toml;
-extern crate semver;
+#[macro_use]
+extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
 
-use std::error::Error;
 use std::io::{self, Write};
 use std::process;
 
@@ -18,6 +17,15 @@ use cargo_edit::Manifest;
 
 mod args;
 use args::Args;
+
+mod errors {
+    error_chain!{
+        links {
+            CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
+        }
+    }
+}
+use errors::*;
 
 static USAGE: &'static str = r"
 Usage:
@@ -35,7 +43,7 @@ Options:
 Remove a dependency from a Cargo.toml manifest file.
 ";
 
-fn handle_rm(args: &Args) -> Result<(), Box<Error>> {
+fn handle_rm(args: &Args) -> Result<()> {
     let manifest_path = args.flag_manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path)?;
 
@@ -44,7 +52,9 @@ fn handle_rm(args: &Args) -> Result<(), Box<Error>> {
         .map_err(From::from)
         .and_then(|_| {
             let mut file = Manifest::find_file(&manifest_path)?;
-            manifest.write_to_file(&mut file)
+            manifest.write_to_file(&mut file)?;
+
+            Ok(())
         })
 }
 
@@ -59,11 +69,18 @@ fn main() {
     }
 
     if let Err(err) = handle_rm(&args) {
-        writeln!(
-            io::stderr(),
-            "Could not edit `Cargo.toml`.\n\nERROR: {}",
-            err
-        ).unwrap();
+        let mut stderr = io::stderr();
+
+        writeln!(stderr, "Command failed due to unhandled error: {}\n", err).unwrap();
+
+        for e in err.iter().skip(1) {
+            writeln!(stderr, "Caused by: {}", e).unwrap();
+        }
+
+        if let Some(backtrace) = err.backtrace() {
+            writeln!(stderr, "Backtrace: {:?}", backtrace).unwrap();
+        }
+
         process::exit(1);
     }
 }

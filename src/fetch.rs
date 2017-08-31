@@ -4,10 +4,11 @@ use reqwest;
 use semver;
 use serde_json as json;
 use std::env;
-use std::io;
 use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
+
+use errors::*;
 
 const REGISTRY_HOST: &'static str = "https://crates.io";
 
@@ -32,10 +33,7 @@ struct CrateVersion {
 /// - there is no Internet connection,
 /// - the response from crates.io is an error or in an incorrect format,
 /// - or when a crate with the given name does not exist on crates.io.
-pub fn get_latest_dependency(
-    crate_name: &str,
-    flag_allow_prerelease: bool,
-) -> Result<Dependency, FetchVersionError> {
+pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> Result<Dependency> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
@@ -68,16 +66,13 @@ fn version_is_stable(version: &CrateVersion) -> bool {
 ///
 /// Assumes the version are sorted so that the first non-yanked version is the
 /// latest, and thus the one we want.
-fn read_latest_version(
-    versions: &Versions,
-    flag_allow_prerelease: bool,
-) -> Result<Dependency, FetchVersionError> {
+fn read_latest_version(versions: &Versions, flag_allow_prerelease: bool) -> Result<Dependency> {
     let latest = versions
         .versions
         .iter()
         .filter(|&v| flag_allow_prerelease || version_is_stable(v))
         .find(|&v| !v.yanked)
-        .ok_or(FetchVersionError::NoneAvailable)?;
+        .ok_or(ErrorKind::NoVersionsAvailable)?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
@@ -190,80 +185,30 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     assert!(read_latest_version(&versions, false).is_err());
 }
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum FetchVersionError {
-        Reqwest(err: reqwest::Error) {
-            from()
-            description("Https error")
-            display("Https error: {}", err)
-            cause(err)
-        }
-        Json(err: json::Error) {
-            from()
-            description("Json error")
-            display("Json error (crate does not exist?): {}", err)
-            cause(err)
-        }
-        NoneAvailable {
-            description("No available versions exist. Either all were yanked\
-                         or only prerelease versions exist. Trying with the\
-                         --fetch-prereleases flag might solve the issue."
-            )
-        }
-    }
-}
-
-fn fetch_cratesio(path: &str) -> Result<Versions, FetchVersionError> {
+fn fetch_cratesio(path: &str) -> Result<Versions> {
     let url = format!("{host}/api/v1{path}", host = REGISTRY_HOST, path = path);
-    let response = get_with_timeout(&url, get_default_timeout())?;
+    let response = get_with_timeout(&url, get_default_timeout())
+        .chain_err(|| ErrorKind::FetchVersionFailure)?;
     let versions: Versions = json::from_reader(response)
-        .map_err(FetchVersionError::Json)?;
+        .chain_err(|| ErrorKind::InvalidCratesIoJson)?;
     Ok(versions)
 }
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-quick_error! {
-    #[derive(Debug)]
-    pub enum FetchGitError {
-        FetchGit(err: reqwest::Error) {
-            from()
-            description("fetch error: ")
-            display("fetch error: {}", err)
-            cause(err)
-        }
-        Io(err: io::Error) {
-            from()
-            description("io error: ")
-            display("io error: {}", err)
-            cause(err)
-        }
-        ParseRegex { description("parse error: unable to parse git repo url") }
-        IncompleteCaptures { description("parse error: the git repo url seems incomplete") }
-        LocalCargoToml { description("path error: unable to open Cargo.toml") }
-        ParseCargoToml { description("parse error: unable to parse the external Cargo.toml") }
-    }
-}
-
-fn get_crate_name_from_repository<T>(
-    repo: &str,
-    matcher: &Regex,
-    url_template: T,
-) -> Result<String, FetchGitError>
+fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
 where
     T: Fn(&str, &str) -> String,
 {
     matcher
         .captures(repo)
-        .ok_or(FetchGitError::ParseRegex)
+        .ok_or_else(|| "Unable to parse git repo URL".into())
         .and_then(|cap| match (cap.get(1), cap.get(2)) {
             (Some(user), Some(repo)) => {
                 let url = url_template(user.as_str(), repo.as_str());
-                let data: Result<Manifest, _> = get_cargo_toml_from_git_url(&url)
-                    .and_then(|m| m.parse().map_err(|_| FetchGitError::ParseCargoToml));
+                let data: Result<Manifest> = get_cargo_toml_from_git_url(&url)
+                    .and_then(|m| m.parse().chain_err(|| ErrorKind::ParseCargoToml));
                 data.and_then(|ref manifest| get_name_from_manifest(manifest))
             }
-            _ => Err(FetchGitError::IncompleteCaptures),
+            _ => Err("Git repo url seems incomplete".into()),
         })
 }
 
@@ -274,7 +219,7 @@ where
 /// - there is no Internet connection,
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from github is an error or in an incorrect format.
-pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
+pub fn get_crate_name_from_github(repo: &str) -> Result<String> {
     let re = Regex::new(
         r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$",
     ).unwrap();
@@ -294,7 +239,7 @@ pub fn get_crate_name_from_github(repo: &str) -> Result<String, FetchGitError> {
 /// - there is no Internet connection,
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from gitlab is an error or in an incorrect format.
-pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String, FetchGitError> {
+pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
     let re = Regex::new(
         r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$",
     ).unwrap();
@@ -311,20 +256,20 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String, FetchGitError> {
 ///
 /// The name will be returned as a string. This will fail, when
 /// Cargo.toml is not present in the root of the path.
-pub fn get_crate_name_from_path(path: &str) -> Result<String, FetchGitError> {
+pub fn get_crate_name_from_path(path: &str) -> Result<String> {
     let cargo_file = Path::new(path).join("Cargo.toml");
     Manifest::open(&Some(cargo_file))
-        .map_err(|_| FetchGitError::LocalCargoToml)
+        .chain_err(|| "Unable to open local Cargo.toml")
         .and_then(|ref manifest| get_name_from_manifest(manifest))
 }
 
-fn get_name_from_manifest(manifest: &Manifest) -> Result<String, FetchGitError> {
+fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
     manifest
         .data
         .get("package")
         .and_then(|m| m.get("name"))
         .and_then(|name| name.as_str().map(|s| s.to_string()))
-        .ok_or(FetchGitError::ParseCargoToml)
+        .ok_or_else(|| ErrorKind::ParseCargoToml.into())
 }
 
 fn get_default_timeout() -> Duration {
@@ -337,9 +282,11 @@ fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Re
     client.get(url)?.send()
 }
 
-fn get_cargo_toml_from_git_url(url: &str) -> Result<String, FetchGitError> {
-    let mut res = get_with_timeout(url, get_default_timeout())?;
+fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
+    let mut res = get_with_timeout(url, get_default_timeout())
+        .chain_err(|| "Failed to fetch crate from git")?;
     let mut body = String::new();
-    res.read_to_string(&mut body)?;
+    res.read_to_string(&mut body)
+        .chain_err(|| "Git response not a valid `String`")?;
     Ok(body)
 }

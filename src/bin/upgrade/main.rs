@@ -4,18 +4,27 @@
        unused_qualifications)]
 
 extern crate docopt;
-extern crate pad;
+#[macro_use]
+extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 extern crate toml;
 
-use std::error::Error;
 use std::io::{self, Write};
 use std::process::{self, Command};
 
 extern crate cargo_edit;
 use cargo_edit::{get_latest_dependency, Manifest};
+
+mod errors {
+    error_chain!{
+        links {
+            CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
+        }
+    }
+}
+use errors::*;
 
 static USAGE: &'static str = r"
 Upgrade all dependencies in a manifest file to the latest version.
@@ -69,9 +78,9 @@ fn update_manifest(
     manifest_path: &Option<String>,
     only_update: &[String],
     allow_prerelease: bool,
-) -> Result<(), Box<Error>> {
+) -> Result<()> {
     let manifest_path = manifest_path.as_ref().map(From::from);
-    let mut manifest = Manifest::open(&manifest_path).unwrap();
+    let mut manifest = Manifest::open(&manifest_path)?;
 
     for (table_path, table) in manifest.get_sections() {
         for (name, old_value) in &table {
@@ -86,11 +95,13 @@ fn update_manifest(
     }
 
     let mut file = Manifest::find_file(&manifest_path)?;
-    manifest.write_to_file(&mut file)
+    manifest.write_to_file(&mut file)?;
+
+    Ok(())
 }
 
 /// Get a list of the paths of all the (non-virtual) manifests in the workspace.
-fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>, Box<Error>> {
+fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>> {
     let mut metadata_gatherer = Command::new("cargo");
     metadata_gatherer.args(&["metadata", "--no-deps", "--format-version", "1", "-q"]);
 
@@ -98,11 +109,14 @@ fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>
         metadata_gatherer.args(&["--manifest-path", manifest_path]);
     }
 
-    let output = metadata_gatherer.output()?;
+    let output = metadata_gatherer
+        .output()
+        .chain_err(|| "Failed to run `cargo metadata`")?;
 
     if output.status.success() {
-        let metadata: serde_json::Value =
-            serde_json::from_str(&String::from_utf8_lossy(&output.stdout))?;
+        let metadata: serde_json::Value = serde_json::from_str(
+            &String::from_utf8_lossy(&output.stdout),
+        ).chain_err(|| "Cargo metadata not valid JSON")?;
 
         let workspace_members = metadata["packages"]
             .as_array()
@@ -158,11 +172,18 @@ fn main() {
     };
 
     if let Err(err) = output {
-        writeln!(
-            io::stderr(),
-            "Command failed due to unhandled error: {}\n",
-            err
-        ).unwrap();
+        let mut stderr = io::stderr();
+
+        writeln!(stderr, "Command failed due to unhandled error: {}\n", err).unwrap();
+
+        for e in err.iter().skip(1) {
+            writeln!(stderr, "Caused by: {}", e).unwrap();
+        }
+
+        if let Some(backtrace) = err.backtrace() {
+            writeln!(stderr, "Backtrace: {:?}", backtrace).unwrap();
+        }
+
         process::exit(1);
     }
 }

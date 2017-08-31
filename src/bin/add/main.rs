@@ -3,26 +3,30 @@
        trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
        unused_qualifications)]
 
-extern crate reqwest;
 extern crate docopt;
-extern crate toml;
+#[macro_use]
+extern crate error_chain;
+extern crate semver;
 #[macro_use]
 extern crate serde_derive;
-extern crate semver;
-extern crate serde;
-extern crate serde_json;
 
-use std::error::Error;
 use std::io::{self, Write};
 use std::process;
 
 extern crate cargo_edit;
 use cargo_edit::Manifest;
 
-extern crate regex;
-
 mod args;
 use args::Args;
+
+mod errors {
+    error_chain!{
+        links {
+            CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
+        }
+    }
+}
+use errors::*;
 
 static USAGE: &'static str = r#"
 Usage:
@@ -66,21 +70,27 @@ crates.io registry suggests. One goal of `cargo add` is to prevent you from usin
 dependencies (version set to "*").
 "#;
 
-fn handle_add(args: &Args) -> Result<(), Box<Error>> {
+fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = args.flag_manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path)?;
     let deps = &args.parse_dependencies()?;
 
     deps.iter()
-        .map(|dep| manifest.insert_into_table(&args.get_section(), dep))
-        .collect::<Result<Vec<_>, _>>()
+        .map(|dep| {
+            manifest
+                .insert_into_table(&args.get_section(), dep)
+                .map_err(Into::into)
+        })
+        .collect::<Result<Vec<_>>>()
         .map_err(|err| {
             println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
             err
         })?;
 
     let mut file = Manifest::find_file(&manifest_path)?;
-    manifest.write_to_file(&mut file)
+    manifest.write_to_file(&mut file)?;
+
+    Ok(())
 }
 
 fn main() {
@@ -94,11 +104,18 @@ fn main() {
     }
 
     if let Err(err) = handle_add(&args) {
-        writeln!(
-            io::stderr(),
-            "Command failed due to unhandled error: {}\n",
-            err
-        ).unwrap();
+        let mut stderr = io::stderr();
+
+        writeln!(stderr, "Command failed due to unhandled error: {}\n", err).unwrap();
+
+        for e in err.iter().skip(1) {
+            writeln!(stderr, "Caused by: {}", e).unwrap();
+        }
+
+        if let Some(backtrace) = err.backtrace() {
+            writeln!(stderr, "Backtrace: {:?}", backtrace).unwrap();
+        }
+
         process::exit(1);
     }
 }

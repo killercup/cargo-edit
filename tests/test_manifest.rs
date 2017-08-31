@@ -9,8 +9,10 @@ fn invalid_manifest() {
         "--manifest-path=tests/fixtures/manifest-invalid/Cargo.toml.sample",
     ]).fails_with(1)
         .prints_error_exactly(
-            "Command failed due to unhandled error: \
-             failed to parse datetime for key `invalid-section.key`",
+            r"Command failed due to unhandled error: Unable to parse Cargo.toml
+
+Caused by: Manifest not valid TOML
+Caused by: failed to parse datetime for key `invalid-section.key`",
         )
         .unwrap();
 }

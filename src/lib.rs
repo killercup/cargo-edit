@@ -5,7 +5,7 @@
        unused_qualifications)]
 
 #[macro_use]
-extern crate quick_error;
+extern crate error_chain;
 extern crate regex;
 extern crate reqwest;
 extern crate semver;
@@ -16,11 +16,13 @@ extern crate serde_json;
 extern crate termcolor;
 extern crate toml;
 
+mod dependency;
+mod errors;
 mod fetch;
 mod manifest;
-mod dependency;
 
 pub use dependency::Dependency;
+pub use errors::*;
 pub use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
                 get_latest_dependency};
 pub use manifest::Manifest;
