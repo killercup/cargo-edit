@@ -177,12 +177,36 @@ fn invalid_manifest() {
     assert_cli::Assert::command(&[
         "target/debug/cargo-upgrade",
         "upgrade",
+        "--manifest-path",
+        &manifest,
+    ]).fails_with(1)
+        .prints_error_exactly(
+            r"Command failed due to unhandled error: Unable to parse Cargo.toml
+
+Caused by: Manifest not valid TOML
+Caused by: expected an equals, found an identifier at line 1",
+        )
+        .unwrap();
+}
+
+#[test]
+fn invalid_root_manifest() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-upgrade",
+        "upgrade",
         "--all",
         "--manifest-path",
         &manifest,
     ]).fails_with(1)
         .prints_error(
-            "Command failed due to unhandled error: Failed to get metadata",
+            // Note that this is a distinctly *odd* error message. What's happening here is that
+            // we're just shelling out to `cargo metadata`. On failure, we just put the output on
+            // stderr into an `Error`. `cargo metadata` itself uses `error-chain` (or something very
+            // similar). Hence `cargo upgrade` produces an error in this scenario that _looks_ like
+            // a chained error but actually isn't.
+            "Command failed due to unhandled error: Failed to get metadata:",
         )
         .unwrap();
 }

@@ -81,9 +81,8 @@ fn invalid_dependency() {
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
         .prints_error_exactly(
-            "Could not edit `Cargo.toml`.
-
-ERROR: The dependency `invalid_dependency_name` could not be found in `dependencies`.",
+            "Command failed due to unhandled error: The dependency `invalid_dependency_name` could \
+             not be found in `dependencies`.",
         )
         .unwrap();
 }
@@ -101,9 +100,8 @@ fn invalid_section() {
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
         .prints_error_exactly(
-            "Could not edit `Cargo.toml`.
-
-ERROR: The table `build-dependencies` could not be found.",
+            "Command failed due to unhandled error: The table `build-dependencies` could not be \
+             found.",
         )
         .unwrap();
 }
@@ -120,9 +118,8 @@ fn invalid_dependency_in_section() {
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
         .prints_error_exactly(
-            "Could not edit `Cargo.toml`.
-
-ERROR: The dependency `semver` could not be found in `dev-dependencies`.",
+            "Command failed due to unhandled error: The dependency `semver` could not be found in \
+             `dev-dependencies`.",
         )
         .unwrap();
 }

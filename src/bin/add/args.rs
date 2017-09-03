@@ -4,8 +4,9 @@ use cargo_edit::Dependency;
 use cargo_edit::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
                  get_latest_dependency};
 use semver;
-use std::error::Error;
 use std::path::PathBuf;
+
+use errors::*;
 
 #[derive(Debug, Deserialize)]
 /// Docopts input args.
@@ -60,9 +61,9 @@ impl Args {
     }
 
     /// Build dependencies from arguments
-    pub fn parse_dependencies(&self) -> Result<Vec<Dependency>, Box<Error>> {
+    pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
         if !self.arg_crates.is_empty() {
-            let mut result = Vec::<Dependency>::new();
+            let mut result = Vec::new();
             for arg_crate in &self.arg_crates {
                 let le_crate = if crate_name_has_version(arg_crate) {
                     parse_crate_name_with_version(arg_crate)?
@@ -87,7 +88,8 @@ impl Args {
             let dependency = Dependency::new(&self.arg_crate);
 
             if let Some(ref version) = self.flag_vers {
-                semver::VersionReq::parse(version)?;
+                semver::VersionReq::parse(version)
+                    .chain_err(|| "Invalid dependency version requirement")?;
                 dependency.set_version(version)
             } else if let Some(ref repo) = self.flag_git {
                 dependency.set_git(repo)
@@ -171,17 +173,18 @@ fn crate_name_is_path(name: &str) -> bool {
     name.contains('.') || name.contains('/') || name.contains('\\')
 }
 
-fn parse_crate_name_with_version(name: &str) -> Result<Dependency, Box<Error>> {
+fn parse_crate_name_with_version(name: &str) -> Result<Dependency> {
     assert!(crate_name_has_version(name));
 
     let xs: Vec<_> = name.splitn(2, '@').collect();
     let (name, version) = (xs[0], xs[1]);
-    semver::VersionReq::parse(version)?;
+    semver::VersionReq::parse(version)
+        .chain_err(|| "Invalid crate version requirement")?;
 
     Ok(Dependency::new(name).set_version(version))
 }
 
-fn parse_crate_name_from_uri(name: &str) -> Result<Dependency, Box<Error>> {
+fn parse_crate_name_from_uri(name: &str) -> Result<Dependency> {
     if crate_name_is_github_url(name) {
         if let Ok(ref crate_name) = get_crate_name_from_github(name) {
             return Ok(Dependency::new(crate_name).set_git(name));
