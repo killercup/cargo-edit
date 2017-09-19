@@ -172,12 +172,32 @@ fn get_all_new_deps(
     Ok(new_deps)
 }
 
+/// Get the latest versions of the specified crates.io dependencies.
+fn get_specified_new_deps(
+    depedencies: &[String],
+    allow_prerelease: bool,
+) -> Result<HashMap<String, Dependency>> {
+    depedencies
+        .into_iter()
+        .map(|dep| {
+            Ok((
+                dep.to_owned(),
+                get_latest_dependency(dep, allow_prerelease)?,
+            ))
+        })
+        .collect()
+}
+
 fn update_workspace_manifests(
     manifest_path: &Option<String>,
     only_update: &[String],
     allow_prerelease: bool,
 ) -> Result<()> {
-    let new_deps = get_all_new_deps(manifest_path, allow_prerelease)?;
+    let new_deps = if !only_update.is_empty() {
+        get_specified_new_deps(only_update, allow_prerelease)?
+    } else {
+        get_all_new_deps(manifest_path, allow_prerelease)?
+    };
 
     get_workspace_manifests(manifest_path).and_then(|manifests| {
         for manifest in manifests {
