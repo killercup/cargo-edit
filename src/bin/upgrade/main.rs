@@ -81,11 +81,15 @@ fn is_version_dependency(dep: &toml::Value) -> bool {
     }
 }
 
-fn update_manifest(
+/// Upgrade the specified manifest. Use the closure provided to get the new dependency versions.
+fn upgrade_manifest_using_dependencies<F>(
     manifest_path: &Option<String>,
     only_update: &[String],
-    allow_prerelease: bool,
-) -> Result<()> {
+    new_dependency: F,
+) -> Result<()>
+where
+    F: Fn(&String) -> cargo_edit::Result<Dependency>,
+{
     let manifest_path = manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path)?;
 
@@ -94,7 +98,7 @@ fn update_manifest(
             if (only_update.is_empty() || only_update.contains(name)) &&
                 is_version_dependency(old_value)
             {
-                let latest_version = get_latest_dependency(name, allow_prerelease)?;
+                let latest_version = new_dependency(name)?;
 
                 manifest.update_table_entry(&table_path, &latest_version)?;
             }
@@ -107,30 +111,26 @@ fn update_manifest(
         .chain_err(|| "Failed to write new manifest contents")
 }
 
-fn update_manifest_from_cache(
+fn upgrade_manifest(
+    manifest_path: &Option<String>,
+    only_update: &[String],
+    allow_prerelease: bool,
+) -> Result<()> {
+    upgrade_manifest_using_dependencies(manifest_path, only_update, |name| {
+        get_latest_dependency(name, allow_prerelease)
+    })
+}
+
+fn upgrade_manifest_from_cache(
     manifest_path: &Option<String>,
     only_update: &[String],
     new_deps: &HashMap<String, Dependency>,
 ) -> Result<()> {
-    let manifest_path = manifest_path.as_ref().map(From::from);
-    let mut manifest = Manifest::open(&manifest_path)?;
-
-    for (table_path, table) in manifest.get_sections() {
-        for (name, old_value) in &table {
-            if (only_update.is_empty() || only_update.contains(name)) &&
-                is_version_dependency(old_value)
-            {
-                let latest_version = &new_deps[name];
-
-                manifest.update_table_entry(&table_path, latest_version)?;
-            }
-        }
-    }
-
-    let mut file = Manifest::find_file(&manifest_path)?;
-    manifest
-        .write_to_file(&mut file)
-        .chain_err(|| "Failed to write new manifest contents")
+    upgrade_manifest_using_dependencies(
+        manifest_path,
+        only_update,
+        |name| Ok(new_deps[name].clone()),
+    )
 }
 
 /// Get a list of the paths of all the (non-virtual) manifests in the workspace.
@@ -176,7 +176,7 @@ fn get_new_workspace_deps(
     Ok(new_deps)
 }
 
-fn update_workspace_manifests(
+fn upgrade_workspace_manifests(
     manifest_path: &Option<String>,
     only_update: &[String],
     allow_prerelease: bool,
@@ -185,7 +185,7 @@ fn update_workspace_manifests(
 
     get_workspace_manifests(manifest_path).and_then(|manifests| {
         for manifest in manifests {
-            update_manifest_from_cache(&Some(manifest), only_update, &new_deps)?
+            upgrade_manifest_from_cache(&Some(manifest), only_update, &new_deps)?
         }
 
         Ok(())
@@ -203,13 +203,13 @@ fn main() {
     }
 
     let output = if args.flag_all {
-        update_workspace_manifests(
+        upgrade_workspace_manifests(
             &args.flag_manifest_path,
             &args.flag_dependency,
             args.flag_allow_prerelease,
         )
     } else {
-        update_manifest(
+        upgrade_manifest(
             &args.flag_manifest_path,
             &args.flag_dependency,
             args.flag_allow_prerelease,
