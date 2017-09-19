@@ -19,8 +19,10 @@ struct Versions {
 
 #[derive(Deserialize)]
 struct CrateVersion {
-    #[serde(rename = "crate")] name: String,
-    #[serde(rename = "num")] version: semver::Version,
+    #[serde(rename = "crate")]
+    name: String,
+    #[serde(rename = "num")]
+    version: semver::Version,
     yanked: bool,
 }
 
@@ -185,10 +187,10 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
 
 fn fetch_cratesio(path: &str) -> Result<Versions> {
     let url = format!("{host}/api/v1{path}", host = REGISTRY_HOST, path = path);
-    let response =
-        get_with_timeout(&url, get_default_timeout()).chain_err(|| ErrorKind::FetchVersionFailure)?;
-    let versions: Versions =
-        json::from_reader(response).chain_err(|| ErrorKind::InvalidCratesIoJson)?;
+    let response = get_with_timeout(&url, get_default_timeout())
+        .chain_err(|| ErrorKind::FetchVersionFailure)?;
+    let versions: Versions = json::from_reader(response)
+        .chain_err(|| ErrorKind::InvalidCratesIoJson)?;
     Ok(versions)
 }
 
