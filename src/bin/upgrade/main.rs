@@ -102,9 +102,9 @@ fn update_manifest(
     }
 
     let mut file = Manifest::find_file(&manifest_path)?;
-    manifest.write_to_file(&mut file)?;
-
-    Ok(())
+    manifest
+        .write_to_file(&mut file)
+        .chain_err(|| "Failed to write new manifest contents")
 }
 
 fn update_manifest_from_cache(
@@ -147,8 +147,9 @@ fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>
 
 /// Look up all current direct crates.io dependencies in the workspace. Then get the latest version
 /// for each.
-fn get_all_new_deps(
+fn get_new_workspace_deps(
     manifest_path: &Option<String>,
+    only_update: &[String],
     allow_prerelease: bool,
 ) -> Result<HashMap<String, Dependency>> {
     let mut new_deps = HashMap::new();
@@ -158,6 +159,9 @@ fn get_all_new_deps(
         .packages
         .iter()
         .flat_map(|package| package.dependencies.to_owned())
+        .filter(|dependency| {
+            only_update.is_empty() || only_update.contains(&dependency.name)
+        })
         .map(|dependency| {
             if !new_deps.contains_key(&dependency.name) {
                 new_deps.insert(
@@ -172,32 +176,12 @@ fn get_all_new_deps(
     Ok(new_deps)
 }
 
-/// Get the latest versions of the specified crates.io dependencies.
-fn get_specified_new_deps(
-    depedencies: &[String],
-    allow_prerelease: bool,
-) -> Result<HashMap<String, Dependency>> {
-    depedencies
-        .into_iter()
-        .map(|dep| {
-            Ok((
-                dep.to_owned(),
-                get_latest_dependency(dep, allow_prerelease)?,
-            ))
-        })
-        .collect()
-}
-
 fn update_workspace_manifests(
     manifest_path: &Option<String>,
     only_update: &[String],
     allow_prerelease: bool,
 ) -> Result<()> {
-    let new_deps = if !only_update.is_empty() {
-        get_specified_new_deps(only_update, allow_prerelease)?
-    } else {
-        get_all_new_deps(manifest_path, allow_prerelease)?
-    };
+    let new_deps = get_new_workspace_deps(manifest_path, only_update, allow_prerelease)?;
 
     get_workspace_manifests(manifest_path).and_then(|manifests| {
         for manifest in manifests {
