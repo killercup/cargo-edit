@@ -110,7 +110,6 @@ fn update_manifest(
 fn update_manifest_from_cache(
     manifest_path: &Option<String>,
     only_update: &[String],
-    _allow_prerelease: bool,
     new_deps: &HashMap<String, Dependency>,
 ) -> Result<()> {
     let manifest_path = manifest_path.as_ref().map(From::from);
@@ -148,9 +147,10 @@ fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>
 
 /// Look up all current direct crates.io dependencies in the workspace. Then get the latest version
 /// for each.
-// cargo-metadata: would be nice to have dependency version and type. Also, manifest path more
-// accepting
-fn get_all_new_deps(manifest_path: &Option<String>) -> Result<HashMap<String, Dependency>> {
+fn get_all_new_deps(
+    manifest_path: &Option<String>,
+    allow_prerelease: bool,
+) -> Result<HashMap<String, Dependency>> {
     let mut new_deps = HashMap::new();
 
     cargo_metadata::metadata_deps(manifest_path.as_ref().map(|p| Path::new(p)), true)
@@ -162,7 +162,7 @@ fn get_all_new_deps(manifest_path: &Option<String>) -> Result<HashMap<String, De
             if !new_deps.contains_key(&dependency.name) {
                 new_deps.insert(
                     dependency.name.clone(),
-                    get_latest_dependency(&dependency.name, false)?,
+                    get_latest_dependency(&dependency.name, allow_prerelease)?,
                 );
             }
             Ok(())
@@ -177,11 +177,11 @@ fn update_workspace_manifests(
     only_update: &[String],
     allow_prerelease: bool,
 ) -> Result<()> {
-    let new_deps = get_all_new_deps(manifest_path)?;
+    let new_deps = get_all_new_deps(manifest_path, allow_prerelease)?;
 
     get_workspace_manifests(manifest_path).and_then(|manifests| {
         for manifest in manifests {
-            update_manifest_from_cache(&Some(manifest), only_update, allow_prerelease, &new_deps)?
+            update_manifest_from_cache(&Some(manifest), only_update, &new_deps)?
         }
 
         Ok(())
