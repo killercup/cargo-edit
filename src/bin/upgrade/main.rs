@@ -26,7 +26,7 @@ mod errors {
         }
 
         foreign_links {
-            // cargo-metadata doesn't (yet) export `ErrorKind`)
+            // cargo-metadata doesn't (yet) export `ErrorKind`
             Metadata(::cargo_metadata::Error);
         }
     }
@@ -136,7 +136,7 @@ fn upgrade_manifest_from_cache(
 /// Get a list of the paths of all the (non-virtual) manifests in the workspace.
 fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>> {
     Ok(
-        cargo_metadata::metadata_deps(manifest_path.as_ref().map(|p| Path::new(p)), true)
+        cargo_metadata::metadata_deps(manifest_path.as_ref().map(Path::new), true)
             .chain_err(|| "Failed to get metadata")?
             .packages
             .iter()
