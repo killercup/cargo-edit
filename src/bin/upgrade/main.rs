@@ -3,24 +3,31 @@
        trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
        unused_qualifications)]
 
+extern crate cargo_metadata;
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 extern crate toml;
 
+use std::collections::HashMap;
 use std::io::{self, Write};
-use std::process::{self, Command};
+use std::path::Path;
+use std::process;
 
 extern crate cargo_edit;
-use cargo_edit::{get_latest_dependency, Manifest};
+use cargo_edit::{get_latest_dependency, Dependency, Manifest};
 
 mod errors {
     error_chain!{
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
+        }
+
+        foreign_links {
+            // cargo-metadata doesn't (yet) export `ErrorKind`
+            Metadata(::cargo_metadata::Error);
         }
     }
 }
@@ -74,11 +81,15 @@ fn is_version_dependency(dep: &toml::Value) -> bool {
     }
 }
 
-fn update_manifest(
+/// Upgrade the specified manifest. Use the closure provided to get the new dependency versions.
+fn upgrade_manifest_using_dependencies<F>(
     manifest_path: &Option<String>,
     only_update: &[String],
-    allow_prerelease: bool,
-) -> Result<()> {
+    new_dependency: F,
+) -> Result<()>
+where
+    F: Fn(&String) -> cargo_edit::Result<Dependency>,
+{
     let manifest_path = manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path)?;
 
@@ -87,7 +98,7 @@ fn update_manifest(
             if (only_update.is_empty() || only_update.contains(name)) &&
                 is_version_dependency(old_value)
             {
-                let latest_version = get_latest_dependency(name, allow_prerelease)?;
+                let latest_version = new_dependency(name)?;
 
                 manifest.update_table_entry(&table_path, &latest_version)?;
             }
@@ -95,50 +106,90 @@ fn update_manifest(
     }
 
     let mut file = Manifest::find_file(&manifest_path)?;
-    manifest.write_to_file(&mut file)?;
+    manifest
+        .write_to_file(&mut file)
+        .chain_err(|| "Failed to write new manifest contents")
+}
 
-    Ok(())
+fn upgrade_manifest(
+    manifest_path: &Option<String>,
+    only_update: &[String],
+    allow_prerelease: bool,
+) -> Result<()> {
+    upgrade_manifest_using_dependencies(manifest_path, only_update, |name| {
+        get_latest_dependency(name, allow_prerelease)
+    })
+}
+
+fn upgrade_manifest_from_cache(
+    manifest_path: &Option<String>,
+    only_update: &[String],
+    new_deps: &HashMap<String, Dependency>,
+) -> Result<()> {
+    upgrade_manifest_using_dependencies(
+        manifest_path,
+        only_update,
+        |name| Ok(new_deps[name].clone()),
+    )
 }
 
 /// Get a list of the paths of all the (non-virtual) manifests in the workspace.
 fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>> {
-    let mut metadata_gatherer = Command::new("cargo");
-    metadata_gatherer.args(&["metadata", "--no-deps", "--format-version", "1", "-q"]);
-
-    if let Some(ref manifest_path) = *manifest_path {
-        metadata_gatherer.args(&["--manifest-path", manifest_path]);
-    }
-
-    let output = metadata_gatherer
-        .output()
-        .chain_err(|| "Failed to run `cargo metadata`")?;
-
-    if output.status.success() {
-        let metadata: serde_json::Value = serde_json::from_str(
-            &String::from_utf8_lossy(&output.stdout),
-        ).chain_err(|| "Cargo metadata not valid JSON")?;
-
-        let workspace_members = metadata["packages"]
-            .as_array()
-            .ok_or("No packages in workspace")?;
-
-        workspace_members
+    Ok(
+        cargo_metadata::metadata_deps(manifest_path.as_ref().map(Path::new), true)
+            .chain_err(|| "Failed to get metadata")?
+            .packages
             .iter()
-            .map(|package| {
-                package["manifest_path"]
-                    .as_str()
-                    .map(Into::into)
-                    .ok_or_else(|| "Invalid manifest path".into())
-            })
-            .collect()
-    } else {
-        Err(
-            format!(
-                "Failed to get metadata: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ).into(),
-        )
-    }
+            .map(|p| p.manifest_path.clone())
+            .collect(),
+    )
+}
+
+/// Look up all current direct crates.io dependencies in the workspace. Then get the latest version
+/// for each.
+fn get_new_workspace_deps(
+    manifest_path: &Option<String>,
+    only_update: &[String],
+    allow_prerelease: bool,
+) -> Result<HashMap<String, Dependency>> {
+    let mut new_deps = HashMap::new();
+
+    cargo_metadata::metadata_deps(manifest_path.as_ref().map(|p| Path::new(p)), true)
+        .chain_err(|| "Failed to get metadata")?
+        .packages
+        .iter()
+        .flat_map(|package| package.dependencies.to_owned())
+        .filter(|dependency| {
+            only_update.is_empty() || only_update.contains(&dependency.name)
+        })
+        .map(|dependency| {
+            if !new_deps.contains_key(&dependency.name) {
+                new_deps.insert(
+                    dependency.name.clone(),
+                    get_latest_dependency(&dependency.name, allow_prerelease)?,
+                );
+            }
+            Ok(())
+        })
+        .collect::<Result<Vec<()>>>()?;
+
+    Ok(new_deps)
+}
+
+fn upgrade_workspace_manifests(
+    manifest_path: &Option<String>,
+    only_update: &[String],
+    allow_prerelease: bool,
+) -> Result<()> {
+    let new_deps = get_new_workspace_deps(manifest_path, only_update, allow_prerelease)?;
+
+    get_workspace_manifests(manifest_path).and_then(|manifests| {
+        for manifest in manifests {
+            upgrade_manifest_from_cache(&Some(manifest), only_update, &new_deps)?
+        }
+
+        Ok(())
+    })
 }
 
 fn main() {
@@ -152,19 +203,13 @@ fn main() {
     }
 
     let output = if args.flag_all {
-        get_workspace_manifests(&args.flag_manifest_path).and_then(|manifests| {
-            for manifest in manifests {
-                update_manifest(
-                    &Some(manifest),
-                    &args.flag_dependency,
-                    args.flag_allow_prerelease,
-                )?
-            }
-
-            Ok(())
-        })
+        upgrade_workspace_manifests(
+            &args.flag_manifest_path,
+            &args.flag_dependency,
+            args.flag_allow_prerelease,
+        )
     } else {
-        update_manifest(
+        upgrade_manifest(
             &args.flag_manifest_path,
             &args.flag_dependency,
             args.flag_allow_prerelease,

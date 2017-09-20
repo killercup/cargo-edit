@@ -201,12 +201,7 @@ fn invalid_root_manifest() {
         &manifest,
     ]).fails_with(1)
         .prints_error(
-            // Note that this is a distinctly *odd* error message. What's happening here is that
-            // we're just shelling out to `cargo metadata`. On failure, we just put the output on
-            // stderr into an `Error`. `cargo metadata` itself uses `error-chain` (or something very
-            // similar). Hence `cargo upgrade` produces an error in this scenario that _looks_ like
-            // a chained error but actually isn't.
-            "Command failed due to unhandled error: Failed to get metadata:",
+            "Command failed due to unhandled error: Failed to get metadata",
         )
         .unwrap();
 }
