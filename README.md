@@ -51,7 +51,7 @@ $ # Query the latest version from crates.io and adds it as build dependency
 $ cargo add gcc --build
 $ # Add a non-crates.io crate
 $ cargo add local_experiment --path=lib/trial-and-error/
-$ # Also
+$ # Add a non-crates.io crate; the crate name will be found automatically
 $ cargo add lib/trial-and-error/
 ```
 
@@ -107,8 +107,11 @@ Remove dependencies from your `Cargo.toml`.
 #### Examples
 
 ```sh
+$ # Remove a dependency
 $ cargo rm regex
+$ # Remove a development dependency
 $ cargo rm regex --dev
+$ # Remove a build dependency
 $ cargo rm regex --build
 ```
 
@@ -138,10 +141,12 @@ Upgrade dependencies in your `Cargo.toml` to their latest versions.
 #### Examples
 
 ```sh
-# Upgrade all dependencies
+# Upgrade all dependencies for the current crate
 $ cargo upgrade
 # Upgrade libc and serde
 $ cargo upgrade -d libc --dependency serde
+# Upgrade regex across all crates in the workspace
+$ cargo upgrade -d regex --all
 ```
 
 #### Usage
