@@ -7,12 +7,16 @@ use std::process;
 mod utils;
 use utils::{clone_out_test, execute_command, get_toml};
 
+/// Some of the tests need to have a crate name that does not exist on crates.io. Hence this rather
+/// silly constant. Tests _will_ fail, though, if a crate is ever published with this name.
+const BOGUS_CRATE_NAME: &str = "tests-will-break-if-there-is-ever-a-real-package-with-this-name";
+
 /// Check 'failure' deps are not present
 fn no_manifest_failures(manifest: &toml::Value) -> bool {
     let no_failure_key_in = |section| {
         manifest
             .get(section)
-            .map(|m| m.get("failure").is_none())
+            .map(|m| m.get(BOGUS_CRATE_NAME).is_none())
             .unwrap_or(true)
     };
     no_failure_key_in("dependencies") && no_failure_key_in("dev-dependencies") &&
@@ -137,7 +141,7 @@ fn adds_dev_build_dependency() {
 
     // cannot run with both --dev and --build at the same time
     let call = process::Command::new("target/debug/cargo-add")
-        .args(&["add", "failure", "--dev", "--build"])
+        .args(&["add", BOGUS_CRATE_NAME, "--dev", "--build"])
         .arg(format!("--manifest-path={}", &manifest))
         .output()
         .unwrap();
@@ -210,7 +214,12 @@ fn adds_specified_version() {
 
     // cannot run with both --dev and --build at the same time
     let call = process::Command::new("target/debug/cargo-add")
-        .args(&["add", "failure", "--vers", "invalid version string"])
+        .args(&[
+            "add",
+            BOGUS_CRATE_NAME,
+            "--vers",
+            "invalid version string",
+        ])
         .arg(format!("--manifest-path={}", &manifest))
         .output()
         .unwrap();
@@ -433,7 +442,7 @@ fn package_kinds_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     let call = process::Command::new("target/debug/cargo-add")
-        .args(&["add", "failure"])
+        .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--vers", "0.4.3"])
         .args(&["--git", "git://git.git"])
         .args(&["--path", "/path/here"])
