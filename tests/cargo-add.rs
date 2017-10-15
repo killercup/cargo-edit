@@ -214,7 +214,12 @@ fn adds_specified_version() {
 
     // cannot run with both --dev and --build at the same time
     let call = process::Command::new("target/debug/cargo-add")
-        .args(&["add", BOGUS_CRATE_NAME, "--vers", "invalid version string"])
+        .args(&[
+            "add",
+            BOGUS_CRATE_NAME,
+            "--vers",
+            "invalid version string",
+        ])
         .arg(format!("--manifest-path={}", &manifest))
         .output()
         .unwrap();
