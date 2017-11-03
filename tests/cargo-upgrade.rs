@@ -200,9 +200,7 @@ fn invalid_root_manifest() {
         "--manifest-path",
         &manifest,
     ]).fails_with(1)
-        .prints_error(
-            "Command failed due to unhandled error: Failed to get metadata",
-        )
+        .prints_error("Command failed due to unhandled error: Failed to get metadata")
         .unwrap();
 }
 

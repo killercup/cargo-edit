@@ -19,8 +19,8 @@ fn no_manifest_failures(manifest: &toml::Value) -> bool {
             .map(|m| m.get(BOGUS_CRATE_NAME).is_none())
             .unwrap_or(true)
     };
-    no_failure_key_in("dependencies") && no_failure_key_in("dev-dependencies") &&
-        no_failure_key_in("build-dependencies")
+    no_failure_key_in("dependencies") && no_failure_key_in("dev-dependencies")
+        && no_failure_key_in("build-dependencies")
 }
 
 #[test]
