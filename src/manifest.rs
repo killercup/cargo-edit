@@ -12,19 +12,7 @@ use toml;
 use errors::*;
 use dependency::Dependency;
 
-enum CargoFile {
-    Config,
-    Lock,
-}
-
-impl CargoFile {
-    fn name(&self) -> &str {
-        match *self {
-            CargoFile::Config => "Cargo.toml",
-            CargoFile::Lock => "Cargo.lock",
-        }
-    }
-}
+const MANIFEST_FILENAME: &str = "Cargo.toml";
 
 /// A Cargo Manifest
 #[derive(Debug, Clone, PartialEq)]
@@ -50,7 +38,7 @@ fn toml_pretty(value: &toml::Value) -> Result<String> {
 /// If a manifest is specified, return that one. If a path is specified, perform a manifest search
 /// starting from there. If nothing is specified, start searching from the current directory
 /// (`cwd`).
-fn find(specified: &Option<PathBuf>, file: CargoFile) -> Result<PathBuf> {
+fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
     match *specified {
         Some(ref path)
             if fs::metadata(&path)
@@ -59,25 +47,22 @@ fn find(specified: &Option<PathBuf>, file: CargoFile) -> Result<PathBuf> {
         {
             Ok(path.to_owned())
         }
-        Some(ref path) => search(path, file),
-        None => search(
-            &env::current_dir()
-                .chain_err(|| "Failed to get current directory")?,
-            file,
-        ),
-    }.map_err(From::from)
+        Some(ref path) => search(path),
+        None => search(&env::current_dir()
+            .chain_err(|| "Failed to get current directory")?),
+    }
 }
 
 /// Search for Cargo.toml in this directory and recursively up the tree until one is found.
-fn search(dir: &Path, file: CargoFile) -> Result<PathBuf> {
-    let manifest = dir.join(file.name());
+fn search(dir: &Path) -> Result<PathBuf> {
+    let manifest = dir.join(MANIFEST_FILENAME);
 
     if fs::metadata(&manifest).is_ok() {
         Ok(manifest)
     } else {
         dir.parent()
             .ok_or_else(|| ErrorKind::MissingManifest.into())
-            .and_then(|dir| search(dir, file))
+            .and_then(|dir| search(dir))
     }
 }
 
@@ -137,8 +122,7 @@ fn print_upgrade_if_necessary(
         buffer
             .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
             .chain_err(|| "Failed to set output colour")?;
-        write!(&mut buffer, "Upgrading ")
-            .chain_err(|| "Failed to write upgrade message")?;
+        write!(&mut buffer, "Upgrading ").chain_err(|| "Failed to write upgrade message")?;
         buffer
             .set_color(&ColorSpec::new())
             .chain_err(|| "Failed to clear output colour")?;
@@ -162,26 +146,12 @@ impl Manifest {
     /// Starts at the given path an goes into its parent directories until the manifest file is
     /// found. If no path is given, the process's working directory is used as a starting point.
     pub fn find_file(path: &Option<PathBuf>) -> Result<File> {
-        find(path, CargoFile::Config).and_then(|path| {
+        find(path).and_then(|path| {
             OpenOptions::new()
                 .read(true)
                 .write(true)
                 .open(path)
                 .chain_err(|| "Failed to find Cargo.toml")
-        })
-    }
-
-    /// Look for a `Cargo.lock` file
-    ///
-    /// Starts at the given path an goes into its parent directories until the manifest file is
-    /// found. If no path is given, the process' working directory is used as a starting point.
-    pub fn find_lock_file(path: &Option<PathBuf>) -> Result<File> {
-        find(path, CargoFile::Lock).and_then(|path| {
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(path)
-                .chain_err(|| "Failed to find Cargo.lock")
         })
     }
 
@@ -193,16 +163,6 @@ impl Manifest {
             .chain_err(|| "Failed to read manifest contents")?;
 
         data.parse().chain_err(|| "Unable to parse Cargo.toml")
-    }
-
-    /// Open the `Cargo.lock` for a path (or the process' `cwd`)
-    pub fn open_lock_file(path: &Option<PathBuf>) -> Result<Manifest> {
-        let mut file = Manifest::find_lock_file(path)?;
-        let mut data = String::new();
-        file.read_to_string(&mut data)
-            .chain_err(|| "Failed to read lock file contents")?;
-
-        data.parse().chain_err(|| "Unable to parse Cargo.lock")
     }
 
     /// Get the specified table from the manifest.
@@ -360,17 +320,15 @@ impl Manifest {
             Entry::Vacant(_) => Err(ErrorKind::NonExistentTable(table.into())),
             Entry::Occupied(mut section) => {
                 let result = match *section.get_mut() {
-                    toml::Value::Table(ref mut deps) => {
-                        deps.remove(name).map(|_| ()).ok_or_else(|| {
-                            ErrorKind::NonExistentDependency(name.into(), table.into())
-                        })
-                    }
+                    toml::Value::Table(ref mut deps) => deps.remove(name).map(|_| ()).ok_or_else(
+                        || ErrorKind::NonExistentDependency(name.into(), table.into()),
+                    ),
                     _ => Err(ErrorKind::NonExistentTable(table.into())),
                 };
                 if section.get().as_table().map(|x| x.is_empty()) == Some(true) {
                     section.remove();
                 }
-                result.into()
+                result
             }
         }?;
 

@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use errors::*;
 
-const REGISTRY_HOST: &'static str = "https://crates.io";
+const REGISTRY_HOST: &str = "https://crates.io";
 
 #[derive(Deserialize)]
 struct Versions {
@@ -19,10 +19,8 @@ struct Versions {
 
 #[derive(Deserialize)]
 struct CrateVersion {
-    #[serde(rename = "crate")]
-    name: String,
-    #[serde(rename = "num")]
-    version: semver::Version,
+    #[serde(rename = "crate")] name: String,
+    #[serde(rename = "num")] version: semver::Version,
     yanked: bool,
 }
 
@@ -187,10 +185,10 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
 
 fn fetch_cratesio(path: &str) -> Result<Versions> {
     let url = format!("{host}/api/v1{path}", host = REGISTRY_HOST, path = path);
-    let response = get_with_timeout(&url, get_default_timeout())
-        .chain_err(|| ErrorKind::FetchVersionFailure)?;
-    let versions: Versions = json::from_reader(response)
-        .chain_err(|| ErrorKind::InvalidCratesIoJson)?;
+    let response =
+        get_with_timeout(&url, get_default_timeout()).chain_err(|| ErrorKind::FetchVersionFailure)?;
+    let versions: Versions =
+        json::from_reader(response).chain_err(|| ErrorKind::InvalidCratesIoJson)?;
     Ok(versions)
 }
 
@@ -220,9 +218,8 @@ where
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from github is an error or in an incorrect format.
 pub fn get_crate_name_from_github(repo: &str) -> Result<String> {
-    let re = Regex::new(
-        r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$",
-    ).unwrap();
+    let re =
+        Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
     get_crate_name_from_repository(repo, &re, |user, repo| {
         format!(
             "https://raw.githubusercontent.com/{user}/{repo}/master/Cargo.toml",
@@ -240,9 +237,8 @@ pub fn get_crate_name_from_github(repo: &str) -> Result<String> {
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from gitlab is an error or in an incorrect format.
 pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
-    let re = Regex::new(
-        r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$",
-    ).unwrap();
+    let re =
+        Regex::new(r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
     get_crate_name_from_repository(repo, &re, |user, repo| {
         format!(
             "https://gitlab.com/{user}/{repo}/raw/master/Cargo.toml",

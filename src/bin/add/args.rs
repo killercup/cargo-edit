@@ -78,8 +78,7 @@ impl Args {
 
         if crate_name_has_version(&self.arg_crate) {
             return Ok(vec![
-                parse_crate_name_with_version(&self.arg_crate)?
-                    .set_optional(self.flag_optional),
+                parse_crate_name_with_version(&self.arg_crate)?.set_optional(self.flag_optional),
             ]);
         }
 
@@ -114,8 +113,9 @@ impl Args {
     }
 
     fn get_upgrade_prefix(&self) -> Option<&'static str> {
-        self.flag_upgrade.clone().and_then(
-            |flag| match flag.to_uppercase().as_ref() {
+        self.flag_upgrade
+            .clone()
+            .and_then(|flag| match flag.to_uppercase().as_ref() {
                 "NONE" => Some("="),
                 "PATCH" => Some("~"),
                 "MINOR" => Some("^"),
@@ -127,8 +127,7 @@ impl Args {
                     );
                     None
                 }
-            },
-        )
+            })
     }
 }
 
@@ -178,8 +177,7 @@ fn parse_crate_name_with_version(name: &str) -> Result<Dependency> {
 
     let xs: Vec<_> = name.splitn(2, '@').collect();
     let (name, version) = (xs[0], xs[1]);
-    semver::VersionReq::parse(version)
-        .chain_err(|| "Invalid crate version requirement")?;
+    semver::VersionReq::parse(version).chain_err(|| "Invalid crate version requirement")?;
 
     Ok(Dependency::new(name).set_version(version))
 }
