@@ -23,6 +23,15 @@ error_chain!{
         MissingManifest {
             description("Unable to find Cargo.toml")
         }
+        /// Cargo.toml is valid toml, but doesn't contain the expected fields
+        InvalidManifest {
+            description("Cargo.toml missing expected `package` or `project` fields")
+        }
+        /// Found a workspace manifest when expecting a normal manifest
+        UnexpectedRootManifest {
+            description("Found virtual manifest, but this command requires running against an \
+                         actual package in this workspace.")
+        }
         /// The TOML table could not be found.
         NonExistentTable(table: String) {
             description("non existent table")

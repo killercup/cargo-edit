@@ -170,6 +170,26 @@ fn upgrade_workspace() {
     }
 }
 
+/// Detect if attempting to run against a workspace root and give a helpful warning.
+#[test]
+fn detect_workspace() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/workspace/Cargo.toml");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-upgrade",
+        "upgrade",
+        "--manifest-path",
+        &manifest,
+    ]).fails_with(1)
+        .prints_error_exactly(
+            "Command failed due to unhandled error: Failed to write new manifest contents
+
+Caused by: Found virtual manifest, but this command requires running against an actual package in \
+this workspace.",
+        )
+        .unwrap();
+}
+
 #[test]
 fn invalid_manifest() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
@@ -181,7 +201,7 @@ fn invalid_manifest() {
         &manifest,
     ]).fails_with(1)
         .prints_error_exactly(
-            r"Command failed due to unhandled error: Unable to parse Cargo.toml
+            "Command failed due to unhandled error: Unable to parse Cargo.toml
 
 Caused by: Manifest not valid TOML
 Caused by: expected an equals, found an identifier at line 1",
@@ -209,7 +229,7 @@ fn unknown_flags() {
     assert_cli::Assert::command(&["target/debug/cargo-upgrade", "upgrade", "foo", "--flag"])
         .fails_with(1)
         .prints_error_exactly(
-            r"Unknown flag: '--flag'
+            "Unknown flag: '--flag'
 
 Usage:
     cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
