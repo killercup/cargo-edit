@@ -240,12 +240,10 @@ impl Manifest {
         let (proj_header, proj_data) = toml.remove("package")
             .map(|data| ("package", data))
             .or_else(|| toml.remove("project").map(|data| ("project", data)))
-            .ok_or_else(|| {
-                if toml.contains_key("workspace") {
-                    ErrorKind::UnexpectedRootManifest
-                } else {
-                    ErrorKind::InvalidManifest
-                }
+            .ok_or_else(|| if toml.contains_key("workspace") {
+                ErrorKind::UnexpectedRootManifest
+            } else {
+                ErrorKind::InvalidManifest
             })?;
 
         let new_contents = format!(
