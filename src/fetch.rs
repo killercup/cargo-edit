@@ -7,6 +7,7 @@ use std::env;
 use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
+use env_proxy;
 
 use errors::*;
 
@@ -272,8 +273,20 @@ fn get_default_timeout() -> Duration {
     Duration::from_secs(10)
 }
 
+// workaround from rustup: http://bit.ly/rustupWorkaround
+fn env_proxy(url: &reqwest::Url) -> Option<reqwest::Url> {
+    env_proxy::for_url(url).and_then(|(host, port)| {
+        // TODO: update when https://github.com/inejge/env_proxy/pull/3 is merged
+        let proxy_url = format!("http://{}:{}", host, port);
+        proxy_url.parse().ok()
+    })
+}
+
 fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Response> {
-    let client = reqwest::ClientBuilder::new()?.timeout(timeout).build()?;
+    let client = reqwest::ClientBuilder::new()?
+        .timeout(timeout)
+        .proxy(reqwest::Proxy::custom(env_proxy))
+        .build()?;
 
     client.get(url)?.send()
 }

@@ -94,6 +94,7 @@ dependencies = [
  "assert_cli 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "env_proxy 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pad 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "pretty_assertions 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -202,6 +203,14 @@ dependencies = [
 name = "dtoa"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "env_proxy"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "url 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "error-chain"
@@ -982,6 +991,7 @@ dependencies = [
 "checksum difference 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b3304d19798a8e067e48d8e69b2c37f0b5e9b4e462504ad9e27e9f3fce02bba8"
 "checksum docopt 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3b5b93718f8b3e5544fcc914c43de828ca6c6ace23e0332c6080a2977b49787a"
 "checksum dtoa 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "09c3753c3db574d215cba4ea76018483895d7bff25a31b49ba45db21c48e50ab"
+"checksum env_proxy 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f190d9208c08f9f0f608d9ba2530620b351d10e4bf2a62ac2292fe63380fbfb7"
 "checksum error-chain 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d9435d864e017c3c6afeac1654189b06cdb491cf2ff73dbf0d73b0f292f42ff8"
 "checksum error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ff511d5dc435d703f4971bc399647c9bc38e20cb41452e3b9feb4765419ed3f3"
 "checksum foreign-types 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3e4056b9bd47f8ac5ba12be771f77a0dae796d1bbaaf5fd0b9c2d38b69b8a29d"
