@@ -48,8 +48,7 @@ fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
             Ok(path.to_owned())
         }
         Some(ref path) => search(path),
-        None => search(&env::current_dir()
-            .chain_err(|| "Failed to get current directory")?),
+        None => search(&env::current_dir().chain_err(|| "Failed to get current directory")?),
     }
 }
 
@@ -201,9 +200,7 @@ impl Manifest {
             self.data
                 .get(&dependency_type.to_string())
                 .and_then(toml::Value::as_table)
-                .map(|table| {
-                    sections.push((vec![dependency_type.to_string()], table.clone()))
-                });
+                .map(|table| sections.push((vec![dependency_type.to_string()], table.clone())));
 
             // ... and in `target.<target>.(build-/dev-)dependencies`.
             let target_sections = self.data
@@ -240,10 +237,12 @@ impl Manifest {
         let (proj_header, proj_data) = toml.remove("package")
             .map(|data| ("package", data))
             .or_else(|| toml.remove("project").map(|data| ("project", data)))
-            .ok_or_else(|| if toml.contains_key("workspace") {
-                ErrorKind::UnexpectedRootManifest
-            } else {
-                ErrorKind::InvalidManifest
+            .ok_or_else(|| {
+                if toml.contains_key("workspace") {
+                    ErrorKind::UnexpectedRootManifest
+                } else {
+                    ErrorKind::InvalidManifest
+                }
             })?;
 
         let new_contents = format!(
@@ -324,9 +323,9 @@ impl Manifest {
             Entry::Vacant(_) => Err(ErrorKind::NonExistentTable(table.into())),
             Entry::Occupied(mut section) => {
                 let result = match *section.get_mut() {
-                    toml::Value::Table(ref mut deps) => deps.remove(name).map(|_| ()).ok_or_else(
-                        || ErrorKind::NonExistentDependency(name.into(), table.into()),
-                    ),
+                    toml::Value::Table(ref mut deps) => deps.remove(name)
+                        .map(|_| ())
+                        .ok_or_else(|| ErrorKind::NonExistentDependency(name.into(), table.into())),
                     _ => Err(ErrorKind::NonExistentTable(table.into())),
                 };
                 if section.get().as_table().map(|x| x.is_empty()) == Some(true) {
