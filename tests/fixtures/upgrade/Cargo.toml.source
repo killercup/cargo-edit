@@ -33,8 +33,9 @@ serde = { version = "1.0", path = "../serde" }
 [target.'cfg(unix)'.dependencies]
 openssl = "0.9"
 
-[target."x86_64/windows.json".dependencies]
-winhttp = "0.4.0"
+[target."x86_64/windows.json"]
+# let's make it an inline table
+dependencies = { winhttp = "0.4.0" }
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 native = { path = "native/x86_64" }

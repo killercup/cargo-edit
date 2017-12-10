@@ -59,11 +59,8 @@ fn merge_inline_table(old_dep: &mut toml_edit::Item, new: &toml_edit::Item) {
     }
 }
 
-fn str_or_1_len(item: &toml_edit::Item) -> bool {
-    item.is_str() || item.as_table().map(|o| o.len() == 1).unwrap_or(false)
-        || item.as_inline_table()
-            .map(|o| o.len() == 1)
-            .unwrap_or(false)
+fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
+    item.is_str() || item.as_table_like().map(|t| t.len() == 1).unwrap_or(false)
 }
 /// Merge a new dependency into an old entry. See `Dependency::to_toml` for what the format of the
 /// new dependency will be.
@@ -72,10 +69,10 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new: &Dependency) {
 
     let new_toml = new.to_toml().1;
 
-    if str_or_1_len(old_dep) {
+    if str_or_1_len_table(old_dep) {
         // The old dependency is just a version/git/path. We are safe to overwrite.
         *old_dep = new_toml;
-    } else if old_dep.is_table() || old_dep.is_inline_table() {
+    } else if old_dep.is_table_like() {
         for key in &["version", "path", "git"] {
             // remove this key/value pairs
             old_dep[key] = toml_edit::Item::None;
@@ -98,9 +95,9 @@ fn print_upgrade_if_necessary(
     old_dep: &toml_edit::Item,
     new_version: &toml_edit::Item,
 ) -> Result<()> {
-    let old_version = if str_or_1_len(old_dep) {
+    let old_version = if str_or_1_len_table(old_dep) {
         old_dep.clone()
-    } else if old_dep.is_table() || old_dep.is_inline_table() {
+    } else if old_dep.is_table_like() {
         let version = old_dep["version"].clone();
         if version.is_none() {
             return Err("Missing version field".into());
@@ -173,7 +170,7 @@ impl Manifest {
                 // surround it by quotes in order to parse it as a literal key
                 let value = input[&segment].or_insert(toml_edit::table());
 
-                if value.is_table() || value.is_inline_table() {
+                if value.is_table_like() {
                     descend(value, &path[1..])
                 } else {
                     Err(ErrorKind::NonExistentTable(segment.clone()).into())
@@ -188,37 +185,38 @@ impl Manifest {
     }
 
     /// Get all sections in the manifest that exist and might contain dependencies.
-    pub fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Table)> {
+    /// The returned items are always `Table` or `InlineTable`.
+    pub fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
         let mut sections = Vec::new();
 
         for dependency_type in &["dev-dependencies", "build-dependencies", "dependencies"] {
             // Dependencies can be in the three standard sections...
-            self.data
-                .as_table()
-                .get(&dependency_type.to_string())
-                .and_then(toml_edit::Item::as_table)
-                .map(|table| sections.push((vec![dependency_type.to_string()], table.clone())));
+            if self.data[dependency_type].is_table_like() {
+                sections.push((
+                    vec![dependency_type.to_string()],
+                    self.data[dependency_type].clone(),
+                ))
+            }
 
             // ... and in `target.<target>.(build-/dev-)dependencies`.
             let target_sections = self.data
                 .as_table()
                 .get("target")
-                .and_then(toml_edit::Item::as_table)
+                .and_then(toml_edit::Item::as_table_like)
                 .into_iter()
-                .flat_map(|target_tables| target_tables.iter())
+                .flat_map(|t| t.iter())
                 .filter_map(|(target_name, target_table)| {
-                    target_table[dependency_type]
-                        .as_table()
-                        .map(|dependency_table| {
-                            (
-                                vec![
-                                    "target".to_string(),
-                                    target_name.to_string(),
-                                    dependency_type.to_string(),
-                                ],
-                                dependency_table.to_owned(),
-                            )
-                        })
+                    let dependency_table = &target_table[dependency_type];
+                    dependency_table.as_table_like().map(|_| {
+                        (
+                            vec![
+                                "target".to_string(),
+                                target_name.to_string(),
+                                dependency_type.to_string(),
+                            ],
+                            dependency_table.clone(),
+                        )
+                    })
                 });
 
             sections.extend(target_sections);
@@ -258,7 +256,8 @@ impl Manifest {
             table[name] = new_dependency.clone();
         } else {
             // update an existing entry
-            merge_dependencies(&mut table[&dep.name], dep)
+            merge_dependencies(&mut table[&dep.name], dep);
+            table.as_inline_table_mut().map(|t| t.fmt());
         }
         Ok(())
     }
@@ -274,6 +273,7 @@ impl Manifest {
                 eprintln!("Error while displaying upgrade message, {}", e);
             }
             merge_dependencies(&mut table[&dep.name], dep);
+            table.as_inline_table_mut().map(|t| t.fmt());
         }
 
         Ok(())
@@ -295,18 +295,15 @@ impl Manifest {
     ///     let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
-    ///     assert!(manifest.data["dependencies"].as_table().unwrap().is_empty());
+    ///     assert!(manifest.data["dependencies"].is_none());
     /// # }
     /// ```
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<()> {
-        let manifest = &mut self.data;
-        let entry = manifest.as_table_mut().entry(table);
-
-        if !(entry.is_table() || entry.is_inline_table()) {
+        if !self.data[table].is_table_like() {
             Err(ErrorKind::NonExistentTable(table.into()))?;
         } else {
             {
-                let dep = &mut entry[name];
+                let dep = &mut self.data[table][name];
                 if dep.is_none() {
                     Err(ErrorKind::NonExistentDependency(name.into(), table.into()))?;
                 }
@@ -314,8 +311,10 @@ impl Manifest {
                 *dep = toml_edit::Item::None;
             }
 
-            // hide the table if it is empty
-            entry.as_table_mut().map(|t| t.set_implicit(true));
+            // remove table if empty
+            if self.data[table].as_table_like().unwrap().is_empty() {
+                self.data[table] = toml_edit::Item::None;
+            }
         }
         Ok(())
     }

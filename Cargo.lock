@@ -940,7 +940,7 @@ dependencies = [
 [[package]]
 name = "toml_edit"
 version = "0.1.0"
-source = "git+https://github.com/ordian/toml_edit#9029d2938f9f8100aac5246382da064a02d8a00b"
+source = "git+https://github.com/ordian/toml_edit#81c9321a9825b3472cf8f43803bf4173ddea5368"
 dependencies = [
  "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "combine 3.0.0-alpha.2 (registry+https://github.com/rust-lang/crates.io-index)",

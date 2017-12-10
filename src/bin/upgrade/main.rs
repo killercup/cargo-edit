@@ -90,7 +90,8 @@ where
     let mut manifest = Manifest::open(&manifest_path)?;
 
     for (table_path, table) in manifest.get_sections() {
-        for (name, old_value) in table.iter() {
+        let table_like = table.as_table_like().expect("bug in get_sections");
+        for (name, old_value) in table_like.iter() {
             let owned = name.to_owned();
             if (only_update.is_empty() || only_update.contains(&owned))
                 && is_version_dependency(old_value)
