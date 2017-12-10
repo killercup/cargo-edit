@@ -368,7 +368,7 @@ fn adds_git_source_without_flag() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.get("dependencies").is_none());
+    assert!(toml["dependencies"].is_none());
 
     execute_command(
         &["add", "https://github.com/killercup/cargo-edit.git"],
@@ -378,14 +378,14 @@ fn adds_git_source_without_flag() {
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["cargo-edit"];
     assert_eq!(
-        val.as_table().unwrap()["git"].as_str().unwrap(),
-        "https://github.com/killercup/cargo-edit.git"
+        val["git"].as_str(),
+        Some("https://github.com/killercup/cargo-edit.git")
     );
 
     // check this works with other flags (e.g. --dev) as well
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
     let toml = get_toml(&manifest);
-    assert!(toml.get("dev-dependencies").is_none());
+    assert!(toml["dev-dependencies"].is_none());
 
     execute_command(
         &[
@@ -399,8 +399,8 @@ fn adds_git_source_without_flag() {
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["cargo-edit"];
     assert_eq!(
-        val.as_table().unwrap()["git"].as_str().unwrap(),
-        "https://github.com/killercup/cargo-edit.git"
+        val["git"].as_str(),
+        Some("https://github.com/killercup/cargo-edit.git")
     );
 }
 
@@ -560,7 +560,7 @@ fn adds_dependency_normalized_name() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.get("dependencies").is_none());
+    assert!(toml["dependencies"].is_none());
 
     assert_cli::Assert::command(&[
         "target/debug/cargo-add",
@@ -573,7 +573,7 @@ fn adds_dependency_normalized_name() {
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].get("linked-hash-map").is_some());
+    assert!(!toml["dependencies"]["linked-hash-map"].is_none());
 }
 
 
@@ -634,7 +634,7 @@ fn fails_to_add_inexistent_git_source_without_flag() {
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
-    assert!(toml.get("dependencies").is_none());
+    assert!(toml["dependencies"].is_none());
 
     execute_command(
         &["add", "https://github.com/killercup/fake-git-repo.git"],
