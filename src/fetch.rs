@@ -263,9 +263,9 @@ pub fn get_crate_name_from_path(path: &str) -> Result<String> {
 fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
     manifest
         .data
+        .as_table()
         .get("package")
-        .and_then(|m| m.get("name"))
-        .and_then(|name| name.as_str().map(|s| s.to_string()))
+        .and_then(|m| m["name"].as_str().map(|s| s.to_string()))
         .ok_or_else(|| ErrorKind::ParseCargoToml.into())
 }
 

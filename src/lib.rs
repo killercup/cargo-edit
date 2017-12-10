@@ -15,7 +15,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate termcolor;
-extern crate toml;
+extern crate toml_edit;
 
 mod dependency;
 mod errors;

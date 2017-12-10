@@ -9,7 +9,7 @@ extern crate docopt;
 extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
-extern crate toml;
+extern crate toml_edit;
 
 use std::collections::HashMap;
 use std::io::{self, Write};
@@ -73,12 +73,8 @@ struct Args {
     flag_allow_prerelease: bool,
 }
 
-fn is_version_dependency(dep: &toml::Value) -> bool {
-    if let Some(table) = dep.as_table() {
-        !table.contains_key("git") && !table.contains_key("path")
-    } else {
-        true
-    }
+fn is_version_dependency(dep: &toml_edit::Item) -> bool {
+    dep["git"].is_none() && dep["path"].is_none()
 }
 
 /// Upgrade the specified manifest. Use the closure provided to get the new dependency versions.
@@ -94,11 +90,12 @@ where
     let mut manifest = Manifest::open(&manifest_path)?;
 
     for (table_path, table) in manifest.get_sections() {
-        for (name, old_value) in &table {
-            if (only_update.is_empty() || only_update.contains(name))
+        for (name, old_value) in table.iter() {
+            let owned = name.to_owned();
+            if (only_update.is_empty() || only_update.contains(&owned))
                 && is_version_dependency(old_value)
             {
-                let latest_version = new_dependency(name)?;
+                let latest_version = new_dependency(&owned)?;
 
                 manifest.update_table_entry(&table_path, &latest_version)?;
             }
