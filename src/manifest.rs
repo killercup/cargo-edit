@@ -167,7 +167,6 @@ impl Manifest {
             path: &[String],
         ) -> Result<&'a mut toml_edit::Item> {
             if let Some(segment) = path.get(0) {
-                // surround it by quotes in order to parse it as a literal key
                 let value = input[&segment].or_insert(toml_edit::table());
 
                 if value.is_table_like() {
