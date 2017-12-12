@@ -7,6 +7,7 @@ use std::env;
 use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
+use env_proxy;
 
 use errors::*;
 
@@ -273,7 +274,12 @@ fn get_default_timeout() -> Duration {
 }
 
 fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Response> {
-    let client = reqwest::ClientBuilder::new()?.timeout(timeout).build()?;
+    let client = reqwest::ClientBuilder::new()?
+        .timeout(timeout)
+        .proxy(reqwest::Proxy::custom(|url| {
+            env_proxy::for_url(url).to_url()
+        }))
+        .build()?;
 
     client.get(url)?.send()
 }
