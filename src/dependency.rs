@@ -77,7 +77,7 @@ impl Dependency {
         let data: toml_edit::Item = match (self.optional, self.source.clone()) {
             // Extra short when version flag only
             (false, DependencySource::Version(v)) => toml_edit::value(v),
-            // Other cases are represented as an inline tables
+            // Other cases are represented as an inline table
             (optional, source) => {
                 let mut data = toml_edit::InlineTable::default();
 
