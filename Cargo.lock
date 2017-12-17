@@ -116,7 +116,7 @@ dependencies = [
  "serde_json 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "termcolor 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "toml_edit 0.1.0 (git+https://github.com/ordian/toml_edit)",
+ "toml_edit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -939,8 +939,8 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.1.0"
-source = "git+https://github.com/ordian/toml_edit#81c9321a9825b3472cf8f43803bf4173ddea5368"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "combine 3.0.0-alpha.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1155,7 +1155,7 @@ dependencies = [
 "checksum tokio-proto 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8fbb47ae81353c63c487030659494b295f6cb6576242f907f203473b191b0389"
 "checksum tokio-service 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "24da22d077e0f15f55162bdbdc661228c1581892f52074fb242678d015b45162"
 "checksum tokio-tls 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d88e411cac1c87e405e4090be004493c5d8072a370661033b1a64ea205ec2e13"
-"checksum toml_edit 0.1.0 (git+https://github.com/ordian/toml_edit)" = "<none>"
+"checksum toml_edit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3f682fce2851dc97f4fc9ffb68fc5359e4e86b71741993cf0808ddf85c9b205c"
 "checksum unicase 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "284b6d3db520d67fbe88fd778c21510d1b0ba4a551e5d0fbb023d33405f6de8a"
 "checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
 "checksum unicode-normalization 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "51ccda9ef9efa3f7ef5d91e8f9b83bbe6955f9bf86aec89d5cce2c874625920f"
