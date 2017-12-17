@@ -2,7 +2,7 @@ extern crate assert_cli;
 #[macro_use]
 extern crate pretty_assertions;
 extern crate tempdir;
-extern crate toml;
+extern crate toml_edit;
 
 use std::fs;
 
@@ -19,7 +19,7 @@ fn upgrade_as_expected() {
     let upgraded = get_toml(&manifest);
     let target = get_toml("tests/fixtures/upgrade/Cargo.toml.target");
 
-    assert_eq!(target, upgraded);
+    assert_eq!(target.to_string(), upgraded.to_string());
 }
 
 #[test]
@@ -34,8 +34,8 @@ fn upgrade_all() {
 
     // Verify that `versioned-package` has been updated successfully.
     assert_eq!(
-        get_toml(&manifest)["dependencies"]["versioned-package"],
-        toml::value::Value::String("versioned-package--CURRENT_VERSION_TEST".to_string())
+        get_toml(&manifest)["dependencies"]["versioned-package"].as_str(),
+        Some("versioned-package--CURRENT_VERSION_TEST")
     );
 }
 
@@ -51,8 +51,8 @@ fn upgrade_all_allow_prerelease() {
 
     // Verify that `versioned-package` has been updated successfully.
     assert_eq!(
-        get_toml(&manifest)["dependencies"]["versioned-package"],
-        toml::value::Value::String("versioned-package--PRERELEASE_VERSION_TEST".to_string())
+        get_toml(&manifest)["dependencies"]["versioned-package"].as_str(),
+        Some("versioned-package--PRERELEASE_VERSION_TEST")
     );
 }
 
@@ -73,17 +73,16 @@ fn upgrade_specified_only() {
     // Verify that `versioned-package` was upgraded, but not `versioned-package-2`
     let dependencies = &get_toml(&manifest)["dependencies"];
     assert_eq!(
-        dependencies["versioned-package"],
-        toml::value::Value::String("versioned-package--CURRENT_VERSION_TEST".to_string())
+        dependencies["versioned-package"].as_str(),
+        Some("versioned-package--CURRENT_VERSION_TEST")
     );
     assert_eq!(
-        dependencies["versioned-package-2"],
-        toml::value::Value::String("0.1.1".to_string())
+        dependencies["versioned-package-2"].as_str(),
+        Some("0.1.1")
     );
 }
 
 #[test]
-#[should_panic(expected = "not added")]
 fn fails_to_upgrade_missing_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -91,7 +90,7 @@ fn fails_to_upgrade_missing_dependency() {
     execute_command(&["upgrade", "-d", "failure"], &manifest);
 
     // Verify that `failure` has not been added
-    get_toml(&manifest).get("dependencies").expect("not added");
+    assert!(get_toml(&manifest)["dependencies"]["failure"].is_none());
 }
 
 #[test]
@@ -117,10 +116,10 @@ fn upgrade_optional_dependency() {
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["versioned-package"];
     assert_eq!(
-        val["version"],
-        toml::value::Value::String("versioned-package--CURRENT_VERSION_TEST".to_string())
+        val["version"].as_str(),
+        Some("versioned-package--CURRENT_VERSION_TEST")
     );
-    assert_eq!(val["optional"], toml::value::Value::Boolean(true));
+    assert_eq!(val["optional"].as_bool(), Some(true));
 }
 
 #[test]
@@ -164,8 +163,8 @@ fn upgrade_workspace() {
     // All of the workspace members have `libc` as a dependency.
     for workspace_member in workspace_manifests {
         assert_eq!(
-            get_toml(workspace_member)["dependencies"]["libc"],
-            toml::value::Value::String("libc--CURRENT_VERSION_TEST".to_string())
+            get_toml(workspace_member)["dependencies"]["libc"].as_str(),
+            Some("libc--CURRENT_VERSION_TEST")
         );
     }
 }
@@ -204,7 +203,12 @@ fn invalid_manifest() {
             "Command failed due to unhandled error: Unable to parse Cargo.toml
 
 Caused by: Manifest not valid TOML
-Caused by: expected an equals, found an identifier at line 1",
+Caused by: TOML parse error at line 1, column 6
+  |
+1 | This is clearly not a valid Cargo.toml.
+  |      ^
+Unexpected `i`
+Expected `=`",
         )
         .unwrap();
 }

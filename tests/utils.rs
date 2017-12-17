@@ -1,5 +1,5 @@
 extern crate tempdir;
-extern crate toml;
+extern crate toml_edit;
 
 use std::{fs, process};
 use std::ffi::OsStr;
@@ -45,9 +45,9 @@ where
 }
 
 /// Parse a manifest file as TOML
-pub fn get_toml(manifest_path: &str) -> toml::Value {
+pub fn get_toml(manifest_path: &str) -> toml_edit::Document {
     let mut f = fs::File::open(manifest_path).unwrap();
     let mut s = String::new();
     f.read_to_string(&mut s).unwrap();
-    s.parse().unwrap()
+    s.parse().expect("toml parse error")
 }

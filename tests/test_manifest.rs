@@ -12,7 +12,15 @@ fn invalid_manifest() {
             r"Command failed due to unhandled error: Unable to parse Cargo.toml
 
 Caused by: Manifest not valid TOML
-Caused by: failed to parse datetime for key `invalid-section.key`",
+Caused by: TOML parse error at line 6, column 7
+  |
+6 | key = invalid-value
+  |       ^
+Unexpected `i`
+Expected `-`, `+`, `0`, `-`, `+` or `0`
+expected 4 more elements
+expected 2 more elements
+While parsing an Integer",
         )
         .unwrap();
 }

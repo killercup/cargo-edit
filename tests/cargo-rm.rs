@@ -8,10 +8,10 @@ fn remove_existing_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].get("docopt").is_some());
+    assert!(!toml["dependencies"]["docopt"].is_none());
     execute_command(&["rm", "docopt"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].get("docopt").is_none());
+    assert!(toml["dependencies"]["docopt"].is_none());
 }
 
 #[test]
@@ -20,17 +20,17 @@ fn remove_existing_dependency_from_specific_section() {
 
     // Test removing dev dependency.
     let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"].get("regex").is_some());
+    assert!(!toml["dev-dependencies"]["regex"].is_none());
     execute_command(&["rm", "--dev", "regex"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml.get("dev-dependencies").is_none());
+    assert!(toml["dev-dependencies"].is_none());
 
     // Test removing build dependency.
     let toml = get_toml(&manifest);
-    assert!(toml["build-dependencies"].get("semver").is_some());
+    assert!(!toml["build-dependencies"]["semver"].is_none());
     execute_command(&["rm", "--build", "semver"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml.get("build-dependencies").is_none());
+    assert!(toml["build-dependencies"].is_none());
 }
 
 #[test]
@@ -38,13 +38,13 @@ fn remove_section_after_removed_last_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"].get("regex").is_some());
+    assert!(!toml["dev-dependencies"]["regex"].is_none());
     assert_eq!(toml["dev-dependencies"].as_table().unwrap().len(), 1);
 
     execute_command(&["rm", "--dev", "regex"], &manifest);
 
     let toml = get_toml(&manifest);
-    assert!(toml.get("dev-dependencies").is_none());
+    assert!(toml["dev-dependencies"].is_none());
 }
 
 // https://github.com/killercup/cargo-edit/issues/32
@@ -53,21 +53,21 @@ fn issue_32() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].get("foo").is_none());
+    assert!(toml["dependencies"]["foo"].is_none());
 
     execute_command(&["add", "foo@1.0"], &manifest);
     execute_command(&["add", "bar@1.0.7"], &manifest);
 
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].get("foo").is_some());
-    assert!(toml["dependencies"].get("bar").is_some());
+    assert!(!toml["dependencies"]["foo"].is_none());
+    assert!(!toml["dependencies"]["bar"].is_none());
 
     execute_command(&["rm", "foo"], &manifest);
     execute_command(&["rm", "bar"], &manifest);
 
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].get("foo").is_none());
-    assert!(toml["dependencies"].get("bar").is_none());
+    assert!(toml["dependencies"]["foo"].is_none());
+    assert!(toml["dependencies"]["bar"].is_none());
 }
 
 #[test]

@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-use toml;
+use toml_edit;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 enum DependencySource {
@@ -71,33 +70,34 @@ impl Dependency {
 
     /// Convert dependency to TOML
     ///
-    /// Returns a tuple with the dependency's name and either the version as a `String` or the
-    /// path/git repository as a `Table`. (If the dependency is set as `optional`, a `Table` is
-    /// returned in any case.)
-    pub fn to_toml(&self) -> (String, toml::Value) {
-        let data: toml::Value = match (self.optional, self.source.clone()) {
+    /// Returns a tuple with the dependency's name and either the version as a `String`
+    /// or the path/git repository as an `InlineTable`.
+    /// (If the dependency is set as `optional`, an `InlineTable` is returned in any case.)
+    pub fn to_toml(&self) -> (String, toml_edit::Item) {
+        let data: toml_edit::Item = match (self.optional, self.source.clone()) {
             // Extra short when version flag only
-            (false, DependencySource::Version(v)) => toml::Value::String(v),
-            // Other cases are represented as tables
+            (false, DependencySource::Version(v)) => toml_edit::value(v),
+            // Other cases are represented as an inline table
             (optional, source) => {
-                let mut data = BTreeMap::new();
+                let mut data = toml_edit::InlineTable::default();
 
                 match source {
                     DependencySource::Version(v) => {
-                        data.insert("version".into(), toml::Value::String(v));
+                        data.get_or_insert("version", v);
                     }
                     DependencySource::Git(v) => {
-                        data.insert("git".into(), toml::Value::String(v));
+                        data.get_or_insert("git", v);
                     }
                     DependencySource::Path(v) => {
-                        data.insert("path".into(), toml::Value::String(v));
+                        data.get_or_insert("path", v);
                     }
                 }
                 if self.optional {
-                    data.insert("optional".into(), toml::Value::Boolean(optional));
+                    data.get_or_insert("optional", optional);
                 }
 
-                toml::Value::Table(data)
+                data.fmt();
+                toml_edit::value(toml_edit::Value::InlineTable(data))
             }
         };
 
