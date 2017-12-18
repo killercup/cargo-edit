@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-edit"
-version = "0.3.0-alpha.1"
+version = "0.3.0-beta.1"
 dependencies = [
  "assert_cli 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
