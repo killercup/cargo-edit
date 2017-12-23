@@ -4,3 +4,5 @@ members = [
     "two",
     "explicit/*"
 ]
+
+exclude = ["not_a_member"]
