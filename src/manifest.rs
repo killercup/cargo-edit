@@ -123,9 +123,7 @@ fn print_upgrade_if_necessary(
         write!(
             &mut buffer,
             "{} v{} -> v{}\n",
-            crate_name,
-            old_version,
-            new_version,
+            crate_name, old_version, new_version,
         ).chain_err(|| "Failed to write upgrade versions")?;
         bufwtr
             .print(&buffer)
@@ -178,7 +176,6 @@ impl Manifest {
                 Ok(input)
             }
         }
-
 
         descend(&mut self.data.root, table_path)
     }
