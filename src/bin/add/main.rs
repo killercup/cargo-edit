@@ -72,7 +72,7 @@ crates.io registry suggests. One goal of `cargo add` is to prevent you from usin
 dependencies (version set to "*").
 "#;
 
-fn print_msg(dep: &Dependency, section: Vec<String>, optional: bool) {
+fn print_msg(dep: &Dependency, section: &[String], optional: bool) {
     let optional = if optional { "optional " } else { "" }.to_owned();
     let section = if section.len() == 1 {
         section[0].clone()
@@ -103,7 +103,7 @@ fn handle_add(args: &Args) -> Result<()> {
     deps.iter()
         .map(|dep| {
             if !args.flag_quiet {
-                print_msg(dep, args.get_section(), args.flag_optional);
+                print_msg(dep, &args.get_section(), args.flag_optional);
             }
             manifest
                 .insert_into_table(&args.get_section(), dep)
