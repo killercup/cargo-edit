@@ -769,3 +769,37 @@ Usage:
         )
         .unwrap();
 }
+
+#[test]
+fn add_prints_message() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "docopt",
+        &format!("--manifest-path={}", manifest),
+    ]).succeeds()
+        .prints("Adding").and()
+        .prints("docopt v").and()
+        .prints("to dependencies")
+        .unwrap();
+}
+
+#[test]
+fn add_prints_message_with_section() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "docopt",
+        "--optional",
+        "--target=mytarget",
+        &format!("--manifest-path={}", manifest),
+    ]).succeeds()
+        .prints("Adding").and()
+        .prints("docopt v").and()
+        .prints("to optional dependencies for target mytarget")
+        .unwrap();
+}
