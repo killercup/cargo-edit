@@ -6,14 +6,16 @@
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
+extern crate termcolor;
 extern crate semver;
 #[macro_use]
 extern crate serde_derive;
 
 use std::process;
+use termcolor::{StandardStream, Color, ColorChoice, ColorSpec, WriteColor};
 
 extern crate cargo_edit;
-use cargo_edit::Manifest;
+use cargo_edit::{Manifest, Dependency};
 
 mod args;
 use args::Args;
@@ -70,6 +72,27 @@ crates.io registry suggests. One goal of `cargo add` is to prevent you from usin
 dependencies (version set to "*").
 "#;
 
+fn print_msg(dep: &Dependency, section: Vec<String>, optional: bool) {
+    let optional = if optional {"optional "} else {""}.to_owned();
+    let section = if section.len() == 1 {
+        section[0].clone()
+    } else {
+        "dependencies for target ".to_owned() + &section[1]
+    };
+
+    let mut output = StandardStream::stdout(ColorChoice::Auto);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true)).unwrap();
+    print!("{:>12}", "Adding");
+    output.reset().unwrap();
+    println!(
+        " {} v{} to {}{}",
+        dep.name,
+        dep.version().unwrap_or(""),
+        optional,
+        section
+    );
+}
+
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = args.flag_manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path)?;
@@ -78,17 +101,7 @@ fn handle_add(args: &Args) -> Result<()> {
     deps.iter()
         .map(|dep| {
             if !args.flag_quiet {
-                let section = args.get_section();
-                println!(
-                    "Adding {} v{} to {}",
-                    dep.name,
-                    dep.version().unwrap_or(""),
-                    if section.len() == 1 {
-                        section[0].clone()
-                    } else {
-                        "dependencies for target ".to_owned() + &section[1]
-                    }
-                );
+                print_msg(dep, args.get_section(), args.flag_optional);
             }
             manifest
                 .insert_into_table(&args.get_section(), dep)
