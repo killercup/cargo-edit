@@ -76,6 +76,7 @@ fn handle_add(args: &Args) -> Result<()> {
 
     deps.iter()
         .map(|dep| {
+            println!("Adding {} v{}", dep.name, dep.version().unwrap_or(""));
             manifest
                 .insert_into_table(&args.get_section(), dep)
                 .map_err(Into::into)
