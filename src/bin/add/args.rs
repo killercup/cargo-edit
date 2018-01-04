@@ -37,6 +37,8 @@ pub struct Args {
     pub flag_upgrade: Option<String>,
     /// '--fetch-prereleases'
     pub flag_allow_prerelease: bool,
+    /// '--quiet'
+    pub flag_quiet: bool,
 }
 
 impl Args {
@@ -147,6 +149,7 @@ impl Default for Args {
             flag_version: false,
             flag_upgrade: None,
             flag_allow_prerelease: false,
+            flag_quiet: false,
         }
     }
 }
