@@ -6,16 +6,16 @@
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
-extern crate termcolor;
 extern crate semver;
 #[macro_use]
 extern crate serde_derive;
+extern crate termcolor;
 
 use std::process;
-use termcolor::{StandardStream, Color, ColorChoice, ColorSpec, WriteColor};
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 extern crate cargo_edit;
-use cargo_edit::{Manifest, Dependency};
+use cargo_edit::{Dependency, Manifest};
 
 mod args;
 use args::Args;
@@ -73,7 +73,7 @@ dependencies (version set to "*").
 "#;
 
 fn print_msg(dep: &Dependency, section: Vec<String>, optional: bool) {
-    let optional = if optional {"optional "} else {""}.to_owned();
+    let optional = if optional { "optional " } else { "" }.to_owned();
     let section = if section.len() == 1 {
         section[0].clone()
     } else {
@@ -81,7 +81,9 @@ fn print_msg(dep: &Dependency, section: Vec<String>, optional: bool) {
     };
 
     let mut output = StandardStream::stdout(ColorChoice::Auto);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true)).unwrap();
+    output
+        .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
+        .unwrap();
     print!("{:>12}", "Adding");
     output.reset().unwrap();
     println!(

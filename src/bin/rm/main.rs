@@ -6,12 +6,12 @@
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
-extern crate termcolor;
 #[macro_use]
 extern crate serde_derive;
+extern crate termcolor;
 
 use std::process;
-use termcolor::{StandardStream, Color, ColorChoice, ColorSpec, WriteColor};
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 extern crate cargo_edit;
 use cargo_edit::Manifest;
@@ -47,7 +47,9 @@ Remove a dependency from a Cargo.toml manifest file.
 
 fn print_msg(name: &str, section: &str) {
     let mut output = StandardStream::stdout(ColorChoice::Auto);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true)).unwrap();
+    output
+        .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
+        .unwrap();
     print!("{:>12}", "Removing");
     output.reset().unwrap();
     println!(" {} from {}", name, section);
