@@ -36,6 +36,7 @@ Options:
     -D --dev                Remove crate as development dependency.
     -B --build              Remove crate as build dependency.
     --manifest-path=<path>  Path to the manifest to remove a dependency from.
+    -q --quiet              Do not print any output in case of success.
     -h --help               Show this help page.
     -V --version            Show version.
 
@@ -45,6 +46,10 @@ Remove a dependency from a Cargo.toml manifest file.
 fn handle_rm(args: &Args) -> Result<()> {
     let manifest_path = args.flag_manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path)?;
+
+    if !args.flag_quiet {
+        println!("Removing {}", args.arg_crate);
+    }
 
     manifest
         .remove_from_table(args.get_section(), args.arg_crate.as_ref())

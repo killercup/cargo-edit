@@ -13,6 +13,8 @@ pub struct Args {
     pub flag_manifest_path: Option<String>,
     /// `--version`
     pub flag_version: bool,
+    /// '--quiet'
+    pub flag_quiet: bool,
 }
 
 impl Args {
@@ -36,6 +38,7 @@ impl Default for Args {
             flag_build: false,
             flag_manifest_path: None,
             flag_version: false,
+            flag_quiet: false,
         }
     }
 }
