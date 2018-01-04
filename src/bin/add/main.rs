@@ -73,11 +73,11 @@ dependencies (version set to "*").
 "#;
 
 fn print_msg(dep: &Dependency, section: &[String], optional: bool) {
-    let optional = if optional { "optional " } else { "" }.to_owned();
+    let optional = if optional { "optional " } else { "" };
     let section = if section.len() == 1 {
         section[0].clone()
     } else {
-        "dependencies for target ".to_owned() + &section[1]
+        format!("{} for target {}", &section[2], &section[1])
     };
 
     let mut output = StandardStream::stdout(ColorChoice::Auto);
