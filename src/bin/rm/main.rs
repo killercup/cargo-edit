@@ -48,7 +48,7 @@ fn handle_rm(args: &Args) -> Result<()> {
     let mut manifest = Manifest::open(&manifest_path)?;
 
     if !args.flag_quiet {
-        println!("Removing {}", args.arg_crate);
+        println!("Removing {} from {}", args.arg_crate, args.get_section());
     }
 
     manifest

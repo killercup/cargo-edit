@@ -78,7 +78,17 @@ fn handle_add(args: &Args) -> Result<()> {
     deps.iter()
         .map(|dep| {
             if !args.flag_quiet {
-                println!("Adding {} v{}", dep.name, dep.version().unwrap_or(""));
+                let section = args.get_section();
+                println!(
+                    "Adding {} v{} to {}",
+                    dep.name,
+                    dep.version().unwrap_or(""),
+                    if section.len() == 1 {
+                        section[0].clone()
+                    } else {
+                        "dependencies for target ".to_owned() + &section[1]
+                    }
+                );
             }
             manifest
                 .insert_into_table(&args.get_section(), dep)
