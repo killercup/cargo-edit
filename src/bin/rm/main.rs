@@ -9,7 +9,6 @@ extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
 
-use std::io::{self, Write};
 use std::process;
 
 extern crate cargo_edit;
@@ -69,16 +68,14 @@ fn main() {
     }
 
     if let Err(err) = handle_rm(&args) {
-        let mut stderr = io::stderr();
-
-        writeln!(stderr, "Command failed due to unhandled error: {}\n", err).unwrap();
+        eprintln!("Command failed due to unhandled error: {}\n", err);
 
         for e in err.iter().skip(1) {
-            writeln!(stderr, "Caused by: {}", e).unwrap();
+            eprintln!("Caused by: {}", e);
         }
 
         if let Some(backtrace) = err.backtrace() {
-            writeln!(stderr, "Backtrace: {:?}", backtrace).unwrap();
+            eprintln!("Backtrace: {:?}", backtrace);
         }
 
         process::exit(1);
