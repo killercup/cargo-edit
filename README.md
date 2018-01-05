@@ -87,6 +87,7 @@ Options:
     --manifest-path=<path>  Path to the manifest to add a dependency to.
     --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.
+    -q --quiet              Do not print any output in case of success.
     -h --help               Show this help page.
     -V --version            Show version.
 
@@ -128,6 +129,7 @@ Options:
     -D --dev                Remove crate as development dependency.
     -B --build              Remove crate as build dependency.
     --manifest-path=<path>  Path to the manifest to remove a dependency from.
+    -q --quiet              Do not print any output in case of success.
     -h --help               Show this help page.
     -V --version            Show version.
 
