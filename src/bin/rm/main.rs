@@ -11,6 +11,7 @@ extern crate serde_derive;
 extern crate termcolor;
 
 use std::process;
+use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 extern crate cargo_edit;
@@ -23,6 +24,9 @@ mod errors {
     error_chain!{
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
+        }
+        foreign_links {
+            Io(::std::io::Error);
         }
     }
 }
@@ -45,14 +49,13 @@ Options:
 Remove a dependency from a Cargo.toml manifest file.
 ";
 
-fn print_msg(name: &str, section: &str) {
+fn print_msg(name: &str, section: &str) -> Result<()> {
     let mut output = StandardStream::stdout(ColorChoice::Auto);
-    output
-        .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-        .unwrap();
-    print!("{:>12}", "Removing");
-    output.reset().unwrap();
-    println!(" {} from {}", name, section);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+    write!(output, "{:>12}", "Removing")?;
+    output.reset()?;
+    writeln!(output, " {} from {}", name, section)?;
+    Ok(())
 }
 
 fn handle_rm(args: &Args) -> Result<()> {
@@ -60,7 +63,7 @@ fn handle_rm(args: &Args) -> Result<()> {
     let mut manifest = Manifest::open(&manifest_path)?;
 
     if !args.flag_quiet {
-        print_msg(&args.arg_crate, args.get_section());
+        print_msg(&args.arg_crate, args.get_section())?;
     }
 
     manifest

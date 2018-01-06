@@ -12,6 +12,7 @@ extern crate serde_derive;
 extern crate termcolor;
 
 use std::process;
+use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 extern crate cargo_edit;
@@ -24,6 +25,9 @@ mod errors {
     error_chain!{
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
+        }
+        foreign_links {
+            Io(::std::io::Error);
         }
     }
 }
@@ -72,27 +76,28 @@ crates.io registry suggests. One goal of `cargo add` is to prevent you from usin
 dependencies (version set to "*").
 "#;
 
-fn print_msg(dep: &Dependency, section: &[String], optional: bool) {
-    let optional = if optional { "optional " } else { "" };
+fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
+    let mut output = StandardStream::stdout(ColorChoice::Auto);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+    write!(output, "{:>12}", "Adding")?;
+    output.reset()?;
+    write!(output, " {}", dep.name)?;
+    if let Some(version) = dep.version() {
+        write!(output, " v{}", version)?;
+    } else {
+        write!(output, " (unknown version)")?;
+    }
+    write!(output, " to")?;
+    if optional {
+        write!(output, " optional")?;
+    }
     let section = if section.len() == 1 {
         section[0].clone()
     } else {
         format!("{} for target {}", &section[2], &section[1])
     };
-
-    let mut output = StandardStream::stdout(ColorChoice::Auto);
-    output
-        .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-        .unwrap();
-    print!("{:>12}", "Adding");
-    output.reset().unwrap();
-    println!(
-        " {} v{} to {}{}",
-        dep.name,
-        dep.version().unwrap_or(""),
-        optional,
-        section
-    );
+    writeln!(output, " {}", section)?;
+    Ok(())
 }
 
 fn handle_add(args: &Args) -> Result<()> {
@@ -103,7 +108,7 @@ fn handle_add(args: &Args) -> Result<()> {
     deps.iter()
         .map(|dep| {
             if !args.flag_quiet {
-                print_msg(dep, &args.get_section(), args.flag_optional);
+                print_msg(dep, &args.get_section(), args.flag_optional)?;
             }
             manifest
                 .insert_into_table(&args.get_section(), dep)
