@@ -9,6 +9,7 @@ extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
 extern crate termcolor;
+extern crate atty;
 
 use std::process;
 use std::io::Write;
@@ -50,7 +51,12 @@ Remove a dependency from a Cargo.toml manifest file.
 ";
 
 fn print_msg(name: &str, section: &str) -> Result<()> {
-    let mut output = StandardStream::stdout(ColorChoice::Auto);
+    let colorchoice = if atty::is(atty::Stream::Stdout) {
+        ColorChoice::Auto
+    } else {
+        ColorChoice::Never
+    };
+    let mut output = StandardStream::stdout(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Removing")?;
     output.reset()?;

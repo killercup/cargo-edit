@@ -3,6 +3,7 @@
         trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
         unused_qualifications)]
 
+extern crate atty;
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
@@ -77,7 +78,12 @@ dependencies (version set to "*").
 "#;
 
 fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
-    let mut output = StandardStream::stdout(ColorChoice::Auto);
+    let colorchoice = if atty::is(atty::Stream::Stdout) {
+        ColorChoice::Auto
+    } else {
+        ColorChoice::Never
+    };
+    let mut output = StandardStream::stdout(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Adding")?;
     output.reset()?;
