@@ -153,3 +153,18 @@ Usage:
         )
         .unwrap();
 }
+
+#[test]
+fn rm_prints_message() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-rm",
+        "rm",
+        "semver",
+        &format!("--manifest-path={}", manifest),
+    ]).succeeds()
+        .prints("Removing").and()
+        .prints("semver from dependencies")
+        .unwrap();
+}

@@ -3,18 +3,21 @@
         trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
         unused_qualifications)]
 
+extern crate atty;
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
 extern crate semver;
 #[macro_use]
 extern crate serde_derive;
+extern crate termcolor;
 
-use std::io::{self, Write};
 use std::process;
+use std::io::Write;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 extern crate cargo_edit;
-use cargo_edit::Manifest;
+use cargo_edit::{Dependency, Manifest};
 
 mod args;
 use args::Args;
@@ -23,6 +26,9 @@ mod errors {
     error_chain!{
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
+        }
+        foreign_links {
+            Io(::std::io::Error);
         }
     }
 }
@@ -57,6 +63,7 @@ Options:
     --manifest-path=<path>  Path to the manifest to add a dependency to.
     --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.
+    -q --quiet              Do not print any output in case of success.
     -h --help               Show this help page.
     -V --version            Show version.
 
@@ -70,6 +77,35 @@ crates.io registry suggests. One goal of `cargo add` is to prevent you from usin
 dependencies (version set to "*").
 "#;
 
+fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
+    let colorchoice = if atty::is(atty::Stream::Stdout) {
+        ColorChoice::Auto
+    } else {
+        ColorChoice::Never
+    };
+    let mut output = StandardStream::stdout(colorchoice);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+    write!(output, "{:>12}", "Adding")?;
+    output.reset()?;
+    write!(output, " {}", dep.name)?;
+    if let Some(version) = dep.version() {
+        write!(output, " v{}", version)?;
+    } else {
+        write!(output, " (unknown version)")?;
+    }
+    write!(output, " to")?;
+    if optional {
+        write!(output, " optional")?;
+    }
+    let section = if section.len() == 1 {
+        section[0].clone()
+    } else {
+        format!("{} for target `{}`", &section[2], &section[1])
+    };
+    writeln!(output, " {}", section)?;
+    Ok(())
+}
+
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = args.flag_manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path)?;
@@ -77,13 +113,16 @@ fn handle_add(args: &Args) -> Result<()> {
 
     deps.iter()
         .map(|dep| {
+            if !args.flag_quiet {
+                print_msg(dep, &args.get_section(), args.flag_optional)?;
+            }
             manifest
                 .insert_into_table(&args.get_section(), dep)
                 .map_err(Into::into)
         })
         .collect::<Result<Vec<_>>>()
         .map_err(|err| {
-            println!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
+            eprintln!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
             err
         })?;
 
@@ -104,16 +143,14 @@ fn main() {
     }
 
     if let Err(err) = handle_add(&args) {
-        let mut stderr = io::stderr();
-
-        writeln!(stderr, "Command failed due to unhandled error: {}\n", err).unwrap();
+        eprintln!("Command failed due to unhandled error: {}\n", err);
 
         for e in err.iter().skip(1) {
-            writeln!(stderr, "Caused by: {}", e).unwrap();
+            eprintln!("Caused by: {}", e);
         }
 
         if let Some(backtrace) = err.backtrace() {
-            writeln!(stderr, "Backtrace: {:?}", backtrace).unwrap();
+            eprintln!("Backtrace: {:?}", backtrace);
         }
 
         process::exit(1);
