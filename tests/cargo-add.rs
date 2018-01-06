@@ -803,3 +803,37 @@ fn add_prints_message_with_section() {
         .prints("to optional dependencies for target `mytarget`")
         .unwrap();
 }
+
+#[test]
+fn add_prints_message_for_dev_deps() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "docopt",
+        "--dev",
+        &format!("--manifest-path={}", manifest),
+    ]).succeeds()
+        .prints("Adding").and()
+        .prints("docopt v").and()
+        .prints("to dev-dependencies")
+        .unwrap();
+}
+
+#[test]
+fn add_prints_message_for_build_deps() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "docopt",
+        "--build",
+        &format!("--manifest-path={}", manifest),
+    ]).succeeds()
+        .prints("Adding").and()
+        .prints("docopt v").and()
+        .prints("to build-dependencies")
+        .unwrap();
+}
