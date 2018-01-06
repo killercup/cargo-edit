@@ -94,7 +94,7 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
     let section = if section.len() == 1 {
         section[0].clone()
     } else {
-        format!("{} for target {}", &section[2], &section[1])
+        format!("{} for target `{}`", &section[2], &section[1])
     };
     writeln!(output, " {}", section)?;
     Ok(())

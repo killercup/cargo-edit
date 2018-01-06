@@ -800,6 +800,6 @@ fn add_prints_message_with_section() {
     ]).succeeds()
         .prints("Adding").and()
         .prints("docopt v").and()
-        .prints("to optional dependencies for target mytarget")
+        .prints("to optional dependencies for target `mytarget`")
         .unwrap();
 }
