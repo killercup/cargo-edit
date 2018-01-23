@@ -537,6 +537,36 @@ fn adds_dependency_with_target_cfg() {
 }
 
 #[test]
+fn adds_features_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(&["add", "versioned-package", "--vers", ">=0.1.1", "--features", "jui"],
+                    &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["versioned-package"]["features"];
+    let result = if let &toml_edit::Item::Value(toml_edit::Value::Array(ref arr_z)) = val {
+        let mut k = arr_z.clone();
+        let j = k.remove(0);
+        if let Some("jui") = j.as_str() {
+            true
+        } else {
+            false
+        }
+
+    } else {
+        false
+    };
+
+    assert_eq!(result, true);
+}
+
+#[test]
 fn adds_dependency_with_custom_target() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
