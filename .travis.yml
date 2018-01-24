@@ -8,7 +8,7 @@ matrix:
   include:
   - rust: nightly-2017-12-20
     before_script:
-    - cargo install rustfmt-nightly --vers 0.3.2
+    - cargo install rustfmt-nightly --vers 0.3.2 --force
     - cargo install clippy --vers 0.0.176
     script:
     - cargo clippy -- -D warnings
