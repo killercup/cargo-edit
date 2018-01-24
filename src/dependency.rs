@@ -31,10 +31,10 @@ impl Default for Dependency {
 impl Dependency {
     /// Create a new dependency with a name
     pub fn new(name: &str) -> Dependency {
-        Dependency { 
+        Dependency {
             name: name.into(),
-             ..Dependency::default() 
-             }
+            ..Dependency::default()
+        }
     }
 
     /// Set dependency to a given version
@@ -66,7 +66,6 @@ impl Dependency {
             self.features = f.split(' ').map(String::from).collect::<Vec<String>>();
         }
         self
-
     }
 
     /// Get version of dependency
@@ -84,39 +83,39 @@ impl Dependency {
     /// or the path/git repository as an `InlineTable`.
     /// (If the dependency is set as `optional`, an `InlineTable` is returned in any case.)
     pub fn to_toml(&self) -> (String, toml_edit::Item) {
-        let data: toml_edit::Item =
-            match (self.optional, self.features.len(), self.source.clone()) {
-                // Extra short when version flag only
-                (false, 0, DependencySource::Version(v)) => toml_edit::value(v),
-                // Other cases are represented as an inline table
-                (optional, _len, source) => {
-                    let mut data = toml_edit::InlineTable::default();
+        let data: toml_edit::Item = match (self.optional, self.features.len(), self.source.clone())
+        {
+            // Extra short when version flag only
+            (false, 0, DependencySource::Version(v)) => toml_edit::value(v),
+            // Other cases are represented as an inline table
+            (optional, _len, source) => {
+                let mut data = toml_edit::InlineTable::default();
 
-                    match source {
-                        DependencySource::Version(v) => {
-                            data.get_or_insert("version", v);
-                        }
-                        DependencySource::Git(v) => {
-                            data.get_or_insert("git", v);
-                        }
-                        DependencySource::Path(v) => {
-                            data.get_or_insert("path", v);
-                        }
+                match source {
+                    DependencySource::Version(v) => {
+                        data.get_or_insert("version", v);
                     }
-                    if self.optional {
-                        data.get_or_insert("optional", optional);
+                    DependencySource::Git(v) => {
+                        data.get_or_insert("git", v);
                     }
-                    if !self.features.is_empty() {
-                        let mut to_array = toml_edit::Array::default();
-                        for j in (&self.features).iter() {
-                            to_array.push(toml_edit::Value::from(j.clone()));
-                        }
-                        data.get_or_insert("features", toml_edit::Value::Array(to_array));
+                    DependencySource::Path(v) => {
+                        data.get_or_insert("path", v);
                     }
-                    data.fmt();
-                    toml_edit::value(toml_edit::Value::InlineTable(data))
                 }
-            };
+                if self.optional {
+                    data.get_or_insert("optional", optional);
+                }
+                if !self.features.is_empty() {
+                    let mut to_array = toml_edit::Array::default();
+                    for j in (&self.features).iter() {
+                        to_array.push(toml_edit::Value::from(j.clone()));
+                    }
+                    data.get_or_insert("features", toml_edit::Value::Array(to_array));
+                }
+                data.fmt();
+                toml_edit::value(toml_edit::Value::InlineTable(data))
+            }
+        };
 
         (self.name.clone(), data)
     }
