@@ -36,8 +36,8 @@ use errors::*;
 
 static USAGE: &'static str = r#"
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
-    cargo add <crates>... [--dev|--build|--optional] [options]
+    cargo add <crate> [--dev|--build|--optional|--features=<features>] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crates>... [--dev|--build|--optional|--features=<features>] [options]
     cargo add (-h|--help)
     cargo add --version
 
@@ -47,7 +47,7 @@ Specify what crate to add:
                             `cargo add bitflags@0.3.2`.
     --git <uri>             Specify a git repository to download the crate from.
     --path <uri>            Specify the path the crate should be loaded from.
-
+    
 Specify where to add the crate:
     -D --dev                Add crate as development dependency.
     -B --build              Add crate as build dependency.
@@ -55,7 +55,8 @@ Specify where to add the crate:
                             for `dev-dependencies` or `build-dependencies`.
     --target <target>       Add as dependency to the given target platform. This does not work
                             for `dev-dependencies` or `build-dependencies`.
-
+    --features <features>   add features
+    
 Options:
     --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
                             "none" (exact version), "patch" (`~` modifier), "minor"

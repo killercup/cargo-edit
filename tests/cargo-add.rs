@@ -544,12 +544,12 @@ fn adds_features_dependency() {
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"].is_none());
 
-    execute_command(&["add", "versioned-package", "--vers", ">=0.1.1", "--features", "jui"],
+    execute_command(&["add", "https://github.com/killercup/cargo-edit.git", "--features", "jui"],
                     &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    let val = &toml["dependencies"]["versioned-package"]["features"];
+    let val = &toml["dependencies"]["cargo-edit"]["features"];
     let result = if let &toml_edit::Item::Value(toml_edit::Value::Array(ref arr_z)) = val {
         let mut k = arr_z.clone();
         let j = k.remove(0);
@@ -776,8 +776,8 @@ fn no_argument() {
             r"Invalid arguments.
 
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
-    cargo add <crates>... [--dev|--build|--optional] [options]
+    cargo add <crate> [--dev|--build|--optional|--features=<features>] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crates>... [--dev|--build|--optional|--features=<features>] [options]
     cargo add (-h|--help)
     cargo add --version",
         )
@@ -792,8 +792,8 @@ fn unknown_flags() {
             r"Unknown flag: '--flag'
 
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
-    cargo add <crates>... [--dev|--build|--optional] [options]
+    cargo add <crate> [--dev|--build|--optional|--features=<features>] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crates>... [--dev|--build|--optional|--features=<features>] [options]
     cargo add (-h|--help)
     cargo add --version",
         )
