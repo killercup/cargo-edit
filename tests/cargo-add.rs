@@ -550,7 +550,7 @@ fn adds_features_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["cargo-edit"]["features"];
-    let result = if let &toml_edit::Item::Value(toml_edit::Value::Array(ref arr_z)) = val {
+    let result = if let toml_edit::Item::Value(toml_edit::Value::Array(ref arr_z)) = *val {
         let mut k = arr_z.clone();
         let j = k.remove(0);
         if let Some("jui") = j.as_str() {

@@ -31,10 +31,10 @@ impl Default for Dependency {
 impl Dependency {
     /// Create a new dependency with a name
     pub fn new(name: &str) -> Dependency {
-        Dependency {
+        Dependency { 
             name: name.into(),
-            ..Dependency::default()
-        }
+             ..Dependency::default() 
+             }
     }
 
     /// Set dependency to a given version
@@ -63,7 +63,7 @@ impl Dependency {
     /// Set whether the features is array of string
     pub fn set_features(mut self, features: Option<String>) -> Dependency {
         if let Some(f) = features {
-            self.features = f.split(" ").map(String::from).collect::<Vec<String>>();
+            self.features = f.split(' ').map(String::from).collect::<Vec<String>>();
         }
         self
 
@@ -106,9 +106,9 @@ impl Dependency {
                     if self.optional {
                         data.get_or_insert("optional", optional);
                     }
-                    if self.features.len() > 0 {
+                    if !self.features.is_empty() {
                         let mut to_array = toml_edit::Array::default();
-                        for j in self.features.iter() {
+                        for j in (&self.features).iter() {
                             to_array.push(toml_edit::Value::from(j.clone()));
                         }
                         data.get_or_insert("features", toml_edit::Value::Array(to_array));
