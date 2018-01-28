@@ -550,7 +550,7 @@ fn adds_features_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = toml["dependencies"]["cargo-edit"]["features"][0].as_str();
-    assert_eq!(val, Some("rui"));
+    assert_eq!(val, Some("jui"));
 }
 
 #[test]
