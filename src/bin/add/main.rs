@@ -55,7 +55,7 @@ Specify where to add the crate:
                             for `dev-dependencies` or `build-dependencies`.
     --target <target>       Add as dependency to the given target platform. This does not work
                             for `dev-dependencies` or `build-dependencies`.
-    --features <features>   add features
+    --features <FEATURES>   Space-separated  list of features to add
     
 Options:
     --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
