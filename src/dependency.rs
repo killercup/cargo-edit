@@ -106,9 +106,10 @@ impl Dependency {
                 if self.optional {
                     data.get_or_insert("optional", optional);
                 }
-
-                let features = toml_edit::Value::from_iter(self.features.iter().cloned());
-                data.get_or_insert("features", features);
+                if !self.features.is_empty() {
+                    let features = toml_edit::Value::from_iter(self.features.iter().cloned());
+                    data.get_or_insert("features", features);
+                 }
                 data.fmt();
                 toml_edit::value(toml_edit::Value::InlineTable(data))
             }
