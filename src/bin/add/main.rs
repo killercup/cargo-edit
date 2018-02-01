@@ -47,7 +47,7 @@ Specify what crate to add:
                             `cargo add bitflags@0.3.2`.
     --git <uri>             Specify a git repository to download the crate from.
     --path <uri>            Specify the path the crate should be loaded from.
-    
+
 Specify where to add the crate:
     -D --dev                Add crate as development dependency.
     -B --build              Add crate as build dependency.
@@ -56,7 +56,7 @@ Specify where to add the crate:
     --target <target>       Add as dependency to the given target platform. This does not work
                             for `dev-dependencies` or `build-dependencies`.
     --features <FEATURES>   Space-separated  list of features to add
-    
+
 Options:
     --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
                             "none" (exact version), "patch" (`~` modifier), "minor"

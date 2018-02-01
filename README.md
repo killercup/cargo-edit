@@ -72,7 +72,7 @@ Specify what crate to add:
     --git <uri>             Specify a git repository to download the crate from.
     --path <uri>            Specify the path the crate should be loaded from.
     --features <FEATURES>   Space-separated  list of features to add
-    
+
 Specify where to add the crate:
     -D --dev                Add crate as development dependency.
     -B --build              Add crate as build dependency.
