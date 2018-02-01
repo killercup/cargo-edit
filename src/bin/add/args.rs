@@ -55,9 +55,9 @@ impl Args {
                 panic!("Target specification may not be empty");
             }
             vec![
-                "target".to_owned(), 
-                target.clone(), 
-                "dependencies".to_owned()
+                "target".to_owned(),
+                target.clone(),
+                "dependencies".to_owned(),
             ]
         } else {
             vec!["dependencies".to_owned()]
