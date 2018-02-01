@@ -45,4 +45,3 @@ env:
 branches:
   except:
   - staging.tmp
-  
