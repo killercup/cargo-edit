@@ -78,11 +78,7 @@ crates.io registry suggests. One goal of `cargo add` is to prevent you from usin
 dependencies (version set to "*").
 "#;
 
-fn print_msg(dep: &Dependency,
-             section: &[String],
-             optional: bool,
-             features: Option<String>)
-             -> Result<()> {
+fn print_msg(dep: &Dependency, section: &[String], optional: bool, features: Option<String>) -> Result<()> {
     let colorchoice = if atty::is(atty::Stream::Stdout) {
         ColorChoice::Auto
     } else {
@@ -122,18 +118,17 @@ fn handle_add(args: &Args) -> Result<()> {
     deps.iter()
         .map(|dep| {
             if !args.flag_quiet {
-                print_msg(dep,
-                          &args.get_section(),
-                          args.flag_optional,
-                          args.flag_features.clone())?;
+                print_msg(dep, &args.get_section(), args.flag_optional, args.flag_features.clone())?;
             }
-            manifest.insert_into_table(&args.get_section(), dep).map_err(Into::into)
+            manifest
+                .insert_into_table(&args.get_section(), dep)
+                .map_err(Into::into)
         })
         .collect::<Result<Vec<_>>>()
         .map_err(|err| {
-                     eprintln!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
-                     err
-                 })?;
+            eprintln!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
+            err
+        })?;
 
     let mut file = Manifest::find_file(&manifest_path)?;
     manifest.write_to_file(&mut file)?;

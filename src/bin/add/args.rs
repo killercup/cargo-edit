@@ -54,7 +54,11 @@ impl Args {
             if target.is_empty() {
                 panic!("Target specification may not be empty");
             }
-            vec!["target".to_owned(), target.clone(), "dependencies".to_owned()]
+            vec![
+                "target".to_owned(), 
+                target.clone(), 
+                "dependencies".to_owned()
+            ]
         } else {
             vec!["dependencies".to_owned()]
         }
@@ -66,12 +70,10 @@ impl Args {
             let mut result = Vec::new();
             for arg_crate in &self.arg_crates {
                 let le_crate = if crate_name_has_version(arg_crate) {
-                        parse_crate_name_with_version(arg_crate)?
-                    } else {
-                        get_latest_dependency(arg_crate, self.flag_allow_prerelease)?
-                    }
-                    .set_optional(self.flag_optional)
-                    .set_features(self.flag_features.clone());
+                    parse_crate_name_with_version(arg_crate)?
+                } else {
+                    get_latest_dependency(arg_crate, self.flag_allow_prerelease)?
+                }.set_optional(self.flag_optional).set_features(self.flag_features.clone());
 
                 result.push(le_crate);
             }
@@ -79,10 +81,9 @@ impl Args {
         }
 
         if crate_name_has_version(&self.arg_crate) {
-            return Ok(vec![parse_crate_name_with_version(&self.arg_crate)
-                               ?
-                               .set_optional(self.flag_optional)
-                               .set_features(self.flag_features.clone())]);
+            return Ok(vec![
+                parse_crate_name_with_version(&self.arg_crate)?.set_optional(self.flag_optional).set_features(self.flag_features.clone()),
+            ]);
         }
 
 
@@ -90,7 +91,7 @@ impl Args {
             let dependency = Dependency::new(&self.arg_crate);
             if let Some(ref version) = self.flag_vers {
                 semver::VersionReq::parse(version)
-                .chain_err(|| "Invalid dependency version requirement")?;
+                    .chain_err(|| "Invalid dependency version requirement")?;
                 dependency.set_version(version)
             } else if let Some(ref repo) = self.flag_git {
                 dependency.set_git(repo)
@@ -98,34 +99,38 @@ impl Args {
                 dependency.set_path(path.to_str().unwrap())
             } else {
                 let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease)?;
-                let v = format!("{prefix}{version}",
-                                prefix = self.get_upgrade_prefix().unwrap_or(""),
-                                // If version is unavailable `get_latest_dependency` must have
-                                // returned `Err(FetchVersionError::GetVersion)`
-                                version = dep.version().unwrap_or_else(|| unreachable!()));
+                let v = format!(
+                    "{prefix}{version}",
+                    prefix = self.get_upgrade_prefix().unwrap_or(""),
+                    // If version is unavailable `get_latest_dependency` must have
+                    // returned `Err(FetchVersionError::GetVersion)`
+                    version = dep.version().unwrap_or_else(|| unreachable!())
+                );
                 dep.set_version(&v)
             }
         } else {
             parse_crate_name_from_uri(&self.arg_crate)?
-        }
-        .set_optional(self.flag_optional)
-        .set_features(self.flag_features.clone());
+        }.set_optional(self.flag_optional).set_features(self.flag_features.clone());
 
         Ok(vec![dependency])
     }
 
     fn get_upgrade_prefix(&self) -> Option<&'static str> {
-        self.flag_upgrade.clone().and_then(|flag| match flag.to_uppercase().as_ref() {
-                                               "NONE" => Some("="),
-                                               "PATCH" => Some("~"),
-                                               "MINOR" => Some("^"),
-                                               "ALL" => Some(">="),
-                                               _ => {
-            println!("WARN: cannot understand upgrade option \"{}\", using default",
-                     flag);
-            None
-        }
-                                           })
+        self.flag_upgrade
+            .clone()
+            .and_then(|flag| match flag.to_uppercase().as_ref() {
+                "NONE" => Some("="),
+                "PATCH" => Some("~"),
+                "MINOR" => Some("^"),
+                "ALL" => Some(">="),
+                _ => {
+                    println!(
+                        "WARN: cannot understand upgrade option \"{}\", using default",
+                        flag
+                    );
+                    None
+                }
+            })
     }
 }
 
@@ -197,7 +202,10 @@ fn parse_crate_name_from_uri(name: &str) -> Result<Dependency> {
         }
     }
 
-    Err(From::from(format!("Unable to obtain crate informations from `{}`.\n", name)))
+    Err(From::from(format!(
+        "Unable to obtain crate informations from `{}`.\n",
+        name
+    )))
 }
 
 #[cfg(test)]
@@ -213,30 +221,47 @@ mod tests {
             ..Args::default()
         };
 
-        assert_eq!(args.parse_dependencies().unwrap(),
-                   vec![Dependency::new("demo").set_version("0.4.2")]);
+        assert_eq!(
+            args.parse_dependencies().unwrap(),
+            vec![Dependency::new("demo").set_version("0.4.2")]
+        );
     }
 
     #[test]
     #[cfg(feature = "test-external-apis")]
     fn test_repo_as_arg_parsing() {
         let github_url = "https://github.com/killercup/cargo-edit/";
-        let args_github = Args { arg_crate: github_url.to_owned(), ..Args::default() };
-        assert_eq!(args_github.parse_dependencies().unwrap(),
-                   vec![Dependency::new("cargo-edit").set_git(github_url)]);
+        let args_github = Args {
+            arg_crate: github_url.to_owned(),
+            ..Args::default()
+        };
+        assert_eq!(
+            args_github.parse_dependencies().unwrap(),
+            vec![Dependency::new("cargo-edit").set_git(github_url)]
+        );
 
         let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
-        let args_gitlab = Args { arg_crate: gitlab_url.to_owned(), ..Args::default() };
-        assert_eq!(args_gitlab.parse_dependencies().unwrap(),
-                   vec![Dependency::new("polly").set_git(gitlab_url)]);
+        let args_gitlab = Args {
+            arg_crate: gitlab_url.to_owned(),
+            ..Args::default()
+        };
+        assert_eq!(
+            args_gitlab.parse_dependencies().unwrap(),
+            vec![Dependency::new("polly").set_git(gitlab_url)]
+        );
     }
 
     #[test]
     fn test_path_as_arg_parsing() {
         let self_path = ".";
-        let args_path = Args { arg_crate: self_path.to_owned(), ..Args::default() };
-        assert_eq!(args_path.parse_dependencies().unwrap(),
-                   vec![Dependency::new("cargo-edit").set_path(self_path)]);
+        let args_path = Args {
+            arg_crate: self_path.to_owned(),
+            ..Args::default()
+        };
+        assert_eq!(
+            args_path.parse_dependencies().unwrap(),
+            vec![Dependency::new("cargo-edit").set_path(self_path)]
+        );
     }
 
 }
