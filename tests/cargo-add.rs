@@ -852,3 +852,20 @@ fn add_prints_message_for_build_deps() {
         .prints_exactly("Adding hello-world v0.1.0 to build-dependencies")
         .unwrap();
 }
+#[test]
+fn add_prints_message_for_features_deps() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "hello-world",
+        "--vers",
+        "0.1.0",
+        "--features",
+        "jui",
+        &format!("--manifest-path={}", manifest),
+    ]).succeeds()
+        .prints_exactly("Adding hello-world v0.1.0 to features jui dependencies")
+        .unwrap();
+}
