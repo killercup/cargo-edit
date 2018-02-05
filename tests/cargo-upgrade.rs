@@ -68,7 +68,7 @@ fn upgrade_specified_only() {
     );
 
     // Update `versioned-package` to the latest version
-    execute_command(&["upgrade", "-d", "versioned-package"], &manifest);
+    execute_command(&["upgrade", "versioned-package"], &manifest);
 
     // Verify that `versioned-package` was upgraded, but not `versioned-package-2`
     let dependencies = &get_toml(&manifest)["dependencies"];
@@ -87,7 +87,7 @@ fn fails_to_upgrade_missing_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // Update the non-existent `failure` to the latest version
-    execute_command(&["upgrade", "-d", "failure"], &manifest);
+    execute_command(&["upgrade", "failure"], &manifest);
 
     // Verify that `failure` has not been added
     assert!(get_toml(&manifest)["dependencies"]["failure"].is_none());
@@ -236,7 +236,8 @@ fn unknown_flags() {
             "Unknown flag: '--flag'
 
 Usage:
-    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
+    cargo upgrade [options]
+    cargo upgrade [options] <dependency>... [--precise <PRECISE>]
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)",
         )
@@ -250,7 +251,6 @@ fn upgrade_prints_messages() {
     assert_cli::Assert::command(&[
         "target/debug/cargo-upgrade",
         "upgrade",
-        "-d",
         "docopt",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()

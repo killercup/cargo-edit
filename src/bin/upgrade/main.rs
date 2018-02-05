@@ -36,15 +36,14 @@ static USAGE: &'static str = r"
 Upgrade all dependencies in a manifest file to the latest version.
 
 Usage:
-    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
+    cargo upgrade [options]
+    cargo upgrade [options] <dependency>...
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)
 
 Options:
     --all                       Upgrade all packages in the workspace.
-    -d --dependency <dep>       Specific dependency to upgrade. If this option is used, only the
-                                specified dependencies will be upgraded.
-    --manifest-path <path>      Path to the manifest to upgrade.
+    --manifest-path PATH        Path to the manifest to upgrade.
     --allow-prerelease          Include prerelease versions when fetching from crates.io (e.g.
                                 '0.6.0-alpha'). Defaults to false.
     -h --help                   Show this help page.
@@ -61,8 +60,8 @@ be supplied in the presence of a virtual manifest.
 #[derive(Debug, Deserialize)]
 struct Args {
     /// `--dependency -d <dep>`
-    flag_dependency: Vec<String>,
-    /// `--manifest-path <path>`
+    arg_dependency: Vec<String>,
+    /// `--manifest-path <PATH>`
     flag_manifest_path: Option<String>,
     /// `--version`
     flag_version: bool,
@@ -202,13 +201,13 @@ fn main() {
     let output = if args.flag_all {
         upgrade_workspace_manifests(
             &args.flag_manifest_path,
-            &args.flag_dependency,
+            &args.arg_dependency,
             args.flag_allow_prerelease,
         )
     } else {
         upgrade_manifest(
             &args.flag_manifest_path,
-            &args.flag_dependency,
+            &args.arg_dependency,
             args.flag_allow_prerelease,
         )
     };
