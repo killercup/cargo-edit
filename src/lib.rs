@@ -4,6 +4,7 @@
         trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
         unused_qualifications)]
 
+extern crate cargo_metadata;
 extern crate env_proxy;
 #[macro_use]
 extern crate error_chain;
@@ -26,4 +27,4 @@ pub use dependency::Dependency;
 pub use errors::*;
 pub use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
                 get_latest_dependency};
-pub use manifest::Manifest;
+pub use manifest::{find, LocalManifest, Manifest};

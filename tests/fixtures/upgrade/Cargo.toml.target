@@ -3,19 +3,15 @@ name = "None"
 version = "0.1.0"
 
 [lib]
+path = "dummy.rs"
 
 [dependencies]
-bar = { git = "https://github.com/foo/bar.git", version = "0.10" }
-crates-io = { path = "src/crates-io", version = "0.10" }
 docopt = "docopt--CURRENT_VERSION_TEST"
-foo = { version = "foo--CURRENT_VERSION_TEST", features = ["serde"] }
 pad = "pad--CURRENT_VERSION_TEST"
-serde_derive = { version = "1.0", optional = true, path = "../serde_derive" }
-serde_derive_internals = { version = "=0.15.1", default-features = false, path = "../serde_derive_internals" }
 serde_json = "serde_json--CURRENT_VERSION_TEST"
 syn = { version = "syn--CURRENT_VERSION_TEST", default-features = false, features = ["parsing"] }
 tar = { version = "tar--CURRENT_VERSION_TEST", default-features = false }
-winsftp = "winsftp--CURRENT_VERSION_TEST"
+ftp = "ftp--CURRENT_VERSION_TEST"
 
 [dependencies.semver]
 features = ["serde"]
@@ -23,29 +19,23 @@ version = "semver--CURRENT_VERSION_TEST"
 
 [dev-dependencies]
 assert_cli = "assert_cli--CURRENT_VERSION_TEST"
-cargotest = { path = "tests/cargotest" }
-serde_driver = { version = "1.0", path = "../serde_derive" }
 tempdir = "tempdir--CURRENT_VERSION_TEST"
 
 [build-dependencies]
-serde = { version = "1.0", path = "../serde" }
+serde = { version = "1.0", git= "https://github.com/serde-rs/serde.git" }
 
 [target.'cfg(unix)'.dependencies]
 openssl = "openssl--CURRENT_VERSION_TEST"
 
 [target."x86_64/windows.json"]
 # let's make it an inline table
-dependencies = { winhttp = "winhttp--CURRENT_VERSION_TEST" }
+dependencies = { rget = "rget--CURRENT_VERSION_TEST" }
 
-[target.'cfg(target_arch = "x86_64")'.dependencies]
-native = { path = "native/x86_64" }
-
-[target.'cfg(unix)'.dev-dependencies]
-mio = { version = "0.0.1", path = "../serde_derive" }
-geo = { version = "geo--CURRENT_VERSION_TEST", default-features = false, features = ["green"] }
+[target.'cfg(target_arch = "x86_64")'.dev-dependencies]
+geo = { version = "geo--CURRENT_VERSION_TEST", default-features = false, features = ["postgis-integration"] }
 
 [target.foo.build-dependencies]
-winsftp = "winsftp--CURRENT_VERSION_TEST"
+ftp = "ftp--CURRENT_VERSION_TEST"
 
 [features]
 default = []
