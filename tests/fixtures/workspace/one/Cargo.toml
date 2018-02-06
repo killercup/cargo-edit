@@ -7,6 +7,5 @@ path = "../dummy.rs"
 
 [dependencies]
 libc = "0.2.28"
-three = { path = "../implicit/three"}
-bar = { git = "https://github.com/foo/bar.git", version = "0.10" }
-not_a_member = { path = "not_a_member", version = "0.10" }
+three = { path = "../implicit/three", version = "0.0.1"}
+lazy_static = { git = "https://github.com/rust-lang-nursery/lazy-static.rs.git", tag = "v0.2"}
