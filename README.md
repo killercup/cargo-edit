@@ -154,10 +154,10 @@ $ cargo upgrade -d regex --all
 #### Usage
 
 ```plain
-Upgrade all dependencies in a manifest file to the latest version.
+Upgrade dependencies in the manifest file (i.e. Cargo.toml) to the latest versions.
 
 Usage:
-    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>]
+    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)
 
