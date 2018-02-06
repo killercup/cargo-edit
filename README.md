@@ -157,7 +157,7 @@ $ cargo upgrade -d regex --all
 Upgrade all dependencies in a manifest file to the latest version.
 
 Usage:
-    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>]
+    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)
 
@@ -168,6 +168,7 @@ Options:
     --manifest-path <path>      Path to the manifest to upgrade.
     --allow-prerelease          Include prerelease versions when fetching from crates.io (e.g.
                                 '0.6.0-alpha'). Defaults to false.
+    --dry-run                   Print changes to be made without making them. Defaults to false.
     -h --help                   Show this help page.
     -V --version                Show version.
 

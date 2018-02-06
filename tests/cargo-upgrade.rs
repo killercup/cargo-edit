@@ -57,6 +57,40 @@ fn upgrade_all_allow_prerelease() {
 }
 
 #[test]
+fn upgrade_all_dry_run() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Setup manifest with the dependency `versioned-package@0.1.1`
+    execute_command(&["add", "versioned-package", "--vers", "0.1.1"], &manifest);
+
+    // Now, upgrade `versioned-package` to the latest version
+    execute_command(&["upgrade", "--dry-run"], &manifest);
+
+    // Verify that `versioned-package` has not been updated.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["versioned-package"].as_str(),
+        Some("0.1.1")
+    );
+}
+
+#[test]
+fn upgrade_all_allow_prerelease_dry_run() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Setup manifest with the dependency `versioned-package@0.1.1`
+    execute_command(&["add", "versioned-package", "--vers", "0.1.1"], &manifest);
+
+    // Now, upgrade `versioned-package` to the latest version
+    execute_command(&["upgrade", "--allow-prerelease", "--dry-run"], &manifest);
+
+    // Verify that `versioned-package` has been updated successfully.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["versioned-package"].as_str(),
+        Some("0.1.1")
+    );
+}
+
+#[test]
 fn upgrade_specified_only() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
