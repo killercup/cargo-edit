@@ -12,11 +12,15 @@ extern crate serde_derive;
 extern crate toml_edit;
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::Path;
 use std::process;
 
 extern crate cargo_edit;
 use cargo_edit::{get_latest_dependency, Dependency, Manifest};
+
+extern crate termcolor;
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 mod errors {
     error_chain!{
@@ -47,6 +51,7 @@ Options:
     --manifest-path <path>      Path to the manifest to upgrade.
     --allow-prerelease          Include prerelease versions when fetching from crates.io (e.g.
                                 '0.6.0-alpha'). Defaults to false.
+    --dry-run                   Print changes to be made without making them. Defaults to false.
     -h --help                   Show this help page.
     -V --version                Show version.
 
@@ -70,6 +75,8 @@ struct Args {
     flag_all: bool,
     /// `--allow-prerelease`
     flag_allow_prerelease: bool,
+    /// `--dry-run`
+    flag_dry_run: bool,
 }
 
 fn is_version_dependency(dep: &toml_edit::Item) -> bool {
@@ -80,6 +87,7 @@ fn is_version_dependency(dep: &toml_edit::Item) -> bool {
 fn upgrade_manifest_using_dependencies<F>(
     manifest_path: &Option<String>,
     only_update: &[String],
+    dry_run: bool,
     new_dependency: F,
 ) -> Result<()>
 where
@@ -87,6 +95,24 @@ where
 {
     let manifest_path = manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path)?;
+
+    if dry_run {
+        let bufwtr = BufferWriter::stdout(ColorChoice::Always);
+        let mut buffer = bufwtr.buffer();
+        buffer
+            .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
+            .chain_err(|| "Failed to set output colour")?;
+        write!(&mut buffer, "Starting dry run. ")
+            .chain_err(|| "Failed to write dry run message")?;
+        buffer
+            .set_color(&ColorSpec::new())
+            .chain_err(|| "Failed to clear output colour")?;
+        writeln!(&mut buffer, "Changes will not be saved.")
+            .chain_err(|| "Failed to write dry run message")?;
+        bufwtr
+            .print(&buffer)
+            .chain_err(|| "Failed to print dry run message")?;
+    }
 
     for (table_path, table) in manifest.get_sections() {
         let table_like = table.as_table_like().expect("bug in get_sections");
@@ -97,7 +123,7 @@ where
             {
                 let latest_version = new_dependency(&owned)?;
 
-                manifest.update_table_entry(&table_path, &latest_version)?;
+                manifest.update_table_entry(&table_path, &latest_version, dry_run)?;
             }
         }
     }
@@ -112,8 +138,9 @@ fn upgrade_manifest(
     manifest_path: &Option<String>,
     only_update: &[String],
     allow_prerelease: bool,
+    dry_run: bool,
 ) -> Result<()> {
-    upgrade_manifest_using_dependencies(manifest_path, only_update, |name| {
+    upgrade_manifest_using_dependencies(manifest_path, only_update, dry_run, |name| {
         get_latest_dependency(name, allow_prerelease)
     })
 }
@@ -122,10 +149,12 @@ fn upgrade_manifest_from_cache(
     manifest_path: &Option<String>,
     only_update: &[String],
     new_deps: &HashMap<String, Dependency>,
+    dry_run: bool,
 ) -> Result<()> {
     upgrade_manifest_using_dependencies(
         manifest_path,
         only_update,
+        dry_run,
         |name| Ok(new_deps[name].clone()),
     )
 }
@@ -177,12 +206,13 @@ fn upgrade_workspace_manifests(
     manifest_path: &Option<String>,
     only_update: &[String],
     allow_prerelease: bool,
+    dry_run: bool,
 ) -> Result<()> {
     let new_deps = get_new_workspace_deps(manifest_path, only_update, allow_prerelease)?;
 
     get_workspace_manifests(manifest_path).and_then(|manifests| {
         for manifest in manifests {
-            upgrade_manifest_from_cache(&Some(manifest), only_update, &new_deps)?
+            upgrade_manifest_from_cache(&Some(manifest), only_update, &new_deps, dry_run)?
         }
 
         Ok(())
@@ -204,12 +234,14 @@ fn main() {
             &args.flag_manifest_path,
             &args.flag_dependency,
             args.flag_allow_prerelease,
+            args.flag_dry_run,
         )
     } else {
         upgrade_manifest(
             &args.flag_manifest_path,
             &args.flag_dependency,
             args.flag_allow_prerelease,
+            args.flag_dry_run,
         )
     };
 
