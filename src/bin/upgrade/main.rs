@@ -79,8 +79,21 @@ struct Args {
     flag_dry_run: bool,
 }
 
-fn is_version_dependency(dep: &toml_edit::Item) -> bool {
-    dep["git"].is_none() && dep["path"].is_none()
+trait PossibleVersionDependency {
+    fn is_version_dependency(&self) -> bool;
+}
+
+impl PossibleVersionDependency for toml_edit::Item {
+    fn is_version_dependency(&self) -> bool {
+        self["git"].is_none() && self["path"].is_none()
+    }
+}
+
+impl PossibleVersionDependency for cargo_metadata::Dependency {
+    fn is_version_dependency(&self) -> bool {
+        self.source.as_ref().map(|x| &**x)
+            == Some("registry+https://github.com/rust-lang/crates.io-index")
+    }
 }
 
 /// Upgrade the specified manifest. Use the closure provided to get the new dependency versions.
@@ -119,7 +132,7 @@ where
         for (name, old_value) in table_like.iter() {
             let owned = name.to_owned();
             if (only_update.is_empty() || only_update.contains(&owned))
-                && is_version_dependency(old_value)
+                && old_value.is_version_dependency()
             {
                 let latest_version = new_dependency(&owned)?;
 
@@ -162,7 +175,7 @@ fn upgrade_manifest_from_cache(
 /// Get a list of the paths of all the (non-virtual) manifests in the workspace.
 fn get_workspace_manifests(manifest_path: &Option<String>) -> Result<Vec<String>> {
     Ok(
-        cargo_metadata::metadata_deps(manifest_path.as_ref().map(Path::new), true)
+        cargo_metadata::metadata(manifest_path.as_ref().map(Path::new))
             .chain_err(|| "Failed to get metadata")?
             .packages
             .iter()
@@ -180,13 +193,14 @@ fn get_new_workspace_deps(
 ) -> Result<HashMap<String, Dependency>> {
     let mut new_deps = HashMap::new();
 
-    cargo_metadata::metadata_deps(manifest_path.as_ref().map(|p| Path::new(p)), true)
+    cargo_metadata::metadata(manifest_path.as_ref().map(|p| Path::new(p)))
         .chain_err(|| "Failed to get metadata")?
         .packages
         .iter()
         .flat_map(|package| package.dependencies.to_owned())
         .filter(|dependency| {
-            only_update.is_empty() || only_update.contains(&dependency.name)
+            (only_update.is_empty() || only_update.contains(&dependency.name))
+                && dependency.is_version_dependency()
         })
         .map(|dependency| {
             if !new_deps.contains_key(&dependency.name) {
