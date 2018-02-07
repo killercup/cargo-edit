@@ -140,6 +140,9 @@ Remove a dependency from a Cargo.toml manifest file.
 
 Upgrade dependencies in your `Cargo.toml` to their latest versions.
 
+This command differs from `cargo update`, which updates the dependency versions recorded in the
+local lock file (Cargo.lock).
+
 #### Examples
 
 ```sh
@@ -154,7 +157,7 @@ $ cargo upgrade -d regex --all
 #### Usage
 
 ```plain
-Upgrade all dependencies in a manifest file to the latest version.
+Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
 
 Usage:
     cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
@@ -171,6 +174,9 @@ Options:
     --dry-run                   Print changes to be made without making them. Defaults to false.
     -h --help                   Show this help page.
     -V --version                Show version.
+
+This command differs from `cargo update`, which updates the dependency versions recorded in the
+local lock file (Cargo.lock).
 
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.
