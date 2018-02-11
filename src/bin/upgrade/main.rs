@@ -26,18 +26,14 @@ mod errors {
     error_chain!{
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
-        }
-
-        foreign_links {
-            // cargo-metadata doesn't (yet) export `ErrorKind`
-            Metadata(::cargo_metadata::Error);
+            CargoMetadata(::cargo_metadata::Error, ::cargo_metadata::ErrorKind);
         }
     }
 }
 use errors::*;
 
 static USAGE: &'static str = r"
-Upgrade all dependencies in a manifest file to the latest version.
+Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
 
 Usage:
     cargo upgrade [options]
@@ -54,6 +50,9 @@ Options:
     --dry-run                   Print changes to be made without making them. Defaults to false.
     -h --help                   Show this help page.
     -V --version                Show version.
+
+This command differs from `cargo update`, which updates the dependency versions recorded in the
+local lock file (Cargo.lock).
 
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.
@@ -160,23 +159,23 @@ impl Manifests {
 
     ///  Upgrade the manifests on disk. They will upgrade using the new dependencies provided.
     fn upgrade(self, upgraded_deps: &Dependencies, dry_run: bool) -> Result<()> {
-            if dry_run {
-        let bufwtr = BufferWriter::stdout(ColorChoice::Always);
-        let mut buffer = bufwtr.buffer();
-        buffer
-            .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
-            .chain_err(|| "Failed to set output colour")?;
-        write!(&mut buffer, "Starting dry run. ")
-            .chain_err(|| "Failed to write dry run message")?;
-        buffer
-            .set_color(&ColorSpec::new())
-            .chain_err(|| "Failed to clear output colour")?;
-        writeln!(&mut buffer, "Changes will not be saved.")
-            .chain_err(|| "Failed to write dry run message")?;
-        bufwtr
-            .print(&buffer)
-            .chain_err(|| "Failed to print dry run message")?;
-    }
+        if dry_run {
+            let bufwtr = BufferWriter::stdout(ColorChoice::Always);
+            let mut buffer = bufwtr.buffer();
+            buffer
+                .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
+                .chain_err(|| "Failed to set output colour")?;
+            write!(&mut buffer, "Starting dry run. ")
+                .chain_err(|| "Failed to write dry run message")?;
+            buffer
+                .set_color(&ColorSpec::new())
+                .chain_err(|| "Failed to clear output colour")?;
+            writeln!(&mut buffer, "Changes will not be saved.")
+                .chain_err(|| "Failed to write dry run message")?;
+            bufwtr
+                .print(&buffer)
+                .chain_err(|| "Failed to print dry run message")?;
+        }
 
         for (mut manifest, _) in self.0 {
             for dependency in &upgraded_deps.0 {
