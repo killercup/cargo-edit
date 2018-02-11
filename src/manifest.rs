@@ -378,7 +378,7 @@ impl LocalManifest {
         })
     }
 
-    /// Get the `File` corresponding to this manifest. 
+    /// Get the `File` corresponding to this manifest.
     fn get_file(&self) -> Result<File> {
         Manifest::find_file(&Some(self.path.clone()))
     }
