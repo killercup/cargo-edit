@@ -12,7 +12,7 @@ error_chain!{
         NoVersionsAvailable {
             description("No available versions exist. Either all were yanked \
                          or only prerelease versions exist. Trying with the \
-                         --fetch-prereleases flag might solve the issue."
+                         --allow-prerelease flag might solve the issue."
             )
         }
         /// Unable to parse external Cargo.toml
