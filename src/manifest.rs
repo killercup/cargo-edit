@@ -260,7 +260,12 @@ impl Manifest {
     }
 
     /// Update an entry in Cargo.toml.
-    pub fn update_table_entry(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
+    pub fn update_table_entry(
+        &mut self,
+        table_path: &[String],
+        dep: &Dependency,
+        dry_run: bool,
+    ) -> Result<()> {
         let table = self.get_table(table_path)?;
         let new_dep = dep.to_toml().1;
 
@@ -269,8 +274,10 @@ impl Manifest {
             if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[&dep.name], &new_dep) {
                 eprintln!("Error while displaying upgrade message, {}", e);
             }
-            merge_dependencies(&mut table[&dep.name], dep);
-            table.as_inline_table_mut().map(|t| t.fmt());
+            if !dry_run {
+                merge_dependencies(&mut table[&dep.name], dep);
+                table.as_inline_table_mut().map(|t| t.fmt());
+            }
         }
 
         Ok(())
@@ -378,13 +385,13 @@ impl LocalManifest {
 
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
     /// dependency, it does nothing.
-    pub fn upgrade(&mut self, dependency: &Dependency) -> Result<()> {
+    pub fn upgrade(&mut self, dependency: &Dependency, dry_run: bool) -> Result<()> {
         for (table_path, table) in self.get_sections() {
             let table_like = table.as_table_like().expect("Unexpected non-table");
             for (name, _old_value) in table_like.iter() {
                 if name == dependency.name {
                     self.manifest
-                        .update_table_entry(&table_path, dependency)?;
+                        .update_table_entry(&table_path, dependency, dry_run)?;
                 }
             }
         }
@@ -429,7 +436,7 @@ mod tests {
 
         let new_dep = Dependency::new("cargo-edit").set_version("0.2.0");
         manifest
-            .update_table_entry(&["dependencies".to_owned()], &new_dep)
+            .update_table_entry(&["dependencies".to_owned()], &new_dep, false)
             .unwrap();
     }
 
@@ -446,7 +453,7 @@ mod tests {
 
         let new_dep = Dependency::new("wrong-dep").set_version("0.2.0");
         manifest
-            .update_table_entry(&["dependencies".to_owned()], &new_dep)
+            .update_table_entry(&["dependencies".to_owned()], &new_dep, false)
             .unwrap();
 
         assert_eq!(manifest.data.to_string(), original.data.to_string());

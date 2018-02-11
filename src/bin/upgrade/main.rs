@@ -13,10 +13,14 @@ extern crate toml_edit;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::io::Write;
 use std::process;
 
 extern crate cargo_edit;
 use cargo_edit::{find, get_latest_dependency, Dependency, LocalManifest};
+
+extern crate termcolor;
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 mod errors {
     error_chain!{
@@ -47,6 +51,7 @@ Options:
     --manifest-path PATH        Path to the manifest to upgrade.
     --allow-prerelease          Include prerelease versions when fetching from crates.io (e.g.
                                 '0.6.0-alpha'). Defaults to false.
+    --dry-run                   Print changes to be made without making them. Defaults to false.
     -h --help                   Show this help page.
     -V --version                Show version.
 
@@ -72,6 +77,8 @@ struct Args {
     flag_all: bool,
     /// `--allow-prerelease`
     flag_allow_prerelease: bool,
+    /// `--dry-run`
+    flag_dry_run: bool,
 }
 
 /// A collection of manifests.
@@ -152,10 +159,28 @@ impl Manifests {
     }
 
     ///  Upgrade the manifests on disk. They will upgrade using the new dependencies provided.
-    fn upgrade(self, upgraded_deps: &Dependencies) -> Result<()> {
+    fn upgrade(self, upgraded_deps: &Dependencies, dry_run: bool) -> Result<()> {
+            if dry_run {
+        let bufwtr = BufferWriter::stdout(ColorChoice::Always);
+        let mut buffer = bufwtr.buffer();
+        buffer
+            .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
+            .chain_err(|| "Failed to set output colour")?;
+        write!(&mut buffer, "Starting dry run. ")
+            .chain_err(|| "Failed to write dry run message")?;
+        buffer
+            .set_color(&ColorSpec::new())
+            .chain_err(|| "Failed to clear output colour")?;
+        writeln!(&mut buffer, "Changes will not be saved.")
+            .chain_err(|| "Failed to write dry run message")?;
+        bufwtr
+            .print(&buffer)
+            .chain_err(|| "Failed to print dry run message")?;
+    }
+
         for (mut manifest, _) in self.0 {
             for dependency in &upgraded_deps.0 {
-                manifest.upgrade(dependency)?;
+                manifest.upgrade(dependency, dry_run)?;
             }
         }
 
@@ -203,7 +228,7 @@ fn process(args: &Args) -> Result<()> {
     let upgraded_dependencies =
         existing_dependencies.get_upgraded(&args.flag_precise, args.flag_allow_prerelease)?;
 
-    manifests.upgrade(&upgraded_dependencies)
+    manifests.upgrade(&upgraded_dependencies, args.flag_dry_run)
 }
 
 fn main() {
