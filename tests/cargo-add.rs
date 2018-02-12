@@ -866,6 +866,6 @@ fn add_prints_message_for_features_deps() {
         "jui",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints_exactly("Adding hello-world v0.1.0 to features jui dependencies")
+        .prints_exactly("Adding hello-world v0.1.0 to dependencies with features: jui")
         .unwrap();
 }
