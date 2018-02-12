@@ -1,4 +1,5 @@
 use toml_edit;
+use std::iter::FromIterator;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 enum DependencySource {
@@ -14,6 +15,7 @@ pub struct Dependency {
     pub name: String,
     optional: bool,
     source: DependencySource,
+    features: Vec<String>,
 }
 
 impl Default for Dependency {
@@ -22,6 +24,7 @@ impl Default for Dependency {
             name: "".into(),
             optional: false,
             source: DependencySource::Version("0.1.0".into()),
+            features: vec![],
         }
     }
 }
@@ -58,6 +61,13 @@ impl Dependency {
         self.optional = opt;
         self
     }
+    /// Set whether the features is array of string
+    pub fn set_features(mut self, features: Option<String>) -> Dependency {
+        if let Some(f) = features {
+            self.features = f.split(' ').map(String::from).collect::<Vec<String>>();
+        }
+        self
+    }
 
     /// Get version of dependency
     pub fn version(&self) -> Option<&str> {
@@ -74,11 +84,12 @@ impl Dependency {
     /// or the path/git repository as an `InlineTable`.
     /// (If the dependency is set as `optional`, an `InlineTable` is returned in any case.)
     pub fn to_toml(&self) -> (String, toml_edit::Item) {
-        let data: toml_edit::Item = match (self.optional, self.source.clone()) {
+        let data: toml_edit::Item = match (self.optional, self.features.len(), self.source.clone())
+        {
             // Extra short when version flag only
-            (false, DependencySource::Version(v)) => toml_edit::value(v),
+            (false, 0, DependencySource::Version(v)) => toml_edit::value(v),
             // Other cases are represented as an inline table
-            (optional, source) => {
+            (optional, _len, source) => {
                 let mut data = toml_edit::InlineTable::default();
 
                 match source {
@@ -95,7 +106,10 @@ impl Dependency {
                 if self.optional {
                     data.get_or_insert("optional", optional);
                 }
-
+                if !self.features.is_empty() {
+                    let features = toml_edit::Value::from_iter(self.features.iter().cloned());
+                    data.get_or_insert("features", features);
+                }
                 data.fmt();
                 toml_edit::value(toml_edit::Value::InlineTable(data))
             }

@@ -60,8 +60,8 @@ $ cargo add lib/trial-and-error/
 ```plain
 $ cargo add --help
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
-    cargo add <crates>... [--dev|--build|--optional] [options]
+    cargo add <crate> [--dev|--build|--optional|--features=<features>] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crates>... [--dev|--build|--optional|--features=<features>] [options]
     cargo add (-h|--help)
     cargo add --version
 
@@ -71,6 +71,7 @@ Specify what crate to add:
                             `cargo add bitflags@0.3.2`.
     --git <uri>             Specify a git repository to download the crate from.
     --path <uri>            Specify the path the crate should be loaded from.
+    --features <FEATURES>   Space-separated  list of features to add
 
 Specify where to add the crate:
     -D --dev                Add crate as development dependency.

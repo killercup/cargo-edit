@@ -164,7 +164,6 @@ fn rm_prints_message() {
         "semver",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints("Removing").and()
-        .prints("semver from dependencies")
+        .prints_exactly("Removing semver from dependencies")
         .unwrap();
 }

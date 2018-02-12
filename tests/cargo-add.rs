@@ -537,6 +537,23 @@ fn adds_dependency_with_target_cfg() {
 }
 
 #[test]
+fn adds_features_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(&["add", "https://github.com/killercup/cargo-edit.git", "--features", "jui"],
+                    &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml["dependencies"]["cargo-edit"]["features"][0].as_str();
+    assert_eq!(val, Some("jui"));
+}
+
+#[test]
 fn adds_dependency_with_custom_target() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -746,8 +763,8 @@ fn no_argument() {
             r"Invalid arguments.
 
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
-    cargo add <crates>... [--dev|--build|--optional] [options]
+    cargo add <crate> [--dev|--build|--optional|--features=<features>] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crates>... [--dev|--build|--optional|--features=<features>] [options]
     cargo add (-h|--help)
     cargo add --version",
         )
@@ -762,8 +779,8 @@ fn unknown_flags() {
             r"Unknown flag: '--flag'
 
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
-    cargo add <crates>... [--dev|--build|--optional] [options]
+    cargo add <crate> [--dev|--build|--optional|--features=<features>] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crates>... [--dev|--build|--optional|--features=<features>] [options]
     cargo add (-h|--help)
     cargo add --version",
         )
@@ -778,11 +795,10 @@ fn add_prints_message() {
         "target/debug/cargo-add",
         "add",
         "docopt",
+        "--vers=0.6.0",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints("Adding").and()
-        .prints("docopt v").and()
-        .prints("to dependencies")
+        .prints_exactly("Adding docopt v0.6.0 to dependencies")
         .unwrap();
 }
 
@@ -793,14 +809,13 @@ fn add_prints_message_with_section() {
     assert_cli::Assert::command(&[
         "target/debug/cargo-add",
         "add",
-        "docopt",
+        "clap",
         "--optional",
         "--target=mytarget",
+        "--vers=0.1.0",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints("Adding").and()
-        .prints("docopt v").and()
-        .prints("to optional dependencies for target `mytarget`")
+        .prints_exactly("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
         .unwrap();
 }
 
@@ -813,11 +828,11 @@ fn add_prints_message_for_dev_deps() {
         "add",
         "docopt",
         "--dev",
+        "--vers",
+        "0.8.0",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints("Adding").and()
-        .prints("docopt v").and()
-        .prints("to dev-dependencies")
+        .prints_exactly("Adding docopt v0.8.0 to dev-dependencies")
         .unwrap();
 }
 
@@ -828,12 +843,29 @@ fn add_prints_message_for_build_deps() {
     assert_cli::Assert::command(&[
         "target/debug/cargo-add",
         "add",
-        "docopt",
+        "hello-world",
         "--build",
+        "--vers",
+        "0.1.0",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints("Adding").and()
-        .prints("docopt v").and()
-        .prints("to build-dependencies")
+        .prints_exactly("Adding hello-world v0.1.0 to build-dependencies")
+        .unwrap();
+}
+#[test]
+fn add_prints_message_for_features_deps() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "hello-world",
+        "--vers",
+        "0.1.0",
+        "--features",
+        "jui",
+        &format!("--manifest-path={}", manifest),
+    ]).succeeds()
+        .prints_exactly("Adding hello-world v0.1.0 to dependencies with features: jui")
         .unwrap();
 }

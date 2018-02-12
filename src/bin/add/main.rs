@@ -36,8 +36,8 @@ use errors::*;
 
 static USAGE: &'static str = r#"
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
-    cargo add <crates>... [--dev|--build|--optional] [options]
+    cargo add <crate> [--dev|--build|--optional|--features=<features>] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crates>... [--dev|--build|--optional|--features=<features>] [options]
     cargo add (-h|--help)
     cargo add --version
 
@@ -55,6 +55,7 @@ Specify where to add the crate:
                             for `dev-dependencies` or `build-dependencies`.
     --target <target>       Add as dependency to the given target platform. This does not work
                             for `dev-dependencies` or `build-dependencies`.
+    --features <FEATURES>   Space-separated  list of features to add
 
 Options:
     --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
@@ -77,7 +78,7 @@ crates.io registry suggests. One goal of `cargo add` is to prevent you from usin
 dependencies (version set to "*").
 "#;
 
-fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
+fn print_msg(dep: &Dependency, section: &[String], optional: bool, features: Option<String>) -> Result<()> {
     let colorchoice = if atty::is(atty::Stream::Stdout) {
         ColorChoice::Auto
     } else {
@@ -102,7 +103,10 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
     } else {
         format!("{} for target `{}`", &section[2], &section[1])
     };
-    writeln!(output, " {}", section)?;
+    write!(output, " {}", section)?;
+    if let Some(f) = features {
+        write!(output, " with features: {}", f)?
+    }
     Ok(())
 }
 
@@ -114,7 +118,7 @@ fn handle_add(args: &Args) -> Result<()> {
     deps.iter()
         .map(|dep| {
             if !args.flag_quiet {
-                print_msg(dep, &args.get_section(), args.flag_optional)?;
+                print_msg(dep, &args.get_section(), args.flag_optional, args.flag_features.clone())?;
             }
             manifest
                 .insert_into_table(&args.get_section(), dep)

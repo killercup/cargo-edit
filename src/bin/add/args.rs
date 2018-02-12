@@ -39,6 +39,8 @@ pub struct Args {
     pub flag_allow_prerelease: bool,
     /// '--quiet'
     pub flag_quiet: bool,
+    /// '--features'
+    pub flag_features: Option<String>,
 }
 
 impl Args {
@@ -71,7 +73,7 @@ impl Args {
                     parse_crate_name_with_version(arg_crate)?
                 } else {
                     get_latest_dependency(arg_crate, self.flag_allow_prerelease)?
-                }.set_optional(self.flag_optional);
+                }.set_optional(self.flag_optional).set_features(self.flag_features.clone());
 
                 result.push(le_crate);
             }
@@ -80,14 +82,13 @@ impl Args {
 
         if crate_name_has_version(&self.arg_crate) {
             return Ok(vec![
-                parse_crate_name_with_version(&self.arg_crate)?.set_optional(self.flag_optional),
+                parse_crate_name_with_version(&self.arg_crate)?.set_optional(self.flag_optional).set_features(self.flag_features.clone()),
             ]);
         }
 
 
         let dependency = if !crate_name_is_url_or_path(&self.arg_crate) {
             let dependency = Dependency::new(&self.arg_crate);
-
             if let Some(ref version) = self.flag_vers {
                 semver::VersionReq::parse(version)
                     .chain_err(|| "Invalid dependency version requirement")?;
@@ -109,7 +110,7 @@ impl Args {
             }
         } else {
             parse_crate_name_from_uri(&self.arg_crate)?
-        }.set_optional(self.flag_optional);
+        }.set_optional(self.flag_optional).set_features(self.flag_features.clone());
 
         Ok(vec![dependency])
     }
@@ -150,6 +151,7 @@ impl Default for Args {
             flag_upgrade: None,
             flag_allow_prerelease: false,
             flag_quiet: false,
+            flag_features: None,
         }
     }
 }
