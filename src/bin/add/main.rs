@@ -105,7 +105,7 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool, features: Opt
     };
     write!(output, " {}", section)?;
     if let Some(f) = features {
-        write!(output, " features {}", f)?
+        write!(output, " with features: {}", f)?
     }
     Ok(())
 }
