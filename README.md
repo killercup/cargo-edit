@@ -160,14 +160,12 @@ $ cargo upgrade regex --all
 Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
 
 Usage:
-    cargo upgrade [options]
-    cargo upgrade [options] <dependency>... [--precise <PRECISE>]
+    cargo upgrade [options] [<dependency>]...
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)            
 
 Options:
     --all                   Upgrade all packages in the workspace.
-    --precise PRECISE       Upgrade the dependencies to exactly PRECISE.
     --manifest-path PATH    Path to the manifest to upgrade.
     --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.

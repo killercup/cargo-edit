@@ -192,24 +192,6 @@ fn upgrade_optional_dependency() {
 }
 
 #[test]
-fn upgrade_precise() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
-
-    // Setup manifest with `docopt`
-    execute_command(&["add", "docopt", "--vers", "0.8"], &manifest);
-
-    // Now, upgrade `docopt` to the specified version. This version has never (and should never) be
-    // published.
-    execute_command(&["upgrade", "--precise", "a spurious version"], &manifest);
-
-    // Verify that `docopt` has been updated to the specified version.
-    assert_eq!(
-        get_toml(&manifest)["dependencies"]["docopt"].as_str(),
-        Some("a spurious version")
-    );
-}
-
-#[test]
 fn upgrade_at() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -306,8 +288,7 @@ fn unknown_flags() {
             "Unknown flag: '--flag'
 
 Usage:
-    cargo upgrade [options]
-    cargo upgrade [options] <dependency>... [--precise <PRECISE>]
+    cargo upgrade [options] [<dependency>]...
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)",
         )

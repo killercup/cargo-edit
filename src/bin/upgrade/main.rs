@@ -36,14 +36,12 @@ static USAGE: &'static str = r"
 Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
 
 Usage:
-    cargo upgrade [options]
-    cargo upgrade [options] <dependency>... [--precise <PRECISE>]
+    cargo upgrade [options] [<dependency>]...
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)            
 
 Options:
     --all                   Upgrade all packages in the workspace.
-    --precise PRECISE       Upgrade the dependencies to exactly PRECISE.
     --manifest-path PATH    Path to the manifest to upgrade.
     --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.
@@ -67,10 +65,8 @@ be supplied in the presence of a virtual manifest.
 /// Docopts input args.
 #[derive(Debug, Deserialize)]
 struct Args {
-    /// `DEPENDENCY...`
+    /// `<dependency>...`
     arg_dependency: Vec<String>,
-    /// `--precise PRECISE`
-    flag_precise: Option<String>,
     /// `--manifest-path PATH`
     flag_manifest_path: Option<String>,
     /// `--all`
@@ -208,7 +204,6 @@ impl DesiredUpgrades {
     /// dependencies will get that version.
     fn get_upgraded(
         self,
-        precise: &Option<String>,
         allow_prerelease: bool,
     ) -> Result<ActualUpgrades> {
         self.0
@@ -216,8 +211,6 @@ impl DesiredUpgrades {
             .map(|(name, version)| {
                 if let Some(v) = version {
                     Ok((name, v))
-                } else if let Some(ref v) = *precise {
-                    Ok((name, v.clone()))
                 } else {
                     get_latest_dependency(&name, allow_prerelease)
                         .map(|new_dep| {
@@ -242,7 +235,6 @@ impl DesiredUpgrades {
 fn process(args: Args) -> Result<()> {
     let Args {
         arg_dependency,
-        flag_precise,
         flag_manifest_path,
         flag_all,
         flag_allow_prerelease,
@@ -259,7 +251,7 @@ fn process(args: Args) -> Result<()> {
     let existing_dependencies = manifests.get_dependencies(arg_dependency)?;
 
     let upgraded_dependencies =
-        existing_dependencies.get_upgraded(&flag_precise, flag_allow_prerelease)?;
+        existing_dependencies.get_upgraded(flag_allow_prerelease)?;
 
     manifests.upgrade(&upgraded_dependencies, flag_dry_run)
 }
