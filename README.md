@@ -140,6 +140,9 @@ Remove a dependency from a Cargo.toml manifest file.
 
 Upgrade dependencies in your `Cargo.toml` to their latest versions.
 
+To specify a version to upgrade to, provide the dependencies in the `<crate name>@<version>` format,
+e.g. `cargo upgrade docopt@~0.9.0 serde@1.0.1`.
+
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
 
@@ -162,7 +165,7 @@ Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
 Usage:
     cargo upgrade [options] [<dependency>]...
     cargo upgrade (-h | --help)
-    cargo upgrade (-V | --version)            
+    cargo upgrade (-V | --version)
 
 Options:
     --all                   Upgrade all packages in the workspace.
@@ -176,7 +179,7 @@ Options:
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
 
-If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to 
+If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to
 upgrade to for each can be specified with e.g. `docopt@0.8.0`.
 
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
