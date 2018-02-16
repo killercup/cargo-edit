@@ -6,14 +6,17 @@ rust:
 - stable
 matrix:
   include:
-  - rust: nightly-2017-12-20
+  - rust: "1.24.0"
     before_script:
-    - rustup component add rustfmt-preview --toolchain nightly-2017-12-20
-    - cargo install clippy --vers 0.0.176
+    - rustup component add rustfmt-preview --toolchain 1.24.0
     script:
-    - cargo clippy -- -D warnings
     - rustfmt -V
     - cargo fmt -- --write-mode diff
+  - rust: nightly-2018-02-14
+    before_script:
+    - cargo install clippy --vers 0.0.186
+    script:
+    - cargo clippy -- -D warnings
   allow_failures:
   - rust: nightly
 before_script:
