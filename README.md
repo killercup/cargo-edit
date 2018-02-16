@@ -148,10 +148,10 @@ local lock file (Cargo.lock).
 ```sh
 # Upgrade all dependencies for the current crate
 $ cargo upgrade
-# Upgrade libc and serde
-$ cargo upgrade -d libc --dependency serde
+# Upgrade libc (to the latest version) and serde (to v1.0.0)
+$ cargo upgrade libc serde@1.0.0
 # Upgrade regex across all crates in the workspace
-$ cargo upgrade -d regex --all
+$ cargo upgrade regex --all
 ```
 
 #### Usage
@@ -163,20 +163,23 @@ Usage:
     cargo upgrade [options]
     cargo upgrade [options] <dependency>... [--precise <PRECISE>]
     cargo upgrade (-h | --help)
-    cargo upgrade (-V | --version)
+    cargo upgrade (-V | --version)            
 
 Options:
-    --all                       Upgrade all packages in the workspace.
-    --precise PRECISE           Upgrade dependencies to exactly PRECISE.
-    --manifest-path PATH        Path to the manifest to upgrade.
-    --allow-prerelease          Include prerelease versions when fetching from crates.io (e.g.
-                                '0.6.0-alpha'). Defaults to false.
-    --dry-run                   Print changes to be made without making them. Defaults to false.
-    -h --help                   Show this help page.
-    -V --version                Show version.
+    --all                   Upgrade all packages in the workspace.
+    --precise PRECISE       Upgrade the dependencies to exactly PRECISE.
+    --manifest-path PATH    Path to the manifest to upgrade.
+    --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
+                            '0.6.0-alpha'). Defaults to false.
+    --dry-run               Print changes to be made without making them. Defaults to false.
+    -h --help               Show this help page.
+    -V --version            Show version.
 
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
+
+If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to 
+upgrade to for each can be specified with e.g. `docopt@0.8.0`.
 
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.
