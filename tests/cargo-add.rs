@@ -13,9 +13,7 @@ const BOGUS_CRATE_NAME: &str = "tests-will-break-if-there-is-ever-a-real-package
 
 /// Check 'failure' deps are not present
 fn no_manifest_failures(manifest: &toml_edit::Item) -> bool {
-    let no_failure_key_in = |section| {
-        manifest[section][BOGUS_CRATE_NAME].is_none()
-    };
+    let no_failure_key_in = |section| manifest[section][BOGUS_CRATE_NAME].is_none();
     no_failure_key_in("dependencies") && no_failure_key_in("dev-dependencies")
         && no_failure_key_in("build-dependencies")
 }
@@ -211,12 +209,7 @@ fn adds_specified_version() {
 
     // cannot run with both --dev and --build at the same time
     let call = process::Command::new("target/debug/cargo-add")
-        .args(&[
-            "add",
-            BOGUS_CRATE_NAME,
-            "--vers",
-            "invalid version string",
-        ])
+        .args(&["add", BOGUS_CRATE_NAME, "--vers", "invalid version string"])
         .arg(format!("--manifest-path={}", &manifest))
         .output()
         .unwrap();
@@ -321,10 +314,7 @@ fn adds_git_source_using_flag() {
 
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["git-dev-pkg"];
-    assert_eq!(
-        val["git"].as_str(),
-        Some("http://site/gp.git")
-    );
+    assert_eq!(val["git"].as_str(), Some("http://site/gp.git"));
 }
 
 #[test]
@@ -339,10 +329,7 @@ fn adds_local_source_using_flag() {
 
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["local"];
-    assert_eq!(
-        val["path"].as_str(),
-        Some("/path/to/pkg")
-    );
+    assert_eq!(val["path"].as_str(), Some("/path/to/pkg"));
 
     // check this works with other flags (e.g. --dev) as well
     let toml = get_toml(&manifest);
@@ -355,10 +342,7 @@ fn adds_local_source_using_flag() {
 
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["local-dev"];
-    assert_eq!(
-        val["path"].as_str(),
-        Some("/path/to/pkg-dev")
-    );
+    assert_eq!(val["path"].as_str(), Some("/path/to/pkg-dev"));
 }
 
 #[test]
@@ -552,7 +536,6 @@ fn adds_dependency_with_custom_target() {
     assert_eq!(val.as_str(), Some("my-package1--CURRENT_VERSION_TEST"));
 }
 
-
 #[test]
 #[cfg(feature = "test-external-apis")]
 fn adds_dependency_normalized_name() {
@@ -575,7 +558,6 @@ fn adds_dependency_normalized_name() {
     let toml = get_toml(&manifest);
     assert!(!toml["dependencies"]["linked-hash-map"].is_none());
 }
-
 
 #[test]
 #[should_panic]

@@ -38,7 +38,7 @@ Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
 Usage:
     cargo upgrade [options] [<dependency>]...
     cargo upgrade (-h | --help)
-    cargo upgrade (-V | --version)            
+    cargo upgrade (-V | --version)
 
 Options:
     --all                   Upgrade all packages in the workspace.
@@ -52,7 +52,7 @@ Options:
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
 
-If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to 
+If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to
 upgrade to for each can be specified with e.g. `docopt@0.8.0`.
 
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
@@ -202,10 +202,7 @@ struct ActualUpgrades(HashMap<String, String>);
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
     /// dependencies will get that version.
-    fn get_upgraded(
-        self,
-        allow_prerelease: bool,
-    ) -> Result<ActualUpgrades> {
+    fn get_upgraded(self, allow_prerelease: bool) -> Result<ActualUpgrades> {
         self.0
             .into_iter()
             .map(|(name, version)| {
@@ -250,8 +247,7 @@ fn process(args: Args) -> Result<()> {
 
     let existing_dependencies = manifests.get_dependencies(arg_dependency)?;
 
-    let upgraded_dependencies =
-        existing_dependencies.get_upgraded(flag_allow_prerelease)?;
+    let upgraded_dependencies = existing_dependencies.get_upgraded(flag_allow_prerelease)?;
 
     manifests.upgrade(&upgraded_dependencies, flag_dry_run)
 }

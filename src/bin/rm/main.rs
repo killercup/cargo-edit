@@ -3,13 +3,13 @@
         trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
         unused_qualifications)]
 
+extern crate atty;
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
 extern crate termcolor;
-extern crate atty;
 
 use std::process;
 use std::io::Write;
