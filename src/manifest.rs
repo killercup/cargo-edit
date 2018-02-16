@@ -1,5 +1,6 @@
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{env, str};
 
@@ -11,7 +12,7 @@ use dependency::Dependency;
 
 const MANIFEST_FILENAME: &str = "Cargo.toml";
 
-/// A Cargo Manifest
+/// A Cargo manifest
 #[derive(Debug, Clone)]
 pub struct Manifest {
     /// Manifest contents as TOML data
@@ -23,7 +24,7 @@ pub struct Manifest {
 /// If a manifest is specified, return that one. If a path is specified, perform a manifest search
 /// starting from there. If nothing is specified, start searching from the current directory
 /// (`cwd`).
-fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
+pub fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
     match *specified {
         Some(ref path)
             if fs::metadata(&path)
@@ -340,6 +341,64 @@ impl str::FromStr for Manifest {
         let d: toml_edit::Document = input.parse().chain_err(|| "Manifest not valid TOML")?;
 
         Ok(Manifest { data: d })
+    }
+}
+
+/// A Cargo manifest that is available locally.
+#[derive(Debug)]
+pub struct LocalManifest {
+    /// Path to the manifest
+    path: PathBuf,
+    /// Manifest contents
+    manifest: Manifest,
+}
+
+impl Deref for LocalManifest {
+    type Target = Manifest;
+
+    fn deref(&self) -> &Manifest {
+        &self.manifest
+    }
+}
+
+impl LocalManifest {
+    /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
+    /// the user means.
+    pub fn find(path: &Option<PathBuf>) -> Result<Self> {
+        let path = find(path)?;
+        Self::try_new(&path)
+    }
+
+    /// Construct the `LocalManifest` corresponding to the `Path` provided.
+    pub fn try_new(path: &Path) -> Result<Self> {
+        let path = path.to_path_buf();
+        Ok(LocalManifest {
+            manifest: Manifest::open(&Some(path.clone()))?,
+            path: path,
+        })
+    }
+
+    /// Get the `File` corresponding to this manifest.
+    fn get_file(&self) -> Result<File> {
+        Manifest::find_file(&Some(self.path.clone()))
+    }
+
+    /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
+    /// dependency, it does nothing.
+    pub fn upgrade(&mut self, dependency: &Dependency, dry_run: bool) -> Result<()> {
+        for (table_path, table) in self.get_sections() {
+            let table_like = table.as_table_like().expect("Unexpected non-table");
+            for (name, _old_value) in table_like.iter() {
+                if name == dependency.name {
+                    self.manifest
+                        .update_table_entry(&table_path, dependency, dry_run)?;
+                }
+            }
+        }
+
+        let mut file = self.get_file()?;
+        self.write_to_file(&mut file)
+            .chain_err(|| "Failed to write new manifest contents")
     }
 }
 

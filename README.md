@@ -140,6 +140,9 @@ Remove a dependency from a Cargo.toml manifest file.
 
 Upgrade dependencies in your `Cargo.toml` to their latest versions.
 
+To specify a version to upgrade to, provide the dependencies in the `<crate name>@<version>` format,
+e.g. `cargo upgrade docopt@~0.9.0 serde@>=0.9,<2.0`.
+
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
 
@@ -148,10 +151,10 @@ local lock file (Cargo.lock).
 ```sh
 # Upgrade all dependencies for the current crate
 $ cargo upgrade
-# Upgrade libc and serde
-$ cargo upgrade -d libc --dependency serde
-# Upgrade regex across all crates in the workspace
-$ cargo upgrade -d regex --all
+# Upgrade docopt (to ~0.9) and serde (to >=0.9,<2.0)
+$ cargo upgrade docopt@~0.9 serde@>=0.9,<2.0
+# Upgrade regex (to the latest version) across all crates in the workspace
+$ cargo upgrade regex --all
 ```
 
 #### Usage
@@ -160,23 +163,24 @@ $ cargo upgrade -d regex --all
 Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
 
 Usage:
-    cargo upgrade [--all] [--dependency <dep>...] [--manifest-path <path>] [options]
+    cargo upgrade [options] [<dependency>]...
     cargo upgrade (-h | --help)
     cargo upgrade (-V | --version)
 
 Options:
-    --all                       Upgrade all packages in the workspace.
-    -d --dependency <dep>       Specific dependency to upgrade. If this option is used, only the
-                                specified dependencies will be upgraded.
-    --manifest-path <path>      Path to the manifest to upgrade.
-    --allow-prerelease          Include prerelease versions when fetching from crates.io (e.g.
-                                '0.6.0-alpha'). Defaults to false.
-    --dry-run                   Print changes to be made without making them. Defaults to false.
-    -h --help                   Show this help page.
-    -V --version                Show version.
+    --all                   Upgrade all packages in the workspace.
+    --manifest-path PATH    Path to the manifest to upgrade.
+    --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
+                            '0.6.0-alpha'). Defaults to false.
+    --dry-run               Print changes to be made without making them. Defaults to false.
+    -h --help               Show this help page.
+    -V --version            Show version.
 
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
+
+If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to
+upgrade to for each can be specified with e.g. `docopt@0.8.0`.
 
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.

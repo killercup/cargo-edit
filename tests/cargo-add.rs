@@ -649,6 +649,9 @@ fn overwrite_dependency_test(first_command: &[&str], second_command: &[&str], ex
     let expected = r#"[package]
 name = "cargo-list-test-fixture"
 version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
 "#.to_string() + expected;
     let expected_dep: toml_edit::Document = expected.parse().expect("toml parse error");
     assert_eq!(expected_dep.to_string(), toml.to_string());
