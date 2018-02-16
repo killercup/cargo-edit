@@ -105,8 +105,7 @@ where
         buffer
             .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
             .chain_err(|| "Failed to set output colour")?;
-        write!(&mut buffer, "Starting dry run. ")
-            .chain_err(|| "Failed to write dry run message")?;
+        write!(&mut buffer, "Starting dry run. ").chain_err(|| "Failed to write dry run message")?;
         buffer
             .set_color(&ColorSpec::new())
             .chain_err(|| "Failed to clear output colour")?;
@@ -154,12 +153,9 @@ fn upgrade_manifest_from_cache(
     new_deps: &HashMap<String, Dependency>,
     dry_run: bool,
 ) -> Result<()> {
-    upgrade_manifest_using_dependencies(
-        manifest_path,
-        only_update,
-        dry_run,
-        |name| Ok(new_deps[name].clone()),
-    )
+    upgrade_manifest_using_dependencies(manifest_path, only_update, dry_run, |name| {
+        Ok(new_deps[name].clone())
+    })
 }
 
 /// Get a list of the paths of all the (non-virtual) manifests in the workspace.
@@ -188,9 +184,7 @@ fn get_new_workspace_deps(
         .packages
         .iter()
         .flat_map(|package| package.dependencies.to_owned())
-        .filter(|dependency| {
-            only_update.is_empty() || only_update.contains(&dependency.name)
-        })
+        .filter(|dependency| only_update.is_empty() || only_update.contains(&dependency.name))
         .map(|dependency| {
             if !new_deps.contains_key(&dependency.name) {
                 new_deps.insert(

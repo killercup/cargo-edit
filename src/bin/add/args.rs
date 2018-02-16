@@ -84,7 +84,6 @@ impl Args {
             ]);
         }
 
-
         let dependency = if !crate_name_is_url_or_path(&self.arg_crate) {
             let dependency = Dependency::new(&self.arg_crate);
 
