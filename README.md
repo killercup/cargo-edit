@@ -141,7 +141,7 @@ Remove a dependency from a Cargo.toml manifest file.
 Upgrade dependencies in your `Cargo.toml` to their latest versions.
 
 To specify a version to upgrade to, provide the dependencies in the `<crate name>@<version>` format,
-e.g. `cargo upgrade docopt@~0.9.0 serde@1.0.1`.
+e.g. `cargo upgrade docopt@~0.9.0 serde@>=0.9,<2.0`.
 
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
@@ -151,9 +151,9 @@ local lock file (Cargo.lock).
 ```sh
 # Upgrade all dependencies for the current crate
 $ cargo upgrade
-# Upgrade libc (to the latest version) and serde (to v1.0.0)
-$ cargo upgrade libc serde@1.0.0
-# Upgrade regex across all crates in the workspace
+# Upgrade docopt (to ~0.9) and serde (to >=0.9,<2.0)
+$ cargo upgrade docopt@~0.9 serde@>=0.9,<2.0
+# Upgrade regex (to the latest version) across all crates in the workspace
 $ cargo upgrade regex --all
 ```
 
