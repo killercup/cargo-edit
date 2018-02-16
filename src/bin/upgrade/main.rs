@@ -124,8 +124,9 @@ impl Manifests {
         Ok(Manifests(vec![(manifest, package.to_owned())]))
     }
 
-    /// Get the combined set of dependencies of the manifests.
-    fn get_dependencies(&self, only_update: Vec<String>) -> Result<InputDependencies> {
+    /// Get the the combined set of dependencies to upgrade. If the user has specified
+    /// per-dependency desired versions, extract those here.
+    fn get_dependencies(&self, only_update: Vec<String>) -> Result<DesiredUpgrades> {
         /// Helper function to check whether a `cargo_metadata::Dependency` is a version dependency.
         fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
             match dependency.source {
@@ -136,7 +137,9 @@ impl Manifests {
             }
         }
 
-        Ok(InputDependencies(if only_update.is_empty() {
+        Ok(DesiredUpgrades(if only_update.is_empty() {
+            // User hasn't asked for any specific dependencies to be upgraded, so upgrade all the
+            // dependencies.
             self.0
                 .iter()
                 .flat_map(|&(_, ref package)| package.dependencies.clone())
@@ -160,8 +163,8 @@ impl Manifests {
         }))
     }
 
-    ///  Upgrade the manifests on disk. They will upgrade using the new dependencies provided.
-    fn upgrade(self, upgraded_deps: &ResolvedDependencies, dry_run: bool) -> Result<()> {
+    /// Upgrade the manifests on disk following the previously-determined upgrade schema.
+    fn upgrade(self, upgraded_deps: &ActualUpgrades, dry_run: bool) -> Result<()> {
         if dry_run {
             let bufwtr = BufferWriter::stdout(ColorChoice::Always);
             let mut buffer = bufwtr.buffer();
@@ -190,20 +193,21 @@ impl Manifests {
     }
 }
 
-/// The set of dependencies to upgrade.
-struct InputDependencies(HashMap<String, Option<String>>);
+/// The set of dependencies to be upgraded, alongside desired versions, if specified by the user.
+struct DesiredUpgrades(HashMap<String, Option<String>>);
 
-/// The set of dependencies to upgrade alongside the new version of each.
-struct ResolvedDependencies(HashMap<String, String>);
+/// The complete specification of the upgrades that will be performed. Map of the dependency names
+/// to the new versions.
+struct ActualUpgrades(HashMap<String, String>);
 
-impl InputDependencies {
+impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
     /// dependencies will get that version.
     fn get_upgraded(
         self,
         precise: &Option<String>,
         allow_prerelease: bool,
-    ) -> Result<ResolvedDependencies> {
+    ) -> Result<ActualUpgrades> {
         self.0
             .into_iter()
             .map(|(name, version)| {
@@ -226,7 +230,7 @@ impl InputDependencies {
                 }
             })
             .collect::<Result<_>>()
-            .map(ResolvedDependencies)
+            .map(ActualUpgrades)
     }
 }
 
