@@ -87,7 +87,7 @@ impl Manifests {
     fn get_all(manifest_path: &Option<String>) -> Result<Self> {
         let manifest_path = manifest_path.clone().map(PathBuf::from);
 
-        cargo_metadata::metadata_deps(manifest_path.as_ref().map(Path::new), true)
+        cargo_metadata::metadata(manifest_path.as_ref().map(Path::new))
             .chain_err(|| "Failed to get workspace metadata")?
             .packages
             .into_iter()
@@ -109,7 +109,7 @@ impl Manifests {
 
         let manifest = LocalManifest::find(&manifest_path)?;
 
-        let packages = cargo_metadata::metadata_deps(manifest_path.as_ref().map(Path::new), true)
+        let packages = cargo_metadata::metadata(manifest_path.as_ref().map(Path::new))
             .chain_err(|| "Invalid manifest")?
             .packages;
         let package = packages
