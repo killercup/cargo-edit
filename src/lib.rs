@@ -18,11 +18,13 @@ extern crate serde_json;
 extern crate termcolor;
 extern crate toml_edit;
 
+mod crate_name;
 mod dependency;
 mod errors;
 mod fetch;
 mod manifest;
 
+pub use crate_name::CrateName;
 pub use dependency::Dependency;
 pub use errors::*;
 pub use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,

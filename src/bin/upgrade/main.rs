@@ -11,13 +11,13 @@ extern crate error_chain;
 extern crate serde_derive;
 extern crate toml_edit;
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::io::Write;
 use std::process;
 
 extern crate cargo_edit;
-use cargo_edit::{find, get_latest_dependency, Dependency, LocalManifest};
+use cargo_edit::{find, get_latest_dependency, CrateName, Dependency, LocalManifest};
 
 extern crate termcolor;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
@@ -70,14 +70,14 @@ struct Args {
     flag_precise: Option<String>,
     /// `--manifest-path PATH`
     flag_manifest_path: Option<String>,
-    /// `--version`
-    flag_version: bool,
     /// `--all`
     flag_all: bool,
     /// `--allow-prerelease`
     flag_allow_prerelease: bool,
     /// `--dry-run`
     flag_dry_run: bool,
+    /// `--version`
+    flag_version: bool,
 }
 
 /// A collection of manifests.
@@ -125,7 +125,7 @@ impl Manifests {
     }
 
     /// Get the combined set of dependencies of the manifests.
-    fn get_dependencies(&self, only_update: &[String]) -> Dependencies {
+    fn get_dependencies(&self, only_update: Vec<String>) -> Result<InputDependencies> {
         /// Helper function to check whether a `cargo_metadata::Dependency` is a version dependency.
         fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
             match dependency.source {
@@ -136,29 +136,32 @@ impl Manifests {
             }
         }
 
-        Dependencies(
+        Ok(InputDependencies(if only_update.is_empty() {
             self.0
                 .iter()
                 .flat_map(|&(_, ref package)| package.dependencies.clone())
-                .filter(|dependency| {
-                    only_update.is_empty() || only_update.contains(&dependency.name)
-                })
                 .filter(is_version_dep)
-                .map(|dependency| {
-                    // Convert manually from one dependency format to another. Ideally, this would
-                    // be done by implementing `From`. However, that would require pulling in
-                    // `cargo::SourceId::from_url`, which would entail pulling the entirety of
-                    // cargo.
-                    Dependency::new(&dependency.name)
-                        .set_optional(dependency.optional)
-                        .set_version(&dependency.req.to_string())
+                .map(|dependency| (dependency.name, None))
+                .collect()
+        } else {
+            only_update
+                .into_iter()
+                .map(|name| {
+                    if let Some(dependency) = CrateName::new(&name.clone()).parse_as_version()? {
+                        Ok((
+                            dependency.name.clone(),
+                            dependency.version().map(String::from),
+                        ))
+                    } else {
+                        Ok((name, None))
+                    }
                 })
-                .collect(),
-        )
+                .collect::<Result<_>>()?
+        }))
     }
 
     ///  Upgrade the manifests on disk. They will upgrade using the new dependencies provided.
-    fn upgrade(self, upgraded_deps: &Dependencies, dry_run: bool) -> Result<()> {
+    fn upgrade(self, upgraded_deps: &ResolvedDependencies, dry_run: bool) -> Result<()> {
         if dry_run {
             let bufwtr = BufferWriter::stdout(ColorChoice::Always);
             let mut buffer = bufwtr.buffer();
@@ -178,8 +181,8 @@ impl Manifests {
         }
 
         for (mut manifest, _) in self.0 {
-            for dependency in &upgraded_deps.0 {
-                manifest.upgrade(dependency, dry_run)?;
+            for (name, version) in &upgraded_deps.0 {
+                manifest.upgrade(&Dependency::new(name).set_version(version), dry_run)?;
             }
         }
 
@@ -187,47 +190,71 @@ impl Manifests {
     }
 }
 
-/// This represents the version dependencies of the manifests that `cargo-upgrade` will upgrade.
-struct Dependencies(HashSet<Dependency>);
+/// The set of dependencies to upgrade.
+struct InputDependencies(HashMap<String, Option<String>>);
 
-impl Dependencies {
+/// The set of dependencies to upgrade alongside the new version of each.
+struct ResolvedDependencies(HashMap<String, String>);
+
+impl InputDependencies {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
     /// dependencies will get that version.
     fn get_upgraded(
         self,
         precise: &Option<String>,
         allow_prerelease: bool,
-    ) -> Result<Dependencies> {
+    ) -> Result<ResolvedDependencies> {
         self.0
             .into_iter()
-            .map(|dependency| {
-                if let Some(ref precise) = *precise {
-                    Ok(dependency.set_version(precise))
+            .map(|(name, version)| {
+                if let Some(v) = version {
+                    Ok((name, v))
+                } else if let Some(ref v) = *precise {
+                    Ok((name, v.clone()))
                 } else {
-                    get_latest_dependency(&dependency.name, allow_prerelease)
+                    get_latest_dependency(&name, allow_prerelease)
+                        .map(|new_dep| {
+                            (
+                                name,
+                                new_dep
+                                    .version()
+                                    .expect("Invalid dependency type")
+                                    .to_string(),
+                            )
+                        })
                         .chain_err(|| "Failed to get new version")
                 }
             })
             .collect::<Result<_>>()
-            .map(Dependencies)
+            .map(ResolvedDependencies)
     }
 }
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
-fn process(args: &Args) -> Result<()> {
-    let manifests = if args.flag_all {
-        Manifests::get_all(&args.flag_manifest_path)
+fn process(args: Args) -> Result<()> {
+    let Args {
+        arg_dependency,
+        flag_precise,
+        flag_manifest_path,
+        flag_all,
+        flag_allow_prerelease,
+        flag_dry_run,
+        ..
+    } = args;
+
+    let manifests = if flag_all {
+        Manifests::get_all(&flag_manifest_path)
     } else {
-        Manifests::get_local_one(&args.flag_manifest_path)
+        Manifests::get_local_one(&flag_manifest_path)
     }?;
 
-    let existing_dependencies = manifests.get_dependencies(&args.arg_dependency.clone());
+    let existing_dependencies = manifests.get_dependencies(arg_dependency)?;
 
     let upgraded_dependencies =
-        existing_dependencies.get_upgraded(&args.flag_precise, args.flag_allow_prerelease)?;
+        existing_dependencies.get_upgraded(&flag_precise, flag_allow_prerelease)?;
 
-    manifests.upgrade(&upgraded_dependencies, args.flag_dry_run)
+    manifests.upgrade(&upgraded_dependencies, flag_dry_run)
 }
 
 fn main() {
@@ -240,7 +267,7 @@ fn main() {
         process::exit(0);
     }
 
-    if let Err(err) = process(&args) {
+    if let Err(err) = process(args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);
 
         for e in err.iter().skip(1) {

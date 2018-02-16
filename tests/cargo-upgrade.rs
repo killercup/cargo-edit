@@ -210,6 +210,23 @@ fn upgrade_precise() {
 }
 
 #[test]
+fn upgrade_at() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Setup manifest
+    execute_command(&["add", "docopt", "--vers", "0.8"], &manifest);
+
+    // Now, upgrade `docopt` to a version that seems unlikely to ever get published.
+    execute_command(&["upgrade", "docopt@1000000.0.0"], &manifest);
+
+    // Verify that `docopt` has been updated to the specified version.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["docopt"].as_str(),
+        Some("1000000.0.0")
+    );
+}
+
+#[test]
 fn upgrade_workspace() {
     let (_tmpdir, root_manifest, workspace_manifests) = copy_workspace_test();
 

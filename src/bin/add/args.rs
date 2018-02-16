@@ -1,8 +1,7 @@
 //! Handle `cargo add` arguments
 
 use cargo_edit::Dependency;
-use cargo_edit::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
-                 get_latest_dependency};
+use cargo_edit::{get_latest_dependency, CrateName};
 use semver;
 use std::path::PathBuf;
 
@@ -65,27 +64,25 @@ impl Args {
     /// Build dependencies from arguments
     pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
         if !self.arg_crates.is_empty() {
-            let mut result = Vec::new();
-            for arg_crate in &self.arg_crates {
-                let le_crate = if crate_name_has_version(arg_crate) {
-                    parse_crate_name_with_version(arg_crate)?
-                } else {
-                    get_latest_dependency(arg_crate, self.flag_allow_prerelease)?
-                }.set_optional(self.flag_optional);
-
-                result.push(le_crate);
-            }
-            return Ok(result);
+            return self.arg_crates
+                .iter()
+                .map(|crate_name| {
+                    Ok(
+                        if let Some(krate) = CrateName::new(crate_name).parse_as_version()? {
+                            krate
+                        } else {
+                            get_latest_dependency(crate_name, self.flag_allow_prerelease)?
+                        }.set_optional(self.flag_optional),
+                    )
+                })
+                .collect();
         }
 
-        if crate_name_has_version(&self.arg_crate) {
-            return Ok(vec![
-                parse_crate_name_with_version(&self.arg_crate)?.set_optional(self.flag_optional),
-            ]);
-        }
+        let crate_name = CrateName::new(&self.arg_crate);
 
-
-        let dependency = if !crate_name_is_url_or_path(&self.arg_crate) {
+        let dependency = if let Some(krate) = crate_name.parse_as_version()? {
+            krate
+        } else if !crate_name.is_url_or_path() {
             let dependency = Dependency::new(&self.arg_crate);
 
             if let Some(ref version) = self.flag_vers {
@@ -108,7 +105,7 @@ impl Args {
                 dep.set_version(&v)
             }
         } else {
-            parse_crate_name_from_uri(&self.arg_crate)?
+            crate_name.parse_crate_name_from_uri()?
         }.set_optional(self.flag_optional);
 
         Ok(vec![dependency])
@@ -154,58 +151,6 @@ impl Default for Args {
     }
 }
 
-fn crate_name_has_version(name: &str) -> bool {
-    name.contains('@')
-}
-
-fn crate_name_is_url_or_path(name: &str) -> bool {
-    crate_name_is_github_url(name) || crate_name_is_gitlab_url(name) || crate_name_is_path(name)
-}
-
-fn crate_name_is_github_url(name: &str) -> bool {
-    name.contains("https://github.com")
-}
-
-fn crate_name_is_gitlab_url(name: &str) -> bool {
-    name.contains("https://gitlab.com")
-}
-
-fn crate_name_is_path(name: &str) -> bool {
-    // FIXME: how else can we check if the name is a (possibly invalid) path?
-    name.contains('.') || name.contains('/') || name.contains('\\')
-}
-
-fn parse_crate_name_with_version(name: &str) -> Result<Dependency> {
-    assert!(crate_name_has_version(name));
-
-    let xs: Vec<_> = name.splitn(2, '@').collect();
-    let (name, version) = (xs[0], xs[1]);
-    semver::VersionReq::parse(version).chain_err(|| "Invalid crate version requirement")?;
-
-    Ok(Dependency::new(name).set_version(version))
-}
-
-fn parse_crate_name_from_uri(name: &str) -> Result<Dependency> {
-    if crate_name_is_github_url(name) {
-        if let Ok(ref crate_name) = get_crate_name_from_github(name) {
-            return Ok(Dependency::new(crate_name).set_git(name));
-        }
-    } else if crate_name_is_gitlab_url(name) {
-        if let Ok(ref crate_name) = get_crate_name_from_gitlab(name) {
-            return Ok(Dependency::new(crate_name).set_git(name));
-        }
-    } else if crate_name_is_path(name) {
-        if let Ok(ref crate_name) = get_crate_name_from_path(name) {
-            return Ok(Dependency::new(crate_name).set_path(name));
-        }
-    }
-
-    Err(From::from(format!(
-        "Unable to obtain crate informations from `{}`.\n",
-        name
-    )))
-}
-
 #[cfg(test)]
 mod tests {
     use cargo_edit::Dependency;
@@ -214,7 +159,6 @@ mod tests {
     #[test]
     fn test_dependency_parsing() {
         let args = Args {
-            arg_crate: "demo".to_owned(),
             flag_vers: Some("0.4.2".to_owned()),
             ..Args::default()
         };

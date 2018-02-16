@@ -40,7 +40,7 @@ where
         println!("Status code: {:?}", call.status);
         println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
         println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
-        panic!("cargo-add failed to execute")
+        panic!("cargo-{} failed to execute", subcommand_name)
     }
 }
 
