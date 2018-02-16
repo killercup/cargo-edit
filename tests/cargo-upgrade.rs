@@ -110,10 +110,7 @@ fn upgrade_specified_only() {
         dependencies["versioned-package"].as_str(),
         Some("versioned-package--CURRENT_VERSION_TEST")
     );
-    assert_eq!(
-        dependencies["versioned-package-2"].as_str(),
-        Some("0.1.1")
-    );
+    assert_eq!(dependencies["versioned-package-2"].as_str(), Some("0.1.1"));
 }
 
 #[test]
