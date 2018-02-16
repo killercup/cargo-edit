@@ -48,7 +48,6 @@ impl<'a> CrateName<'a> {
             semver::VersionReq::parse(version).chain_err(|| "Invalid crate version requirement")?;
 
             Ok(Some(Dependency::new(name).set_version(version)))
-        // Ok(Some((name, version)))
         } else {
             Ok(None)
         }
