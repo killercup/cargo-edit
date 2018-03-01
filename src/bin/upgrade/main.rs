@@ -182,7 +182,9 @@ impl Manifests {
                 .chain_err(|| "Failed to print dry run message")?;
         }
 
-        for (mut manifest, _) in self.0 {
+        for (mut manifest, package) in self.0 {
+            println!("{}:", package.name);
+
             for (name, version) in &upgraded_deps.0 {
                 manifest.upgrade(&Dependency::new(name).set_version(version), dry_run)?;
             }
