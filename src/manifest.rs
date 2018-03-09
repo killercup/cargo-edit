@@ -117,7 +117,7 @@ fn print_upgrade_if_necessary(
         buffer
             .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
             .chain_err(|| "Failed to set output colour")?;
-        write!(&mut buffer, "Upgrading ").chain_err(|| "Failed to write upgrade message")?;
+        write!(&mut buffer, "    Upgrading ").chain_err(|| "Failed to write upgrade message")?;
         buffer
             .set_color(&ColorSpec::new())
             .chain_err(|| "Failed to clear output colour")?;
