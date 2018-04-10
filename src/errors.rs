@@ -8,6 +8,11 @@ error_chain!{
         InvalidCratesIoJson {
             description("Invalid JSON (the crate may not exist)")
         }
+        /// No crate by that name exists
+        NoCrate(name: String) {
+            description("The crate could not be found on crates.io.")
+            display("The crate `{}` could not be found on crates.io.", name)
+        }
         /// No versions available
         NoVersionsAvailable {
             description("No available versions exist. Either all were yanked \
