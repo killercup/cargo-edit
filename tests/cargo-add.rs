@@ -821,6 +821,7 @@ fn add_prints_message_for_build_deps() {
 }
 
 #[test]
+#[cfg(feature = "test-external-apis")]
 fn add_typo() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
