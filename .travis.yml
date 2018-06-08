@@ -6,9 +6,9 @@ rust:
 - stable
 matrix:
   include:
-  - rust: "1.25.0"
+  - rust: "1.26.2"
     before_script:
-    - rustup component add rustfmt-preview --toolchain 1.25.0
+    - rustup component add rustfmt-preview --toolchain 1.26.2
     script:
     - rustfmt -V
     - cargo fmt -- --write-mode diff

@@ -7,8 +7,8 @@ use std::{env, str};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use toml_edit;
 
-use errors::*;
 use dependency::Dependency;
+use errors::*;
 
 const MANIFEST_FILENAME: &str = "Cargo.toml";
 
@@ -404,8 +404,8 @@ impl LocalManifest {
 
 #[cfg(test)]
 mod tests {
-    use dependency::Dependency;
     use super::*;
+    use dependency::Dependency;
     use toml_edit;
 
     #[test]

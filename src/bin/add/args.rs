@@ -153,8 +153,8 @@ impl Default for Args {
 
 #[cfg(test)]
 mod tests {
-    use cargo_edit::Dependency;
     use super::*;
+    use cargo_edit::Dependency;
 
     #[test]
     fn test_dependency_parsing() {

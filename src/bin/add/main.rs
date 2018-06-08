@@ -1,7 +1,9 @@
 //! `cargo add`
-#![warn(missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts,
-        trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
-        unused_qualifications)]
+#![warn(
+    missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts,
+    trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
+    unused_qualifications
+)]
 
 extern crate atty;
 extern crate docopt;
@@ -12,8 +14,8 @@ extern crate semver;
 extern crate serde_derive;
 extern crate termcolor;
 
-use std::process;
 use std::io::Write;
+use std::process;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 extern crate cargo_edit;
