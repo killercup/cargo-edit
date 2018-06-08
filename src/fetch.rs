@@ -1,4 +1,4 @@
-use {Dependency, Manifest};
+use env_proxy;
 use regex::Regex;
 use reqwest;
 use semver;
@@ -7,7 +7,7 @@ use std::env;
 use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
-use env_proxy;
+use {Dependency, Manifest};
 
 use errors::*;
 
@@ -20,8 +20,10 @@ struct Versions {
 
 #[derive(Deserialize)]
 struct CrateVersion {
-    #[serde(rename = "crate")] name: String,
-    #[serde(rename = "num")] version: semver::Version,
+    #[serde(rename = "crate")]
+    name: String,
+    #[serde(rename = "num")]
+    version: semver::Version,
     yanked: bool,
 }
 
@@ -45,7 +47,7 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
         return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
 
-    let crate_versions = fetch_cratesio(&format!("/crates/{}", crate_name))?;
+    let crate_versions = fetch_cratesio(crate_name)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 
@@ -184,13 +186,29 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     assert!(read_latest_version(&versions, false).is_err());
 }
 
-fn fetch_cratesio(path: &str) -> Result<Versions> {
-    let url = format!("{host}/api/v1{path}", host = REGISTRY_HOST, path = path);
-    let response =
-        get_with_timeout(&url, get_default_timeout()).chain_err(|| ErrorKind::FetchVersionFailure)?;
-    let versions: Versions =
-        json::from_reader(response).chain_err(|| ErrorKind::InvalidCratesIoJson)?;
-    Ok(versions)
+fn fetch_cratesio(crate_name: &str) -> Result<Versions> {
+    let url = format!(
+        "{host}/api/v1/crates/{crate_name}",
+        host = REGISTRY_HOST,
+        crate_name = crate_name
+    );
+
+    match get_with_timeout(&url, get_default_timeout()) {
+        Ok(response) => {
+            Ok(json::from_reader(response).chain_err(|| ErrorKind::InvalidCratesIoJson)?)
+        }
+        Err(e) => {
+            let not_found_error = e.status() == Some(reqwest::StatusCode::NotFound);
+
+            Err(e).chain_err(|| {
+                if not_found_error {
+                    ErrorKind::NoCrate(crate_name.to_string())
+                } else {
+                    ErrorKind::FetchVersionFailure
+                }
+            })
+        }
+    }
 }
 
 fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
@@ -281,7 +299,10 @@ fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Re
         }))
         .build()?;
 
-    client.get(url)?.send()
+    client
+        .get(url)?
+        .send()
+        .and_then(|resp| resp.error_for_status())
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {

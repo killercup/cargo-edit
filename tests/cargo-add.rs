@@ -599,7 +599,6 @@ fn fails_to_add_multiple_optional_dev_dependencies() {
     // dependencies not present beforehand
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"].is_none());
-    assert!(toml["dependencies"].is_none());
 
     // Fails because optional dependencies must be in `dependencies` table.
     execute_command(
@@ -818,5 +817,23 @@ fn add_prints_message_for_build_deps() {
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
         .prints_exactly("Adding hello-world v0.1.0 to build-dependencies")
+        .unwrap();
+}
+
+#[test]
+#[cfg(feature = "test-external-apis")]
+fn add_typo() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "lets_hope_nobody_ever_publishes_this_crate",
+        &format!("--manifest-path={}", manifest),
+    ]).fails_with(1)
+        .prints_error(
+            "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found \
+             on crates.io.",
+        )
         .unwrap();
 }

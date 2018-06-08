@@ -1,7 +1,9 @@
 //! `cargo upgrade`
-#![warn(missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts,
-        trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
-        unused_qualifications)]
+#![warn(
+    missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts,
+    trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
+    unused_qualifications
+)]
 
 extern crate cargo_metadata;
 extern crate docopt;
@@ -12,8 +14,8 @@ extern crate serde_derive;
 extern crate toml_edit;
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::process;
 
 extern crate cargo_edit;

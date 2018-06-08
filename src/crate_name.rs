@@ -1,9 +1,9 @@
 //! Crate name parsing.
 use semver;
 
-use {get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path};
-use Dependency;
 use errors::*;
+use Dependency;
+use {get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path};
 
 /// A crate specifier. This can be a plain name (e.g. `docopt`), a name and a versionreq (e.g.
 /// `docopt@^0.8`), a URL, or a path.
