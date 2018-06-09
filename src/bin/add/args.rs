@@ -85,8 +85,12 @@ impl Args {
 
         let crate_name = CrateName::new(&self.arg_crate);
 
-        let dependency = if let Some(krate) = crate_name.parse_as_version()? {
-            krate
+        let dependency = if let Some(dependency) = crate_name.parse_as_version()? {
+            if let &Some(ref path) = &self.flag_path {
+                dependency.set_path(path.to_str().unwrap())
+            } else {
+                dependency
+            }
         } else if !crate_name.is_url_or_path() {
             let dependency = Dependency::new(&self.arg_crate);
 
