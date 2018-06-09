@@ -40,6 +40,11 @@ pub struct Args {
     pub flag_quiet: bool,
 }
 
+fn parse_version_req(s: &str) -> Result<&str> {
+    semver::VersionReq::parse(s).chain_err(|| "Invalid dependency version requirement")?;
+    Ok(s)
+}
+
 impl Args {
     /// Get dependency section
     pub fn get_section(&self) -> Vec<String> {
@@ -80,29 +85,50 @@ impl Args {
 
         let crate_name = CrateName::new(&self.arg_crate);
 
-        let dependency = if let Some(krate) = crate_name.parse_as_version()? {
-            krate
+        let dependency = if let Some(dependency) = crate_name.parse_as_version()? {
+            if let Some(ref url) = self.flag_git {
+                let url = url.clone();
+                let version = dependency.version().unwrap().to_string();
+                Err(ErrorKind::GitUrlWithVersion(url, version))?;
+            }
+            if let Some(ref path) = self.flag_path {
+                dependency.set_path(path.to_str().unwrap())
+            } else {
+                dependency
+            }
         } else if !crate_name.is_url_or_path() {
             let dependency = Dependency::new(&self.arg_crate);
 
-            if let Some(ref version) = self.flag_vers {
-                semver::VersionReq::parse(version)
-                    .chain_err(|| "Invalid dependency version requirement")?;
-                dependency.set_version(version)
-            } else if let Some(ref repo) = self.flag_git {
-                dependency.set_git(repo)
-            } else if let Some(ref path) = self.flag_path {
-                dependency.set_path(path.to_str().unwrap())
-            } else {
-                let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease)?;
-                let v = format!(
-                    "{prefix}{version}",
-                    prefix = self.get_upgrade_prefix().unwrap_or(""),
-                    // If version is unavailable `get_latest_dependency` must have
-                    // returned `Err(FetchVersionError::GetVersion)`
-                    version = dep.version().unwrap_or_else(|| unreachable!())
-                );
-                dep.set_version(&v)
+            match (&self.flag_git, &self.flag_vers, &self.flag_path) {
+                (&Some(ref repo), &Some(ref version), _) => {
+                    let repo = repo.clone();
+                    let version = version.to_string();
+                    return Err(ErrorKind::GitUrlWithVersion(repo, version))?;
+                }
+                (&Some(ref repo), &None, &Some(ref path)) => {
+                    let repo = repo.clone();
+                    let path = path.to_string_lossy().to_string();
+                    return Err(ErrorKind::GitUrlWithPath(repo, path))?;
+                }
+                (&Some(ref repo), &None, &None) => dependency.set_git(repo),
+                (&None, &Some(ref version), &Some(ref path)) => dependency
+                    .set_version(parse_version_req(version)?)
+                    .set_path(path.to_str().unwrap()),
+                (&None, &Some(ref version), &None) => {
+                    dependency.set_version(parse_version_req(version)?)
+                }
+                (&None, &None, &Some(ref path)) => dependency.set_path(path.to_str().unwrap()),
+                (&None, &None, &None) => {
+                    let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease)?;
+                    let v = format!(
+                        "{prefix}{version}",
+                        prefix = self.get_upgrade_prefix().unwrap_or(""),
+                        // If version is unavailable `get_latest_dependency` must have
+                        // returned `Err(FetchVersionError::GetVersion)`
+                        version = dep.version().unwrap_or_else(|| unreachable!())
+                    );
+                    dep.set_version(&v)
+                }
             }
         } else {
             crate_name.parse_crate_name_from_uri()?

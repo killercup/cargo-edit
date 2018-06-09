@@ -53,6 +53,8 @@ $ # Add a non-crates.io crate
 $ cargo add local_experiment --path=lib/trial-and-error/
 $ # Add a non-crates.io crate; the crate name will be found automatically
 $ cargo add lib/trial-and-error/
+$ # Add a crates.io crate with a local development path
+$ cargo add my_helper --vers=1.3.1 --path=lib/my-helper/
 ```
 
 #### Usage
@@ -60,7 +62,7 @@ $ cargo add lib/trial-and-error/
 ```plain
 $ cargo add --help
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [options]
     cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
     cargo add --version
@@ -69,7 +71,8 @@ Specify what crate to add:
     --vers <ver>            Specify the version to grab from the registry (crates.io).
                             You can also specify versions as part of the name, e.g
                             `cargo add bitflags@0.3.2`.
-    --git <uri>             Specify a git repository to download the crate from.
+    --git <uri>             Specify a git repository to download the crate from. This does not work
+                            if either a version or path (or both) is specified.
     --path <uri>            Specify the path the crate should be loaded from.
 
 Specify where to add the crate:

@@ -419,12 +419,119 @@ fn adds_local_source_without_flag() {
 }
 
 #[test]
-fn package_kinds_are_mutually_exclusive() {
+fn adds_local_source_with_version_flag() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(
+        &["add", "local", "--vers", "0.4.3", "--path", "/path/to/pkg"],
+        &manifest,
+    );
+
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["local"];
+    assert_eq!(val["path"].as_str(), Some("/path/to/pkg"));
+    assert_eq!(val["version"].as_str(), Some("0.4.3"));
+
+    // check this works with other flags (e.g. --dev) as well
+    let toml = get_toml(&manifest);
+    assert!(toml["dev-dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "local-dev",
+            "--vers",
+            "0.4.3",
+            "--path",
+            "/path/to/pkg-dev",
+            "--dev",
+        ],
+        &manifest,
+    );
+
+    let toml = get_toml(&manifest);
+    let val = &toml["dev-dependencies"]["local-dev"];
+    assert_eq!(val["path"].as_str(), Some("/path/to/pkg-dev"));
+    assert_eq!(val["version"].as_str(), Some("0.4.3"));
+}
+
+#[test]
+fn adds_local_source_with_inline_version_notation() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(&["add", "local@0.4.3", "--path", "/path/to/pkg"], &manifest);
+
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["local"];
+    assert_eq!(val["path"].as_str(), Some("/path/to/pkg"));
+    assert_eq!(val["version"].as_str(), Some("0.4.3"));
+
+    // check this works with other flags (e.g. --dev) as well
+    let toml = get_toml(&manifest);
+    assert!(toml["dev-dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "local-dev@0.4.3",
+            "--path",
+            "/path/to/pkg-dev",
+            "--dev",
+        ],
+        &manifest,
+    );
+
+    let toml = get_toml(&manifest);
+    let val = &toml["dev-dependencies"]["local-dev"];
+    assert_eq!(val["path"].as_str(), Some("/path/to/pkg-dev"));
+    assert_eq!(val["version"].as_str(), Some("0.4.3"));
+}
+
+#[test]
+fn git_and_version_flags_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     let call = process::Command::new("target/debug/cargo-add")
         .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--vers", "0.4.3"])
+        .args(&["--git", "git://git.git"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
+
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest).root));
+}
+
+#[test]
+fn git_flag_and_inline_version_are_mutually_exclusive() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    let call = process::Command::new("target/debug/cargo-add")
+        .args(&["add", &format!("{}@0.4.3", BOGUS_CRATE_NAME)])
+        .args(&["--git", "git://git.git"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
+
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest).root));
+}
+
+#[test]
+fn git_and_path_are_mutually_exclusive() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    let call = process::Command::new("target/debug/cargo-add")
+        .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--git", "git://git.git"])
         .args(&["--path", "/path/here"])
         .arg(format!("--manifest-path={}", &manifest))
@@ -730,7 +837,7 @@ fn no_argument() {
             r"Invalid arguments.
 
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [options]
     cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
     cargo add --version",
@@ -746,7 +853,7 @@ fn unknown_flags() {
             r"Unknown flag: '--flag'
 
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [options]
     cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
     cargo add --version",

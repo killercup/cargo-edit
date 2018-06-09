@@ -26,6 +26,18 @@ use args::Args;
 
 mod errors {
     error_chain!{
+        errors {
+            /// Specified a dependency with both a git URL and a version.
+            GitUrlWithVersion(git: String, version: String) {
+                description("Specified git URL with version")
+                display("Cannot specify a git URL (`{}`) with a version (`{}`).", git, version)
+            }
+            /// Specified a dependency with both a git URL and a path.
+            GitUrlWithPath(git: String, path: String) {
+                description("Specified git URL with path")
+                display("Cannot specify a git URL (`{}`) with a path (`{}`).", git, path)
+            }
+        }
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
         }
@@ -38,7 +50,7 @@ use errors::*;
 
 static USAGE: &'static str = r#"
 Usage:
-    cargo add <crate> [--dev|--build|--optional] [--vers=<ver>|--git=<uri>|--path=<uri>] [options]
+    cargo add <crate> [--dev|--build|--optional] [options]
     cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
     cargo add --version
@@ -47,7 +59,8 @@ Specify what crate to add:
     --vers <ver>            Specify the version to grab from the registry (crates.io).
                             You can also specify versions as part of the name, e.g
                             `cargo add bitflags@0.3.2`.
-    --git <uri>             Specify a git repository to download the crate from.
+    --git <uri>             Specify a git repository to download the crate from. This does not work
+                            if either a version or path (or both) is specified.
     --path <uri>            Specify the path the crate should be loaded from.
 
 Specify where to add the crate:
