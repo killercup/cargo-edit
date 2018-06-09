@@ -26,7 +26,7 @@ impl Default for Dependency {
             source: DependencySource::Version {
                 version: None,
                 path: None,
-            }
+            },
         }
     }
 }
@@ -69,7 +69,7 @@ impl Dependency {
         };
         self.source = DependencySource::Version {
             version: old_version,
-            path: Some(path.into())
+            path: Some(path.into()),
         };
         self
     }

@@ -426,7 +426,10 @@ fn adds_local_source_with_version_flag() {
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"].is_none());
 
-    execute_command(&["add", "local", "--vers", "0.4.3", "--path", "/path/to/pkg"], &manifest);
+    execute_command(
+        &["add", "local", "--vers", "0.4.3", "--path", "/path/to/pkg"],
+        &manifest,
+    );
 
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["local"];
@@ -438,7 +441,15 @@ fn adds_local_source_with_version_flag() {
     assert!(toml["dev-dependencies"].is_none());
 
     execute_command(
-        &["add", "local-dev", "--vers", "0.4.3", "--path", "/path/to/pkg-dev", "--dev"],
+        &[
+            "add",
+            "local-dev",
+            "--vers",
+            "0.4.3",
+            "--path",
+            "/path/to/pkg-dev",
+            "--dev",
+        ],
         &manifest,
     );
 
@@ -468,7 +479,13 @@ fn adds_local_source_with_inline_version_notation() {
     assert!(toml["dev-dependencies"].is_none());
 
     execute_command(
-        &["add", "local-dev@0.4.3", "--path", "/path/to/pkg-dev", "--dev"],
+        &[
+            "add",
+            "local-dev@0.4.3",
+            "--path",
+            "/path/to/pkg-dev",
+            "--dev",
+        ],
         &manifest,
     );
 

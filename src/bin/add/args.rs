@@ -104,18 +104,19 @@ impl Args {
                     let repo = repo.clone();
                     let version = version.to_string();
                     return Err(ErrorKind::GitUrlWithVersion(repo, version))?;
-                },
+                }
                 (&Some(ref repo), &None, &Some(ref path)) => {
                     let repo = repo.clone();
                     let path = path.to_string_lossy().to_string();
                     return Err(ErrorKind::GitUrlWithPath(repo, path))?;
-                },
+                }
                 (&Some(ref repo), &None, &None) => dependency.set_git(repo),
                 (&None, &Some(ref version), &Some(ref path)) => dependency
                     .set_version(parse_version_req(version)?)
                     .set_path(path.to_str().unwrap()),
-                (&None, &Some(ref version), &None) => dependency
-                    .set_version(parse_version_req(version)?),
+                (&None, &Some(ref version), &None) => {
+                    dependency.set_version(parse_version_req(version)?)
+                }
                 (&None, &None, &Some(ref path)) => dependency.set_path(path.to_str().unwrap()),
                 (&None, &None, &None) => {
                     let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease)?;
