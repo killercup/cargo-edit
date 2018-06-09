@@ -86,12 +86,12 @@ impl Args {
         let crate_name = CrateName::new(&self.arg_crate);
 
         let dependency = if let Some(dependency) = crate_name.parse_as_version()? {
-            if let &Some(ref url) = &self.flag_git {
+            if let Some(ref url) = self.flag_git {
                 let url = url.clone();
                 let version = dependency.version().unwrap().to_string();
                 Err(ErrorKind::GitUrlWithVersion(url, version))?;
             }
-            if let &Some(ref path) = &self.flag_path {
+            if let Some(ref path) = self.flag_path {
                 dependency.set_path(path.to_str().unwrap())
             } else {
                 dependency
