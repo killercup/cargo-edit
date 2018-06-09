@@ -479,6 +479,53 @@ fn adds_local_source_with_inline_version_notation() {
 }
 
 #[test]
+fn git_and_version_flags_are_mutually_exclusive() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    let call = process::Command::new("target/debug/cargo-add")
+        .args(&["add", BOGUS_CRATE_NAME])
+        .args(&["--vers", "0.4.3"])
+        .args(&["--git", "git://git.git"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
+
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest).root));
+}
+
+#[test]
+fn git_flag_and_inline_version_are_mutually_exclusive() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    let call = process::Command::new("target/debug/cargo-add")
+        .args(&["add", &format!("{}@0.4.3", BOGUS_CRATE_NAME)])
+        .args(&["--git", "git://git.git"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
+
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest).root));
+}
+
+#[test]
+fn git_and_path_are_mutually_exclusive() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    let call = process::Command::new("target/debug/cargo-add")
+        .args(&["add", BOGUS_CRATE_NAME])
+        .args(&["--git", "git://git.git"])
+        .args(&["--path", "/path/here"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
+
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest).root));
+}
+
+#[test]
 fn adds_optional_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
