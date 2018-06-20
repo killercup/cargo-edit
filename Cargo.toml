@@ -48,12 +48,12 @@ repository = "killercup/cargo-edit"
 repository = "killercup/cargo-edit"
 
 [dependencies]
-cargo_metadata = "0.4.1"
-docopt = "0.8"
+cargo_metadata = "0.5.6"
+docopt = "1.0"
 env_proxy = "0.2"
 error-chain = "0.11.0"
 pad = "0.1"
-regex = "0.2"
+regex = "1.0"
 reqwest = "0.8"
 serde = "1.0"
 serde_derive = "1.0"
@@ -64,7 +64,7 @@ atty = "0.2"
 
 [dependencies.semver]
 features = ["serde"]
-version = "0.7"
+version = "0.9"
 
 [dev-dependencies]
 assert_cli = "0.6"
