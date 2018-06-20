@@ -9,7 +9,8 @@ fn invalid_manifest() {
         "--manifest-path=tests/fixtures/manifest-invalid/Cargo.toml.sample",
     ]).fails_with(1)
         .and()
-        .stderr().is(
+        .stderr()
+        .is(
             r#"Command failed due to unhandled error: Unable to parse Cargo.toml
 
 Caused by: Manifest not valid TOML

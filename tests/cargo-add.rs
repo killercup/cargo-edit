@@ -14,7 +14,8 @@ const BOGUS_CRATE_NAME: &str = "tests-will-break-if-there-is-ever-a-real-package
 /// Check 'failure' deps are not present
 fn no_manifest_failures(manifest: &toml_edit::Item) -> bool {
     let no_failure_key_in = |section| manifest[section][BOGUS_CRATE_NAME].is_none();
-    no_failure_key_in("dependencies") && no_failure_key_in("dev-dependencies")
+    no_failure_key_in("dependencies")
+        && no_failure_key_in("dev-dependencies")
         && no_failure_key_in("build-dependencies")
 }
 
@@ -582,12 +583,16 @@ fn adds_multiple_optional_dependencies() {
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
-    assert!(&toml["dependencies"]["my-package1"]["optional"]
-        .as_bool()
-        .expect("optional not a bool"));
-    assert!(&toml["dependencies"]["my-package2"]["optional"]
-        .as_bool()
-        .expect("optional not a bool"));
+    assert!(
+        &toml["dependencies"]["my-package1"]["optional"]
+            .as_bool()
+            .expect("optional not a bool")
+    );
+    assert!(
+        &toml["dependencies"]["my-package2"]["optional"]
+            .as_bool()
+            .expect("optional not a bool")
+    );
 }
 
 #[test]
@@ -659,7 +664,8 @@ fn adds_dependency_normalized_name() {
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
         .and()
-        .stdout().contains("WARN: Added `linked-hash-map` instead of `linked_hash_map`")
+        .stdout()
+        .contains("WARN: Added `linked-hash-map` instead of `linked_hash_map`")
         .unwrap();
 
     // dependency present afterwards
@@ -835,15 +841,14 @@ fn no_argument() {
     assert_cli::Assert::command(&["target/debug/cargo-add", "add"])
         .fails_with(1)
         .and()
-        .stderr().is(
-            r"Invalid arguments.
+        .stderr()
+        .is(r"Invalid arguments.
 
 Usage:
     cargo add <crate> [--dev|--build|--optional] [options]
     cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
-    cargo add --version",
-        )
+    cargo add --version")
         .unwrap();
 }
 
@@ -852,15 +857,14 @@ fn unknown_flags() {
     assert_cli::Assert::command(&["target/debug/cargo-add", "add", "foo", "--flag"])
         .fails_with(1)
         .and()
-        .stderr().is(
-            r"Unknown flag: '--flag'
+        .stderr()
+        .is(r"Unknown flag: '--flag'
 
 Usage:
     cargo add <crate> [--dev|--build|--optional] [options]
     cargo add <crates>... [--dev|--build|--optional] [options]
     cargo add (-h|--help)
-    cargo add --version",
-        )
+    cargo add --version")
         .unwrap();
 }
 
@@ -876,7 +880,8 @@ fn add_prints_message() {
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
         .and()
-        .stdout().is("Adding docopt v0.6.0 to dependencies")
+        .stdout()
+        .is("Adding docopt v0.6.0 to dependencies")
         .unwrap();
 }
 
@@ -894,7 +899,8 @@ fn add_prints_message_with_section() {
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
         .and()
-        .stdout().is("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
+        .stdout()
+        .is("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
         .unwrap();
 }
 
@@ -912,7 +918,8 @@ fn add_prints_message_for_dev_deps() {
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
         .and()
-        .stdout().is("Adding docopt v0.8.0 to dev-dependencies")
+        .stdout()
+        .is("Adding docopt v0.8.0 to dev-dependencies")
         .unwrap();
 }
 
@@ -930,7 +937,8 @@ fn add_prints_message_for_build_deps() {
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
         .and()
-        .stdout().is("Adding hello-world v0.1.0 to build-dependencies")
+        .stdout()
+        .is("Adding hello-world v0.1.0 to build-dependencies")
         .unwrap();
 }
 
@@ -946,7 +954,8 @@ fn add_typo() {
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
         .and()
-        .stderr().contains(
+        .stderr()
+        .contains(
             "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found \
              on crates.io.",
         )

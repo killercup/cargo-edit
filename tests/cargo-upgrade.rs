@@ -235,7 +235,8 @@ fn detect_workspace() {
         &root_manifest,
     ]).fails_with(1)
         .and()
-        .stderr().is(
+        .stderr()
+        .is(
             "Command failed due to unhandled error: Found virtual manifest, but this command \
              requires running against an actual package in this workspace. Try adding `--all`.",
         )
@@ -253,7 +254,8 @@ fn invalid_manifest() {
         &manifest,
     ]).fails_with(1)
         .and()
-        .stderr().is(
+        .stderr()
+        .is(
             "Command failed due to unhandled error: Unable to parse Cargo.toml
 
 Caused by: Manifest not valid TOML
@@ -279,7 +281,8 @@ fn invalid_root_manifest() {
         &manifest,
     ]).fails_with(1)
         .and()
-        .stderr().contains("Command failed due to unhandled error: Failed to get workspace metadata")
+        .stderr()
+        .contains("Command failed due to unhandled error: Failed to get workspace metadata")
         .unwrap();
 }
 
@@ -288,14 +291,13 @@ fn unknown_flags() {
     assert_cli::Assert::command(&["target/debug/cargo-upgrade", "upgrade", "foo", "--flag"])
         .fails_with(1)
         .and()
-        .stderr().is(
-            "Unknown flag: '--flag'
+        .stderr()
+        .is("Unknown flag: '--flag'
 
 Usage:
     cargo upgrade [options] [<dependency>]...
     cargo upgrade (-h | --help)
-    cargo upgrade (-V | --version)",
-        )
+    cargo upgrade (-V | --version)")
         .unwrap();
 }
 
@@ -310,6 +312,7 @@ fn upgrade_prints_messages() {
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
         .and()
-        .stdout().contains("docopt v0.8 -> v")
+        .stdout()
+        .contains("docopt v0.8 -> v")
         .unwrap();
 }

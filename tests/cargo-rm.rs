@@ -101,7 +101,8 @@ fn invalid_section() {
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
         .and()
-        .stderr().is(
+        .stderr()
+        .is(
             "Command failed due to unhandled error: The table `build-dependencies` could not be \
              found.",
         )
@@ -120,7 +121,8 @@ fn invalid_dependency_in_section() {
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
         .and()
-        .stderr().is(
+        .stderr()
+        .is(
             "Command failed due to unhandled error: The dependency `semver` could not be found in \
              `dev-dependencies`.",
         )
@@ -132,14 +134,13 @@ fn no_argument() {
     assert_cli::Assert::command(&["target/debug/cargo-rm", "rm"])
         .fails_with(1)
         .and()
-        .stderr().is(
-            r"Invalid arguments.
+        .stderr()
+        .is(r"Invalid arguments.
 
 Usage:
     cargo rm <crate> [--dev|--build] [options]
     cargo rm (-h|--help)
-    cargo rm --version",
-        )
+    cargo rm --version")
         .unwrap();
 }
 
@@ -148,14 +149,13 @@ fn unknown_flags() {
     assert_cli::Assert::command(&["target/debug/cargo-rm", "rm", "foo", "--flag"])
         .fails_with(1)
         .and()
-        .stderr().is(
-            r"Unknown flag: '--flag'
+        .stderr()
+        .is(r"Unknown flag: '--flag'
 
 Usage:
     cargo rm <crate> [--dev|--build] [options]
     cargo rm (-h|--help)
-    cargo rm --version",
-        )
+    cargo rm --version")
         .unwrap();
 }
 
@@ -170,6 +170,7 @@ fn rm_prints_message() {
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
         .and()
-        .stdout().is("Removing semver from dependencies")
+        .stdout()
+        .is("Removing semver from dependencies")
         .unwrap();
 }
