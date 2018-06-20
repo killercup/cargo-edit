@@ -67,8 +67,8 @@ features = ["serde"]
 version = "0.7"
 
 [dev-dependencies]
-assert_cli = "0.4.0"
-pretty_assertions = "0.2.1"
+assert_cli = "0.6"
+pretty_assertions = "0.5"
 tempdir = "0.3"
 
 [features]

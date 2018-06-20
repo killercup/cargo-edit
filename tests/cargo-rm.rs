@@ -80,7 +80,8 @@ fn invalid_dependency() {
         "invalid_dependency_name",
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
-        .prints_error_exactly(
+        .and()
+        .stderr().is(
             "Command failed due to unhandled error: The dependency `invalid_dependency_name` could \
              not be found in `dependencies`.",
         )
@@ -99,7 +100,8 @@ fn invalid_section() {
         "--build",
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
-        .prints_error_exactly(
+        .and()
+        .stderr().is(
             "Command failed due to unhandled error: The table `build-dependencies` could not be \
              found.",
         )
@@ -117,7 +119,8 @@ fn invalid_dependency_in_section() {
         "--dev",
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
-        .prints_error_exactly(
+        .and()
+        .stderr().is(
             "Command failed due to unhandled error: The dependency `semver` could not be found in \
              `dev-dependencies`.",
         )
@@ -128,7 +131,8 @@ fn invalid_dependency_in_section() {
 fn no_argument() {
     assert_cli::Assert::command(&["target/debug/cargo-rm", "rm"])
         .fails_with(1)
-        .prints_error_exactly(
+        .and()
+        .stderr().is(
             r"Invalid arguments.
 
 Usage:
@@ -143,7 +147,8 @@ Usage:
 fn unknown_flags() {
     assert_cli::Assert::command(&["target/debug/cargo-rm", "rm", "foo", "--flag"])
         .fails_with(1)
-        .prints_error_exactly(
+        .and()
+        .stderr().is(
             r"Unknown flag: '--flag'
 
 Usage:
@@ -164,6 +169,7 @@ fn rm_prints_message() {
         "semver",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints_exactly("Removing semver from dependencies")
+        .and()
+        .stdout().is("Removing semver from dependencies")
         .unwrap();
 }

@@ -658,7 +658,8 @@ fn adds_dependency_normalized_name() {
         "linked_hash_map",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints("WARN: Added `linked-hash-map` instead of `linked_hash_map`")
+        .and()
+        .stdout().contains("WARN: Added `linked-hash-map` instead of `linked_hash_map`")
         .unwrap();
 
     // dependency present afterwards
@@ -833,7 +834,8 @@ versioned-package = "versioned-package--CURRENT_VERSION_TEST"
 fn no_argument() {
     assert_cli::Assert::command(&["target/debug/cargo-add", "add"])
         .fails_with(1)
-        .prints_error_exactly(
+        .and()
+        .stderr().is(
             r"Invalid arguments.
 
 Usage:
@@ -849,7 +851,8 @@ Usage:
 fn unknown_flags() {
     assert_cli::Assert::command(&["target/debug/cargo-add", "add", "foo", "--flag"])
         .fails_with(1)
-        .prints_error_exactly(
+        .and()
+        .stderr().is(
             r"Unknown flag: '--flag'
 
 Usage:
@@ -872,7 +875,8 @@ fn add_prints_message() {
         "--vers=0.6.0",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints_exactly("Adding docopt v0.6.0 to dependencies")
+        .and()
+        .stdout().is("Adding docopt v0.6.0 to dependencies")
         .unwrap();
 }
 
@@ -889,7 +893,8 @@ fn add_prints_message_with_section() {
         "--vers=0.1.0",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints_exactly("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
+        .and()
+        .stdout().is("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
         .unwrap();
 }
 
@@ -906,7 +911,8 @@ fn add_prints_message_for_dev_deps() {
         "0.8.0",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints_exactly("Adding docopt v0.8.0 to dev-dependencies")
+        .and()
+        .stdout().is("Adding docopt v0.8.0 to dev-dependencies")
         .unwrap();
 }
 
@@ -923,7 +929,8 @@ fn add_prints_message_for_build_deps() {
         "0.1.0",
         &format!("--manifest-path={}", manifest),
     ]).succeeds()
-        .prints_exactly("Adding hello-world v0.1.0 to build-dependencies")
+        .and()
+        .stdout().is("Adding hello-world v0.1.0 to build-dependencies")
         .unwrap();
 }
 
@@ -938,7 +945,8 @@ fn add_typo() {
         "lets_hope_nobody_ever_publishes_this_crate",
         &format!("--manifest-path={}", manifest),
     ]).fails_with(1)
-        .prints_error(
+        .and()
+        .stderr().contains(
             "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found \
              on crates.io.",
         )
