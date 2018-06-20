@@ -87,7 +87,7 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new: &Dependency) {
         unreachable!("Invalid old dependency type");
     }
 
-    old_dep.as_inline_table_mut().map(|t| t.fmt());
+    if let Some(t) = old_dep.as_inline_table_mut() { t.fmt() }
 }
 
 /// Print a message if the new dependency version is different from the old one.
@@ -121,9 +121,9 @@ fn print_upgrade_if_necessary(
         buffer
             .set_color(&ColorSpec::new())
             .chain_err(|| "Failed to clear output colour")?;
-        write!(
+        writeln!(
             &mut buffer,
-            "{} v{} -> v{}\n",
+            "{} v{} -> v{}",
             crate_name, old_version, new_version,
         ).chain_err(|| "Failed to write upgrade versions")?;
         bufwtr
@@ -254,7 +254,7 @@ impl Manifest {
         } else {
             // update an existing entry
             merge_dependencies(&mut table[&dep.name], dep);
-            table.as_inline_table_mut().map(|t| t.fmt());
+            if let Some(t) = table.as_inline_table_mut() { t.fmt() }
         }
         Ok(())
     }
@@ -276,7 +276,7 @@ impl Manifest {
             }
             if !dry_run {
                 merge_dependencies(&mut table[&dep.name], dep);
-                table.as_inline_table_mut().map(|t| t.fmt());
+                if let Some(t) = table.as_inline_table_mut() { t.fmt() }
             }
         }
 
@@ -374,7 +374,7 @@ impl LocalManifest {
         let path = path.to_path_buf();
         Ok(LocalManifest {
             manifest: Manifest::open(&Some(path.clone()))?,
-            path: path,
+            path,
         })
     }
 
