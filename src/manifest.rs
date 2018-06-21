@@ -87,7 +87,9 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new: &Dependency) {
         unreachable!("Invalid old dependency type");
     }
 
-    if let Some(t) = old_dep.as_inline_table_mut() { t.fmt() }
+    if let Some(t) = old_dep.as_inline_table_mut() {
+        t.fmt()
+    }
 }
 
 /// Print a message if the new dependency version is different from the old one.
@@ -254,7 +256,9 @@ impl Manifest {
         } else {
             // update an existing entry
             merge_dependencies(&mut table[&dep.name], dep);
-            if let Some(t) = table.as_inline_table_mut() { t.fmt() }
+            if let Some(t) = table.as_inline_table_mut() {
+                t.fmt()
+            }
         }
         Ok(())
     }
@@ -276,7 +280,9 @@ impl Manifest {
             }
             if !dry_run {
                 merge_dependencies(&mut table[&dep.name], dep);
-                if let Some(t) = table.as_inline_table_mut() { t.fmt() }
+                if let Some(t) = table.as_inline_table_mut() {
+                    t.fmt()
+                }
             }
         }
 

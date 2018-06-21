@@ -14,8 +14,7 @@ const BOGUS_CRATE_NAME: &str = "tests-will-break-if-there-is-ever-a-real-package
 /// Check 'failure' deps are not present
 fn no_manifest_failures(manifest: &toml_edit::Item) -> bool {
     let no_failure_key_in = |section| manifest[section][BOGUS_CRATE_NAME].is_none();
-    no_failure_key_in("dependencies")
-        && no_failure_key_in("dev-dependencies")
+    no_failure_key_in("dependencies") && no_failure_key_in("dev-dependencies")
         && no_failure_key_in("build-dependencies")
 }
 
@@ -583,16 +582,12 @@ fn adds_multiple_optional_dependencies() {
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
-    assert!(
-        &toml["dependencies"]["my-package1"]["optional"]
-            .as_bool()
-            .expect("optional not a bool")
-    );
-    assert!(
-        &toml["dependencies"]["my-package2"]["optional"]
-            .as_bool()
-            .expect("optional not a bool")
-    );
+    assert!(&toml["dependencies"]["my-package1"]["optional"]
+        .as_bool()
+        .expect("optional not a bool"));
+    assert!(&toml["dependencies"]["my-package2"]["optional"]
+        .as_bool()
+        .expect("optional not a bool"));
 }
 
 #[test]
