@@ -8,8 +8,10 @@ fn invalid_manifest() {
         "foo",
         "--manifest-path=tests/fixtures/manifest-invalid/Cargo.toml.sample",
     ]).fails_with(1)
-        .prints_error_exactly(
-            r"Command failed due to unhandled error: Unable to parse Cargo.toml
+        .and()
+        .stderr()
+        .is(
+            r#"Command failed due to unhandled error: Unable to parse Cargo.toml
 
 Caused by: Manifest not valid TOML
 Caused by: TOML parse error at line 6, column 7
@@ -17,10 +19,17 @@ Caused by: TOML parse error at line 6, column 7
 6 | key = invalid-value
   |       ^
 Unexpected `i`
-Expected `-`, `+`, `0`, `-`, `+` or `0`
+Expected `digit`, `-`, `+`, `0`, `"""`, `"`, `'''`, `'`, `t`, `f`, `[` or `{`
 expected 4 more elements
 expected 2 more elements
-While parsing an Integer",
+While parsing an Integer
+While parsing a Multiline Basic String
+While parsing a Basic String
+While parsing a Multiline Literal String
+While parsing a Literal String
+While parsing a Time
+While parsing a Date-Time
+While parsing a Float"#,
         )
         .unwrap();
 }

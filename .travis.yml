@@ -12,11 +12,11 @@ matrix:
     script:
     - rustfmt -V
     - cargo fmt -- --write-mode diff
-  - rust: nightly-2018-02-14
+  - rust: nightly-2018-06-19
     before_script:
-    - cargo install clippy --vers 0.0.186
+    - cargo install clippy --vers 0.0.209
     script:
-    - cargo clippy -- -D warnings
+    - cargo clippy -- -D warnings -A renamed_and_removed_lints -A print_literal
   allow_failures:
   - rust: nightly
 before_script:
