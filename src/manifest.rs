@@ -406,20 +406,28 @@ impl LocalManifest {
 
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
     /// dependency, it does nothing.
-    pub fn upgrade(&mut self, dependency: &Dependency, dry_run: bool, only_breaking: bool) -> Result<()> {
+    pub fn upgrade(
+        &mut self,
+        dependency: &Dependency,
+        dry_run: bool,
+        only_breaking: bool,
+    ) -> Result<()> {
         for (table_path, table) in self.get_sections() {
             let table_like = table.as_table_like().expect("Unexpected non-table");
             for (name, old_v) in table_like.iter() {
                 if name == dependency.name {
                     let old_version = get_old_version(old_v);
                     if let Some(old_version) = old_version {
-                        if only_breaking &&
-                        VersionReq::parse(&old_version)
-                            .chain_err(|| ErrorKind::ParseVersion(name.into(), old_version))?
-                            .matches(
-                                &Version::parse(&dependency.version().unwrap())
-                                .chain_err(|| ErrorKind::ParseVersion(name.into(), dependency.version().unwrap().into()))?)
-                        {
+                        if only_breaking
+                            && VersionReq::parse(&old_version)
+                                .chain_err(|| ErrorKind::ParseVersion(name.into(), old_version))?
+                                .matches(&Version::parse(&dependency.version().unwrap())
+                                    .chain_err(|| {
+                                        ErrorKind::ParseVersion(
+                                            name.into(),
+                                            dependency.version().unwrap().into(),
+                                        )
+                                    })?) {
                             continue;
                         }
                     }

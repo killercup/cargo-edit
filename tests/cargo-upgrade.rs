@@ -168,14 +168,8 @@ fn upgrade_major_only() {
 
     // Verify that `docopt` was upgraded, but not `env_proxy`
     let dependencies = &get_toml(&manifest)["dependencies"];
-    assert_eq!(
-        dependencies["test_breaking"].as_str(),
-        Some("0.2.0")
-    );
-    assert_eq!(
-        dependencies["test_nonbreaking"].as_str(),
-        Some("0.1")
-    );
+    assert_eq!(dependencies["test_breaking"].as_str(), Some("0.2.0"));
+    assert_eq!(dependencies["test_nonbreaking"].as_str(), Some("0.1"));
 }
 
 #[test]

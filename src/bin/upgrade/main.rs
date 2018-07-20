@@ -1,9 +1,7 @@
 //! `cargo upgrade`
-#![warn(
-    missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts,
-    trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
-    unused_qualifications
-)]
+#![warn(missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts,
+        trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
+        unused_qualifications)]
 
 extern crate cargo_metadata;
 extern crate docopt;
@@ -81,7 +79,7 @@ struct Args {
     /// `--version`
     flag_version: bool,
     /// `--major-only`
-    flag_major_only: bool
+    flag_major_only: bool,
 }
 
 /// A collection of manifests.
@@ -168,7 +166,12 @@ impl Manifests {
     }
 
     /// Upgrade the manifests on disk following the previously-determined upgrade schema.
-    fn upgrade(self, upgraded_deps: &ActualUpgrades, dry_run: bool, flag_major_only: bool) -> Result<()> {
+    fn upgrade(
+        self,
+        upgraded_deps: &ActualUpgrades,
+        dry_run: bool,
+        flag_major_only: bool,
+    ) -> Result<()> {
         if dry_run {
             let bufwtr = BufferWriter::stdout(ColorChoice::Always);
             let mut buffer = bufwtr.buffer();
@@ -191,7 +194,11 @@ impl Manifests {
             println!("{}:", package.name);
 
             for (name, version) in &upgraded_deps.0 {
-                manifest.upgrade(&Dependency::new(name).set_version(version), dry_run, flag_major_only)?;
+                manifest.upgrade(
+                    &Dependency::new(name).set_version(version),
+                    dry_run,
+                    flag_major_only,
+                )?;
             }
         }
 
