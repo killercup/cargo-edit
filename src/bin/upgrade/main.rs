@@ -86,6 +86,10 @@ struct Args {
     #[structopt(long = "dry-run")]
     dry_run: bool,
 
+    /// Only update a dependency if the new version is semver incompatible.
+    #[structopt(long = "major-only")]
+    major_only: bool,
+
     /// Run without accessing the network
     #[structopt(long = "offline")]
     pub offline: bool,
@@ -239,7 +243,12 @@ impl Manifests {
     }
 
     /// Upgrade the manifests on disk following the previously-determined upgrade schema.
-    fn upgrade(self, upgraded_deps: &ActualUpgrades, dry_run: bool) -> Result<()> {
+    fn upgrade(
+        self,
+        upgraded_deps: &ActualUpgrades,
+        dry_run: bool,
+        only_breaking: bool,
+    ) -> Result<()> {
         if dry_run {
             dry_run_message()?;
         }
@@ -252,7 +261,7 @@ impl Manifests {
                 if let Some(rename) = dep.rename() {
                     new_dep = new_dep.set_rename(&rename);
                 }
-                manifest.upgrade(&new_dep, dry_run)?;
+                manifest.upgrade(&new_dep, dry_run, only_breaking)?;
             }
         }
 
@@ -261,7 +270,7 @@ impl Manifests {
 
     /// Update dependencies in Cargo.toml file(s) to match the corresponding
     /// version in Cargo.lock.
-    fn sync_to_lockfile(self, dry_run: bool) -> Result<()> {
+    fn sync_to_lockfile(self, dry_run: bool, only_breaking: bool) -> Result<()> {
         // Get locked dependencies. For workspaces with multiple Cargo.toml
         // files, there is only a single lockfile, so it suffices to get
         // metadata for any one of Cargo.toml files.
@@ -308,7 +317,11 @@ impl Manifests {
                     None
                 })
             {
-                manifest.upgrade(&Dependency::new(&name).set_version(&version), dry_run)?;
+                manifest.upgrade(
+                    &Dependency::new(&name).set_version(&version),
+                    dry_run,
+                    only_breaking,
+                )?;
             }
         }
         Ok(())
@@ -391,6 +404,7 @@ fn process(args: Args) -> Result<()> {
         all,
         allow_prerelease,
         dry_run,
+        major_only,
         to_lockfile,
         ..
     } = args;
@@ -407,7 +421,7 @@ fn process(args: Args) -> Result<()> {
     }?;
 
     if to_lockfile {
-        manifests.sync_to_lockfile(dry_run)
+        manifests.sync_to_lockfile(dry_run, major_only)
     } else {
         let existing_dependencies = manifests.get_dependencies(dependency)?;
 
@@ -429,7 +443,7 @@ fn process(args: Args) -> Result<()> {
         let upgraded_dependencies =
             existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;
 
-        manifests.upgrade(&upgraded_dependencies, dry_run)
+        manifests.upgrade(&upgraded_dependencies, dry_run, major_only)
     }
 }
 

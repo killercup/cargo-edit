@@ -10,6 +10,8 @@ use toml_edit;
 use crate::dependency::Dependency;
 use crate::errors::*;
 
+use semver::{Version, VersionReq};
+
 const MANIFEST_FILENAME: &str = "Cargo.toml";
 
 /// A Cargo manifest
@@ -90,6 +92,19 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new: &Dependency) {
 
     if let Some(t) = old_dep.as_inline_table_mut() {
         t.fmt()
+    }
+}
+
+fn get_old_version(old_dep: &toml_edit::Item) -> Option<String> {
+    assert!(!old_dep.is_none());
+
+    if str_or_1_len_table(old_dep) {
+        old_dep.as_str().map(|v| v.to_string())
+    } else if old_dep.is_table_like() {
+        let version = old_dep["version"].clone();
+        version.as_str().map(|v| v.to_string())
+    } else {
+        None
     }
 }
 
@@ -414,7 +429,12 @@ impl LocalManifest {
 
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
     /// dependency, it does nothing.
-    pub fn upgrade(&mut self, dependency: &Dependency, dry_run: bool) -> Result<()> {
+    pub fn upgrade(
+        &mut self,
+        dependency: &Dependency,
+        dry_run: bool,
+        only_breaking: bool,
+    ) -> Result<()> {
         for (table_path, table) in self.get_sections() {
             let table_like = table.as_table_like().expect("Unexpected non-table");
             for (name, toml_item) in table_like.iter() {
@@ -423,6 +443,25 @@ impl LocalManifest {
                     .and_then(|t| t.get("package").and_then(|p| p.as_str()))
                     .unwrap_or(name);
                 if dep_name == dependency.name {
+                    let old_version = get_old_version(toml_item);
+                    if let Some(old_version) = old_version {
+                        if only_breaking
+                            && VersionReq::parse(&old_version)
+                                .chain_err(|| ErrorKind::ParseVersion(name.into(), old_version))?
+                                .matches(
+                                    &Version::parse(&dependency.version().unwrap()).chain_err(
+                                        || {
+                                            ErrorKind::ParseVersion(
+                                                name.into(),
+                                                dependency.version().unwrap().into(),
+                                            )
+                                        },
+                                    )?,
+                                )
+                        {
+                            continue;
+                        }
+                    }
                     self.manifest.update_table_named_entry(
                         &table_path,
                         &name,
