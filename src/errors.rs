@@ -47,5 +47,10 @@ error_chain!{
             description("non existent dependency")
             display("The dependency `{}` could not be found in `{}`.", name, table)
         }
+        /// Failed to parse a version for a dependency
+        ParseVersion(version: String, dep: String) {
+            description("Failed to parse a version for a dependency")
+            display("The version `{}` for the dependency `{}` couldn't be parsed", version, dep)
+        }
     }
 }

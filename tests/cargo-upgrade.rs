@@ -158,6 +158,27 @@ fn upgrade_specified_only() {
 }
 
 #[test]
+fn upgrade_major_only() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    execute_command(&["add", "test_breaking", "--vers", "0.1"], &manifest);
+    execute_command(&["add", "test_nonbreaking", "--vers", "0.1"], &manifest);
+
+    execute_command(&["upgrade", "--major-only"], &manifest);
+
+    // Verify that `docopt` was upgraded, but not `env_proxy`
+    let dependencies = &get_toml(&manifest)["dependencies"];
+    assert_eq!(
+        dependencies["test_breaking"].as_str(),
+        Some("0.2.0")
+    );
+    assert_eq!(
+        dependencies["test_nonbreaking"].as_str(),
+        Some("0.1")
+    );
+}
+
+#[test]
 fn fails_to_upgrade_missing_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 

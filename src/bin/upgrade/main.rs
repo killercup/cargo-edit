@@ -48,6 +48,7 @@ Options:
     --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.
     --dry-run               Print changes to be made without making them. Defaults to false.
+    --major-only            Only update a dependency if the new version is semver incompatible.
     -h --help               Show this help page.
     -V --version            Show version.
 
@@ -79,6 +80,8 @@ struct Args {
     flag_dry_run: bool,
     /// `--version`
     flag_version: bool,
+    /// `--major-only`
+    flag_major_only: bool
 }
 
 /// A collection of manifests.
@@ -165,7 +168,7 @@ impl Manifests {
     }
 
     /// Upgrade the manifests on disk following the previously-determined upgrade schema.
-    fn upgrade(self, upgraded_deps: &ActualUpgrades, dry_run: bool) -> Result<()> {
+    fn upgrade(self, upgraded_deps: &ActualUpgrades, dry_run: bool, flag_major_only: bool) -> Result<()> {
         if dry_run {
             let bufwtr = BufferWriter::stdout(ColorChoice::Always);
             let mut buffer = bufwtr.buffer();
@@ -188,7 +191,7 @@ impl Manifests {
             println!("{}:", package.name);
 
             for (name, version) in &upgraded_deps.0 {
-                manifest.upgrade(&Dependency::new(name).set_version(version), dry_run)?;
+                manifest.upgrade(&Dependency::new(name).set_version(version), dry_run, flag_major_only)?;
             }
         }
 
@@ -240,6 +243,7 @@ fn process(args: Args) -> Result<()> {
         flag_all,
         flag_allow_prerelease,
         flag_dry_run,
+        flag_major_only,
         ..
     } = args;
 
@@ -253,7 +257,7 @@ fn process(args: Args) -> Result<()> {
 
     let upgraded_dependencies = existing_dependencies.get_upgraded(flag_allow_prerelease)?;
 
-    manifests.upgrade(&upgraded_dependencies, flag_dry_run)
+    manifests.upgrade(&upgraded_dependencies, flag_dry_run, flag_major_only)
 }
 
 fn main() {

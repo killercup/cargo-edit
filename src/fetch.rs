@@ -41,7 +41,13 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
         let new_version = if flag_allow_prerelease {
             format!("{}--PRERELEASE_VERSION_TEST", crate_name)
         } else {
-            format!("{}--CURRENT_VERSION_TEST", crate_name)
+            if crate_name == "test_breaking" {
+                "0.2.0".to_string()
+            } else if crate_name == "test_nonbreaking" {
+                "0.1.1".to_string()
+            } else {
+                format!("{}--CURRENT_VERSION_TEST", crate_name)
+            }
         };
 
         return Ok(Dependency::new(crate_name).set_version(&new_version));
