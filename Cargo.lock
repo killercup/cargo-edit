@@ -34,7 +34,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "assert_cli"
-version = "0.6.1"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -118,7 +118,7 @@ dependencies = [
 name = "cargo-edit"
 version = "0.3.0"
 dependencies = [
- "assert_cli 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "assert_cli 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "atty 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1366,7 +1366,7 @@ dependencies = [
 "checksum ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
 "checksum arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "a1e964f9e24d588183fcb43503abda40d288c8657dfc27311516ce2f05675aef"
 "checksum ascii 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3ae7d751998c189c1d4468cf0a39bb2eae052a9c58d50ebb3b9591ee3813ad50"
-"checksum assert_cli 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3f731a115f8e5ec3a316c711f220656aec2db609797048aec6ae4d3934f048fe"
+"checksum assert_cli 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a29ab7c0ed62970beb0534d637a8688842506d0ff9157de83286dacd065c8149"
 "checksum atty 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)" = "2fc4a1aa4c24c0718a250f0681885c1af91419d242f29eb8f2ab28502d80dbd1"
 "checksum backtrace 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "dbdd17cd962b570302f5297aea8648d5923e22e555c2ed2d8b2e34eca646bf6d"
 "checksum backtrace-sys 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)" = "bff67d0c06556c0b8e6b5f090f0eac52d950d9dfd1d35ba04e4ca3543eaf6a7e"
