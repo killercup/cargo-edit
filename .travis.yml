@@ -6,17 +6,16 @@ rust:
 - stable
 matrix:
   include:
-  - rust: "1.26.2"
-    before_script:
-    - rustup component add rustfmt-preview --toolchain 1.26.2
+  - rust: nightly-2018-07-22
+    env: CLIPPY=YESPLEASE
     script:
-    - rustfmt -V
-    - cargo fmt -- --write-mode diff
-  - rust: nightly-2018-06-19
-    before_script:
-    - cargo install clippy --vers 0.0.209
+    - rustup component add clippy-preview
+    - cargo clippy -- -D warnings -A print_literal
+  - rust: 1.27.2
+    env: RUSTFMT=YESPLEASE
     script:
-    - cargo clippy -- -D warnings -A renamed_and_removed_lints -A print_literal
+    - rustup component add rustfmt-preview
+    - cargo fmt --all -- --write-mode=diff
   allow_failures:
   - rust: nightly
 before_script:
