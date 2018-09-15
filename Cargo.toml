@@ -41,6 +41,7 @@ required-features = ["rm"]
 name = "cargo-upgrade"
 path = "src/bin/upgrade/main.rs"
 required-features = ["upgrade"]
+
 [badges.appveyor]
 repository = "killercup/cargo-edit"
 
