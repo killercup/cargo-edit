@@ -198,7 +198,7 @@ fn fetch_cratesio(crate_name: &str) -> Result<Versions> {
             Ok(json::from_reader(response).chain_err(|| ErrorKind::InvalidCratesIoJson)?)
         }
         Err(e) => {
-            let not_found_error = e.status() == Some(reqwest::StatusCode::NotFound);
+            let not_found_error = e.status() == Some(reqwest::StatusCode::NOT_FOUND);
 
             Err(e).chain_err(|| {
                 if not_found_error {
