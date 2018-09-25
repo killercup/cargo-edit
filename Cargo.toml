@@ -12,7 +12,7 @@ categories = [
     "development-tools::cargo-plugins",
 ]
 description = "This extends Cargo to allow you to add and remove dependencies by modifying your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo upgrade`."
-documentation = "http://killercup.github.io/cargo-edit/"
+documentation = "https://github.com/killercup/cargo-edit/blob/master/README.md#available-subcommands"
 homepage = "https://github.com/killercup/cargo-edit"
 keywords = [
     "cargo",
@@ -25,7 +25,7 @@ license = "Apache-2.0/MIT"
 name = "cargo-edit"
 readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
-version = "0.3.0"
+version = "0.3.1"
 
 [[bin]]
 name = "cargo-add"

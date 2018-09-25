@@ -19,17 +19,13 @@ Caused by: TOML parse error at line 6, column 7
 6 | key = invalid-value
   |       ^
 Unexpected `i`
-Expected `digit`, `-`, `+`, `0`, `"""`, `"`, `'''`, `'`, `t`, `f`, `[` or `{`
+Expected `digit`, `-` or `+`
 expected 4 more elements
 expected 2 more elements
-While parsing an Integer
-While parsing a Multiline Basic String
-While parsing a Basic String
-While parsing a Multiline Literal String
-While parsing a Literal String
 While parsing a Time
 While parsing a Date-Time
-While parsing a Float"#,
+While parsing a Float
+While parsing an Integer"#,
         )
         .unwrap();
 }
