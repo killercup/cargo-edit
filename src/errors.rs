@@ -47,5 +47,9 @@ error_chain!{
             description("non existent dependency")
             display("The dependency `{}` could not be found in `{}`.", name, table)
         }
+        /// Failed to lookup the API endpoint for the registry
+        LookupApiFailure {
+            description("Failed to lookup the API endpoint for the registry")
+        }
     }
 }

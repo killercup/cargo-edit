@@ -6,12 +6,16 @@
 )]
 
 extern crate atty;
+extern crate cargo;
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
+extern crate git2;
 extern crate semver;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
+extern crate tempdir;
 extern crate termcolor;
 
 use std::io::Write;
@@ -62,6 +66,7 @@ Specify what crate to add:
     --git <uri>             Specify a git repository to download the crate from. This does not work
                             if either a version or path (or both) is specified.
     --path <uri>            Specify the path the crate should be loaded from.
+    --registry <registry>   Specify the crate registry to use.
 
 Specify where to add the crate:
     -D --dev                Add crate as development dependency.

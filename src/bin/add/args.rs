@@ -4,6 +4,10 @@ use cargo_edit::Dependency;
 use cargo_edit::{get_latest_dependency, CrateName};
 use semver;
 use std::path::PathBuf;
+use cargo;
+use git2;
+use serde_json;
+use tempdir;
 
 use errors::*;
 
@@ -38,6 +42,8 @@ pub struct Args {
     pub flag_allow_prerelease: bool,
     /// '--quiet'
     pub flag_quiet: bool,
+    /// '--registry'
+    pub flag_registry: Option<String>,
 }
 
 fn parse_version_req(s: &str) -> Result<&str> {
@@ -68,6 +74,8 @@ impl Args {
 
     /// Build dependencies from arguments
     pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
+        let registry = self.flag_registry.clone();
+
         if !self.arg_crates.is_empty() {
             return self.arg_crates
                 .iter()
@@ -76,8 +84,8 @@ impl Args {
                         if let Some(krate) = CrateName::new(crate_name).parse_as_version()? {
                             krate
                         } else {
-                            get_latest_dependency(crate_name, self.flag_allow_prerelease)?
-                        }.set_optional(self.flag_optional),
+                            get_latest_dependency(crate_name, self.flag_allow_prerelease, registry.clone())?
+                        }.set_optional(self.flag_optional).set_registry(registry.clone())
                     )
                 })
                 .collect();
@@ -119,7 +127,8 @@ impl Args {
                 }
                 (&None, &None, &Some(ref path)) => dependency.set_path(path.to_str().unwrap()),
                 (&None, &None, &None) => {
-                    let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease)?;
+                    let registry = self.flag_registry.clone();
+                    let dep = get_latest_dependency(&self.arg_crate, self.flag_allow_prerelease, registry.clone())?;
                     let v = format!(
                         "{prefix}{version}",
                         prefix = self.get_upgrade_prefix().unwrap_or(""),
@@ -127,7 +136,7 @@ impl Args {
                         // returned `Err(FetchVersionError::GetVersion)`
                         version = dep.version().unwrap_or_else(|| unreachable!())
                     );
-                    dep.set_version(&v)
+                    dep.set_version(&v).set_registry(registry)
                 }
             }
         } else {
@@ -173,6 +182,7 @@ impl Default for Args {
             flag_upgrade: None,
             flag_allow_prerelease: false,
             flag_quiet: false,
+            flag_registry: None,
         }
     }
 }

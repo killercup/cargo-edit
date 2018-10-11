@@ -1,12 +1,16 @@
+use cargo;
 use env_proxy;
+use git2;
 use regex::Regex;
 use reqwest;
 use semver;
 use serde_json as json;
 use std::env;
+use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
+use tempdir;
 use {Dependency, Manifest};
 
 use errors::*;
@@ -27,6 +31,11 @@ struct CrateVersion {
     yanked: bool,
 }
 
+#[derive(Deserialize)]
+struct RegistryConfig {
+    api: String,
+}
+
 /// Query latest version from crates.io
 ///
 /// The latest version will be returned as a `Dependency`. This will fail, when
@@ -34,7 +43,7 @@ struct CrateVersion {
 /// - there is no Internet connection,
 /// - the response from crates.io is an error or in an incorrect format,
 /// - or when a crate with the given name does not exist on crates.io.
-pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> Result<Dependency> {
+pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool, registry: Option<String>) -> Result<Dependency> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
@@ -47,7 +56,9 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
         return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
 
-    let crate_versions = fetch_cratesio(crate_name)?;
+    let api = get_registry_api(registry)?;
+
+    let crate_versions = fetch_crate_versions(&api, crate_name)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 
@@ -56,6 +67,32 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
     }
 
     Ok(dep)
+}
+
+fn get_registry_api(registry: Option<String>) -> Result<String> {
+
+    let tmp_dir = tempdir::TempDir::new("registry").chain_err(|| ErrorKind::LookupApiFailure)?;
+
+    let cargo_config = cargo::Config::default().map_err(|_err| ErrorKind::LookupApiFailure)?;
+
+    // First lets work out what the git index is for the registry
+    let index = if let Some(registry) = registry {    
+        cargo_config.get_registry_index(&registry).map_err(|_err| ErrorKind::LookupApiFailure)?.to_string()
+    } else {
+        match cargo_config.get_string("registry.index").map_err(|_err| ErrorKind::LookupApiFailure)? {
+            None => return Ok(REGISTRY_HOST.to_string()),
+            Some(index) => index.val,
+        }
+    };
+
+    // Now to clone the registry
+    let _repo = git2::Repository::clone(&index, tmp_dir.path().clone()).chain_err(|| ErrorKind::LookupApiFailure)?;
+
+    let file = File::open(tmp_dir.path().join("config.json")).chain_err(|| ErrorKind::LookupApiFailure)?;
+
+    let registry_config : RegistryConfig = json::from_reader(file).chain_err(|| ErrorKind::LookupApiFailure)?;
+
+    Ok(registry_config.api)
 }
 
 // Checks whether a version object is a stable release
@@ -186,10 +223,10 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     assert!(read_latest_version(&versions, false).is_err());
 }
 
-fn fetch_cratesio(crate_name: &str) -> Result<Versions> {
+fn fetch_crate_versions(api: &str, crate_name: &str) -> Result<Versions> {
     let url = format!(
-        "{host}/api/v1/crates/{crate_name}",
-        host = REGISTRY_HOST,
+        "{api}/api/v1/crates/{crate_name}",
+        api = api,
         crate_name = crate_name
     );
 

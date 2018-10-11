@@ -5,12 +5,16 @@
     unused_qualifications
 )]
 
+extern crate cargo;
 extern crate cargo_metadata;
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
+extern crate git2;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
+extern crate tempdir;
 extern crate toml_edit;
 
 use std::collections::HashMap;
@@ -213,7 +217,7 @@ impl DesiredUpgrades {
                 if let Some(v) = version {
                     Ok((name, v))
                 } else {
-                    get_latest_dependency(&name, allow_prerelease)
+                    get_latest_dependency(&name, allow_prerelease, None)
                         .map(|new_dep| {
                             (
                                 name,

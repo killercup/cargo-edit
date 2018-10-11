@@ -16,6 +16,7 @@ pub struct Dependency {
     pub name: String,
     optional: bool,
     source: DependencySource,
+    registry: Option<String>,
 }
 
 impl Default for Dependency {
@@ -27,6 +28,7 @@ impl Default for Dependency {
                 version: None,
                 path: None,
             },
+            registry: None,
         }
     }
 }
@@ -80,6 +82,12 @@ impl Dependency {
         self
     }
 
+    /// Set dependency to a given repository
+    pub fn set_registry(mut self, registry: Option<String>) -> Dependency {
+        self.registry = registry;
+        self
+    }
+
     /// Get version of dependency
     pub fn version(&self) -> Option<&str> {
         if let DependencySource::Version {
@@ -99,7 +107,7 @@ impl Dependency {
     /// or the path/git repository as an `InlineTable`.
     /// (If the dependency is set as `optional`, an `InlineTable` is returned in any case.)
     pub fn to_toml(&self) -> (String, toml_edit::Item) {
-        let data: toml_edit::Item = match (self.optional, self.source.clone()) {
+        let data: toml_edit::Item = match (self.optional, self.source.clone(), self.registry.clone()) {
             // Extra short when version flag only
             (
                 false,
@@ -107,9 +115,10 @@ impl Dependency {
                     version: Some(v),
                     path: None,
                 },
+                None,
             ) => toml_edit::value(v),
             // Other cases are represented as an inline table
-            (optional, source) => {
+            (optional, source, registry) => {
                 let mut data = toml_edit::InlineTable::default();
 
                 match source {
@@ -119,6 +128,9 @@ impl Dependency {
                         }
                         if let Some(p) = path {
                             data.get_or_insert("path", p);
+                        }
+                        if let Some(r) = registry {
+                            data.get_or_insert("registry", r);
                         }
                     }
                     DependencySource::Git(v) => {

@@ -1,31 +1,23 @@
 [package]
-authors = [
-    "Without Boats <lee@libertad.ucsd.edu>",
-    "Pascal Hertleif <killercup@gmail.com>",
-    "Sebastian Garrido <sebasgarcep@gmail.com>",
-    "Jonas Platte <mail@jonasplatte.de>",
-    "Benjamin Gill <git@bgill.eu>",
-    "Andronik Ordian <write@reusable.software>",
-]
-categories = [
-    "development-tools",
-    "development-tools::cargo-plugins",
-]
+authors = ["Without Boats <lee@libertad.ucsd.edu>", "Pascal Hertleif <killercup@gmail.com>", "Sebastian Garrido <sebasgarcep@gmail.com>", "Jonas Platte <mail@jonasplatte.de>", "Benjamin Gill <git@bgill.eu>", "Andronik Ordian <write@reusable.software>"]
+categories = ["development-tools", "development-tools::cargo-plugins"]
 description = "This extends Cargo to allow you to add and remove dependencies by modifying your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo upgrade`."
 documentation = "https://github.com/killercup/cargo-edit/blob/master/README.md#available-subcommands"
 homepage = "https://github.com/killercup/cargo-edit"
-keywords = [
-    "cargo",
-    "cargo-subcommand",
-    "cli",
-    "dependencies",
-    "crates",
-]
+keywords = ["cargo", "cargo-subcommand", "cli", "dependencies", "crates"]
 license = "Apache-2.0/MIT"
 name = "cargo-edit"
 readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
 version = "0.3.1"
+
+[badges]
+
+[badges.appveyor]
+repository = "killercup/cargo-edit"
+
+[badges.travis-ci]
+repository = "killercup/cargo-edit"
 
 [[bin]]
 name = "cargo-add"
@@ -42,26 +34,23 @@ name = "cargo-upgrade"
 path = "src/bin/upgrade/main.rs"
 required-features = ["upgrade"]
 
-[badges.appveyor]
-repository = "killercup/cargo-edit"
-
-[badges.travis-ci]
-repository = "killercup/cargo-edit"
-
 [dependencies]
+atty = "0.2"
+cargo = "0.30.0"
 cargo_metadata = "0.6.0"
 docopt = "1.0"
 env_proxy = "0.2"
 error-chain = "0.12.0"
+git2 = "0.7.5"
 pad = "0.1"
 regex = "1.0"
 reqwest = "0.9"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
+tempdir = "0.3.7"
 termcolor = "1.0.4"
 toml_edit = "0.1.2"
-atty = "0.2"
 
 [dependencies.semver]
 features = ["serde"]
@@ -74,11 +63,7 @@ tempdir = "0.3"
 
 [features]
 add = []
-default = [
-    "add",
-    "rm",
-    "upgrade",
-]
+default = ["add", "rm", "upgrade"]
 rm = []
 test-external-apis = []
 unstable = []

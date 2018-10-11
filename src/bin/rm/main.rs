@@ -6,11 +6,15 @@
 )]
 
 extern crate atty;
+extern crate cargo;
 extern crate docopt;
 #[macro_use]
 extern crate error_chain;
+extern crate git2;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
+extern crate tempdir;
 extern crate termcolor;
 
 use std::io::Write;
