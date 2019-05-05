@@ -1,7 +1,13 @@
 //! `cargo rm`
 #![warn(
-    missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts,
-    trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
+    missing_docs,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unstable_features,
+    unused_import_braces,
     unused_qualifications
 )]
 
@@ -24,7 +30,7 @@ mod args;
 use args::Args;
 
 mod errors {
-    error_chain!{
+    error_chain! {
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
         }
@@ -38,6 +44,7 @@ use errors::*;
 static USAGE: &'static str = r"
 Usage:
     cargo rm <crate> [--dev|--build] [options]
+    cargo rm <crates>... [--dev|--build] [options]
     cargo rm (-h|--help)
     cargo rm --version
 
@@ -69,20 +76,27 @@ fn print_msg(name: &str, section: &str) -> Result<()> {
 fn handle_rm(args: &Args) -> Result<()> {
     let manifest_path = args.flag_manifest_path.as_ref().map(From::from);
     let mut manifest = Manifest::open(&manifest_path)?;
+    let deps = &args.parse_dependencies()?;
 
-    if !args.flag_quiet {
-        print_msg(&args.arg_crate, args.get_section())?;
-    }
-
-    manifest
-        .remove_from_table(args.get_section(), args.arg_crate.as_ref())
-        .map_err(From::from)
-        .and_then(|_| {
-            let mut file = Manifest::find_file(&manifest_path)?;
-            manifest.write_to_file(&mut file)?;
-
-            Ok(())
+    deps.iter()
+        .map(|dep| {
+            if !args.flag_quiet {
+                print_msg(&dep, args.get_section())?;
+            }
+            manifest
+                .remove_from_table(args.get_section(), dep)
+                .map_err(Into::into)
         })
+        .collect::<Result<Vec<_>>>()
+        .map_err(|err| {
+            eprintln!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
+            err
+        })?;
+
+    let mut file = Manifest::find_file(&manifest_path)?;
+    manifest.write_to_file(&mut file)?;
+
+    Ok(())
 }
 
 fn main() {

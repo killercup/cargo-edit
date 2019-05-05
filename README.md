@@ -125,6 +125,7 @@ $ cargo rm regex --build
 $ cargo rm --help
 Usage:
     cargo rm <crate> [--dev|--build] [options]
+    cargo rm <crates>... [--dev|--build] [options]
     cargo rm (-h|--help)
     cargo rm --version
 
