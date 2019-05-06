@@ -591,6 +591,54 @@ fn adds_multiple_optional_dependencies() {
 }
 
 #[test]
+fn adds_no_default_features_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "versioned-package",
+            "--vers",
+            ">=0.1.1",
+            "--no-default-features",
+        ],
+        &manifest,
+    );
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["versioned-package"]["default-features"];
+    assert_eq!(val.as_bool().expect("default-features not a bool"), false);
+}
+
+#[test]
+fn adds_multiple_no_default_features_dependencies() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(
+        &["add", "--no-default-features", "my-package1", "my-package2"],
+        &manifest,
+    );
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+    assert!(!&toml["dependencies"]["my-package1"]["default-features"]
+        .as_bool()
+        .expect("default-features not a bool"));
+    assert!(!&toml["dependencies"]["my-package2"]["default-features"]
+        .as_bool()
+        .expect("default-features not a bool"));
+}
+
+#[test]
 fn adds_dependency_with_target_triple() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
