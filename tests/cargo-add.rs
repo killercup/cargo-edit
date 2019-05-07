@@ -14,7 +14,8 @@ const BOGUS_CRATE_NAME: &str = "tests-will-break-if-there-is-ever-a-real-package
 /// Check 'failure' deps are not present
 fn no_manifest_failures(manifest: &toml_edit::Item) -> bool {
     let no_failure_key_in = |section| manifest[section][BOGUS_CRATE_NAME].is_none();
-    no_failure_key_in("dependencies") && no_failure_key_in("dev-dependencies")
+    no_failure_key_in("dependencies")
+        && no_failure_key_in("dev-dependencies")
         && no_failure_key_in("build-dependencies")
 }
 
@@ -705,11 +706,12 @@ fn adds_dependency_normalized_name() {
         "add",
         "linked_hash_map",
         &format!("--manifest-path={}", manifest),
-    ]).succeeds()
-        .and()
-        .stdout()
-        .contains("WARN: Added `linked-hash-map` instead of `linked_hash_map`")
-        .unwrap();
+    ])
+    .succeeds()
+    .and()
+    .stdout()
+    .contains("WARN: Added `linked-hash-map` instead of `linked_hash_map`")
+    .unwrap();
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
@@ -808,7 +810,9 @@ version = "0.0.0"
 
 [lib]
 path = "dummy.rs"
-"#.to_string() + expected;
+"#
+    .to_string()
+        + expected;
     let expected_dep: toml_edit::Document = expected.parse().expect("toml parse error");
     assert_eq!(expected_dep.to_string(), toml.to_string());
 }
@@ -921,11 +925,12 @@ fn add_prints_message() {
         "docopt",
         "--vers=0.6.0",
         &format!("--manifest-path={}", manifest),
-    ]).succeeds()
-        .and()
-        .stdout()
-        .is("Adding docopt v0.6.0 to dependencies")
-        .unwrap();
+    ])
+    .succeeds()
+    .and()
+    .stdout()
+    .is("Adding docopt v0.6.0 to dependencies")
+    .unwrap();
 }
 
 #[test]
@@ -940,11 +945,12 @@ fn add_prints_message_with_section() {
         "--target=mytarget",
         "--vers=0.1.0",
         &format!("--manifest-path={}", manifest),
-    ]).succeeds()
-        .and()
-        .stdout()
-        .is("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
-        .unwrap();
+    ])
+    .succeeds()
+    .and()
+    .stdout()
+    .is("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
+    .unwrap();
 }
 
 #[test]
@@ -959,11 +965,12 @@ fn add_prints_message_for_dev_deps() {
         "--vers",
         "0.8.0",
         &format!("--manifest-path={}", manifest),
-    ]).succeeds()
-        .and()
-        .stdout()
-        .is("Adding docopt v0.8.0 to dev-dependencies")
-        .unwrap();
+    ])
+    .succeeds()
+    .and()
+    .stdout()
+    .is("Adding docopt v0.8.0 to dev-dependencies")
+    .unwrap();
 }
 
 #[test]
@@ -978,11 +985,12 @@ fn add_prints_message_for_build_deps() {
         "--vers",
         "0.1.0",
         &format!("--manifest-path={}", manifest),
-    ]).succeeds()
-        .and()
-        .stdout()
-        .is("Adding hello-world v0.1.0 to build-dependencies")
-        .unwrap();
+    ])
+    .succeeds()
+    .and()
+    .stdout()
+    .is("Adding hello-world v0.1.0 to build-dependencies")
+    .unwrap();
 }
 
 #[test]
@@ -995,12 +1003,13 @@ fn add_typo() {
         "add",
         "lets_hope_nobody_ever_publishes_this_crate",
         &format!("--manifest-path={}", manifest),
-    ]).fails_with(1)
-        .and()
-        .stderr()
-        .contains(
-            "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found \
-             on crates.io.",
-        )
-        .unwrap();
+    ])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .contains(
+        "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found \
+         on crates.io.",
+    )
+    .unwrap();
 }

@@ -1,3 +1,4 @@
+use crate::{Dependency, Manifest};
 use env_proxy;
 use regex::Regex;
 use reqwest;
@@ -7,7 +8,6 @@ use std::env;
 use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
-use crate::{Dependency, Manifest};
 
 use crate::errors::*;
 
@@ -97,7 +97,8 @@ fn get_latest_stable_version_from_json() {
         }
       ]
     }"#,
-    ).expect("crate version is correctly parsed");
+    )
+    .expect("crate version is correctly parsed");
 
     assert_eq!(
         read_latest_version(&versions, false)
@@ -125,7 +126,8 @@ fn get_latest_unstable_or_stable_version_from_json() {
         }
       ]
     }"#,
-    ).expect("crate version is correctly parsed");
+    )
+    .expect("crate version is correctly parsed");
 
     assert_eq!(
         read_latest_version(&versions, true)
@@ -153,7 +155,8 @@ fn get_latest_version_from_json_test() {
         }
       ]
     }"#,
-    ).expect("crate version is correctly parsed");
+    )
+    .expect("crate version is correctly parsed");
 
     assert_eq!(
         read_latest_version(&versions, false)
@@ -181,7 +184,8 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
         }
       ]
     }"#,
-    ).expect("crate version is correctly parsed");
+    )
+    .expect("crate version is correctly parsed");
 
     assert!(read_latest_version(&versions, false).is_err());
 }

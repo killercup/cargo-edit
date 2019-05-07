@@ -52,7 +52,8 @@ fn search(dir: &Path) -> Result<PathBuf> {
 }
 
 fn merge_inline_table(old_dep: &mut toml_edit::Item, new: &toml_edit::Item) {
-    for (k, v) in new.as_inline_table()
+    for (k, v) in new
+        .as_inline_table()
         .expect("expected an inline table")
         .iter()
     {
@@ -127,7 +128,8 @@ fn print_upgrade_if_necessary(
             &mut buffer,
             "{} v{} -> v{}",
             crate_name, old_version, new_version,
-        ).chain_err(|| "Failed to write upgrade versions")?;
+        )
+        .chain_err(|| "Failed to write upgrade versions")?;
         bufwtr
             .print(&buffer)
             .chain_err(|| "Failed to print upgrade message")?;
@@ -198,7 +200,8 @@ impl Manifest {
             }
 
             // ... and in `target.<target>.(build-/dev-)dependencies`.
-            let target_sections = self.data
+            let target_sections = self
+                .data
                 .as_table()
                 .get("target")
                 .and_then(toml_edit::Item::as_table_like)
@@ -422,11 +425,9 @@ mod tests {
         let clone = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let _ = manifest.insert_into_table(&["dependencies".to_owned()], &dep);
-        assert!(
-            manifest
-                .remove_from_table("dependencies", &dep.name)
-                .is_ok()
-        );
+        assert!(manifest
+            .remove_from_table("dependencies", &dep.name)
+            .is_ok());
         assert_eq!(manifest.data.to_string(), clone.data.to_string());
     }
 
@@ -471,11 +472,9 @@ mod tests {
             data: toml_edit::Document::new(),
         };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        assert!(
-            manifest
-                .remove_from_table("dependencies", &dep.name)
-                .is_err()
-        );
+        assert!(manifest
+            .remove_from_table("dependencies", &dep.name)
+            .is_err());
     }
 
     #[test]
@@ -486,10 +485,8 @@ mod tests {
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
         let _ = manifest.insert_into_table(&["dependencies".to_owned()], &other_dep);
-        assert!(
-            manifest
-                .remove_from_table("dependencies", &dep.name)
-                .is_err()
-        );
+        assert!(manifest
+            .remove_from_table("dependencies", &dep.name)
+            .is_err());
     }
 }
