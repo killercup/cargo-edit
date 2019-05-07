@@ -3,19 +3,14 @@ language: rust
 rust:
 - nightly
 - beta
-- stable
 matrix:
   include:
-  - rust: nightly-2018-07-22
-    env: CLIPPY=YESPLEASE
-    script:
-    - rustup component add clippy-preview
-    - cargo clippy -- -D warnings -A print_literal
-  - rust: 1.27.2
-    env: RUSTFMT=YESPLEASE
-    script:
-    - rustup component add rustfmt-preview
+  - rust: stable
+    after_script:
+    - rustup component add rustfmt
+    - rustup component add clippy
     - cargo fmt --all -- --write-mode=diff
+    - cargo clippy -- -D warnings -A deprecated
   allow_failures:
   - rust: nightly
 before_script:

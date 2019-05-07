@@ -283,7 +283,7 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
         .data
         .as_table()
         .get("package")
-        .and_then(|m| m["name"].as_str().map(|s| s.to_string()))
+        .and_then(|m| m["name"].as_str().map(std::string::ToString::to_string))
         .ok_or_else(|| ErrorKind::ParseCargoToml.into())
 }
 
@@ -302,7 +302,7 @@ fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Re
     client
         .get(url)
         .send()
-        .and_then(|resp| resp.error_for_status())
+        .and_then(reqwest::Response::error_for_status)
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
