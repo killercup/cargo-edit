@@ -203,7 +203,7 @@ impl Manifest {
                 .get("target")
                 .and_then(toml_edit::Item::as_table_like)
                 .into_iter()
-                .flat_map(|t| t.iter())
+                .flat_map(toml_edit::TableLike::iter)
                 .filter_map(|(target_name, target_table)| {
                     let dependency_table = &target_table[dependency_type];
                     dependency_table.as_table_like().map(|_| {
