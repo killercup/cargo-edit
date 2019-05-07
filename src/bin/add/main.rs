@@ -78,6 +78,7 @@ Options:
     --manifest-path=<path>  Path to the manifest to add a dependency to.
     --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
                             '0.6.0-alpha'). Defaults to false.
+    --no-default-features   Set `default-features = false` for the added dependency.
     -q --quiet              Do not print any output in case of success.
     -h --help               Show this help page.
     -V --version            Show version.

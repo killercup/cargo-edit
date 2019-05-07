@@ -36,6 +36,8 @@ pub struct Args {
     pub flag_upgrade: Option<String>,
     /// '--fetch-prereleases'
     pub flag_allow_prerelease: bool,
+    /// '--no-default-features'
+    pub flag_no_default_features: bool,
     /// '--quiet'
     pub flag_quiet: bool,
 }
@@ -77,7 +79,9 @@ impl Args {
                             krate
                         } else {
                             get_latest_dependency(crate_name, self.flag_allow_prerelease)?
-                        }.set_optional(self.flag_optional),
+                        }
+                        .set_optional(self.flag_optional)
+                        .set_default_features(!self.flag_no_default_features),
                     )
                 })
                 .collect();
@@ -132,7 +136,9 @@ impl Args {
             }
         } else {
             crate_name.parse_crate_name_from_uri()?
-        }.set_optional(self.flag_optional);
+        }
+        .set_optional(self.flag_optional)
+        .set_default_features(!self.flag_no_default_features);
 
         Ok(vec![dependency])
     }
@@ -172,6 +178,7 @@ impl Default for Args {
             flag_version: false,
             flag_upgrade: None,
             flag_allow_prerelease: false,
+            flag_no_default_features: false,
             flag_quiet: false,
         }
     }
