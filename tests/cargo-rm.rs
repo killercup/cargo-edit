@@ -1,7 +1,7 @@
 extern crate assert_cli;
 
 mod utils;
-use utils::{clone_out_test, execute_command, get_toml};
+use crate::utils::{clone_out_test, execute_command, get_toml};
 
 #[test]
 fn remove_existing_dependency() {

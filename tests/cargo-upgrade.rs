@@ -7,7 +7,7 @@ extern crate toml_edit;
 use std::fs;
 
 mod utils;
-use utils::{clone_out_test, execute_command, get_toml};
+use crate::utils::{clone_out_test, execute_command, get_toml};
 
 /// Helper function that copies the workspace test into a temporary directory.
 pub fn copy_workspace_test() -> (tempdir::TempDir, String, Vec<String>) {

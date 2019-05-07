@@ -28,7 +28,7 @@ extern crate cargo_edit;
 use cargo_edit::{Dependency, Manifest};
 
 mod args;
-use args::Args;
+use crate::args::Args;
 
 mod errors {
     error_chain! {
@@ -52,7 +52,7 @@ mod errors {
         }
     }
 }
-use errors::*;
+use crate::errors::*;
 
 static USAGE: &'static str = r#"
 Usage:

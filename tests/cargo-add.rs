@@ -5,7 +5,7 @@ extern crate toml_edit;
 
 use std::process;
 mod utils;
-use utils::{clone_out_test, execute_command, get_toml};
+use crate::utils::{clone_out_test, execute_command, get_toml};
 
 /// Some of the tests need to have a crate name that does not exist on crates.io. Hence this rather
 /// silly constant. Tests _will_ fail, though, if a crate is ever published with this name.

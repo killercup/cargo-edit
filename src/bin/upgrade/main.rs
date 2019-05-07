@@ -32,7 +32,7 @@ mod errors {
         }
     }
 }
-use errors::*;
+use crate::errors::*;
 
 static USAGE: &'static str = r"
 Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).

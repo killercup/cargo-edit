@@ -7,9 +7,9 @@ use std::env;
 use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
-use {Dependency, Manifest};
+use crate::{Dependency, Manifest};
 
-use errors::*;
+use crate::errors::*;
 
 const REGISTRY_HOST: &str = "https://crates.io";
 

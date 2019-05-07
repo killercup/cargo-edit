@@ -5,7 +5,7 @@ use cargo_edit::{get_latest_dependency, CrateName};
 use semver;
 use std::path::PathBuf;
 
-use errors::*;
+use crate::errors::*;
 
 #[derive(Debug, Deserialize)]
 /// Docopts input args.

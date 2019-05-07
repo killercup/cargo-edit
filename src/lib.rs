@@ -26,9 +26,9 @@ mod errors;
 mod fetch;
 mod manifest;
 
-pub use crate_name::CrateName;
-pub use dependency::Dependency;
-pub use errors::*;
-pub use fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
+pub use crate::crate_name::CrateName;
+pub use crate::dependency::Dependency;
+pub use crate::errors::*;
+pub use crate::fetch::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
                 get_latest_dependency};
-pub use manifest::{find, LocalManifest, Manifest};
+pub use crate::manifest::{find, LocalManifest, Manifest};
