@@ -1,5 +1,3 @@
-extern crate assert_cli;
-
 #[test]
 fn invalid_manifest() {
     assert_cli::Assert::command(&[

@@ -1,5 +1,3 @@
-extern crate assert_cli;
-
 mod utils;
 use crate::utils::{clone_out_test, execute_command, get_toml};
 

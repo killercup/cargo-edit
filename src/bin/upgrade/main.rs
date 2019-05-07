@@ -11,23 +11,17 @@
     unused_qualifications
 )]
 
-extern crate cargo_metadata;
-extern crate docopt;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
-extern crate toml_edit;
 
+use crate::errors::*;
+use cargo_edit::{find, get_latest_dependency, CrateName, Dependency, LocalManifest};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
-
-extern crate cargo_edit;
-use cargo_edit::{find, get_latest_dependency, CrateName, Dependency, LocalManifest};
-
-extern crate termcolor;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 mod errors {
@@ -38,7 +32,6 @@ mod errors {
         }
     }
 }
-use crate::errors::*;
 
 static USAGE: &'static str = r"
 Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).

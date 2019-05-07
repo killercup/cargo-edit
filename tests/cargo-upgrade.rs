@@ -1,8 +1,5 @@
-extern crate assert_cli;
 #[macro_use]
 extern crate pretty_assertions;
-extern crate tempdir;
-extern crate toml_edit;
 
 use std::fs;
 

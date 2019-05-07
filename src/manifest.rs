@@ -297,8 +297,6 @@ impl Manifest {
     /// # Examples
     ///
     /// ```
-    /// # extern crate cargo_edit;
-    /// # extern crate toml_edit;
     /// # fn main() {
     ///     use cargo_edit::{Dependency, Manifest};
     ///     use toml_edit;

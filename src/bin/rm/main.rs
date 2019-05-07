@@ -11,23 +11,18 @@
     unused_qualifications
 )]
 
-extern crate atty;
-extern crate docopt;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
-extern crate termcolor;
 
+use crate::args::Args;
+use cargo_edit::Manifest;
 use std::io::Write;
 use std::process;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-extern crate cargo_edit;
-use cargo_edit::Manifest;
-
 mod args;
-use crate::args::Args;
 
 mod errors {
     error_chain! {

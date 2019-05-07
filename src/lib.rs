@@ -12,19 +12,10 @@
     unused_qualifications
 )]
 
-extern crate cargo_metadata;
-extern crate env_proxy;
 #[macro_use]
 extern crate error_chain;
-extern crate regex;
-extern crate reqwest;
-extern crate semver;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
-extern crate termcolor;
-extern crate toml_edit;
 
 mod crate_name;
 mod dependency;
