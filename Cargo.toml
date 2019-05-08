@@ -26,6 +26,7 @@ name = "cargo-edit"
 readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
 version = "0.3.1"
+edition = "2018"
 
 [[bin]]
 name = "cargo-add"

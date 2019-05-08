@@ -1,4 +1,4 @@
-error_chain!{
+error_chain! {
     errors {
         /// Failed to fetch crate from crates.io
         FetchVersionFailure {

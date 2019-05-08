@@ -1,6 +1,3 @@
-extern crate tempdir;
-extern crate toml_edit;
-
 use std::ffi::OsStr;
 use std::io::prelude::*;
 use std::{fs, process};

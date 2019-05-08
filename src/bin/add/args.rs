@@ -5,7 +5,7 @@ use cargo_edit::{get_latest_dependency, CrateName};
 use semver;
 use std::path::PathBuf;
 
-use errors::*;
+use crate::errors::*;
 
 #[derive(Debug, Deserialize)]
 /// Docopts input args.
@@ -71,7 +71,8 @@ impl Args {
     /// Build dependencies from arguments
     pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
         if !self.arg_crates.is_empty() {
-            return self.arg_crates
+            return self
+                .arg_crates
                 .iter()
                 .map(|crate_name| {
                     Ok(

@@ -1,13 +1,10 @@
-extern crate assert_cli;
 #[macro_use]
 extern crate pretty_assertions;
-extern crate tempdir;
-extern crate toml_edit;
 
 use std::fs;
 
 mod utils;
-use utils::{clone_out_test, execute_command, get_toml};
+use crate::utils::{clone_out_test, execute_command, get_toml};
 
 /// Helper function that copies the workspace test into a temporary directory.
 pub fn copy_workspace_test() -> (tempdir::TempDir, String, Vec<String>) {
@@ -33,7 +30,8 @@ pub fn copy_workspace_test() -> (tempdir::TempDir, String, Vec<String>) {
             fs::copy(
                 format!("tests/fixtures/workspace/{}/{}", dir, file),
                 &file_path,
-            ).unwrap_or_else(|err| panic!("could not copy test file: {}", err));
+            )
+            .unwrap_or_else(|err| panic!("could not copy test file: {}", err));
 
             file_path
         };
@@ -233,14 +231,15 @@ fn detect_workspace() {
         "upgrade",
         "--manifest-path",
         &root_manifest,
-    ]).fails_with(1)
-        .and()
-        .stderr()
-        .is(
-            "Command failed due to unhandled error: Found virtual manifest, but this command \
-             requires running against an actual package in this workspace. Try adding `--all`.",
-        )
-        .unwrap();
+    ])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .is(
+        "Command failed due to unhandled error: Found virtual manifest, but this command \
+         requires running against an actual package in this workspace. Try adding `--all`.",
+    )
+    .unwrap();
 }
 
 #[test]
@@ -252,11 +251,12 @@ fn invalid_manifest() {
         "upgrade",
         "--manifest-path",
         &manifest,
-    ]).fails_with(1)
-        .and()
-        .stderr()
-        .is(
-            "Command failed due to unhandled error: Unable to parse Cargo.toml
+    ])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .is(
+        "Command failed due to unhandled error: Unable to parse Cargo.toml
 
 Caused by: Manifest not valid TOML
 Caused by: TOML parse error at line 1, column 6
@@ -265,8 +265,8 @@ Caused by: TOML parse error at line 1, column 6
   |      ^
 Unexpected `i`
 Expected `=`",
-        )
-        .unwrap();
+    )
+    .unwrap();
 }
 
 #[test]
@@ -279,11 +279,12 @@ fn invalid_root_manifest() {
         "--all",
         "--manifest-path",
         &manifest,
-    ]).fails_with(1)
-        .and()
-        .stderr()
-        .contains("Command failed due to unhandled error: Failed to get workspace metadata")
-        .unwrap();
+    ])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .contains("Command failed due to unhandled error: Failed to get workspace metadata")
+    .unwrap();
 }
 
 #[test]
@@ -310,9 +311,10 @@ fn upgrade_prints_messages() {
         "upgrade",
         "docopt",
         &format!("--manifest-path={}", manifest),
-    ]).succeeds()
-        .and()
-        .stdout()
-        .contains("docopt v0.8 -> v")
-        .unwrap();
+    ])
+    .succeeds()
+    .and()
+    .stdout()
+    .contains("docopt v0.8 -> v")
+    .unwrap();
 }

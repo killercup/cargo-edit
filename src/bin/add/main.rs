@@ -11,24 +11,18 @@
     unused_qualifications
 )]
 
-extern crate atty;
-extern crate docopt;
 #[macro_use]
 extern crate error_chain;
-extern crate semver;
 #[macro_use]
 extern crate serde_derive;
-extern crate termcolor;
 
+use crate::args::Args;
+use cargo_edit::{Dependency, Manifest};
 use std::io::Write;
 use std::process;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-extern crate cargo_edit;
-use cargo_edit::{Dependency, Manifest};
-
 mod args;
-use args::Args;
 
 mod errors {
     error_chain! {
@@ -52,7 +46,7 @@ mod errors {
         }
     }
 }
-use errors::*;
+use crate::errors::*;
 
 static USAGE: &'static str = r#"
 Usage:

@@ -1,38 +1,37 @@
 //! `cargo upgrade`
 #![warn(
-    missing_docs, missing_debug_implementations, missing_copy_implementations, trivial_casts,
-    trivial_numeric_casts, unsafe_code, unstable_features, unused_import_braces,
+    missing_docs,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unstable_features,
+    unused_import_braces,
     unused_qualifications
 )]
 
-extern crate cargo_metadata;
-extern crate docopt;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
-extern crate toml_edit;
 
+use crate::errors::*;
+use cargo_edit::{find, get_latest_dependency, CrateName, Dependency, LocalManifest};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
-
-extern crate cargo_edit;
-use cargo_edit::{find, get_latest_dependency, CrateName, Dependency, LocalManifest};
-
-extern crate termcolor;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 mod errors {
-    error_chain!{
+    error_chain! {
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
             CargoMetadata(::cargo_metadata::Error, ::cargo_metadata::ErrorKind);
         }
     }
 }
-use errors::*;
 
 static USAGE: &'static str = r"
 Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
@@ -119,8 +118,10 @@ impl Manifests {
             .find(|p| p.manifest_path == resolved_manifest_path)
             // If we have successfully got metadata, but our manifest path does not correspond to a
             // package, we must have been called against a virtual manifest.
-            .chain_err(|| "Found virtual manifest, but this command requires running against an \
-                           actual package in this workspace. Try adding `--all`.")?;
+            .chain_err(|| {
+                "Found virtual manifest, but this command requires running against an \
+                 actual package in this workspace. Try adding `--all`."
+            })?;
 
         Ok(Manifests(vec![(manifest, package.to_owned())]))
     }
