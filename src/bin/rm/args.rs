@@ -1,6 +1,6 @@
 //! Handle `cargo rm` arguments
 
-use errors::*;
+use crate::errors::*;
 
 #[derive(Debug, Deserialize)]
 /// Docopts input args.
