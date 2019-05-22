@@ -13,8 +13,6 @@
 
 #[macro_use]
 extern crate error_chain;
-#[macro_use]
-extern crate serde_derive;
 
 use crate::errors::*;
 use cargo_edit::{find, get_latest_dependency, CrateName, Dependency, LocalManifest};
@@ -22,6 +20,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
+use structopt::StructOpt;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 mod errors {
@@ -33,24 +32,12 @@ mod errors {
     }
 }
 
-static USAGE: &'static str = r"
-Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
-
-Usage:
-    cargo upgrade [options] [<dependency>]...
-    cargo upgrade (-h | --help)
-    cargo upgrade (-V | --version)
-
-Options:
-    --all                   Upgrade all packages in the workspace.
-    --manifest-path PATH    Path to the manifest to upgrade.
-    --allow-prerelease      Include prerelease versions when fetching from crates.io (e.g.
-                            '0.6.0-alpha'). Defaults to false.
-    --dry-run               Print changes to be made without making them. Defaults to false.
-    -h --help               Show this help page.
-    -V --version            Show version.
-
-This command differs from `cargo update`, which updates the dependency versions recorded in the
+#[derive(Debug, StructOpt)]
+#[structopt(bin_name = "cargo")]
+enum ArgsWrap {
+    #[structopt(name = "upgrade", author = "")]
+    #[structopt(
+        after_help = "This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
 
 If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to
@@ -60,24 +47,31 @@ Dev, build, and all target dependencies will also be upgraded. Only dependencies
 supported. Git/path dependencies will be ignored.
 
 All packages in the workspace will be upgraded if the `--all` flag is supplied. The `--all` flag may
-be supplied in the presence of a virtual manifest.
-";
+be supplied in the presence of a virtual manifest."
+    )]
+    /// Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
+    Upgrade(Args),
+}
 
-/// Docopts input args.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, StructOpt)]
 struct Args {
-    /// `<dependency>...`
-    arg_dependency: Vec<String>,
-    /// `--manifest-path PATH`
-    flag_manifest_path: Option<String>,
-    /// `--all`
-    flag_all: bool,
-    /// `--allow-prerelease`
-    flag_allow_prerelease: bool,
-    /// `--dry-run`
-    flag_dry_run: bool,
-    /// `--version`
-    flag_version: bool,
+    #[structopt(conflicts_with = "all")]
+    dependency: Vec<String>,
+
+    #[structopt(long = "manifest-path")]
+    manifest_path: Option<PathBuf>,
+
+    #[structopt(long = "all")]
+    /// Upgrade all packages in the workspace.
+    all: bool,
+
+    #[structopt(long = "allow-prerelease")]
+    /// Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha').
+    allow_prerelease: bool,
+
+    #[structopt(long = "dry-run")]
+    /// Print changes to be made without making them.
+    dry_run: bool,
 }
 
 /// A collection of manifests.
@@ -85,9 +79,7 @@ struct Manifests(Vec<(LocalManifest, cargo_metadata::Package)>);
 
 impl Manifests {
     /// Get all manifests in the workspace.
-    fn get_all(manifest_path: &Option<String>) -> Result<Self> {
-        let manifest_path = manifest_path.clone().map(PathBuf::from);
-
+    fn get_all(manifest_path: &Option<PathBuf>) -> Result<Self> {
         cargo_metadata::metadata(manifest_path.as_ref().map(Path::new))
             .chain_err(|| "Failed to get workspace metadata")?
             .packages
@@ -104,8 +96,7 @@ impl Manifests {
 
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
     /// provided.
-    fn get_local_one(manifest_path: &Option<String>) -> Result<Self> {
-        let manifest_path = manifest_path.clone().map(PathBuf::from);
+    fn get_local_one(manifest_path: &Option<PathBuf>) -> Result<Self> {
         let resolved_manifest_path: String = find(&manifest_path)?.to_string_lossy().into();
 
         let manifest = LocalManifest::find(&manifest_path)?;
@@ -236,36 +227,34 @@ impl DesiredUpgrades {
 /// messages.
 fn process(args: Args) -> Result<()> {
     let Args {
-        arg_dependency,
-        flag_manifest_path,
-        flag_all,
-        flag_allow_prerelease,
-        flag_dry_run,
+        dependency,
+        manifest_path,
+        all,
+        allow_prerelease,
+        dry_run,
         ..
     } = args;
 
-    let manifests = if flag_all {
-        Manifests::get_all(&flag_manifest_path)
+    let manifests = if all {
+        Manifests::get_all(&manifest_path)
     } else {
-        Manifests::get_local_one(&flag_manifest_path)
+        Manifests::get_local_one(&manifest_path)
     }?;
 
-    let existing_dependencies = manifests.get_dependencies(arg_dependency)?;
+    let existing_dependencies = manifests.get_dependencies(dependency)?;
 
-    let upgraded_dependencies = existing_dependencies.get_upgraded(flag_allow_prerelease)?;
+    let upgraded_dependencies = existing_dependencies.get_upgraded(allow_prerelease)?;
 
-    manifests.upgrade(&upgraded_dependencies, flag_dry_run)
+    manifests.upgrade(&upgraded_dependencies, dry_run)
 }
 
 fn main() {
-    let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.deserialize::<Args>())
-        .unwrap_or_else(|err| err.exit());
-
-    if args.flag_version {
-        println!("cargo-upgrade version {}", env!("CARGO_PKG_VERSION"));
-        process::exit(0);
-    }
+    let args: ArgsWrap = ArgsWrap::from_args();
+    let ArgsWrap::Upgrade(args) = args;
+    let args = Args {
+        all: args.all || args.dependency.is_empty(),
+        ..args
+    };
 
     if let Err(err) = process(args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);
