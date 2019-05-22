@@ -108,44 +108,45 @@ impl Dependency {
     /// (If the dependency is set as `optional` or `default-features` is set to `false`,
     /// an `InlineTable` is returned in any case.)
     pub fn to_toml(&self) -> (String, toml_edit::Item) {
-        let data: toml_edit::Item = match (self.optional, self.default_features, self.source.clone()) {
-            // Extra short when version flag only
-            (
-                false,
-                true,
-                DependencySource::Version {
-                    version: Some(v),
-                    path: None,
-                },
-            ) => toml_edit::value(v),
-            // Other cases are represented as an inline table
-            (optional, default_features, source) => {
-                let mut data = toml_edit::InlineTable::default();
+        let data: toml_edit::Item =
+            match (self.optional, self.default_features, self.source.clone()) {
+                // Extra short when version flag only
+                (
+                    false,
+                    true,
+                    DependencySource::Version {
+                        version: Some(v),
+                        path: None,
+                    },
+                ) => toml_edit::value(v),
+                // Other cases are represented as an inline table
+                (optional, default_features, source) => {
+                    let mut data = toml_edit::InlineTable::default();
 
-                match source {
-                    DependencySource::Version { version, path } => {
-                        if let Some(v) = version {
-                            data.get_or_insert("version", v);
+                    match source {
+                        DependencySource::Version { version, path } => {
+                            if let Some(v) = version {
+                                data.get_or_insert("version", v);
+                            }
+                            if let Some(p) = path {
+                                data.get_or_insert("path", p);
+                            }
                         }
-                        if let Some(p) = path {
-                            data.get_or_insert("path", p);
+                        DependencySource::Git(v) => {
+                            data.get_or_insert("git", v);
                         }
                     }
-                    DependencySource::Git(v) => {
-                        data.get_or_insert("git", v);
+                    if self.optional {
+                        data.get_or_insert("optional", optional);
                     }
-                }
-                if self.optional {
-                    data.get_or_insert("optional", optional);
-                }
-                if !self.default_features {
-                    data.get_or_insert("default-features", default_features);
-                }
+                    if !self.default_features {
+                        data.get_or_insert("default-features", default_features);
+                    }
 
-                data.fmt();
-                toml_edit::value(toml_edit::Value::InlineTable(data))
-            }
-        };
+                    data.fmt();
+                    toml_edit::value(toml_edit::Value::InlineTable(data))
+                }
+            };
 
         (self.name.clone(), data)
     }
