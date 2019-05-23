@@ -58,7 +58,7 @@ struct Args {
     #[structopt(conflicts_with = "all")]
     dependency: Vec<String>,
 
-    #[structopt(long = "manifest-path")]
+    #[structopt(long = "manifest-path", value_name = "path")]
     manifest_path: Option<PathBuf>,
 
     #[structopt(long = "all")]

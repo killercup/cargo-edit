@@ -45,31 +45,31 @@ enum ArgsWrap {
 struct Args {
     #[structopt(name = "crates", raw(required = "true"))]
     /// Crates to be removed
-    arg_crates: Vec<String>,
+    crates: Vec<String>,
 
     #[structopt(long = "dev", short = "D", conflicts_with = "build")]
     /// Remove crate as development dependency.
-    flag_dev: bool,
+    dev: bool,
 
     #[structopt(long = "build", short = "B", conflicts_with = "dev")]
     /// Remove crate as build dependency.
-    flag_build: bool,
+    build: bool,
 
-    #[structopt(long = "manifest-path")]
+    #[structopt(long = "manifest-path", value_name = "path")]
     /// Path to the manifest to remove a dependency from.
-    flag_manifest_path: Option<PathBuf>,
+    manifest_path: Option<PathBuf>,
 
     #[structopt(long = "quiet", short = "q")]
     /// Do not print any output in case of success.
-    flag_quiet: bool,
+    quiet: bool,
 }
 
 impl Args {
     /// Get depenency section
     pub fn get_section(&self) -> &'static str {
-        if self.flag_dev {
+        if self.dev {
             "dev-dependencies"
-        } else if self.flag_build {
+        } else if self.build {
             "build-dependencies"
         } else {
             "dependencies"
@@ -92,13 +92,13 @@ fn print_msg(name: &str, section: &str) -> Result<()> {
 }
 
 fn handle_rm(args: &Args) -> Result<()> {
-    let manifest_path = &args.flag_manifest_path;
+    let manifest_path = &args.manifest_path;
     let mut manifest = Manifest::open(manifest_path)?;
-    let deps = &args.arg_crates;
+    let deps = &args.crates;
 
     deps.iter()
         .map(|dep| {
-            if !args.flag_quiet {
+            if !args.quiet {
                 print_msg(&dep, args.get_section())?;
             }
             manifest
