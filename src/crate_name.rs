@@ -16,6 +16,11 @@ impl<'a> CrateName<'a> {
         CrateName(name)
     }
 
+    /// Get crate name
+    pub fn name(&self) -> &str {
+        self.0
+    }
+
     /// Does this specify a versionreq?
     pub fn has_version(&self) -> bool {
         self.0.contains('@')
