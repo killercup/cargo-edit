@@ -31,11 +31,7 @@ mod errors {
                 description("Specified git URL with version")
                 display("Cannot specify a git URL (`{}`) with a version (`{}`).", git, version)
             }
-            /// Specified a dependency with both a git URL and a path.
-            GitUrlWithPath(git: String, path: String) {
-                description("Specified git URL with path")
-                display("Cannot specify a git URL (`{}`) with a path (`{}`).", git, path)
-            }
+            /// Specified multiple crates with path or git
             MutiCrateWithGitOrPath{
                 description("Specified multiple crates with path or git")
                 display("Cannot specify multiple crates with path or git")
