@@ -19,6 +19,28 @@ pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
     (tmpdir, path)
 }
 
+/// Execute localc cargo command, includes `--manifest-path`, expect command failed
+pub fn execute_bad_command<S>(command: &[S], manifest: &str)
+where
+    S: AsRef<OsStr>,
+{
+    let subcommand_name = &command[0].as_ref().to_str().unwrap();
+
+    let call = process::Command::new(&format!("target/debug/cargo-{}", subcommand_name))
+        .args(command)
+        .arg(format!("--manifest-path={}", manifest))
+        .env("CARGO_IS_TEST", "1")
+        .output()
+        .unwrap();
+
+    if call.status.success() {
+        println!("Status code: {:?}", call.status);
+        println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
+        println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
+        panic!("cargo-{} success to execute", subcommand_name)
+    }
+}
+
 /// Execute localc cargo command, includes `--manifest-path`
 pub fn execute_command<S>(command: &[S], manifest: &str)
 where

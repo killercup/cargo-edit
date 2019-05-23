@@ -164,13 +164,13 @@ fn no_argument() {
         .fails_with(1)
         .and()
         .stderr()
-        .is(r"Invalid arguments.
+        .is(r"error: The following required arguments were not provided:
+    <crates>...
 
-Usage:
-    cargo rm <crate> [--dev|--build] [options]
-    cargo rm <crates>... [--dev|--build] [options]
-    cargo rm (-h|--help)
-    cargo rm --version")
+USAGE:
+    cargo rm [FLAGS] [OPTIONS] <crates>...
+
+For more information try --help")
         .unwrap();
 }
 
@@ -180,13 +180,12 @@ fn unknown_flags() {
         .fails_with(1)
         .and()
         .stderr()
-        .is(r"Unknown flag: '--flag'
+        .is(r"error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
-Usage:
-    cargo rm <crate> [--dev|--build] [options]
-    cargo rm <crates>... [--dev|--build] [options]
-    cargo rm (-h|--help)
-    cargo rm --version")
+USAGE:
+    cargo rm [FLAGS] [OPTIONS] <crates>...
+
+For more information try --help")
         .unwrap();
 }
 

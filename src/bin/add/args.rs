@@ -83,7 +83,8 @@ pub struct Args {
         possible_value = "patch",
         possible_value = "minor",
         possible_value = "all",
-        default_value = "minor"
+        possible_value = "default",
+        default_value = "default"
     )]
     /// Choose method of semantic version upgrade.
     pub upgrade: String,
@@ -147,8 +148,8 @@ impl Args {
         } else if crate_name.is_url_or_path() {
             Ok(crate_name.parse_crate_name_from_uri()?)
         } else {
-            debug_assert_eq!(self.git.is_some() && self.vers.is_some(), false);
-            debug_assert_eq!(self.git.is_some() && self.path.is_some(), false);
+            assert_eq!(self.git.is_some() && self.vers.is_some(), false);
+            assert_eq!(self.git.is_some() && self.path.is_some(), false);
 
             let mut dependency = Dependency::new(crate_name.name());
 
@@ -166,7 +167,7 @@ impl Args {
                 let dep = get_latest_dependency(crate_name.name(), self.allow_prerelease)?;
                 let v = format!(
                     "{prefix}{version}",
-                    prefix = self.get_upgrade_prefix().unwrap_or(""),
+                    prefix = self.get_upgrade_prefix(),
                     // If version is unavailable `get_latest_dependency` must have
                     // returned `Err(FetchVersionError::GetVersion)`
                     version = dep.version().unwrap_or_else(|| unreachable!())
@@ -195,19 +196,14 @@ impl Args {
             .collect()
     }
 
-    fn get_upgrade_prefix(&self) -> Option<&'static str> {
-        match self.upgrade.to_uppercase().as_ref() {
-            "NONE" => Some("="),
-            "PATCH" => Some("~"),
-            "MINOR" => Some("^"),
-            "ALL" => Some(">="),
-            _ => {
-                println!(
-                    "WARN: cannot understand upgrade option \"{}\", using default",
-                    self.upgrade
-                );
-                None
-            }
+    fn get_upgrade_prefix(&self) -> &'static str {
+        match self.upgrade.as_ref() {
+            "default" => "",
+            "none" => "=",
+            "patch" => "~",
+            "minor" => "^",
+            "all" => ">=",
+            _ => unreachable!(),
         }
     }
 }
@@ -256,7 +252,7 @@ mod tests {
     fn test_repo_as_arg_parsing() {
         let github_url = "https://github.com/killercup/cargo-edit/";
         let args_github = Args {
-            arg_crate: github_url.to_owned(),
+            crates: vec![github_url.to_owned()],
             ..Args::default()
         };
         assert_eq!(
@@ -266,7 +262,7 @@ mod tests {
 
         let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
         let args_gitlab = Args {
-            arg_crate: gitlab_url.to_owned(),
+            crates: vec![gitlab_url.to_owned()],
             ..Args::default()
         };
         assert_eq!(

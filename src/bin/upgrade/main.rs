@@ -251,10 +251,6 @@ fn process(args: Args) -> Result<()> {
 fn main() {
     let args: ArgsWrap = ArgsWrap::from_args();
     let ArgsWrap::Upgrade(args) = args;
-    let args = Args {
-        all: args.all || args.dependency.is_empty(),
-        ..args
-    };
 
     if let Err(err) = process(args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);

@@ -293,12 +293,14 @@ fn unknown_flags() {
         .fails_with(1)
         .and()
         .stderr()
-        .is("Unknown flag: '--flag'
+        .is(
+            "error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
-Usage:
-    cargo upgrade [options] [<dependency>]...
-    cargo upgrade (-h | --help)
-    cargo upgrade (-V | --version)")
+USAGE:
+    cargo upgrade [FLAGS] [OPTIONS] [dependency]...
+
+For more information try --help ",
+        )
         .unwrap();
 }
 
