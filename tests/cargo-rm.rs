@@ -180,12 +180,14 @@ fn unknown_flags() {
         .fails_with(1)
         .and()
         .stderr()
-        .is(r"error: Found argument '--flag' which wasn't expected, or isn't valid in this context
+        .is(
+            r"error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
 USAGE:
     cargo rm [FLAGS] [OPTIONS] <crates>...
 
-For more information try --help")
+For more information try --help",
+        )
         .unwrap();
 }
 

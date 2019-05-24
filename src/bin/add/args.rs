@@ -181,8 +181,10 @@ impl Args {
 
     /// Build dependencies from arguments
     pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
-        if self.crates.len() > 1 && (self.git.is_some() || self.path.is_some()) {
-            return Err(ErrorKind::MutiCrateWithGitOrPath.into());
+        if self.crates.len() > 1
+            && (self.git.is_some() || self.path.is_some() || self.vers.is_some())
+        {
+            return Err(ErrorKind::MultipleCratesWithGitOrPathOrVers.into());
         }
 
         self.crates

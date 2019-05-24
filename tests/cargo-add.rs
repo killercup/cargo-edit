@@ -116,6 +116,34 @@ fn adds_multiple_dependencies() {
 }
 
 #[test]
+fn adds_multiple_dependencies_with_conflicts_option() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_bad_command(
+        &["add", "my-package1", "my-package2", "--vers", "0.1.0"],
+        &manifest,
+    );
+    execute_bad_command(
+        &[
+            "add",
+            "my-package1",
+            "my-package2",
+            "--git",
+            "https://github.com/dcjanus/invalid",
+        ],
+        &manifest,
+    );
+    execute_bad_command(
+        &["add", "my-package1", "my-package2", "--path", "./foo"],
+        &manifest,
+    );
+}
+
+#[test]
 fn adds_dev_build_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
