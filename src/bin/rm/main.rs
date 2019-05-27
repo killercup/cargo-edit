@@ -13,16 +13,13 @@
 
 #[macro_use]
 extern crate error_chain;
-#[macro_use]
-extern crate serde_derive;
 
-use crate::args::Args;
 use cargo_edit::Manifest;
 use std::io::Write;
+use std::path::PathBuf;
 use std::process;
+use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
-
-mod args;
 
 mod errors {
     error_chain! {
@@ -36,23 +33,49 @@ mod errors {
 }
 use crate::errors::*;
 
-static USAGE: &'static str = r"
-Usage:
-    cargo rm <crate> [--dev|--build] [options]
-    cargo rm <crates>... [--dev|--build] [options]
-    cargo rm (-h|--help)
-    cargo rm --version
+#[derive(Debug, StructOpt)]
+#[structopt(bin_name = "cargo")]
+enum Command {
+    /// Remove a dependency from a Cargo.toml manifest file.
+    #[structopt(name = "rm", author = "")]
+    Rm(Args),
+}
 
-Options:
-    -D --dev                Remove crate as development dependency.
-    -B --build              Remove crate as build dependency.
-    --manifest-path=<path>  Path to the manifest to remove a dependency from.
-    -q --quiet              Do not print any output in case of success.
-    -h --help               Show this help page.
-    -V --version            Show version.
+#[derive(Debug, StructOpt)]
+struct Args {
+    /// Crates to be removed.
+    #[structopt(name = "crates", raw(required = "true"))]
+    crates: Vec<String>,
 
-Remove a dependency from a Cargo.toml manifest file.
-";
+    /// Remove crate as development dependency.
+    #[structopt(long = "dev", short = "D", conflicts_with = "build")]
+    dev: bool,
+
+    /// Remove crate as build dependency.
+    #[structopt(long = "build", short = "B", conflicts_with = "dev")]
+    build: bool,
+
+    /// Path to the manifest to remove a dependency from.
+    #[structopt(long = "manifest-path", value_name = "path")]
+    manifest_path: Option<PathBuf>,
+
+    /// Do not print any output in case of success.
+    #[structopt(long = "quiet", short = "q")]
+    quiet: bool,
+}
+
+impl Args {
+    /// Get depenency section
+    pub fn get_section(&self) -> &'static str {
+        if self.dev {
+            "dev-dependencies"
+        } else if self.build {
+            "build-dependencies"
+        } else {
+            "dependencies"
+        }
+    }
+}
 
 fn print_msg(name: &str, section: &str) -> Result<()> {
     let colorchoice = if atty::is(atty::Stream::Stdout) {
@@ -69,13 +92,13 @@ fn print_msg(name: &str, section: &str) -> Result<()> {
 }
 
 fn handle_rm(args: &Args) -> Result<()> {
-    let manifest_path = args.flag_manifest_path.as_ref().map(From::from);
-    let mut manifest = Manifest::open(&manifest_path)?;
-    let deps = &args.parse_dependencies()?;
+    let manifest_path = &args.manifest_path;
+    let mut manifest = Manifest::open(manifest_path)?;
+    let deps = &args.crates;
 
     deps.iter()
         .map(|dep| {
-            if !args.flag_quiet {
+            if !args.quiet {
                 print_msg(&dep, args.get_section())?;
             }
             manifest
@@ -88,21 +111,15 @@ fn handle_rm(args: &Args) -> Result<()> {
             err
         })?;
 
-    let mut file = Manifest::find_file(&manifest_path)?;
+    let mut file = Manifest::find_file(manifest_path)?;
     manifest.write_to_file(&mut file)?;
 
     Ok(())
 }
 
 fn main() {
-    let args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.deserialize::<Args>())
-        .unwrap_or_else(|err| err.exit());
-
-    if args.flag_version {
-        println!("cargo-rm version {}", env!("CARGO_PKG_VERSION"));
-        process::exit(0);
-    }
+    let args: Command = Command::from_args();
+    let Command::Rm(args) = args;
 
     if let Err(err) = handle_rm(&args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);

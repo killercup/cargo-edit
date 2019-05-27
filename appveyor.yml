@@ -1,16 +1,22 @@
 # Appveyor config originally copied from https://github.com/seanmonstar/reqwest
 #
 # appveyor-retry makes us more resilient to random network failures.
+
+# see: https://www.appveyor.com/docs/windows-images-software/#mingw-msys-cygwin
+# MinGW pre-installed.
+image: Visual Studio 2015
+
 environment:
   matrix:
-  - TARGET: x86_64-pc-windows-msvc
-  - TARGET: i686-pc-windows-msvc
   - TARGET: x86_64-pc-windows-gnu
   - TARGET: i686-pc-windows-gnu
+  - TARGET: x86_64-pc-windows-msvc
+  - TARGET: i686-pc-windows-msvc
 install:
   - appveyor-retry curl -sSf -o rustup-init.exe https://win.rustup.rs/
   - appveyor-retry rustup-init.exe -y --default-host %TARGET%
   - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - set PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;%PATH%
   - rustc -vV
   - cargo -vV
 build: false

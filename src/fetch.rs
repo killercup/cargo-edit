@@ -291,7 +291,7 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
         .ok_or_else(|| ErrorKind::ParseCargoToml.into())
 }
 
-fn get_default_timeout() -> Duration {
+const fn get_default_timeout() -> Duration {
     Duration::from_secs(10)
 }
 

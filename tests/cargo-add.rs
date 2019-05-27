@@ -3,7 +3,7 @@ extern crate pretty_assertions;
 
 use std::process;
 mod utils;
-use crate::utils::{clone_out_test, execute_command, get_toml};
+use crate::utils::{clone_out_test, execute_bad_command, execute_command, get_toml};
 
 /// Some of the tests need to have a crate name that does not exist on crates.io. Hence this rather
 /// silly constant. Tests _will_ fail, though, if a crate is ever published with this name.
@@ -87,7 +87,14 @@ fn adds_dependency_with_upgrade_all() {
 
 #[test]
 fn adds_dependency_with_upgrade_bad() {
-    upgrade_test_helper("an_invalid_string", "");
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    let upgrade_arg = format!("--upgrade=an_invalid_string",);
+    execute_bad_command(&["add", "my-package", upgrade_arg.as_str()], &manifest);
 }
 
 #[test]
@@ -106,6 +113,34 @@ fn adds_multiple_dependencies() {
     assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
     let val = &toml["dependencies"]["my-package2"];
     assert_eq!(val.as_str().unwrap(), "my-package2--CURRENT_VERSION_TEST");
+}
+
+#[test]
+fn adds_multiple_dependencies_with_conflicts_option() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_bad_command(
+        &["add", "my-package1", "my-package2", "--vers", "0.1.0"],
+        &manifest,
+    );
+    execute_bad_command(
+        &[
+            "add",
+            "my-package1",
+            "my-package2",
+            "--git",
+            "https://github.com/dcjanus/invalid",
+        ],
+        &manifest,
+    );
+    execute_bad_command(
+        &["add", "my-package1", "my-package2", "--path", "./foo"],
+        &manifest,
+    );
 }
 
 #[test]
@@ -717,16 +752,14 @@ fn adds_dependency_normalized_name() {
 }
 
 #[test]
-#[should_panic]
 fn fails_to_add_dependency_with_empty_target() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // Fails because target parameter must be a valid target
-    execute_command(&["add", "--target", "", "my-package1"], &manifest);
+    execute_bad_command(&["add", "--target", "", "my-package1"], &manifest);
 }
 
 #[test]
-#[should_panic]
 fn fails_to_add_optional_dev_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -735,7 +768,7 @@ fn fails_to_add_optional_dev_dependency() {
     assert!(toml["dependencies"].is_none());
 
     // Fails because optional dependencies must be in `dependencies` table.
-    execute_command(
+    execute_bad_command(
         &[
             "add",
             "versioned-package",
@@ -749,7 +782,6 @@ fn fails_to_add_optional_dev_dependency() {
 }
 
 #[test]
-#[should_panic]
 fn fails_to_add_multiple_optional_dev_dependencies() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -758,14 +790,13 @@ fn fails_to_add_multiple_optional_dev_dependencies() {
     assert!(toml["dependencies"].is_none());
 
     // Fails because optional dependencies must be in `dependencies` table.
-    execute_command(
+    execute_bad_command(
         &["add", "--optional", "my-package1", "my-package2", "--dev"],
         &manifest,
     );
 }
 
 #[test]
-#[should_panic]
 #[cfg(feature = "test-external-apis")]
 fn fails_to_add_inexistent_git_source_without_flag() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
@@ -774,14 +805,13 @@ fn fails_to_add_inexistent_git_source_without_flag() {
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"].is_none());
 
-    execute_command(
+    execute_bad_command(
         &["add", "https://github.com/killercup/fake-git-repo.git"],
         &manifest,
     );
 }
 
 #[test]
-#[should_panic]
 fn fails_to_add_inexistent_local_source_without_flag() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -789,7 +819,7 @@ fn fails_to_add_inexistent_local_source_without_flag() {
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"].is_none());
 
-    execute_command(&["add", "./tests/fixtures/local"], &manifest);
+    execute_bad_command(&["add", "./tests/fixtures/local"], &manifest);
 }
 
 fn overwrite_dependency_test(first_command: &[&str], second_command: &[&str], expected: &str) {
@@ -887,13 +917,13 @@ fn no_argument() {
         .fails_with(1)
         .and()
         .stderr()
-        .is(r"Invalid arguments.
+        .is(r"error: The following required arguments were not provided:
+    <crate>...
 
-Usage:
-    cargo add <crate> [--dev|--build|--optional] [options]
-    cargo add <crates>... [--dev|--build|--optional] [options]
-    cargo add (-h|--help)
-    cargo add --version")
+USAGE:
+    cargo add <crate>... --upgrade <method>
+
+For more information try --help")
         .unwrap();
 }
 
@@ -903,13 +933,14 @@ fn unknown_flags() {
         .fails_with(1)
         .and()
         .stderr()
-        .is(r"Unknown flag: '--flag'
+        .is(
+            r"error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
-Usage:
-    cargo add <crate> [--dev|--build|--optional] [options]
-    cargo add <crates>... [--dev|--build|--optional] [options]
-    cargo add (-h|--help)
-    cargo add --version")
+USAGE:
+    cargo add [FLAGS] [OPTIONS] <crate>...
+
+For more information try --help",
+        )
         .unwrap();
 }
 
