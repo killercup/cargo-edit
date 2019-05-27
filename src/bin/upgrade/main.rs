@@ -56,7 +56,6 @@ be supplied in the presence of a virtual manifest."
 #[derive(Debug, StructOpt)]
 struct Args {
     /// Crates to be upgraded.
-    #[structopt(conflicts_with = "all")]
     dependency: Vec<String>,
 
     /// Path to the manifest to upgrade
