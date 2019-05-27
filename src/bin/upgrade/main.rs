@@ -34,7 +34,8 @@ mod errors {
 
 #[derive(Debug, StructOpt)]
 #[structopt(bin_name = "cargo")]
-enum ArgsWrap {
+enum Command {
+    /// Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
     #[structopt(name = "upgrade", author = "")]
     #[structopt(
         after_help = "This command differs from `cargo update`, which updates the dependency versions recorded in the
@@ -49,28 +50,29 @@ supported. Git/path dependencies will be ignored.
 All packages in the workspace will be upgraded if the `--all` flag is supplied. The `--all` flag may
 be supplied in the presence of a virtual manifest."
     )]
-    /// Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
     Upgrade(Args),
 }
 
 #[derive(Debug, StructOpt)]
 struct Args {
+    /// Crates to be upgraded.
     #[structopt(conflicts_with = "all")]
     dependency: Vec<String>,
 
+    /// Path to the manifest to upgrade
     #[structopt(long = "manifest-path", value_name = "path")]
     manifest_path: Option<PathBuf>,
 
-    #[structopt(long = "all")]
     /// Upgrade all packages in the workspace.
+    #[structopt(long = "all")]
     all: bool,
 
-    #[structopt(long = "allow-prerelease")]
     /// Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha').
+    #[structopt(long = "allow-prerelease")]
     allow_prerelease: bool,
 
-    #[structopt(long = "dry-run")]
     /// Print changes to be made without making them.
+    #[structopt(long = "dry-run")]
     dry_run: bool,
 }
 
@@ -249,8 +251,8 @@ fn process(args: Args) -> Result<()> {
 }
 
 fn main() {
-    let args: ArgsWrap = ArgsWrap::from_args();
-    let ArgsWrap::Upgrade(args) = args;
+    let args: Command = Command::from_args();
+    let Command::Upgrade(args) = args;
 
     if let Err(err) = process(args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);

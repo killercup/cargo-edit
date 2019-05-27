@@ -460,21 +460,21 @@ fn adds_local_source_with_version_flag() {
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"].is_none());
 
-    execute_bad_command(
+    execute_command(
         &["add", "local", "--vers", "0.4.3", "--path", "/path/to/pkg"],
         &manifest,
     );
 
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["local"];
-    assert_eq!(val["path"].as_str(), None);
-    assert_eq!(val["version"].as_str(), None);
+    assert_eq!(val["path"].as_str(), Some("/path/to/pkg"));
+    assert_eq!(val["version"].as_str(), Some("0.4.3"));
 
     // check this works with other flags (e.g. --dev) as well
     let toml = get_toml(&manifest);
     assert!(toml["dev-dependencies"].is_none());
 
-    execute_bad_command(
+    execute_command(
         &[
             "add",
             "local-dev",
@@ -489,8 +489,8 @@ fn adds_local_source_with_version_flag() {
 
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["local-dev"];
-    assert_eq!(val["path"].as_str(), None);
-    assert_eq!(val["version"].as_str(), None);
+    assert_eq!(val["path"].as_str(), Some("/path/to/pkg-dev"));
+    assert_eq!(val["version"].as_str(), Some("0.4.3"));
 }
 
 #[test]

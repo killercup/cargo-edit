@@ -14,7 +14,7 @@
 #[macro_use]
 extern crate error_chain;
 
-use crate::args::{Args, ArgsWrap};
+use crate::args::{Args, Command};
 use cargo_edit::{Dependency, Manifest};
 use std::io::Write;
 use std::process;
@@ -103,8 +103,8 @@ fn handle_add(args: &Args) -> Result<()> {
 }
 
 fn main() {
-    let args: ArgsWrap = ArgsWrap::from_args();
-    let ArgsWrap::Add(args) = args;
+    let args: Command = Command::from_args();
+    let Command::Add(args) = args;
 
     if let Err(err) = handle_add(&args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);

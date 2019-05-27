@@ -10,7 +10,8 @@ use crate::errors::*;
 
 #[derive(Debug, StructOpt)]
 #[structopt(bin_name = "cargo")]
-pub enum ArgsWrap {
+pub enum Command {
+    /// Add dependency to a Cargo.toml manifest file.
     #[structopt(name = "add", author = "")]
     #[structopt(
         after_help = "This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
@@ -22,60 +23,55 @@ as '>=1.2.3 and <2.0.0'). By default, `cargo add` will use this format, as it is
 crates.io registry suggests. One goal of `cargo add` is to prevent you from using wildcard
 dependencies (version set to '*')."
     )]
-    /// Add dependency to a Cargo.toml manifest file.
     Add(Args),
 }
 
 #[derive(Debug, StructOpt)]
 pub struct Args {
+    /// Crates to be added.
     #[structopt(name = "crate", raw(required = "true"))]
-    /// Crates to be added
     pub crates: Vec<String>,
 
+    /// Add crate as development dependency.
     #[structopt(long = "dev", short = "D", conflicts_with = "build")]
-    /// Add crate as development dependency
     pub dev: bool,
 
+    /// Add crate as build dependency.
     #[structopt(long = "build", short = "B", conflicts_with = "dev")]
-    /// Add crate as build dependency
     pub build: bool,
 
-    #[structopt(
-        long = "vers",
-        value_name = "uri",
-        conflicts_with = "git",
-        conflicts_with = "path"
-    )]
     /// Specify the version to grab from the registry(crates.io).
     /// You can also specify version as part of name, e.g
     /// `cargo add bitflags@0.3.2`.
+    #[structopt(long = "vers", value_name = "uri", conflicts_with = "git")]
     pub vers: Option<String>,
 
+    /// Specify a git repository to download the crate from.
     #[structopt(
         long = "git",
         value_name = "uri",
         conflicts_with = "vers",
         conflicts_with = "path"
     )]
-    /// Specify a git repository to download the crate from.
     pub git: Option<String>,
 
-    #[structopt(long = "path", conflicts_with = "git", conflicts_with = "vers")]
     /// Specify the path the crate should be loaded from.
+    #[structopt(long = "path", conflicts_with = "git")]
     pub path: Option<PathBuf>,
 
-    #[structopt(long = "target", conflicts_with = "dev", conflicts_with = "build")]
     /// Add as dependency to the given target platform.
+    #[structopt(long = "target", conflicts_with = "dev", conflicts_with = "build")]
     pub target: Option<String>,
 
-    #[structopt(long = "optional", conflicts_with = "dev", conflicts_with = "build")]
     /// Add as an optional dependency (for use in features).
+    #[structopt(long = "optional", conflicts_with = "dev", conflicts_with = "build")]
     pub optional: bool,
 
-    #[structopt(long = "manifest-path", value_name = "path")]
     /// Path to the manifest to add a dependency to.
+    #[structopt(long = "manifest-path", value_name = "path")]
     pub manifest_path: Option<PathBuf>,
 
+    /// Choose method of semantic version upgrade.
     #[structopt(
         long = "upgrade",
         value_name = "method",
@@ -86,20 +82,19 @@ pub struct Args {
         possible_value = "default",
         default_value = "default"
     )]
-    /// Choose method of semantic version upgrade.
     pub upgrade: String,
 
-    #[structopt(long = "allow-prerelease")]
     /// Include prerelease versions when fetching from crates.io (e.g.
     /// '0.6.0-alpha').
+    #[structopt(long = "allow-prerelease")]
     pub allow_prerelease: bool,
 
-    #[structopt(long = "no-default-features")]
     /// Set `default-features = false` for the added dependency.
+    #[structopt(long = "no-default-features")]
     pub no_default_features: bool,
 
-    #[structopt(long = "quiet", short = "q")]
     /// Do not print any output in case of success.
+    #[structopt(long = "quiet", short = "q")]
     pub quiet: bool,
 }
 
