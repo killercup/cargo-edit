@@ -44,6 +44,10 @@ impl Dependency {
 
     /// Set dependency to a given version
     pub fn set_version(mut self, version: &str) -> Dependency {
+        // versions might have semver metadata appended which we do not want to
+        // store in the cargo toml files.  This would cause a warning upon compilation
+        // ("version requirement […] includes semver metadata which will be ignored")
+        let version = version.split('+').next().unwrap();
         let old_source = self.source;
         let old_path = match old_source {
             DependencySource::Version { path, .. } => path,
