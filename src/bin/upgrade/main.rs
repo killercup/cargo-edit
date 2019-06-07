@@ -16,6 +16,7 @@ extern crate error_chain;
 
 use crate::errors::*;
 use cargo_edit::{find, get_latest_dependency, CrateName, Dependency, LocalManifest};
+use failure::Fail;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -27,7 +28,9 @@ mod errors {
     error_chain! {
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
-            CargoMetadata(::cargo_metadata::Error, ::cargo_metadata::ErrorKind);
+        }
+        foreign_links {
+            CargoMetadata(::failure::Compat<::cargo_metadata::Error>);
         }
     }
 }
@@ -81,8 +84,16 @@ struct Manifests(Vec<(LocalManifest, cargo_metadata::Package)>);
 impl Manifests {
     /// Get all manifests in the workspace.
     fn get_all(manifest_path: &Option<PathBuf>) -> Result<Self> {
-        cargo_metadata::metadata(manifest_path.as_ref().map(Path::new))
-            .chain_err(|| "Failed to get workspace metadata")?
+        let mut cmd = cargo_metadata::MetadataCommand::new();
+        if let Some(path) = manifest_path {
+            cmd.manifest_path(path);
+        }
+        let result = cmd.exec();
+        if let Err(e) = result {
+            return Err(Error::from(e.compat()).chain_err(|| "Failed to get workspace metadata"));
+        }
+        result
+            .unwrap()
             .packages
             .into_iter()
             .map(|package| {
@@ -102,12 +113,18 @@ impl Manifests {
 
         let manifest = LocalManifest::find(&manifest_path)?;
 
-        let packages = cargo_metadata::metadata(manifest_path.as_ref().map(Path::new))
-            .chain_err(|| "Invalid manifest")?
-            .packages;
+        let mut cmd = cargo_metadata::MetadataCommand::new();
+        if let Some(path) = manifest_path {
+            cmd.manifest_path(path);
+        }
+        let result = cmd.exec();
+        if let Err(e) = result {
+            return Err(Error::from(e.compat()).chain_err(|| "Invalid manifest"));
+        }
+        let packages = result.unwrap().packages;
         let package = packages
             .iter()
-            .find(|p| p.manifest_path == resolved_manifest_path)
+            .find(|p| p.manifest_path.to_string_lossy() == resolved_manifest_path)
             // If we have successfully got metadata, but our manifest path does not correspond to a
             // package, we must have been called against a virtual manifest.
             .chain_err(|| {
