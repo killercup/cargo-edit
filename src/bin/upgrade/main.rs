@@ -85,6 +85,7 @@ impl Manifests {
     /// Get all manifests in the workspace.
     fn get_all(manifest_path: &Option<PathBuf>) -> Result<Self> {
         let mut cmd = cargo_metadata::MetadataCommand::new();
+        cmd.no_deps();
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
@@ -114,6 +115,7 @@ impl Manifests {
         let manifest = LocalManifest::find(&manifest_path)?;
 
         let mut cmd = cargo_metadata::MetadataCommand::new();
+        cmd.no_deps();
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
