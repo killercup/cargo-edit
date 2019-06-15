@@ -237,7 +237,7 @@ impl Manifest {
             }
         }
 
-        let s = self.data.to_string();
+        let s = self.data.to_string_in_original_order();
         let new_contents_bytes = s.as_bytes();
 
         // We need to truncate the file, otherwise the new contents
