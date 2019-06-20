@@ -305,6 +305,7 @@ For more information try --help ",
 }
 
 #[test]
+#[cfg(feature = "test-external-apis")]
 fn upgrade_prints_messages() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.source");
 
