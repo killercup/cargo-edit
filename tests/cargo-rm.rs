@@ -1,5 +1,5 @@
 mod utils;
-use crate::utils::{clone_out_test, execute_command, get_toml};
+use crate::utils::{clone_out_test, execute_command, get_command_path, get_toml};
 
 #[test]
 fn remove_existing_dependency() {
@@ -99,7 +99,7 @@ fn invalid_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-rm",
+        get_command_path("rm").as_str(),
         "rm",
         "invalid_dependency_name",
         &format!("--manifest-path={}", manifest),
@@ -120,7 +120,7 @@ fn invalid_section() {
 
     execute_command(&["rm", "semver", "--build"], &manifest);
     assert_cli::Assert::command(&[
-        "target/debug/cargo-rm",
+        get_command_path("rm").as_str(),
         "rm",
         "semver",
         "--build",
@@ -141,7 +141,7 @@ fn invalid_dependency_in_section() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-rm",
+        get_command_path("rm").as_str(),
         "rm",
         "semver",
         "regex",
@@ -160,7 +160,7 @@ fn invalid_dependency_in_section() {
 
 #[test]
 fn no_argument() {
-    assert_cli::Assert::command(&["target/debug/cargo-rm", "rm"])
+    assert_cli::Assert::command(&[get_command_path("rm").as_str(), "rm"])
         .fails_with(1)
         .and()
         .stderr()
@@ -176,7 +176,7 @@ For more information try --help")
 
 #[test]
 fn unknown_flags() {
-    assert_cli::Assert::command(&["target/debug/cargo-rm", "rm", "foo", "--flag"])
+    assert_cli::Assert::command(&[get_command_path("rm").as_str(), "rm", "foo", "--flag"])
         .fails_with(1)
         .and()
         .stderr()
@@ -196,7 +196,7 @@ fn rm_prints_message() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-rm",
+        get_command_path("rm").as_str(),
         "rm",
         "semver",
         &format!("--manifest-path={}", manifest),
@@ -213,7 +213,7 @@ fn rm_prints_messages_for_multiple() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-rm",
+        get_command_path("rm").as_str(),
         "rm",
         "semver",
         "docopt",

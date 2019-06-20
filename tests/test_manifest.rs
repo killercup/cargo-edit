@@ -1,7 +1,10 @@
+mod utils;
+use crate::utils::get_command_path;
+
 #[test]
 fn invalid_manifest() {
     assert_cli::Assert::command(&[
-        "target/debug/cargo-add",
+        get_command_path("add").as_str(),
         "add",
         "foo",
         "--manifest-path=tests/fixtures/manifest-invalid/Cargo.toml.sample",

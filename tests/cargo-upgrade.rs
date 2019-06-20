@@ -4,7 +4,7 @@ extern crate pretty_assertions;
 use std::fs;
 
 mod utils;
-use crate::utils::{clone_out_test, execute_command, get_toml};
+use crate::utils::{clone_out_test, execute_command, get_command_path, get_toml};
 
 /// Helper function that copies the workspace test into a temporary directory.
 pub fn copy_workspace_test() -> (tempdir::TempDir, String, Vec<String>) {
@@ -227,7 +227,7 @@ fn detect_workspace() {
     let (_tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-upgrade",
+        get_command_path("upgrade").as_str(),
         "upgrade",
         "--manifest-path",
         &root_manifest,
@@ -247,7 +247,7 @@ fn invalid_manifest() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-upgrade",
+        get_command_path("upgrade").as_str(),
         "upgrade",
         "--manifest-path",
         &manifest,
@@ -274,7 +274,7 @@ fn invalid_root_manifest() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-upgrade",
+        get_command_path("upgrade").as_str(),
         "upgrade",
         "--all",
         "--manifest-path",
@@ -289,19 +289,24 @@ fn invalid_root_manifest() {
 
 #[test]
 fn unknown_flags() {
-    assert_cli::Assert::command(&["target/debug/cargo-upgrade", "upgrade", "foo", "--flag"])
-        .fails_with(1)
-        .and()
-        .stderr()
-        .is(
-            "error: Found argument '--flag' which wasn't expected, or isn't valid in this context
+    assert_cli::Assert::command(&[
+        get_command_path("upgrade").as_str(),
+        "upgrade",
+        "foo",
+        "--flag",
+    ])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .is(
+        "error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
 USAGE:
     cargo upgrade [FLAGS] [OPTIONS] [dependency]...
 
 For more information try --help ",
-        )
-        .unwrap();
+    )
+    .unwrap();
 }
 
 #[test]
@@ -309,7 +314,7 @@ fn upgrade_prints_messages() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.source");
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-upgrade",
+        get_command_path("upgrade").as_str(),
         "upgrade",
         "docopt",
         &format!("--manifest-path={}", manifest),
