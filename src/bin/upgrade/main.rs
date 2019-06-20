@@ -91,7 +91,7 @@ impl Manifests {
         }
         let result = cmd
             .exec()
-            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
+            .map_err(|e| Error::from(e.compat()).chain_err(|| "Failed to get workspace metadata"))?;
         result
             .packages
             .into_iter()
