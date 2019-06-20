@@ -89,12 +89,10 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd.exec();
-        if let Err(e) = result {
-            return Err(Error::from(e.compat()).chain_err(|| "Failed to get workspace metadata"));
-        }
+        let result = cmd
+            .exec()
+            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
         result
-            .unwrap()
             .packages
             .into_iter()
             .map(|package| {
@@ -119,11 +117,10 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd.exec();
-        if let Err(e) = result {
-            return Err(Error::from(e.compat()).chain_err(|| "Invalid manifest"));
-        }
-        let packages = result.unwrap().packages;
+        let result = cmd
+            .exec()
+            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
+        let packages = result.packages;
         let package = packages
             .iter()
             .find(|p| p.manifest_path.to_string_lossy() == resolved_manifest_path)
