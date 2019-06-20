@@ -50,9 +50,10 @@ repository = "killercup/cargo-edit"
 repository = "killercup/cargo-edit"
 
 [dependencies]
-cargo_metadata = "0.6.4"
+cargo_metadata = "0.8.0"
 env_proxy = "0.3.1"
 error-chain = "0.12.1"
+failure = "0.1.5"
 regex = "1.1.6"
 reqwest = "0.9.17"
 serde = "1.0.91"

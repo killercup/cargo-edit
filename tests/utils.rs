@@ -1,6 +1,6 @@
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::io::prelude::*;
-use std::{fs, process};
+use std::{env, fs, path::PathBuf, process};
 
 /// Create temporary working directory with Cargo.toml manifest
 pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
@@ -24,9 +24,9 @@ pub fn execute_bad_command<S>(command: &[S], manifest: &str)
 where
     S: AsRef<OsStr>,
 {
-    let subcommand_name = &command[0].as_ref().to_str().unwrap();
+    let subcommand_name = &command[0].as_ref();
 
-    let call = process::Command::new(&format!("target/debug/cargo-{}", subcommand_name))
+    let call = process::Command::new(&get_command_path(subcommand_name))
         .args(command)
         .arg(format!("--manifest-path={}", manifest))
         .env("CARGO_IS_TEST", "1")
@@ -37,29 +37,35 @@ where
         println!("Status code: {:?}", call.status);
         println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
         println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
-        panic!("cargo-{} success to execute", subcommand_name)
+        panic!(
+            "cargo-{} success to execute",
+            subcommand_name.to_string_lossy()
+        )
     }
 }
 
-/// Execute localc cargo command, includes `--manifest-path`
+/// Execute local cargo command, includes `--manifest-path`
 pub fn execute_command<S>(command: &[S], manifest: &str)
 where
     S: AsRef<OsStr>,
 {
-    let subcommand_name = &command[0].as_ref().to_str().unwrap();
+    let subcommand_name = &command[0].as_ref();
 
-    let call = process::Command::new(&format!("target/debug/cargo-{}", subcommand_name))
+    let call = process::Command::new(&get_command_path(subcommand_name))
         .args(command)
         .arg(format!("--manifest-path={}", manifest))
         .env("CARGO_IS_TEST", "1")
         .output()
-        .unwrap();
+        .expect("call to test build failed");
 
     if !call.status.success() {
         println!("Status code: {:?}", call.status);
         println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
         println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
-        panic!("cargo-{} failed to execute", subcommand_name)
+        panic!(
+            "cargo-{} failed to execute",
+            subcommand_name.to_string_lossy()
+        )
     }
 }
 
@@ -69,4 +75,20 @@ pub fn get_toml(manifest_path: &str) -> toml_edit::Document {
     let mut s = String::new();
     f.read_to_string(&mut s).unwrap();
     s.parse().expect("toml parse error")
+}
+
+pub fn get_command_path(s: impl AsRef<OsStr>) -> String {
+    let target_dir: PathBuf = env::var_os("CARGO_TARGET_DIR")
+        .unwrap_or_else(|| OsString::from("target"))
+        .into();
+
+    let mut binary_name = OsString::from("cargo-");
+    binary_name.push(s.as_ref());
+
+    target_dir
+        .join("debug")
+        .join(binary_name)
+        .to_str()
+        .unwrap()
+        .to_string()
 }
