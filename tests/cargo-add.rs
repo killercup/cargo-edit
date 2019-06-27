@@ -1087,8 +1087,7 @@ fn add_typo() {
     .and()
     .stderr()
     .contains(
-        "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found \
-         on crates.io.",
+        "No available versions exist. Either all were yanked or only prerelease versions exist. Trying with the --allow-prerelease flag might solve the issue.",
     )
     .unwrap();
 }
