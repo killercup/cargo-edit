@@ -1,4 +1,9 @@
 error_chain! {
+    foreign_links {
+        Io(::std::io::Error)#[allow(missing_docs)];
+        Git(::git2::Error)#[allow(missing_docs)];
+    }
+
     errors {
         /// Failed to fetch crate from crates.io
         FetchVersionFailure {
@@ -7,6 +12,14 @@ error_chain! {
         /// Invalid JSON from crates.io response
         InvalidCratesIoJson {
             description("Invalid JSON (the crate may not exist)")
+        }
+        /// Failed to read home directory
+        ReadHomeDirFailure{
+            description("Failed to read home directory")
+        }
+        /// Invalid JSON in local registry index
+        InvalidSummaryJson {
+            description("Invalid JSON in local registry index")
         }
         /// No crate by that name exists
         NoCrate(name: String) {
@@ -46,6 +59,10 @@ error_chain! {
         NonExistentDependency(name: String, table: String) {
             description("non existent dependency")
             display("The dependency `{}` could not be found in `{}`.", name, table)
+        }
+        /// Too many '-' or '_' in given crate name
+        TooManyWildcardsInCrateName {
+            description("too many '-' or '_' in given crate name")
         }
     }
 }

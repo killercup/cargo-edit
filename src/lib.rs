@@ -1,4 +1,5 @@
 //! Show and Edit Cargo's Manifest Files
+#![recursion_limit = "128"]
 #![cfg_attr(test, allow(dead_code))]
 #![warn(
     missing_docs,

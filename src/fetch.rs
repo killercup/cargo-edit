@@ -1,28 +1,19 @@
+use crate::errors::*;
 use crate::{Dependency, Manifest};
 use env_proxy;
+use git2::Repository;
 use regex::Regex;
 use reqwest;
 use semver;
-use serde_json as json;
 use std::env;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
-
-use crate::errors::*;
-
-const REGISTRY_HOST: &str = "https://crates.io";
-
-#[derive(Deserialize)]
-struct Versions {
-    versions: Vec<CrateVersion>,
-}
 
 #[derive(Deserialize)]
 struct CrateVersion {
-    #[serde(rename = "crate")]
     name: String,
-    #[serde(rename = "num")]
+    #[serde(rename = "vers")]
     version: semver::Version,
     yanked: bool,
 }
@@ -47,7 +38,7 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
         return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
 
-    let crate_versions = fetch_cratesio(crate_name)?;
+    let crate_versions = query_registry(crate_name)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 
@@ -67,12 +58,15 @@ fn version_is_stable(version: &CrateVersion) -> bool {
 ///
 /// Assumes the version are sorted so that the first non-yanked version is the
 /// latest, and thus the one we want.
-fn read_latest_version(versions: &Versions, flag_allow_prerelease: bool) -> Result<Dependency> {
+fn read_latest_version(
+    versions: &[CrateVersion],
+    flag_allow_prerelease: bool,
+) -> Result<Dependency> {
     let latest = versions
-        .versions
         .iter()
         .filter(|&v| flag_allow_prerelease || version_is_stable(v))
-        .find(|&v| !v.yanked)
+        .filter(|&v| !v.yanked)
+        .max_by_key(|&v| v.version.clone())
         .ok_or(ErrorKind::NoVersionsAvailable)?;
 
     let name = &latest.name;
@@ -80,139 +74,50 @@ fn read_latest_version(versions: &Versions, flag_allow_prerelease: bool) -> Resu
     Ok(Dependency::new(name).set_version(&version))
 }
 
-#[test]
-fn get_latest_stable_version_from_json() {
-    let versions: Versions = json::from_str(
-        r#"{
-      "versions": [
-        {
-          "crate": "foo",
-          "num": "0.6.0-alpha",
-          "yanked": false
-        },
-        {
-          "crate": "foo",
-          "num": "0.5.0",
-          "yanked": false
-        }
-      ]
-    }"#,
-    )
-    .expect("crate version is correctly parsed");
+/// Fuzzy query crate from local registry index
+fn fuzzy_query(
+    crate_name: impl Into<String>,
+    registry_path: impl AsRef<Path>,
+) -> Result<Vec<CrateVersion>> {
+    let repo = Repository::open(registry_path)?;
+    let tree = repo
+        .find_reference("refs/remotes/origin/master")?
+        .peel_to_tree()?;
 
-    assert_eq!(
-        read_latest_version(&versions, false)
-            .unwrap()
-            .version()
-            .unwrap(),
-        "0.5.0"
-    );
-}
+    let mut result = vec![];
 
-#[test]
-fn get_latest_unstable_or_stable_version_from_json() {
-    let versions: Versions = json::from_str(
-        r#"{
-      "versions": [
-        {
-          "crate": "foo",
-          "num": "0.6.0-alpha",
-          "yanked": false
-        },
-        {
-          "crate": "foo",
-          "num": "0.5.0",
-          "yanked": false
-        }
-      ]
-    }"#,
-    )
-    .expect("crate version is correctly parsed");
-
-    assert_eq!(
-        read_latest_version(&versions, true)
-            .unwrap()
-            .version()
-            .unwrap(),
-        "0.6.0-alpha"
-    );
-}
-
-#[test]
-fn get_latest_version_from_json_test() {
-    let versions: Versions = json::from_str(
-        r#"{
-      "versions": [
-        {
-          "crate": "treexml",
-          "num": "0.3.1",
-          "yanked": true
-        },
-        {
-          "crate": "treexml",
-          "num": "0.3.0",
-          "yanked": false
-        }
-      ]
-    }"#,
-    )
-    .expect("crate version is correctly parsed");
-
-    assert_eq!(
-        read_latest_version(&versions, false)
-            .unwrap()
-            .version()
-            .unwrap(),
-        "0.3.0"
-    );
-}
-
-#[test]
-fn get_no_latest_version_from_json_when_all_are_yanked() {
-    let versions: Versions = json::from_str(
-        r#"{
-      "versions": [
-        {
-          "crate": "treexml",
-          "num": "0.3.1",
-          "yanked": true
-        },
-        {
-          "crate": "treexml",
-          "num": "0.3.0",
-          "yanked": true
-        }
-      ]
-    }"#,
-    )
-    .expect("crate version is correctly parsed");
-
-    assert!(read_latest_version(&versions, false).is_err());
-}
-
-fn fetch_cratesio(crate_name: &str) -> Result<Versions> {
-    let url = format!(
-        "{host}/api/v1/crates/{crate_name}",
-        host = REGISTRY_HOST,
-        crate_name = crate_name
-    );
-
-    match get_with_timeout(&url, get_default_timeout()) {
-        Ok(response) => {
-            Ok(json::from_reader(response).chain_err(|| ErrorKind::InvalidCratesIoJson)?)
-        }
-        Err(e) => {
-            let not_found_error = e.status() == Some(reqwest::StatusCode::NOT_FOUND);
-
-            Err(e).chain_err(|| {
-                if not_found_error {
-                    ErrorKind::NoCrate(crate_name.to_string())
-                } else {
-                    ErrorKind::FetchVersionFailure
-                }
-            })
+    let names = gen_fuzzy_crate_names(crate_name.into())?;
+    for the_name in names {
+        let file = match tree.get_path(&PathBuf::from(summary_raw_path(&the_name))) {
+            Ok(x) => x.to_object(&repo)?.peel_to_blob()?,
+            Err(_) => continue,
+        };
+        let content = String::from_utf8(file.content().to_vec())
+            .map_err(|_| ErrorKind::InvalidSummaryJson)?;
+        for line in content.lines() {
+            result.push(
+                serde_json::from_str::<CrateVersion>(line)
+                    .map_err(|_| ErrorKind::InvalidSummaryJson)?,
+            );
         }
     }
+
+    Ok(result)
+}
+
+fn registry_path() -> Result<PathBuf> {
+    // TODO Read cargo config and env
+    let result = dirs::home_dir()
+        .chain_err(|| ErrorKind::ReadHomeDirFailure)?
+        .join(".cargo")
+        .join("registry")
+        .join("index")
+        .join("github.com-1ecc6299db9ec823/");
+    Ok(result)
+}
+
+fn query_registry(crate_name: &str) -> Result<Vec<CrateVersion>> {
+    fuzzy_query(crate_name, &registry_path()?)
 }
 
 fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
@@ -316,4 +221,85 @@ fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
     res.read_to_string(&mut body)
         .chain_err(|| "Git response not a valid `String`")?;
     Ok(body)
+}
+
+/// Generate all similar crate names
+///
+/// Examples:
+///
+/// | input | output |
+/// | ----- | ------ |
+/// | cargo | cargo  |
+/// | cargo-edit | cargo-edit, cargo_edit |
+/// | parking_lot_core | parking_lot_core, parking_lot-core, parking-lot_core, parking-lot-core |
+fn gen_fuzzy_crate_names(crate_name: String) -> Result<Vec<String>> {
+    const PATTERN: [u8; 2] = [b'-', b'_'];
+
+    let wildcard_indexs = crate_name
+        .bytes()
+        .enumerate()
+        .filter(|(_, item)| PATTERN.contains(item))
+        .map(|(index, _)| index)
+        .collect::<Vec<usize>>();
+    if wildcard_indexs.len() > 127 {
+        return Err(ErrorKind::TooManyWildcardsInCrateName.into());
+    } else if wildcard_indexs.is_empty() {
+        return Ok(vec![crate_name]);
+    }
+
+    let mut result = vec![];
+    let mut bytes = crate_name.into_bytes();
+    for mask in 0..2u128.pow(wildcard_indexs.len() as u32) {
+        for (mask_index, wildcard_index) in wildcard_indexs.iter().enumerate() {
+            let mask_value = (mask >> mask_index) & 1 == 1;
+            if mask_value {
+                bytes[*wildcard_index] = b'-';
+            } else {
+                bytes[*wildcard_index] = b'_';
+            }
+        }
+        result.push(String::from_utf8(bytes.clone()).unwrap());
+    }
+    Ok(result)
+}
+
+#[test]
+fn test_gen_fuzzy_crate_names() {
+    fn test_helper(input: &str, expect: &[&str]) {
+        let mut actual = gen_fuzzy_crate_names(input.to_string()).unwrap();
+        actual.sort();
+
+        let mut expect = expect.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        expect.sort();
+
+        assert_eq!(actual, expect);
+    }
+
+    test_helper("", &[""]);
+    test_helper("-", &["_", "-"]);
+    test_helper("DCjanus", &["DCjanus"]);
+    test_helper("DC-janus", &["DC-janus", "DC_janus"]);
+    test_helper(
+        "DC-_janus",
+        &["DC__janus", "DC_-janus", "DC-_janus", "DC--janus"],
+    );
+}
+
+fn summary_raw_path(crate_name: &str) -> String {
+    match crate_name.len() {
+        0 => unreachable!(),
+        1 => format!("1/{}", crate_name),
+        2 => format!("2/{}", crate_name),
+        3 => format!("3/{}/{}", &crate_name[..1], crate_name),
+        _ => format!("{}/{}/{}", &crate_name[..2], &crate_name[2..4], crate_name),
+    }
+}
+
+#[test]
+fn test_summary_raw_path() {
+    assert_eq!(summary_raw_path("a"), "1/a");
+    assert_eq!(summary_raw_path("ab"), "2/ab");
+    assert_eq!(summary_raw_path("abc"), "3/a/abc");
+    assert_eq!(summary_raw_path("abcd"), "ab/cd/abcd");
+    assert_eq!(summary_raw_path("abcdefg"), "ab/cd/abcdefg");
 }
