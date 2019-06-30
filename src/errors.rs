@@ -17,9 +17,9 @@ error_chain! {
         ReadHomeDirFailure{
             description("Failed to read home directory")
         }
-        /// Invalid JSON in local registry index
+        /// Invalid JSON in registry index
         InvalidSummaryJson {
-            description("Invalid JSON in local registry index")
+            description("Invalid JSON in registry index")
         }
         /// No crate by that name exists
         NoCrate(name: String) {

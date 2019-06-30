@@ -41,7 +41,7 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
 
     // TODO update index
     // TODO 'flag_offline'
-    let crate_versions = fuzzy_query(crate_name, &registry_path()?)?;
+    let crate_versions = fuzzy_query_registry_index(crate_name, &registry_path()?)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 
@@ -77,8 +77,8 @@ fn read_latest_version(
     Ok(Dependency::new(name).set_version(&version))
 }
 
-/// Fuzzy query crate from local registry index
-fn fuzzy_query(
+/// Fuzzy query crate from registry index
+fn fuzzy_query_registry_index(
     crate_name: impl Into<String>,
     registry_path: impl AsRef<Path>,
 ) -> Result<Vec<CrateVersion>> {
