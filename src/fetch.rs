@@ -229,7 +229,7 @@ fn gen_fuzzy_crate_names(crate_name: String) -> Result<Vec<String>> {
         .filter(|(_, item)| PATTERN.contains(item))
         .map(|(index, _)| index)
         .collect::<Vec<usize>>();
-    if wildcard_indexs.len() > 127 {
+    if wildcard_indexs.len() > 126 {
         return Err(ErrorKind::TooManyWildcardsInCrateName.into());
     } else if wildcard_indexs.is_empty() {
         return Ok(vec![crate_name]);

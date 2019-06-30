@@ -41,16 +41,7 @@ mod code_from_cargo {
     #![allow(dead_code)]
 
     pub fn to_hex(num: u64) -> String {
-        hex::encode(&[
-            num as u8,
-            (num >> 8) as u8,
-            (num >> 16) as u8,
-            (num >> 24) as u8,
-            (num >> 32) as u8,
-            (num >> 40) as u8,
-            (num >> 48) as u8,
-            (num >> 56) as u8,
-        ])
+        hex::encode(num.to_le_bytes())
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
