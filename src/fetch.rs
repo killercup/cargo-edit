@@ -1,4 +1,5 @@
 use crate::errors::*;
+use crate::registry::registry_path;
 use crate::{Dependency, Manifest};
 use env_proxy;
 use git2::Repository;
@@ -38,7 +39,9 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
         return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
 
-    let crate_versions = query_registry(crate_name)?;
+    // TODO update index
+    // TODO 'flag_offline'
+    let crate_versions = fuzzy_query(crate_name, &registry_path()?)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 
@@ -103,21 +106,6 @@ fn fuzzy_query(
     }
 
     Ok(result)
-}
-
-fn registry_path() -> Result<PathBuf> {
-    // TODO Read cargo config and env
-    let result = dirs::home_dir()
-        .chain_err(|| ErrorKind::ReadHomeDirFailure)?
-        .join(".cargo")
-        .join("registry")
-        .join("index")
-        .join("github.com-1ecc6299db9ec823/");
-    Ok(result)
-}
-
-fn query_registry(crate_name: &str) -> Result<Vec<CrateVersion>> {
-    fuzzy_query(crate_name, &registry_path()?)
 }
 
 fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
