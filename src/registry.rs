@@ -24,6 +24,7 @@ fn index_path() -> Result<PathBuf> {
 }
 
 fn short_name(registry: &Url) -> String {
+    // ref: https://github.com/rust-lang/cargo/blob/4c1fa54d10f58d69ac9ff55be68e1b1c25ecb816/src/cargo/sources/registry/mod.rs#L386-L390
     #![allow(deprecated)]
     use std::hash::{Hash, Hasher, SipHasher};
 
@@ -35,6 +36,18 @@ fn short_name(registry: &Url) -> String {
     let ident = registry.host_str().unwrap_or("").to_string();
 
     format!("{}-{}", ident, hash)
+}
+
+#[test]
+fn test_short_name() {
+    fn test_helper(url: &str, name: &str) {
+        let url = Url::parse(url).unwrap();
+        assert_eq!(short_name(&url), name);
+    }
+    test_helper(
+        "https://github.com/rust-lang/crates.io-index",
+        "github.com-1ecc6299db9ec823",
+    );
 }
 
 mod code_from_cargo {
