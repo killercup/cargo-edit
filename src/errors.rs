@@ -5,14 +5,6 @@ error_chain! {
     }
 
     errors {
-        /// Failed to fetch crate from crates.io
-        FetchVersionFailure {
-            description("Failed to fetch crate version from crates.io")
-        }
-        /// Invalid JSON from crates.io response
-        InvalidCratesIoJson {
-            description("Invalid JSON (the crate may not exist)")
-        }
         /// Failed to read home directory
         ReadHomeDirFailure{
             description("Failed to read home directory")
@@ -63,6 +55,15 @@ error_chain! {
         /// Too many '-' or '_' in given crate name
         TooManyWildcardsInCrateName {
             description("too many '-' or '_' in given crate name")
+        }
+        /// Config of cargo is invalid
+        InvalidCargoConfig {
+            description("Invalid cargo config")
+        }
+        /// Unable to find the source specified by 'replace-with'
+        NoSuchSourceFound(name: String){
+            description("Unable to find the source specified by 'replace-with'")
+            display("The source '{}' could not be found", name)
         }
     }
 }
