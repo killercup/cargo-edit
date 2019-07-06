@@ -1,5 +1,5 @@
 use crate::errors::*;
-use crate::registry::registry_path;
+use crate::registry::{registry_path, registry_url};
 use crate::{Dependency, Manifest};
 use env_proxy;
 use git2::Repository;
@@ -7,9 +7,12 @@ use regex::Regex;
 use reqwest;
 use semver;
 use std::env;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Once;
 use std::time::Duration;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use url::Url;
 
 #[derive(Deserialize)]
 struct CrateVersion {
@@ -27,6 +30,8 @@ struct CrateVersion {
 /// - the response from crates.io is an error or in an incorrect format,
 /// - or when a crate with the given name does not exist on crates.io.
 pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> Result<Dependency> {
+    static UPDATE: Once = Once::new();
+
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
@@ -39,9 +44,22 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
         return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
 
-    // TODO update index
     // TODO 'flag_offline'
-    let crate_versions = fuzzy_query_registry_index(crate_name, &registry_path()?)?;
+    let registry_path = registry_path()?;
+    UPDATE.call_once(|| {
+        let registry_url = match registry_url() {
+            Ok(x) => x,
+            Err(error) => {
+                eprintln!("Get registry url failed due to: {}", error);
+                return;
+            }
+        };
+
+        if let Err(error) = update_git_repo(&registry_path, &registry_url) {
+            eprintln!("Update failed due to: {}", error);
+        }
+    });
+    let crate_versions = fuzzy_query_registry_index(crate_name, &registry_path)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 
@@ -75,6 +93,29 @@ fn read_latest_version(
     let name = &latest.name;
     let version = latest.version.to_string();
     Ok(Dependency::new(name).set_version(&version))
+}
+
+fn update_git_repo(path: impl AsRef<Path>, url: &Url) -> Result<()> {
+    let repo = git2::Repository::open(path)?;
+
+    let colorchoice = if atty::is(atty::Stream::Stdout) {
+        ColorChoice::Auto
+    } else {
+        ColorChoice::Never
+    };
+    let mut output = StandardStream::stdout(colorchoice);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+    write!(output, "{:>12}", "Updating")?;
+    output.reset()?;
+    writeln!(output, " '{}' index", url)?;
+
+    repo.remote_anonymous(url.as_str())?.fetch(
+        &["refs/heads/master:refs/remotes/origin/master"],
+        None,
+        None,
+    )?;
+
+    Ok(())
 }
 
 /// Fuzzy query crate from registry index

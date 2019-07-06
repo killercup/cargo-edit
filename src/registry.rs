@@ -39,7 +39,7 @@ fn cargo_home() -> Result<PathBuf> {
     Ok(cargo_home)
 }
 
-fn registry_url() -> Result<Url> {
+pub fn registry_url() -> Result<Url> {
     // TODO support local registry sources, directory sources, git sources: https://doc.rust-lang.org/cargo/reference/source-replacement.html?highlight=replace-with#source-replacement
     fn read_config(registries: &mut HashMap<String, Source>, path: impl AsRef<Path>) -> Result<()> {
         let content = std::fs::read(path)?;
