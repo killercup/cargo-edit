@@ -79,7 +79,7 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = &args.manifest_path;
     let mut manifest = Manifest::open(manifest_path)?;
-    let deps = &args.parse_dependencies()?;
+    let deps = &args.parse_dependencies(args.offline)?;
 
     deps.iter()
         .map(|dep| {

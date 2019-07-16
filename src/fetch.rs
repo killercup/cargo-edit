@@ -9,6 +9,7 @@ use semver;
 use std::env;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::Once;
 use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -22,14 +23,18 @@ struct CrateVersion {
     yanked: bool,
 }
 
-/// Query latest version from crates.io
+/// Query latest version from registry index
 ///
 /// The latest version will be returned as a `Dependency`. This will fail, when
 ///
-/// - there is no Internet connection,
-/// - the response from crates.io is an error or in an incorrect format,
-/// - or when a crate with the given name does not exist on crates.io.
-pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> Result<Dependency> {
+/// - there is no Internet connection and offline is false.
+/// - summaries in registry index with an incorrect format.
+/// - a crate with the given name does not exist on crates.io.
+pub fn get_latest_dependency(
+    crate_name: &str,
+    flag_allow_prerelease: bool,
+    offline: bool,
+) -> Result<Dependency> {
     static UPDATE: Once = Once::new();
 
     if env::var("CARGO_IS_TEST").is_ok() {
@@ -44,21 +49,16 @@ pub fn get_latest_dependency(crate_name: &str, flag_allow_prerelease: bool) -> R
         return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
 
-    // TODO 'flag_offline'
     let registry_path = registry_path()?;
-    UPDATE.call_once(|| {
-        let registry_url = match registry_url() {
-            Ok(x) => x,
-            Err(error) => {
-                eprintln!("Get registry url failed due to: {}", error);
-                return;
+    let registry_url = registry_url()?;
+    if !offline {
+        UPDATE.call_once(|| {
+            if let Err(error) = update_git_repo(&registry_path, &registry_url) {
+                eprintln!("Update failed due to: {}", error);
             }
-        };
+        });
+    }
 
-        if let Err(error) = update_git_repo(&registry_path, &registry_url) {
-            eprintln!("Update failed due to: {}", error);
-        }
-    });
     let crate_versions = fuzzy_query_registry_index(crate_name, &registry_path)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
@@ -96,8 +96,8 @@ fn read_latest_version(
 }
 
 fn update_git_repo(path: impl AsRef<Path>, url: &Url) -> Result<()> {
+    let path = path.as_ref();
     let repo = git2::Repository::open(path)?;
-
     let colorchoice = if atty::is(atty::Stream::Stdout) {
         ColorChoice::Auto
     } else {
@@ -114,6 +114,8 @@ fn update_git_repo(path: impl AsRef<Path>, url: &Url) -> Result<()> {
         None,
         None,
     )?;
+
+    Command::new("git").arg("gc").current_dir(path).output()?;
 
     Ok(())
 }

@@ -96,6 +96,10 @@ pub struct Args {
     /// Do not print any output in case of success.
     #[structopt(long = "quiet", short = "q")]
     pub quiet: bool,
+
+    /// Run without accessing the network
+    #[structopt(long = "offline")]
+    pub offline: bool,
 }
 
 fn parse_version_req(s: &str) -> Result<&str> {
@@ -124,7 +128,7 @@ impl Args {
         }
     }
 
-    fn parse_single_dependency(&self, crate_name: &str) -> Result<Dependency> {
+    fn parse_single_dependency(&self, crate_name: &str, offline: bool) -> Result<Dependency> {
         let crate_name = CrateName::new(crate_name);
 
         if let Some(mut dependency) = crate_name.parse_as_version()? {
@@ -159,7 +163,7 @@ impl Args {
             }
 
             if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
-                let dep = get_latest_dependency(crate_name.name(), self.allow_prerelease)?;
+                let dep = get_latest_dependency(crate_name.name(), self.allow_prerelease, offline)?;
                 let v = format!(
                     "{prefix}{version}",
                     prefix = self.get_upgrade_prefix(),
@@ -175,7 +179,7 @@ impl Args {
     }
 
     /// Build dependencies from arguments
-    pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
+    pub fn parse_dependencies(&self, offline: bool) -> Result<Vec<Dependency>> {
         if self.crates.len() > 1
             && (self.git.is_some() || self.path.is_some() || self.vers.is_some())
         {
@@ -185,7 +189,7 @@ impl Args {
         self.crates
             .iter()
             .map(|crate_name| {
-                self.parse_single_dependency(crate_name).map(|x| {
+                self.parse_single_dependency(crate_name, offline).map(|x| {
                     x.set_optional(self.optional)
                         .set_default_features(!self.no_default_features)
                 })
@@ -222,6 +226,7 @@ impl Default for Args {
             allow_prerelease: false,
             no_default_features: false,
             quiet: false,
+            offline: true,
         }
     }
 }
@@ -239,7 +244,7 @@ mod tests {
         };
 
         assert_eq!(
-            args.parse_dependencies().unwrap(),
+            args.parse_dependencies(false).unwrap(),
             vec![Dependency::new("demo").set_version("0.4.2")]
         );
     }
@@ -253,7 +258,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_github.parse_dependencies().unwrap(),
+            args_github.parse_dependencies(false).unwrap(),
             vec![Dependency::new("cargo-edit").set_git(github_url)]
         );
 
@@ -263,7 +268,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_gitlab.parse_dependencies().unwrap(),
+            args_gitlab.parse_dependencies(false).unwrap(),
             vec![Dependency::new("polly").set_git(gitlab_url)]
         );
     }
@@ -276,7 +281,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_path.parse_dependencies().unwrap(),
+            args_path.parse_dependencies(false).unwrap(),
             vec![Dependency::new("cargo-edit").set_path(self_path)]
         );
     }
