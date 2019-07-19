@@ -50,7 +50,9 @@ pub fn registry_url() -> Result<Url> {
         }
         Ok(())
     }
-
+    // registry might be replaced with another source
+    // it's looks like a singly linked list
+    // put relations in this map.
     let mut registries: HashMap<String, Source> = HashMap::new();
 
     // ref: https://doc.rust-lang.org/cargo/reference/config.html#hierarchical-structure
@@ -66,6 +68,7 @@ pub fn registry_url() -> Result<Url> {
         read_config(&mut registries, default_config_path)?;
     }
 
+    // find head of the linked list
     let mut source = registries
         .remove(CRATES_IO_REGISTRY)
         .unwrap_or_else(|| Source {
@@ -73,6 +76,7 @@ pub fn registry_url() -> Result<Url> {
             registry: Some(CRATES_IO_INDEX.to_string()),
         });
 
+    // search this linked list and find the tail
     while let Some(replace_with) = &source.replace_with {
         source = registries
             .remove(replace_with)

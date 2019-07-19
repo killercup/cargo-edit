@@ -6,7 +6,7 @@ error_chain! {
 
     errors {
         /// Failed to read home directory
-        ReadHomeDirFailure{
+        ReadHomeDirFailure {
             description("Failed to read home directory")
         }
         /// Invalid JSON in registry index
@@ -15,8 +15,8 @@ error_chain! {
         }
         /// No crate by that name exists
         NoCrate(name: String) {
-            description("The crate could not be found on crates.io.")
-            display("The crate `{}` could not be found on crates.io.", name)
+            description("The crate could not be found in registry index.")
+            display("The crate `{}` could not be found in registry index.", name)
         }
         /// No versions available
         NoVersionsAvailable {
@@ -61,7 +61,7 @@ error_chain! {
             description("Invalid cargo config")
         }
         /// Unable to find the source specified by 'replace-with'
-        NoSuchSourceFound(name: String){
+        NoSuchSourceFound(name: String) {
             description("Unable to find the source specified by 'replace-with'")
             display("The source '{}' could not be found", name)
         }

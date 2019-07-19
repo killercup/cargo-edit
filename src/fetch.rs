@@ -23,7 +23,7 @@ struct CrateVersion {
     yanked: bool,
 }
 
-/// Query latest version from registry index
+/// Query latest version from a registry index
 ///
 /// The latest version will be returned as a `Dependency`. This will fail, when
 ///
@@ -54,7 +54,7 @@ pub fn get_latest_dependency(
     if !offline {
         UPDATE.call_once(|| {
             if let Err(error) = update_git_repo(&registry_path, &registry_url) {
-                eprintln!("Update failed due to: {}", error);
+                eprintln!("Querying a registry index failed due to: {}", error);
             }
         });
     }
@@ -318,7 +318,7 @@ fn test_gen_fuzzy_crate_names() {
 
 fn summary_raw_path(crate_name: &str) -> String {
     match crate_name.len() {
-        0 => unreachable!(),
+        0 => unreachable!("we check that crate_name is not empty here"),
         1 => format!("1/{}", crate_name),
         2 => format!("2/{}", crate_name),
         3 => format!("3/{}/{}", &crate_name[..1], crate_name),
