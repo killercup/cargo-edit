@@ -231,9 +231,9 @@ impl Manifest {
     pub fn write_to_file(&self, file: &mut File) -> Result<()> {
         if self.data["package"].is_none() && self.data["project"].is_none() {
             if !self.data["workspace"].is_none() {
-                Err(ErrorKind::UnexpectedRootManifest)?;
+                return Err(ErrorKind::UnexpectedRootManifest.into());
             } else {
-                Err(ErrorKind::InvalidManifest)?;
+                return Err(ErrorKind::InvalidManifest.into());
             }
         }
 
@@ -311,12 +311,12 @@ impl Manifest {
     /// ```
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<()> {
         if !self.data[table].is_table_like() {
-            Err(ErrorKind::NonExistentTable(table.into()))?;
+            return Err(ErrorKind::NonExistentTable(table.into()).into());
         } else {
             {
                 let dep = &mut self.data[table][name];
                 if dep.is_none() {
-                    Err(ErrorKind::NonExistentDependency(name.into(), table.into()))?;
+                    return Err(ErrorKind::NonExistentDependency(name.into(), table.into()).into());
                 }
                 // remove the dependency
                 *dep = toml_edit::Item::None;

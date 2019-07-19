@@ -128,6 +128,7 @@ fn fuzzy_query_registry_index(
     crate_name: impl Into<String>,
     registry_path: impl AsRef<Path>,
 ) -> Result<Vec<CrateVersion>> {
+    let crate_name = crate_name.into();
     let repo = Repository::open(registry_path)?;
     let tree = repo
         .find_reference("refs/remotes/origin/master")?
@@ -136,7 +137,7 @@ fn fuzzy_query_registry_index(
     let mut found_crate = false;
     let mut result = vec![];
 
-    let names = gen_fuzzy_crate_names(crate_name.into())?;
+    let names = gen_fuzzy_crate_names(crate_name.clone())?;
     for the_name in names {
         let file = match tree.get_path(&PathBuf::from(summary_raw_path(&the_name))) {
             Ok(x) => x.to_object(&repo)?.peel_to_blob()?,
@@ -153,7 +154,7 @@ fn fuzzy_query_registry_index(
         }
     }
     if !found_crate {
-        Err(ErrorKind::NoCrate(crate_name))?;
+        return Err(ErrorKind::NoCrate(crate_name).into());
     }
 
     Ok(result)
