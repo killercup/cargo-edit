@@ -1087,7 +1087,7 @@ fn add_typo() {
     .and()
     .stderr()
     .contains(
-        "No available versions exist. Either all were yanked or only prerelease versions exist. Trying with the --allow-prerelease flag might solve the issue.",
+        "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found in registry index.",
     )
     .unwrap();
 }
