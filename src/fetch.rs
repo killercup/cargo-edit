@@ -123,6 +123,108 @@ fn update_git_repo(path: impl AsRef<Path>, url: &Url) -> Result<()> {
     Ok(())
 }
 
+#[test]
+fn get_latest_stable_version_from_json() {
+    let versions: Vec<CrateVersion> = serde_json::from_str(
+        r#"[
+        {
+          "name": "foo",
+          "vers": "0.6.0-alpha",
+          "yanked": false
+        },
+        {
+          "name": "foo",
+          "vers": "0.5.0",
+          "yanked": false
+        }
+      ]"#,
+    )
+    .expect("crate version is correctly parsed");
+
+    assert_eq!(
+        read_latest_version(&versions, false)
+            .unwrap()
+            .version()
+            .unwrap(),
+        "0.5.0"
+    );
+}
+
+#[test]
+fn get_latest_unstable_or_stable_version_from_json() {
+    let versions: Vec<CrateVersion> = serde_json::from_str(
+        r#"[
+        {
+          "name": "foo",
+          "vers": "0.6.0-alpha",
+          "yanked": false
+        },
+        {
+          "name": "foo",
+          "vers": "0.5.0",
+          "yanked": false
+        }
+      ]"#,
+    )
+    .expect("crate version is correctly parsed");
+
+    assert_eq!(
+        read_latest_version(&versions, true)
+            .unwrap()
+            .version()
+            .unwrap(),
+        "0.6.0-alpha"
+    );
+}
+
+#[test]
+fn get_latest_version_from_json_test() {
+    let versions: Vec<CrateVersion> = serde_json::from_str(
+        r#"[
+        {
+          "name": "treexml",
+          "vers": "0.3.1",
+          "yanked": true
+        },
+        {
+          "name": "treexml",
+          "vers": "0.3.0",
+          "yanked": false
+        }
+      ]"#,
+    )
+    .expect("crate version is correctly parsed");
+
+    assert_eq!(
+        read_latest_version(&versions, false)
+            .unwrap()
+            .version()
+            .unwrap(),
+        "0.3.0"
+    );
+}
+
+#[test]
+fn get_no_latest_version_from_json_when_all_are_yanked() {
+    let versions: Vec<CrateVersion> = serde_json::from_str(
+        r#"[
+        {
+          "name": "treexml",
+          "vers": "0.3.1",
+          "yanked": true
+        },
+        {
+          "name": "treexml",
+          "vers": "0.3.0",
+          "yanked": true
+        }
+      ]"#,
+    )
+    .expect("crate version is correctly parsed");
+
+    assert!(read_latest_version(&versions, false).is_err());
+}
+
 /// Fuzzy query crate from registry index
 fn fuzzy_query_registry_index(
     crate_name: impl Into<String>,
