@@ -52,10 +52,6 @@ error_chain! {
             description("non existent dependency")
             display("The dependency `{}` could not be found in `{}`.", name, table)
         }
-        /// Too many '-' or '_' in given crate name
-        TooManyWildcardsInCrateName {
-            description("too many '-' or '_' in given crate name")
-        }
         /// Config of cargo is invalid
         InvalidCargoConfig {
             description("Invalid cargo config")

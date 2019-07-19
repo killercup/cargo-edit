@@ -130,6 +130,7 @@ fn fuzzy_query_registry_index(
         .find_reference("refs/remotes/origin/master")?
         .peel_to_tree()?;
 
+    let mut found_crate = false;
     let mut result = vec![];
 
     let names = gen_fuzzy_crate_names(crate_name.into())?;
@@ -138,6 +139,7 @@ fn fuzzy_query_registry_index(
             Ok(x) => x.to_object(&repo)?.peel_to_blob()?,
             Err(_) => continue,
         };
+        found_crate = true;
         let content = String::from_utf8(file.content().to_vec())
             .map_err(|_| ErrorKind::InvalidSummaryJson)?;
         for line in content.lines() {
@@ -146,6 +148,9 @@ fn fuzzy_query_registry_index(
                     .map_err(|_| ErrorKind::InvalidSummaryJson)?,
             );
         }
+    }
+    if !found_crate {
+        Err(ErrorKind::NoCrate(crate_name))?;
     }
 
     Ok(result)
@@ -271,10 +276,9 @@ fn gen_fuzzy_crate_names(crate_name: String) -> Result<Vec<String>> {
         .enumerate()
         .filter(|(_, item)| PATTERN.contains(item))
         .map(|(index, _)| index)
+        .take(10)
         .collect::<Vec<usize>>();
-    if wildcard_indexs.len() > 126 {
-        return Err(ErrorKind::TooManyWildcardsInCrateName.into());
-    } else if wildcard_indexs.is_empty() {
+    if wildcard_indexs.is_empty() {
         return Ok(vec![crate_name]);
     }
 
