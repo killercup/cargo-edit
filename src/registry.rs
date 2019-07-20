@@ -26,7 +26,7 @@ struct Source {
 #[derive(Debug, Deserialize)]
 struct CargoConfig {
     #[serde(default)]
-    sources: HashMap<String, Source>,
+    source: HashMap<String, Source>,
 }
 
 fn cargo_home() -> Result<PathBuf> {
@@ -45,7 +45,7 @@ pub fn registry_url() -> Result<Url> {
         let content = std::fs::read(path)?;
         let config =
             toml::from_slice::<CargoConfig>(&content).map_err(|_| ErrorKind::InvalidCargoConfig)?;
-        for (key, value) in config.sources {
+        for (key, value) in config.source {
             registries.entry(key).or_insert(value);
         }
         Ok(())
