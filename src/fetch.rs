@@ -118,8 +118,6 @@ fn update_git_repo(path: impl AsRef<Path>, url: &Url) -> Result<()> {
         None,
     )?;
 
-    Command::new("git").arg("gc").current_dir(path).output()?;
-
     Ok(())
 }
 
