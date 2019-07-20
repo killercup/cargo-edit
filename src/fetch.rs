@@ -9,10 +9,8 @@ use semver;
 use std::env;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Once;
 use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
-use url::Url;
 
 #[derive(Deserialize)]
 struct CrateVersion {
@@ -32,11 +30,8 @@ struct CrateVersion {
 pub fn get_latest_dependency(
     crate_name: &str,
     flag_allow_prerelease: bool,
-    offline: bool,
     manifest_path: &Path,
 ) -> Result<Dependency> {
-    static UPDATE: Once = Once::new();
-
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
@@ -53,15 +48,6 @@ pub fn get_latest_dependency(
     }
 
     let registry_path = registry_path(manifest_path)?;
-    let registry_url = registry_url(manifest_path)?;
-    if !offline {
-        UPDATE.call_once(|| {
-            if let Err(error) = update_git_repo(&registry_path, &registry_url) {
-                eprintln!("Querying a registry index failed due to: {}", error);
-            }
-        });
-    }
-
     let crate_versions = fuzzy_query_registry_index(crate_name, &registry_path)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
@@ -98,9 +84,12 @@ fn read_latest_version(
     Ok(Dependency::new(name).set_version(&version))
 }
 
-fn update_git_repo(path: impl AsRef<Path>, url: &Url) -> Result<()> {
-    let path = path.as_ref();
-    let repo = git2::Repository::open(path)?;
+/// update registry index for given project
+pub fn update_registry_index(manifest_path: &Path) -> Result<()> {
+    let registry_path = registry_path(manifest_path)?;
+    let registry_url = registry_url(manifest_path)?;
+
+    let repo = git2::Repository::open(&registry_path)?;
     let colorchoice = if atty::is(atty::Stream::Stdout) {
         ColorChoice::Auto
     } else {
@@ -110,9 +99,9 @@ fn update_git_repo(path: impl AsRef<Path>, url: &Url) -> Result<()> {
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Updating")?;
     output.reset()?;
-    writeln!(output, " '{}' index", url)?;
+    writeln!(output, " '{}' index", registry_url)?;
 
-    repo.remote_anonymous(url.as_str())?.fetch(
+    repo.remote_anonymous(registry_url.as_str())?.fetch(
         &["refs/heads/master:refs/remotes/origin/master"],
         None,
         None,

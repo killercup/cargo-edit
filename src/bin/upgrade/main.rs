@@ -15,7 +15,9 @@
 extern crate error_chain;
 
 use crate::errors::*;
-use cargo_edit::{find, get_latest_dependency, CrateName, Dependency, LocalManifest};
+use cargo_edit::{
+    find, get_latest_dependency, update_registry_index, CrateName, Dependency, LocalManifest,
+};
 use failure::Fail;
 use std::collections::HashMap;
 use std::io::Write;
@@ -219,19 +221,14 @@ struct ActualUpgrades(HashMap<String, String>);
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
     /// dependencies will get that version.
-    fn get_upgraded(
-        self,
-        allow_prerelease: bool,
-        offline: bool,
-        manifest_path: &Path,
-    ) -> Result<ActualUpgrades> {
+    fn get_upgraded(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
         self.0
             .into_iter()
             .map(|(name, version)| {
                 if let Some(v) = version {
                     Ok((name, v))
                 } else {
-                    get_latest_dependency(&name, allow_prerelease, offline, manifest_path)
+                    get_latest_dependency(&name, allow_prerelease, manifest_path)
                         .map(|new_dep| {
                             (
                                 name,
@@ -261,6 +258,10 @@ fn process(args: Args) -> Result<()> {
         ..
     } = args;
 
+    if !args.offline {
+        update_registry_index(&find(&manifest_path)?)?;
+    }
+
     let manifests = if all {
         Manifests::get_all(&manifest_path)
     } else {
@@ -269,11 +270,8 @@ fn process(args: Args) -> Result<()> {
 
     let existing_dependencies = manifests.get_dependencies(dependency)?;
 
-    let upgraded_dependencies = existing_dependencies.get_upgraded(
-        allow_prerelease,
-        args.offline,
-        &find(&manifest_path)?,
-    )?;
+    let upgraded_dependencies =
+        existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;
 
     manifests.upgrade(&upgraded_dependencies, dry_run)
 }

@@ -30,6 +30,6 @@ pub use crate::dependency::Dependency;
 pub use crate::errors::*;
 pub use crate::fetch::{
     get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
-    get_latest_dependency,
+    get_latest_dependency, update_registry_index,
 };
 pub use crate::manifest::{find, LocalManifest, Manifest};
