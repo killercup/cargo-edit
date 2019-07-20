@@ -1,6 +1,6 @@
 //! Handle `cargo add` arguments
 
-use cargo_edit::Dependency;
+use cargo_edit::{find, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
 use semver;
 use std::path::PathBuf;
@@ -163,7 +163,12 @@ impl Args {
             }
 
             if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
-                let dep = get_latest_dependency(crate_name.name(), self.allow_prerelease, offline)?;
+                let dep = get_latest_dependency(
+                    crate_name.name(),
+                    self.allow_prerelease,
+                    offline,
+                    &find(&self.manifest_path)?,
+                )?;
                 let v = format!(
                     "{prefix}{version}",
                     prefix = self.get_upgrade_prefix(),

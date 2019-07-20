@@ -2,18 +2,17 @@ use self::code_from_cargo::Kind;
 use crate::errors::*;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::env::current_dir;
 use std::path::{Path, PathBuf};
 use url::Url;
 
 const CRATES_IO_INDEX: &str = "https://github.com/rust-lang/crates.io-index";
 const CRATES_IO_REGISTRY: &str = "crates-io";
 
-pub fn registry_path() -> Result<PathBuf> {
+pub fn registry_path(manifest_path: &Path) -> Result<PathBuf> {
     Ok(cargo_home()?
         .join("registry")
         .join("index")
-        .join(short_name(&registry_url()?)))
+        .join(short_name(&registry_url(manifest_path)?)))
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,9 +38,10 @@ fn cargo_home() -> Result<PathBuf> {
     Ok(cargo_home)
 }
 
-pub fn registry_url() -> Result<Url> {
+pub fn registry_url(manifest_path: &Path) -> Result<Url> {
     // TODO support local registry sources, directory sources, git sources: https://doc.rust-lang.org/cargo/reference/source-replacement.html?highlight=replace-with#source-replacement
     fn read_config(registries: &mut HashMap<String, Source>, path: impl AsRef<Path>) -> Result<()> {
+        // TODO unit test for source replacement
         let content = std::fs::read(path)?;
         let config =
             toml::from_slice::<CargoConfig>(&content).map_err(|_| ErrorKind::InvalidCargoConfig)?;
@@ -54,9 +54,12 @@ pub fn registry_url() -> Result<Url> {
     // it's looks like a singly linked list
     // put relations in this map.
     let mut registries: HashMap<String, Source> = HashMap::new();
-
     // ref: https://doc.rust-lang.org/cargo/reference/config.html#hierarchical-structure
-    for work_dir in current_dir()?.ancestors() {
+    for work_dir in manifest_path
+        .parent()
+        .expect("there must be a parent directory")
+        .ancestors()
+    {
         let config_path = work_dir.join(".cargo").join("config");
         if config_path.is_file() {
             read_config(&mut registries, config_path)?;

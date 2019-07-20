@@ -9,7 +9,6 @@ use semver;
 use std::env;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::Once;
 use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -34,6 +33,7 @@ pub fn get_latest_dependency(
     crate_name: &str,
     flag_allow_prerelease: bool,
     offline: bool,
+    manifest_path: &Path,
 ) -> Result<Dependency> {
     static UPDATE: Once = Once::new();
 
@@ -52,8 +52,8 @@ pub fn get_latest_dependency(
         return Err(ErrorKind::EmptyCrateName.into());
     }
 
-    let registry_path = registry_path()?;
-    let registry_url = registry_url()?;
+    let registry_path = registry_path(manifest_path)?;
+    let registry_url = registry_url(manifest_path)?;
     if !offline {
         UPDATE.call_once(|| {
             if let Err(error) = update_git_repo(&registry_path, &registry_url) {
