@@ -65,9 +65,6 @@ fn version_is_stable(version: &CrateVersion) -> bool {
 }
 
 /// Read latest version from Versions structure
-///
-/// Assumes the version are sorted so that the first non-yanked version is the
-/// latest, and thus the one we want.
 fn read_latest_version(
     versions: &[CrateVersion],
     flag_allow_prerelease: bool,
@@ -223,30 +220,29 @@ fn fuzzy_query_registry_index(
         .find_reference("refs/remotes/origin/master")?
         .peel_to_tree()?;
 
-    let mut found_crate = false;
-    let mut result = vec![];
+    let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
+    if let Some(index) = names.iter().position(|x| *x == crate_name) {
+        // ref: https://github.com/killercup/cargo-edit/pull/317#discussion_r307365704
+        names.swap(index, 0);
+    }
 
-    let names = gen_fuzzy_crate_names(crate_name.clone())?;
     for the_name in names {
         let file = match tree.get_path(&PathBuf::from(summary_raw_path(&the_name))) {
             Ok(x) => x.to_object(&repo)?.peel_to_blob()?,
             Err(_) => continue,
         };
-        found_crate = true;
         let content = String::from_utf8(file.content().to_vec())
             .map_err(|_| ErrorKind::InvalidSummaryJson)?;
-        for line in content.lines() {
-            result.push(
-                serde_json::from_str::<CrateVersion>(line)
-                    .map_err(|_| ErrorKind::InvalidSummaryJson)?,
-            );
-        }
-    }
-    if !found_crate {
-        return Err(ErrorKind::NoCrate(crate_name).into());
-    }
 
-    Ok(result)
+        return content
+            .lines()
+            .map(|line: &str| {
+                serde_json::from_str::<CrateVersion>(line)
+                    .map_err(|_| ErrorKind::InvalidSummaryJson.into())
+            })
+            .collect::<Result<Vec<CrateVersion>>>();
+    }
+    Err(ErrorKind::NoCrate(crate_name).into())
 }
 
 fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
