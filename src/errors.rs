@@ -16,7 +16,6 @@ error_chain! {
         /// Given crate name is empty
         EmptyCrateName{
             description("Found empty crate name")
-            display("Found empty crate name")
         }
         /// No crate by that name exists
         NoCrate(name: String) {
