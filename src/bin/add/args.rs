@@ -100,6 +100,10 @@ pub struct Args {
     /// Run without accessing the network
     #[structopt(long = "offline")]
     pub offline: bool,
+
+    /// Keep dependencies sorted
+    #[structopt(long = "sort", short = "s")]
+    pub sort: bool,
 }
 
 fn parse_version_req(s: &str) -> Result<&str> {
@@ -231,6 +235,7 @@ impl Default for Args {
             no_default_features: false,
             quiet: false,
             offline: true,
+            sort: false,
         }
     }
 }
