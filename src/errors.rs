@@ -1,7 +1,7 @@
 error_chain! {
     foreign_links {
-        Io(::std::io::Error)#[allow(missing_docs)];
-        Git(::git2::Error)#[allow(missing_docs)];
+        Io(::std::io::Error) #[doc = "An error from the std::io module"];
+        Git(::git2::Error)#[doc = "An error from the git2 crate"];
     }
 
     errors {
