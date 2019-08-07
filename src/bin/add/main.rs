@@ -15,7 +15,7 @@
 extern crate error_chain;
 
 use crate::args::{Args, Command};
-use cargo_edit::{Dependency, Manifest};
+use cargo_edit::{find, update_registry_index, Dependency, Manifest};
 use std::io::Write;
 use std::process;
 use structopt::StructOpt;
@@ -80,6 +80,10 @@ fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = &args.manifest_path;
     let mut manifest = Manifest::open(manifest_path)?;
     let deps = &args.parse_dependencies()?;
+
+    if !args.offline {
+        update_registry_index(&find(manifest_path)?)?;
+    }
 
     deps.iter()
         .map(|dep| {

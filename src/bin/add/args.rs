@@ -1,6 +1,6 @@
 //! Handle `cargo add` arguments
 
-use cargo_edit::Dependency;
+use cargo_edit::{find, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
 use semver;
 use std::path::PathBuf;
@@ -96,6 +96,10 @@ pub struct Args {
     /// Do not print any output in case of success.
     #[structopt(long = "quiet", short = "q")]
     pub quiet: bool,
+
+    /// Run without accessing the network
+    #[structopt(long = "offline")]
+    pub offline: bool,
 }
 
 fn parse_version_req(s: &str) -> Result<&str> {
@@ -159,7 +163,11 @@ impl Args {
             }
 
             if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
-                let dep = get_latest_dependency(crate_name.name(), self.allow_prerelease)?;
+                let dep = get_latest_dependency(
+                    crate_name.name(),
+                    self.allow_prerelease,
+                    &find(&self.manifest_path)?,
+                )?;
                 let v = format!(
                     "{prefix}{version}",
                     prefix = self.get_upgrade_prefix(),
@@ -222,6 +230,7 @@ impl Default for Args {
             allow_prerelease: false,
             no_default_features: false,
             quiet: false,
+            offline: true,
         }
     }
 }

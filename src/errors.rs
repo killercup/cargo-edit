@@ -1,17 +1,26 @@
 error_chain! {
+    foreign_links {
+        Io(::std::io::Error) #[doc = "An error from the std::io module"];
+        Git(::git2::Error)#[doc = "An error from the git2 crate"];
+    }
+
     errors {
-        /// Failed to fetch crate from crates.io
-        FetchVersionFailure {
-            description("Failed to fetch crate version from crates.io")
+        /// Failed to read home directory
+        ReadHomeDirFailure {
+            description("Failed to read home directory")
         }
-        /// Invalid JSON from crates.io response
-        InvalidCratesIoJson {
-            description("Invalid JSON (the crate may not exist)")
+        /// Invalid JSON in registry index
+        InvalidSummaryJson {
+            description("Invalid JSON in registry index")
+        }
+        /// Given crate name is empty
+        EmptyCrateName{
+            description("Found empty crate name")
         }
         /// No crate by that name exists
         NoCrate(name: String) {
-            description("The crate could not be found on crates.io.")
-            display("The crate `{}` could not be found on crates.io.", name)
+            description("The crate could not be found in registry index.")
+            display("The crate `{}` could not be found in registry index.", name)
         }
         /// No versions available
         NoVersionsAvailable {
@@ -46,6 +55,15 @@ error_chain! {
         NonExistentDependency(name: String, table: String) {
             description("non existent dependency")
             display("The dependency `{}` could not be found in `{}`.", name, table)
+        }
+        /// Config of cargo is invalid
+        InvalidCargoConfig {
+            description("Invalid cargo config")
+        }
+        /// Unable to find the source specified by 'replace-with'
+        NoSuchSourceFound(name: String) {
+            description("Unable to find the source specified by 'replace-with'")
+            display("The source '{}' could not be found", name)
         }
     }
 }

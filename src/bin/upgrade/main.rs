@@ -15,7 +15,9 @@
 extern crate error_chain;
 
 use crate::errors::*;
-use cargo_edit::{find, get_latest_dependency, CrateName, Dependency, LocalManifest};
+use cargo_edit::{
+    find, get_latest_dependency, update_registry_index, CrateName, Dependency, LocalManifest,
+};
 use failure::Fail;
 use std::collections::HashMap;
 use std::io::Write;
@@ -76,6 +78,10 @@ struct Args {
     /// Print changes to be made without making them.
     #[structopt(long = "dry-run")]
     dry_run: bool,
+
+    /// Run without accessing the network
+    #[structopt(long = "offline")]
+    pub offline: bool,
 }
 
 /// A collection of manifests.
@@ -89,9 +95,9 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd
-            .exec()
-            .map_err(|e| Error::from(e.compat()).chain_err(|| "Failed to get workspace metadata"))?;
+        let result = cmd.exec().map_err(|e| {
+            Error::from(e.compat()).chain_err(|| "Failed to get workspace metadata")
+        })?;
         result
             .packages
             .into_iter()
@@ -215,14 +221,14 @@ struct ActualUpgrades(HashMap<String, String>);
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
     /// dependencies will get that version.
-    fn get_upgraded(self, allow_prerelease: bool) -> Result<ActualUpgrades> {
+    fn get_upgraded(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
         self.0
             .into_iter()
             .map(|(name, version)| {
                 if let Some(v) = version {
                     Ok((name, v))
                 } else {
-                    get_latest_dependency(&name, allow_prerelease)
+                    get_latest_dependency(&name, allow_prerelease, manifest_path)
                         .map(|new_dep| {
                             (
                                 name,
@@ -252,6 +258,10 @@ fn process(args: Args) -> Result<()> {
         ..
     } = args;
 
+    if !args.offline {
+        update_registry_index(&find(&manifest_path)?)?;
+    }
+
     let manifests = if all {
         Manifests::get_all(&manifest_path)
     } else {
@@ -260,7 +270,8 @@ fn process(args: Args) -> Result<()> {
 
     let existing_dependencies = manifests.get_dependencies(dependency)?;
 
-    let upgraded_dependencies = existing_dependencies.get_upgraded(allow_prerelease)?;
+    let upgraded_dependencies =
+        existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;
 
     manifests.upgrade(&upgraded_dependencies, dry_run)
 }

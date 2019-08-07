@@ -1008,7 +1008,7 @@ fn add_prints_message() {
     .succeeds()
     .and()
     .stdout()
-    .is("Adding docopt v0.6.0 to dependencies")
+    .contains("Adding docopt v0.6.0 to dependencies")
     .unwrap();
 }
 
@@ -1028,7 +1028,7 @@ fn add_prints_message_with_section() {
     .succeeds()
     .and()
     .stdout()
-    .is("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
+    .contains("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
     .unwrap();
 }
 
@@ -1048,7 +1048,7 @@ fn add_prints_message_for_dev_deps() {
     .succeeds()
     .and()
     .stdout()
-    .is("Adding docopt v0.8.0 to dev-dependencies")
+    .contains("Adding docopt v0.8.0 to dev-dependencies")
     .unwrap();
 }
 
@@ -1068,7 +1068,7 @@ fn add_prints_message_for_build_deps() {
     .succeeds()
     .and()
     .stdout()
-    .is("Adding hello-world v0.1.0 to build-dependencies")
+    .contains("Adding hello-world v0.1.0 to build-dependencies")
     .unwrap();
 }
 
@@ -1087,8 +1087,7 @@ fn add_typo() {
     .and()
     .stderr()
     .contains(
-        "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found \
-         on crates.io.",
+        "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found in registry index.",
     )
     .unwrap();
 }

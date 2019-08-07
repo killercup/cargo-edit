@@ -1,4 +1,5 @@
 //! Show and Edit Cargo's Manifest Files
+#![recursion_limit = "128"]
 #![cfg_attr(test, allow(dead_code))]
 #![warn(
     missing_docs,
@@ -22,12 +23,13 @@ mod dependency;
 mod errors;
 mod fetch;
 mod manifest;
+mod registry;
 
 pub use crate::crate_name::CrateName;
 pub use crate::dependency::Dependency;
 pub use crate::errors::*;
 pub use crate::fetch::{
     get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path,
-    get_latest_dependency,
+    get_latest_dependency, update_registry_index,
 };
 pub use crate::manifest::{find, LocalManifest, Manifest};
