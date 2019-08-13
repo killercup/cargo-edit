@@ -1091,3 +1091,25 @@ fn add_typo() {
     )
     .unwrap();
 }
+
+#[test]
+fn adds_sorted_dependencies() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.unsorted");
+
+    // adds one dependency
+    execute_command(&["add", "--sort", "toml"], &manifest);
+
+    // and all the dependencies in the output get sorted
+    let toml = get_toml(&manifest);
+    assert_eq!(toml.to_string(), r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[dependencies]
+atty = "0.2.13"
+toml = "toml--CURRENT_VERSION_TEST"
+toml_edit = "0.1.5"
+"#
+    );
+}
+

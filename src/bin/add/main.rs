@@ -19,6 +19,7 @@ use cargo_edit::{find, update_registry_index, Dependency, Manifest};
 use std::io::Write;
 use std::process;
 use structopt::StructOpt;
+use toml_edit::Item as TomlItem;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 mod args;
@@ -92,6 +93,18 @@ fn handle_add(args: &Args) -> Result<()> {
             }
             manifest
                 .insert_into_table(&args.get_section(), dep)
+                .map(|_| {
+                    manifest
+                        .get_table(&args.get_section())
+                        .map(TomlItem::as_table_mut)
+                        .map(|table_option| {
+                            table_option.map(|table| {
+                                if args.sort {
+                                    table.sort_values();
+                                }
+                            })
+                        })
+                })
                 .map_err(Into::into)
         })
         .collect::<Result<Vec<_>>>()
