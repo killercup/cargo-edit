@@ -84,6 +84,7 @@ Specify where to add the crate:
                             for `dev-dependencies` or `build-dependencies`.
 
 Options:
+    --sort                  Keep dependencies sorted
     --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
                             "none" (exact version), "patch" (`~` modifier), "minor"
                             (`^` modifier, default), or "all" (`>=`).
