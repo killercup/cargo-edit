@@ -55,7 +55,11 @@ Dev, build, and all target dependencies will also be upgraded. Only dependencies
 supported. Git/path dependencies will be ignored.
 
 All packages in the workspace will be upgraded if the `--all` flag is supplied. The `--all` flag may
-be supplied in the presence of a virtual manifest."
+be supplied in the presence of a virtual manifest.
+
+If the '--to-lockfile' flag is supplied, all dependencies will be upraged to the currently locked
+version as recorded in the local lock file. The local lock file must be present and up to date if
+this flag is passed."
     )]
     Upgrade(Args),
 }
@@ -84,10 +88,41 @@ struct Args {
     /// Run without accessing the network
     #[structopt(long = "offline")]
     pub offline: bool,
+
+    /// Upgrade all packages to the version in the lockfile.
+    #[structopt(long = "to-lockfile", conflicts_with = "dependency")]
+    pub to_lockfile: bool,
 }
 
 /// A collection of manifests.
 struct Manifests(Vec<(LocalManifest, cargo_metadata::Package)>);
+
+/// Helper function to check whether a `cargo_metadata::Dependency` is a version dependency.
+fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
+    match dependency.source {
+        // This is the criterion cargo uses (in `SourceId::from_url`) to decide whether a
+        // dependency has the 'registry' kind.
+        Some(ref s) => s.splitn(2, '+').next() == Some("registry"),
+        _ => false,
+    }
+}
+
+fn dry_run_message() -> Result<()> {
+    let bufwtr = BufferWriter::stdout(ColorChoice::Always);
+    let mut buffer = bufwtr.buffer();
+    buffer
+        .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
+        .chain_err(|| "Failed to set output colour")?;
+    write!(&mut buffer, "Starting dry run. ").chain_err(|| "Failed to write dry run message")?;
+    buffer
+        .set_color(&ColorSpec::new())
+        .chain_err(|| "Failed to clear output colour")?;
+    writeln!(&mut buffer, "Changes will not be saved.")
+        .chain_err(|| "Failed to write dry run message")?;
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print dry run message")
+}
 
 impl Manifests {
     /// Get all manifests in the workspace.
@@ -145,16 +180,6 @@ impl Manifests {
     /// Get the the combined set of dependencies to upgrade. If the user has specified
     /// per-dependency desired versions, extract those here.
     fn get_dependencies(&self, only_update: Vec<String>) -> Result<DesiredUpgrades> {
-        /// Helper function to check whether a `cargo_metadata::Dependency` is a version dependency.
-        fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
-            match dependency.source {
-                // This is the criterion cargo uses (in `SourceId::from_url`) to decide whether a
-                // dependency has the 'registry' kind.
-                Some(ref s) => s.splitn(2, '+').next() == Some("registry"),
-                _ => false,
-            }
-        }
-
         // Map the names of user-specified dependencies to the (optionally) requested version.
         let selected_dependencies = only_update
             .into_iter()
@@ -203,21 +228,7 @@ impl Manifests {
     /// Upgrade the manifests on disk following the previously-determined upgrade schema.
     fn upgrade(self, upgraded_deps: &ActualUpgrades, dry_run: bool) -> Result<()> {
         if dry_run {
-            let bufwtr = BufferWriter::stdout(ColorChoice::Always);
-            let mut buffer = bufwtr.buffer();
-            buffer
-                .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
-                .chain_err(|| "Failed to set output colour")?;
-            write!(&mut buffer, "Starting dry run. ")
-                .chain_err(|| "Failed to write dry run message")?;
-            buffer
-                .set_color(&ColorSpec::new())
-                .chain_err(|| "Failed to clear output colour")?;
-            writeln!(&mut buffer, "Changes will not be saved.")
-                .chain_err(|| "Failed to write dry run message")?;
-            bufwtr
-                .print(&buffer)
-                .chain_err(|| "Failed to print dry run message")?;
+            dry_run_message()?;
         }
 
         for (mut manifest, package) in self.0 {
@@ -232,6 +243,61 @@ impl Manifests {
             }
         }
 
+        Ok(())
+    }
+
+    /// Update dependencies in Cargo.toml file(s) to match the corresponding
+    /// version in Cargo.lock.
+    fn sync_to_lockfile(self, dry_run: bool) -> Result<()> {
+        // Get locked dependencies. For workspaces with multiple Cargo.toml
+        // files, there is only a single lockfile, so it suffices to get
+        // metadata for any one of Cargo.toml files.
+        let (manifest, _package) =
+            self.0.iter().next().ok_or_else(|| {
+                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+            })?;
+        let mut cmd = cargo_metadata::MetadataCommand::new();
+        cmd.manifest_path(manifest.path.clone());
+        cmd.other_options(vec!["--locked".to_string()]);
+
+        let result = cmd
+            .exec()
+            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
+
+        let locked = result
+            .packages
+            .into_iter()
+            .filter(|p| p.source.is_some()) // Source is none for local packages
+            .collect::<Vec<_>>();
+
+        if dry_run {
+            dry_run_message()?;
+        }
+
+        for (mut manifest, package) in self.0 {
+            println!("{}:", package.name);
+
+            // Upgrade the manifests one at a time, as multiple manifests may
+            // request the same dependency at differing versions.
+            for (name, version) in package
+                .dependencies
+                .clone()
+                .into_iter()
+                .filter(is_version_dep)
+                .filter_map(|d| {
+                    for p in &locked {
+                        // The requested dependency may be present in the lock file with different versions,
+                        // but only one will be semver-compatible with therequested version.
+                        if d.name == p.name && d.req.matches(&p.version) {
+                            return Some((d.name, p.version.to_string()));
+                        }
+                    }
+                    None
+                })
+            {
+                manifest.upgrade(&Dependency::new(&name).set_version(&version), dry_run)?;
+            }
+        }
         Ok(())
     }
 }
@@ -287,6 +353,7 @@ fn process(args: Args) -> Result<()> {
         all,
         allow_prerelease,
         dry_run,
+        to_lockfile,
         ..
     } = args;
 
@@ -301,7 +368,10 @@ fn process(args: Args) -> Result<()> {
         Manifests::get_local_one(&manifest_path)
     }?;
 
-    let existing_dependencies = manifests.get_dependencies(dependency)?;
+    if to_lockfile {
+        manifests.sync_to_lockfile(dry_run)
+    } else {
+        let existing_dependencies = manifests.get_dependencies(dependency)?;
 
     // Update indices for any alternative registries, unless
     // we're offline.
@@ -318,10 +388,11 @@ fn process(args: Args) -> Result<()> {
         }
     }
 
-    let upgraded_dependencies =
-        existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;
+        let upgraded_dependencies =
+            existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;
 
-    manifests.upgrade(&upgraded_dependencies, dry_run)
+        manifests.upgrade(&upgraded_dependencies, dry_run)
+    }
 }
 
 fn main() {

@@ -366,7 +366,7 @@ impl str::FromStr for Manifest {
 #[derive(Debug)]
 pub struct LocalManifest {
     /// Path to the manifest
-    path: PathBuf,
+    pub path: PathBuf,
     /// Manifest contents
     manifest: Manifest,
 }
