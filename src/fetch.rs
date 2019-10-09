@@ -2,7 +2,6 @@ use crate::errors::*;
 use crate::registry::{registry_path, registry_url};
 use crate::{Dependency, Manifest};
 use env_proxy;
-use git2::Repository;
 use regex::Regex;
 use reqwest;
 use semver;
@@ -98,12 +97,42 @@ pub fn update_registry_index(manifest_path: &Path) -> Result<()> {
     output.reset()?;
     writeln!(output, " '{}' index", registry_url)?;
 
-    repo.remote_anonymous(registry_url.as_str())?.fetch(
-        &["refs/heads/master:refs/remotes/origin/master"],
-        None,
-        None,
-    )?;
+    let refspec = "refs/heads/master:refs/remotes/origin/master";
+    fetch_with_cli(&repo, registry_url.as_str(), refspec)?;
 
+    Ok(())
+}
+
+// https://github.com/rust-lang/cargo/blob/57986eac7157261c33f0123bade7ccd20f15200f/src/cargo/sources/git/utils.rs#L758
+fn fetch_with_cli(
+    repo: &git2::Repository,
+    url: &str,
+    refspec: &str,
+) -> Result<()> {
+    let cmd = subprocess::Exec::shell("git").arg("fetch")
+        .arg("--tags") // fetch all tags
+        .arg("--force") // handle force pushes
+        .arg("--update-head-ok") // see discussion in rust-lang/cargo#2078
+        .arg(url)
+        .arg(refspec)
+        // If cargo is run by git (for example, the `exec` command in `git
+        // rebase`), the GIT_DIR is set by git and will point to the wrong
+        // location (this takes precedence over the cwd). Make sure this is
+        // unset so git will look at cwd for the repo.
+        .env_remove("GIT_DIR")
+        // The reset of these may not be necessary, but I'm including them
+        // just to be extra paranoid and avoid any issues.
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_OBJECT_DIRECTORY")
+        .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES")
+        .cwd(repo.path());
+
+    let _ = cmd.capture().map_err(|e| match e {
+        subprocess::PopenError::IoError(io) => ErrorKind::Io(io),
+        subprocess::PopenError::LogicError(_) |
+        subprocess::PopenError::Utf8Error(_) => unreachable!("expected only io error"),
+    })?;
     Ok(())
 }
 
@@ -215,7 +244,7 @@ fn fuzzy_query_registry_index(
     registry_path: impl AsRef<Path>,
 ) -> Result<Vec<CrateVersion>> {
     let crate_name = crate_name.into();
-    let repo = Repository::open(registry_path)?;
+    let repo = git2::Repository::open(registry_path)?;
     let tree = repo
         .find_reference("refs/remotes/origin/master")?
         .peel_to_tree()?;
