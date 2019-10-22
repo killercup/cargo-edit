@@ -19,7 +19,7 @@ pub struct Dependency {
     source: DependencySource,
     /// If the dependency is renamed, this is the new name for the dependency
     /// as a string.  None if it is not renamed.
-    rename: Option<String>,
+    pub rename: Option<String>,
 }
 
 impl Default for Dependency {
@@ -45,8 +45,6 @@ impl Dependency {
             ..Dependency::default()
         }
     }
-
-
 
     /// Set dependency to a given version
     pub fn set_version(mut self, version: &str) -> Dependency {

@@ -276,13 +276,15 @@ impl Manifest {
         let table = self.get_table(table_path)?;
         let new_dep = dep.to_toml().1;
 
+        let dep_name = dep.rename.as_ref().unwrap_or(&dep.name);
+
         // If (and only if) there is an old entry, merge the new one in.
-        if !table[&dep.name].is_none() {
-            if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[&dep.name], &new_dep) {
+        if !table[&dep_name].is_none() {
+            if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[&dep_name], &new_dep) {
                 eprintln!("Error while displaying upgrade message, {}", e);
             }
             if !dry_run {
-                merge_dependencies(&mut table[&dep.name], dep);
+                merge_dependencies(&mut table[&dep_name], dep);
                 if let Some(t) = table.as_inline_table_mut() {
                     t.fmt()
                 }
@@ -396,7 +398,7 @@ impl LocalManifest {
         for (table_path, table) in self.get_sections() {
             let table_like = table.as_table_like().expect("Unexpected non-table");
             for (name, _old_value) in table_like.iter() {
-                if name == dependency.name {
+                if name == dependency.rename.as_ref().unwrap_or(&dependency.name) {
                     self.manifest
                         .update_table_entry(&table_path, dependency, dry_run)?;
                 }
