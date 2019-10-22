@@ -17,12 +17,16 @@ pub struct Dependency {
     optional: bool,
     default_features: bool,
     source: DependencySource,
+    /// If the dependency is renamed, this is the new name for the dependency
+    /// as a string.  None if it is not renamed.
+    rename: Option<String>,
 }
 
 impl Default for Dependency {
     fn default() -> Dependency {
         Dependency {
             name: "".into(),
+            rename: None,
             optional: false,
             default_features: true,
             source: DependencySource::Version {
@@ -41,6 +45,8 @@ impl Dependency {
             ..Dependency::default()
         }
     }
+
+
 
     /// Set dependency to a given version
     pub fn set_version(mut self, version: &str) -> Dependency {
@@ -89,6 +95,12 @@ impl Dependency {
     /// Set the value of default-features for the dependency
     pub fn set_default_features(mut self, default_features: bool) -> Dependency {
         self.default_features = default_features;
+        self
+    }
+
+    /// Set the alias for the dependency
+    pub fn set_rename(mut self, rename: &str) -> Dependency {
+        self.rename = Some(rename.into());
         self
     }
 

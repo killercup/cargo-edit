@@ -160,7 +160,13 @@ impl Manifests {
                 .iter()
                 .flat_map(|&(_, ref package)| package.dependencies.clone())
                 .filter(is_version_dep)
-                .map(|dependency| (dependency.name, None))
+                .map(|dependency| {
+                    let dep = Dependency::new(&dependency.name);
+                    if dependency.rename.is_some() {
+                        dep.set_rename(&dependency.rename.unwrap());
+                    }
+                    (dep, None)
+                })
                 .collect()
         } else {
             only_update
@@ -174,6 +180,7 @@ impl Manifests {
                     } else {
                         Ok((name, None))
                     }
+                    .map(move |(name,version)| (Dependency::new(&name),version))
                 })
                 .collect::<Result<_>>()?
         }))
@@ -212,11 +219,11 @@ impl Manifests {
 }
 
 /// The set of dependencies to be upgraded, alongside desired versions, if specified by the user.
-struct DesiredUpgrades(HashMap<String, Option<String>>);
+struct DesiredUpgrades(HashMap<Dependency, Option<String>>);
 
 /// The complete specification of the upgrades that will be performed. Map of the dependency names
 /// to the new versions.
-struct ActualUpgrades(HashMap<String, String>);
+struct ActualUpgrades(HashMap<Dependency, String>);
 
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
