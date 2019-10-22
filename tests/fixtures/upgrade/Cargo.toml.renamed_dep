@@ -1,0 +1,9 @@
+[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+te = { package = "toml_edit", version = "0.1.5" }
