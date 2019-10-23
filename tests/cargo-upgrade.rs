@@ -196,25 +196,43 @@ fn upgrade_renamed_dependency_all() {
     execute_command(&["upgrade"], &manifest);
 
     let toml = get_toml(&manifest);
-    let val = &toml["dependencies"]["te"];
+
+    let dep1 = &toml["dependencies"]["te"];
     assert_eq!(
-        val["version"].as_str(),
+        dep1["version"].as_str(),
         Some("toml_edit--CURRENT_VERSION_TEST")
+    );
+
+    let dep2 = &toml["dependencies"]["rx"];
+    assert_eq!(
+        dep2["version"].as_str(),
+        Some("regex--CURRENT_VERSION_TEST")
     );
 }
 
 #[test]
-fn upgrade_renamed_dependency_specified_only() {
+fn upgrade_renamed_dependency_inline_specified_only() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.renamed_dep");
 
     execute_command(&["upgrade", "toml_edit"], &manifest);
 
     let toml = get_toml(&manifest);
-    let val = &toml["dependencies"]["te"];
+    let dep = &toml["dependencies"]["te"];
     assert_eq!(
-        val["version"].as_str(),
+        dep["version"].as_str(),
         Some("toml_edit--CURRENT_VERSION_TEST")
     );
+}
+
+#[test]
+fn upgrade_renamed_dependency_table_specified_only() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.renamed_dep");
+
+    execute_command(&["upgrade", "regex"], &manifest);
+
+    let toml = get_toml(&manifest);
+    let dep = &toml["dependencies"]["rx"];
+    assert_eq!(dep["version"].as_str(), Some("regex--CURRENT_VERSION_TEST"));
 }
 
 #[test]

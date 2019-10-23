@@ -408,7 +408,7 @@ impl LocalManifest {
             let table_like = table.as_table_like().expect("Unexpected non-table");
             for (name, toml_item) in table_like.iter() {
                 let dep_name = toml_item
-                    .as_inline_table()
+                    .as_table_like()
                     .and_then(|t| t.get("package").and_then(|p| p.as_str()))
                     .unwrap_or(name);
                 if dep_name == dependency.name {

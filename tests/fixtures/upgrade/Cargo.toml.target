@@ -18,6 +18,10 @@ te = { package = "toml_edit", version = "toml_edit--CURRENT_VERSION_TEST" }
 features = ["serde"]
 version = "semver--CURRENT_VERSION_TEST"
 
+[dependencies.rn]
+package = "renamed"
+version = "renamed--CURRENT_VERSION_TEST"
+
 [dev-dependencies]
 assert_cli = "assert_cli--CURRENT_VERSION_TEST"
 tempdir = "tempdir--CURRENT_VERSION_TEST"
