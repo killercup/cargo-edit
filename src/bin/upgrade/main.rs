@@ -162,8 +162,8 @@ impl Manifests {
                 .filter(is_version_dep)
                 .map(|dependency| {
                     let mut dep = Dependency::new(&dependency.name);
-                    if dependency.rename.is_some() {
-                        dep = dep.set_rename(&dependency.rename.unwrap());
+                    if let Some(rename) = dependency.rename {
+                        dep = dep.set_rename(&rename);
                     }
                     (dep, None)
                 })
@@ -211,8 +211,8 @@ impl Manifests {
 
             for (dep, version) in &upgraded_deps.0 {
                 let mut new_dep = Dependency::new(&dep.name).set_version(version);
-                if dep.rename().is_some() {
-                    new_dep = new_dep.set_rename(&dep.rename().unwrap());
+                if let Some(rename) = dep.rename() {
+                    new_dep = new_dep.set_rename(&rename);
                 }
                 manifest.upgrade(&new_dep, dry_run)?;
             }

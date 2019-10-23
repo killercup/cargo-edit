@@ -190,10 +190,24 @@ fn upgrade_optional_dependency() {
 }
 
 #[test]
-fn upgrade_renamed_dependency() {
+fn upgrade_renamed_dependency_all() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.renamed_dep");
 
     execute_command(&["upgrade"], &manifest);
+
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["te"];
+    assert_eq!(
+        val["version"].as_str(),
+        Some("toml_edit--CURRENT_VERSION_TEST")
+    );
+}
+
+#[test]
+fn upgrade_renamed_dependency_specified_only() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.renamed_dep");
+
+    execute_command(&["upgrade", "toml_edit"], &manifest);
 
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["te"];

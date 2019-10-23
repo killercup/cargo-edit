@@ -102,6 +102,13 @@ impl Dependency {
         self
     }
 
+    /// Get the dependency name as defined in the manifest,
+    /// that is, either the alias (rename field if Some),
+    /// or the official package name (name field).
+    pub fn name_in_manifest(&self) -> &str {
+        &self.rename().unwrap_or(&self.name)
+    }
+
     /// Get version of dependency
     pub fn version(&self) -> Option<&str> {
         if let DependencySource::Version {
