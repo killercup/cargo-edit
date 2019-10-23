@@ -19,7 +19,7 @@ pub struct Dependency {
     source: DependencySource,
     /// If the dependency is renamed, this is the new name for the dependency
     /// as a string.  None if it is not renamed.
-    pub rename: Option<String>,
+    rename: Option<String>,
 }
 
 impl Default for Dependency {
@@ -112,6 +112,13 @@ impl Dependency {
             Some(version)
         } else {
             None
+        }
+    }
+
+    pub fn rename(&self) -> Option<&str> {
+        match &self.rename {
+            Some(rename) => Some(&rename),
+            None => None,
         }
     }
 

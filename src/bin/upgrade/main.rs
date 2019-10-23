@@ -211,8 +211,8 @@ impl Manifests {
 
             for (dep, version) in &upgraded_deps.0 {
                 let mut new_dep = Dependency::new(&dep.name).set_version(version);
-                if dep.rename.is_some() {
-                    new_dep = new_dep.set_rename(&dep.rename.as_ref().unwrap());
+                if dep.rename().is_some() {
+                    new_dep = new_dep.set_rename(&dep.rename().unwrap());
                 }
                 manifest.upgrade(&new_dep, dry_run)?;
             }
