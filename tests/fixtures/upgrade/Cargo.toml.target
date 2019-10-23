@@ -12,6 +12,7 @@ serde_json = "serde_json--CURRENT_VERSION_TEST"
 syn = { version = "syn--CURRENT_VERSION_TEST", default-features = false, features = ["parsing"] }
 tar = { version = "tar--CURRENT_VERSION_TEST", default-features = false }
 ftp = "ftp--CURRENT_VERSION_TEST"
+te = { package = "toml_edit", version = "toml_edit--CURRENT_VERSION_TEST" }
 
 [dependencies.semver]
 features = ["serde"]
