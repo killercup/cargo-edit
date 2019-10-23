@@ -273,16 +273,27 @@ impl Manifest {
         dep: &Dependency,
         dry_run: bool,
     ) -> Result<()> {
+        self.update_table_named_entry(table_path, dep.name_in_manifest(), dep, dry_run)
+    }
+
+    /// Update an entry with a specified name in Cargo.toml.
+    pub fn update_table_named_entry(
+        &mut self,
+        table_path: &[String],
+        item_name: &str,
+        dep: &Dependency,
+        dry_run: bool,
+    ) -> Result<()> {
         let table = self.get_table(table_path)?;
         let new_dep = dep.to_toml().1;
 
         // If (and only if) there is an old entry, merge the new one in.
-        if !table[&dep.name].is_none() {
-            if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[&dep.name], &new_dep) {
+        if !table[item_name].is_none() {
+            if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[item_name], &new_dep) {
                 eprintln!("Error while displaying upgrade message, {}", e);
             }
             if !dry_run {
-                merge_dependencies(&mut table[&dep.name], dep);
+                merge_dependencies(&mut table[item_name], dep);
                 if let Some(t) = table.as_inline_table_mut() {
                     t.fmt()
                 }
@@ -395,10 +406,18 @@ impl LocalManifest {
     pub fn upgrade(&mut self, dependency: &Dependency, dry_run: bool) -> Result<()> {
         for (table_path, table) in self.get_sections() {
             let table_like = table.as_table_like().expect("Unexpected non-table");
-            for (name, _old_value) in table_like.iter() {
-                if name == dependency.name {
-                    self.manifest
-                        .update_table_entry(&table_path, dependency, dry_run)?;
+            for (name, toml_item) in table_like.iter() {
+                let dep_name = toml_item
+                    .as_table_like()
+                    .and_then(|t| t.get("package").and_then(|p| p.as_str()))
+                    .unwrap_or(name);
+                if dep_name == dependency.name {
+                    self.manifest.update_table_named_entry(
+                        &table_path,
+                        &name,
+                        dependency,
+                        dry_run,
+                    )?;
                 }
             }
         }

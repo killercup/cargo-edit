@@ -12,10 +12,15 @@ serde_json = "1.0"
 syn = { version = "0.11.10", default-features = false, features = ["parsing"] }
 tar = { version = "0.4", default-features = false }
 ftp = "2.2.1"
+te = { package = "toml_edit", version = "0.1.5" }
 
 [dependencies.semver]
 features = ["serde"]
 version = "0.7"
+
+[dependencies.rn]
+package = "renamed"
+version = "0.1"
 
 [dev-dependencies]
 assert_cli = "0.2.0"

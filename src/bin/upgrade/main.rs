@@ -160,7 +160,13 @@ impl Manifests {
                 .iter()
                 .flat_map(|&(_, ref package)| package.dependencies.clone())
                 .filter(is_version_dep)
-                .map(|dependency| (dependency.name, None))
+                .map(|dependency| {
+                    let mut dep = Dependency::new(&dependency.name);
+                    if let Some(rename) = dependency.rename {
+                        dep = dep.set_rename(&rename);
+                    }
+                    (dep, None)
+                })
                 .collect()
         } else {
             only_update
@@ -174,6 +180,7 @@ impl Manifests {
                     } else {
                         Ok((name, None))
                     }
+                    .map(move |(name, version)| (Dependency::new(&name), version))
                 })
                 .collect::<Result<_>>()?
         }))
@@ -202,8 +209,12 @@ impl Manifests {
         for (mut manifest, package) in self.0 {
             println!("{}:", package.name);
 
-            for (name, version) in &upgraded_deps.0 {
-                manifest.upgrade(&Dependency::new(name).set_version(version), dry_run)?;
+            for (dep, version) in &upgraded_deps.0 {
+                let mut new_dep = Dependency::new(&dep.name).set_version(version);
+                if let Some(rename) = dep.rename() {
+                    new_dep = new_dep.set_rename(&rename);
+                }
+                manifest.upgrade(&new_dep, dry_run)?;
             }
         }
 
@@ -212,11 +223,11 @@ impl Manifests {
 }
 
 /// The set of dependencies to be upgraded, alongside desired versions, if specified by the user.
-struct DesiredUpgrades(HashMap<String, Option<String>>);
+struct DesiredUpgrades(HashMap<Dependency, Option<String>>);
 
 /// The complete specification of the upgrades that will be performed. Map of the dependency names
 /// to the new versions.
-struct ActualUpgrades(HashMap<String, String>);
+struct ActualUpgrades(HashMap<Dependency, String>);
 
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
@@ -224,14 +235,14 @@ impl DesiredUpgrades {
     fn get_upgraded(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
         self.0
             .into_iter()
-            .map(|(name, version)| {
+            .map(|(dep, version)| {
                 if let Some(v) = version {
-                    Ok((name, v))
+                    Ok((dep, v))
                 } else {
-                    get_latest_dependency(&name, allow_prerelease, manifest_path)
+                    get_latest_dependency(&dep.name, allow_prerelease, manifest_path)
                         .map(|new_dep| {
                             (
-                                name,
+                                dep,
                                 new_dep
                                     .version()
                                     .expect("Invalid dependency type")
