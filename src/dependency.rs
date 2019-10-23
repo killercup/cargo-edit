@@ -137,46 +137,151 @@ impl Dependency {
     /// (If the dependency is set as `optional` or `default-features` is set to `false`,
     /// an `InlineTable` is returned in any case.)
     pub fn to_toml(&self) -> (String, toml_edit::Item) {
-        let data: toml_edit::Item =
-            match (self.optional, self.default_features, self.source.clone()) {
-                // Extra short when version flag only
-                (
-                    false,
-                    true,
-                    DependencySource::Version {
-                        version: Some(v),
-                        path: None,
-                    },
-                ) => toml_edit::value(v),
-                // Other cases are represented as an inline table
-                (optional, default_features, source) => {
-                    let mut data = toml_edit::InlineTable::default();
+        let data: toml_edit::Item = match (
+            self.optional,
+            self.default_features,
+            self.source.clone(),
+            self.rename.as_ref(),
+        ) {
+            // Extra short when version flag only
+            (
+                false,
+                true,
+                DependencySource::Version {
+                    version: Some(v),
+                    path: None,
+                },
+                None,
+            ) => toml_edit::value(v),
+            // Other cases are represented as an inline table
+            (optional, default_features, source, rename) => {
+                let mut data = toml_edit::InlineTable::default();
 
-                    match source {
-                        DependencySource::Version { version, path } => {
-                            if let Some(v) = version {
-                                data.get_or_insert("version", v);
-                            }
-                            if let Some(p) = path {
-                                data.get_or_insert("path", p);
-                            }
+                match source {
+                    DependencySource::Version { version, path } => {
+                        if let Some(v) = version {
+                            data.get_or_insert("version", v);
                         }
-                        DependencySource::Git(v) => {
-                            data.get_or_insert("git", v);
+                        if let Some(p) = path {
+                            data.get_or_insert("path", p);
                         }
                     }
-                    if self.optional {
-                        data.get_or_insert("optional", optional);
+                    DependencySource::Git(v) => {
+                        data.get_or_insert("git", v);
                     }
-                    if !self.default_features {
-                        data.get_or_insert("default-features", default_features);
-                    }
-
-                    data.fmt();
-                    toml_edit::value(toml_edit::Value::InlineTable(data))
                 }
-            };
+                if self.optional {
+                    data.get_or_insert("optional", optional);
+                }
+                if !self.default_features {
+                    data.get_or_insert("default-features", default_features);
+                }
+                if rename.is_some() {
+                    data.get_or_insert("package", self.name.clone());
+                }
 
-        (self.name.clone(), data)
+                data.fmt();
+                toml_edit::value(toml_edit::Value::InlineTable(data))
+            }
+        };
+
+        (self.name_in_manifest().to_string(), data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::dependency::Dependency;
+
+    #[test]
+    fn to_toml_simple_dep() {
+        let toml = Dependency::new("dep").to_toml();
+
+        assert_eq!(toml.0, "dep".to_owned());
+    }
+
+    #[test]
+    fn to_toml_simple_dep_with_version() {
+        let toml = Dependency::new("dep").set_version("1.0").to_toml();
+
+        assert_eq!(toml.0, "dep".to_owned());
+        assert_eq!(toml.1.as_str(), Some("1.0"));
+    }
+
+    #[test]
+    fn to_toml_optional_dep() {
+        let toml = Dependency::new("dep").set_optional(true).to_toml();
+
+        assert_eq!(toml.0, "dep".to_owned());
+        assert!(toml.1.is_inline_table());
+
+        let dep = toml.1.as_inline_table().unwrap();
+        assert_eq!(dep.get("optional").unwrap().as_bool(), Some(true));
+    }
+
+    #[test]
+    fn to_toml_dep_without_default_features() {
+        let toml = Dependency::new("dep").set_default_features(false).to_toml();
+
+        assert_eq!(toml.0, "dep".to_owned());
+        assert!(toml.1.is_inline_table());
+
+        let dep = toml.1.as_inline_table().unwrap();
+        assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
+    }
+
+    #[test]
+    fn to_toml_dep_with_path_source() {
+        let toml = Dependency::new("dep").set_path("~/foo/bar").to_toml();
+
+        assert_eq!(toml.0, "dep".to_owned());
+        assert!(toml.1.is_inline_table());
+
+        let dep = toml.1.as_inline_table().unwrap();
+        assert_eq!(dep.get("path").unwrap().as_str(), Some("~/foo/bar"));
+    }
+
+    #[test]
+    fn to_toml_dep_with_git_source() {
+        let toml = Dependency::new("dep")
+            .set_git("https://foor/bar.git")
+            .to_toml();
+
+        assert_eq!(toml.0, "dep".to_owned());
+        assert!(toml.1.is_inline_table());
+
+        let dep = toml.1.as_inline_table().unwrap();
+        assert_eq!(
+            dep.get("git").unwrap().as_str(),
+            Some("https://foor/bar.git")
+        );
+    }
+
+    #[test]
+    fn to_toml_renamed_dep() {
+        let toml = Dependency::new("dep").set_rename("d").to_toml();
+
+        assert_eq!(toml.0, "d".to_owned());
+        assert!(toml.1.is_inline_table());
+
+        let dep = toml.1.as_inline_table().unwrap();
+        assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
+    }
+
+    #[test]
+    fn to_toml_complex_dep() {
+        let toml = Dependency::new("dep")
+            .set_version("1.0")
+            .set_default_features(false)
+            .set_rename("d")
+            .to_toml();
+
+        assert_eq!(toml.0, "d".to_owned());
+        assert!(toml.1.is_inline_table());
+
+        let dep = toml.1.as_inline_table().unwrap();
+        assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
+        assert_eq!(dep.get("version").unwrap().as_str(), Some("1.0"));
+        assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
     }
 }
