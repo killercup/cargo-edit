@@ -1,0 +1,13 @@
+[package]
+name = "none"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+toml_edit = {version = "0.1.5", registry = "alternative" }
+
+[dependencies.regex]
+version = "0.2"
+registry = "alternative"
