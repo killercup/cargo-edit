@@ -65,5 +65,9 @@ error_chain! {
             description("Unable to find the source specified by 'replace-with'")
             display("The source '{}' could not be found", name)
         }
+        /// Unable to find the specified registry
+        NoSuchRegistryFound(name: String) {
+            display("The registry '{}' could not be found", name)
+        }
     }
 }

@@ -16,15 +16,18 @@ extern crate error_chain;
 
 use crate::errors::*;
 use cargo_edit::{
-    find, get_latest_dependency, update_registry_index, CrateName, Dependency, LocalManifest,
+    find, get_latest_dependency, registry_url, update_registry_index, CrateName, Dependency,
+    LocalManifest,
 };
 use failure::Fail;
+use itertools::Itertools;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
 use structopt::StructOpt;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
+use url::Url;
 
 mod errors {
     error_chain! {
@@ -153,37 +156,49 @@ impl Manifests {
             }
         }
 
-        Ok(DesiredUpgrades(if only_update.is_empty() {
-            // User hasn't asked for any specific dependencies to be upgraded, so upgrade all the
-            // dependencies.
+        // Map the names of user-specified dependencies to the (optionally) requested version.
+        let selected_dependencies = only_update
+            .into_iter()
+            .map(|name| {
+                if let Some(dependency) = CrateName::new(&name.clone()).parse_as_version()? {
+                    Ok((
+                        dependency.name.clone(),
+                        dependency.version().map(String::from),
+                    ))
+                } else {
+                    Ok((name, None))
+                }
+            })
+            .collect::<Result<HashMap<_, _>>>()?;
+
+        Ok(DesiredUpgrades(
             self.0
                 .iter()
                 .flat_map(|&(_, ref package)| package.dependencies.clone())
                 .filter(is_version_dep)
-                .map(|dependency| {
-                    let mut dep = Dependency::new(&dependency.name);
-                    if let Some(rename) = dependency.rename {
-                        dep = dep.set_rename(&rename);
-                    }
-                    (dep, None)
-                })
-                .collect()
-        } else {
-            only_update
-                .into_iter()
-                .map(|name| {
-                    if let Some(dependency) = CrateName::new(&name.clone()).parse_as_version()? {
-                        Ok((
-                            dependency.name.clone(),
-                            dependency.version().map(String::from),
-                        ))
+                .filter_map(|dependency| {
+                    if selected_dependencies.is_empty() {
+                        // User hasn't asked for any specific dependencies to be upgraded,
+                        // so upgrade all the dependencies.
+                        let mut dep = Dependency::new(&dependency.name);
+                        if let Some(rename) = dependency.rename {
+                            dep = dep.set_rename(&rename);
+                        }
+                        Some((dep, (dependency.registry, None)))
                     } else {
-                        Ok((name, None))
+                        // User has asked for specific dependencies. Check if this dependency
+                        // was specified, populating the registry from the lockfile metadata.
+                        match selected_dependencies.get(&dependency.name) {
+                            Some(version) => Some((
+                                Dependency::new(&dependency.name),
+                                (dependency.registry, version.clone()),
+                            )),
+                            None => None,
+                        }
                     }
-                    .map(move |(name, version)| (Dependency::new(&name), version))
                 })
-                .collect::<Result<_>>()?
-        }))
+                .collect(),
+        ))
     }
 
     /// Upgrade the manifests on disk following the previously-determined upgrade schema.
@@ -222,8 +237,8 @@ impl Manifests {
     }
 }
 
-/// The set of dependencies to be upgraded, alongside desired versions, if specified by the user.
-struct DesiredUpgrades(HashMap<Dependency, Option<String>>);
+/// The set of dependencies to be upgraded, alongside the registries returned from cargo metadata, and
+struct DesiredUpgrades(HashMap<Dependency, (Option<String>, Option<String>)>);
 
 /// The complete specification of the upgrades that will be performed. Map of the dependency names
 /// to the new versions.
@@ -235,11 +250,17 @@ impl DesiredUpgrades {
     fn get_upgraded(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
         self.0
             .into_iter()
-            .map(|(dep, version)| {
+            .map(|(dep, (registry, version))| {
                 if let Some(v) = version {
                     Ok((dep, v))
                 } else {
-                    get_latest_dependency(&dep.name, allow_prerelease, manifest_path)
+                    let registry_url = match registry {
+                        Some(x) => Some(Url::parse(&x).map_err(|_| {
+                            ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+                        })?),
+                        None => None,
+                    };
+                    get_latest_dependency(&dep.name, allow_prerelease, manifest_path, &registry_url)
                         .map(|new_dep| {
                             (
                                 dep,
@@ -270,7 +291,8 @@ fn process(args: Args) -> Result<()> {
     } = args;
 
     if !args.offline {
-        update_registry_index(&find(&manifest_path)?)?;
+        let url = registry_url(&find(&manifest_path)?, None)?;
+        update_registry_index(&url)?;
     }
 
     let manifests = if all {
@@ -280,6 +302,21 @@ fn process(args: Args) -> Result<()> {
     }?;
 
     let existing_dependencies = manifests.get_dependencies(dependency)?;
+
+    // Update indices for any alternative registries, unless
+    // we're offline.
+    if !args.offline {
+        for registry_url in existing_dependencies
+            .0
+            .values()
+            .filter_map(|(registry, _)| registry.as_ref())
+            .unique()
+        {
+            update_registry_index(&Url::parse(registry_url).map_err(|_| {
+                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+            })?)?;
+        }
+    }
 
     let upgraded_dependencies =
         existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;

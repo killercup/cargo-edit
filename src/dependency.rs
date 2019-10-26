@@ -5,6 +5,7 @@ enum DependencySource {
     Version {
         version: Option<String>,
         path: Option<String>,
+        registry: Option<String>,
     },
     Git(String),
 }
@@ -32,6 +33,7 @@ impl Default for Dependency {
             source: DependencySource::Version {
                 version: None,
                 path: None,
+                registry: None,
             },
         }
     }
@@ -53,13 +55,14 @@ impl Dependency {
         // ("version requirement […] includes semver metadata which will be ignored")
         let version = version.split('+').next().unwrap();
         let old_source = self.source;
-        let old_path = match old_source {
-            DependencySource::Version { path, .. } => path,
-            _ => None,
+        let (old_path, old_registry) = match old_source {
+            DependencySource::Version { path, registry, .. } => (path, registry),
+            _ => (None, None),
         };
         self.source = DependencySource::Version {
             version: Some(version.into()),
             path: old_path,
+            registry: old_registry,
         };
         self
     }
@@ -80,6 +83,7 @@ impl Dependency {
         self.source = DependencySource::Version {
             version: old_version,
             path: Some(path.into()),
+            registry: None,
         };
         self
     }
@@ -107,6 +111,21 @@ impl Dependency {
     /// or the official package name (name field).
     pub fn name_in_manifest(&self) -> &str {
         &self.rename().unwrap_or(&self.name)
+    }
+
+    /// Set the value of registry for the dependency
+    pub fn set_registry(mut self, registry: &str) -> Dependency {
+        let old_source = self.source;
+        let old_version = match old_source {
+            DependencySource::Version { version, .. } => version,
+            _ => None,
+        };
+        self.source = DependencySource::Version {
+            version: old_version,
+            path: None,
+            registry: Some(registry.into()),
+        };
+        self
     }
 
     /// Get version of dependency
@@ -150,6 +169,7 @@ impl Dependency {
                 DependencySource::Version {
                     version: Some(v),
                     path: None,
+                    registry: None,
                 },
                 None,
             ) => toml_edit::value(v),
@@ -158,12 +178,19 @@ impl Dependency {
                 let mut data = toml_edit::InlineTable::default();
 
                 match source {
-                    DependencySource::Version { version, path } => {
+                    DependencySource::Version {
+                        version,
+                        path,
+                        registry,
+                    } => {
                         if let Some(v) = version {
                             data.get_or_insert("version", v);
                         }
                         if let Some(p) = path {
                             data.get_or_insert("path", p);
+                        }
+                        if let Some(r) = registry {
+                            data.get_or_insert("registry", r);
                         }
                     }
                     DependencySource::Git(v) => {
@@ -266,6 +293,17 @@ mod tests {
 
         let dep = toml.1.as_inline_table().unwrap();
         assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
+    }
+
+    #[test]
+    fn to_toml_dep_from_alt_registry() {
+        let toml = Dependency::new("dep").set_registry("alternative").to_toml();
+
+        assert_eq!(toml.0, "dep".to_owned());
+        assert!(toml.1.is_inline_table());
+
+        let dep = toml.1.as_inline_table().unwrap();
+        assert_eq!(dep.get("registry").unwrap().as_str(), Some("alternative"));
     }
 
     #[test]

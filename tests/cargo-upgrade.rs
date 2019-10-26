@@ -4,7 +4,10 @@ extern crate pretty_assertions;
 use std::fs;
 
 mod utils;
-use crate::utils::{clone_out_test, execute_command, get_command_path, get_toml};
+use crate::utils::{
+    clone_out_test, execute_command, execute_command_in_dir, get_command_path, get_toml,
+    setup_alt_registry_config,
+};
 
 /// Helper function that copies the workspace test into a temporary directory.
 pub fn copy_workspace_test() -> (tempdir::TempDir, String, Vec<String>) {
@@ -233,6 +236,63 @@ fn upgrade_renamed_dependency_table_specified_only() {
     let toml = get_toml(&manifest);
     let dep = &toml["dependencies"]["rx"];
     assert_eq!(dep["version"].as_str(), Some("regex--CURRENT_VERSION_TEST"));
+}
+
+#[test]
+fn upgrade_alt_registry_dependency_all() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.alt_registry");
+    setup_alt_registry_config(tmpdir.path());
+
+    // The alternative registry test commands are run
+    // from the test directory, as cargo metadata probes for
+    // cargo config relative to the invocation directory, not
+    // the manifest path.
+    execute_command_in_dir(&["upgrade"], tmpdir.path());
+
+    let toml = get_toml(&manifest);
+
+    let dep1 = &toml["dependencies"]["toml_edit"];
+    assert_eq!(
+        dep1["version"].as_str(),
+        Some("toml_edit--CURRENT_VERSION_TEST")
+    );
+    assert_eq!(dep1["registry"].as_str(), Some("alternative"));
+
+    let dep2 = &toml["dependencies"]["regex"];
+    assert_eq!(
+        dep2["version"].as_str(),
+        Some("regex--CURRENT_VERSION_TEST")
+    );
+    assert_eq!(dep2["registry"].as_str(), Some("alternative"));
+}
+
+#[test]
+fn upgrade_alt_registry_dependency_inline_specified_only() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.alt_registry");
+    setup_alt_registry_config(tmpdir.path());
+
+    execute_command_in_dir(&["upgrade", "toml_edit"], tmpdir.path());
+
+    let toml = get_toml(&manifest);
+    let dep = &toml["dependencies"]["toml_edit"];
+    assert_eq!(
+        dep["version"].as_str(),
+        Some("toml_edit--CURRENT_VERSION_TEST")
+    );
+    assert_eq!(dep["registry"].as_str(), Some("alternative"));
+}
+
+#[test]
+fn upgrade_alt_registry_dependency_table_specified_only() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.alt_registry");
+    setup_alt_registry_config(tmpdir.path());
+
+    execute_command_in_dir(&["upgrade", "regex"], tmpdir.path());
+
+    let toml = get_toml(&manifest);
+    let dep = &toml["dependencies"]["regex"];
+    assert_eq!(dep["version"].as_str(), Some("regex--CURRENT_VERSION_TEST"));
+    assert_eq!(dep["registry"].as_str(), Some("alternative"));
 }
 
 #[test]

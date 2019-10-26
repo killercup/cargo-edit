@@ -5,6 +5,7 @@ use std::process;
 mod utils;
 use crate::utils::{
     clone_out_test, execute_bad_command, execute_command, get_command_path, get_toml,
+    setup_alt_registry_config,
 };
 
 /// Some of the tests need to have a crate name that does not exist on crates.io. Hence this rather
@@ -627,6 +628,38 @@ fn git_and_path_are_mutually_exclusive() {
 }
 
 #[test]
+fn git_and_registry_are_mutually_exclusive() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    let call = process::Command::new(get_command_path("add").as_str())
+        .args(&["add", BOGUS_CRATE_NAME])
+        .args(&["--git", "git://git.git"])
+        .args(&["--registry", "alternative"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
+
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest).root));
+}
+
+#[test]
+fn registry_and_path_are_mutually_exclusive() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    let call = process::Command::new(get_command_path("add").as_str())
+        .args(&["add", BOGUS_CRATE_NAME])
+        .args(&["--registry", "alternative"])
+        .args(&["--path", "/path/here"])
+        .arg(format!("--manifest-path={}", &manifest))
+        .output()
+        .unwrap();
+
+    assert!(!call.status.success());
+    assert!(no_manifest_failures(&get_toml(&manifest).root));
+}
+
+#[test]
 fn adds_optional_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -720,6 +753,69 @@ fn adds_multiple_no_default_features_dependencies() {
     assert!(!&toml["dependencies"]["my-package2"]["default-features"]
         .as_bool()
         .expect("default-features not a bool"));
+}
+
+#[test]
+fn adds_alternative_registry_dependency() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    setup_alt_registry_config(tmpdir.path());
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "versioned-package",
+            "--vers",
+            ">=0.1.1",
+            "--registry",
+            "alternative",
+        ],
+        &manifest,
+    );
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["versioned-package"]["registry"];
+    assert_eq!(val.as_str().expect("registry not a string"), "alternative");
+}
+
+#[test]
+fn adds_multiple_alternative_registry_dependencies() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    setup_alt_registry_config(tmpdir.path());
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "--registry",
+            "alternative",
+            "my-package1",
+            "my-package2",
+        ],
+        &manifest,
+    );
+
+    // dependencies present afterwards
+    let toml = get_toml(&manifest);
+    assert_eq!(
+        toml["dependencies"]["my-package1"]["registry"]
+            .as_str()
+            .expect("registry not a string"),
+        "alternative"
+    );
+    assert_eq!(
+        toml["dependencies"]["my-package2"]["registry"]
+            .as_str()
+            .expect("registry not a string"),
+        "alternative"
+    );
 }
 
 #[test]
@@ -1101,7 +1197,9 @@ fn adds_sorted_dependencies() {
 
     // and all the dependencies in the output get sorted
     let toml = get_toml(&manifest);
-    assert_eq!(toml.to_string(), r#"[package]
+    assert_eq!(
+        toml.to_string(),
+        r#"[package]
 name = "cargo-list-test-fixture"
 version = "0.0.0"
 
@@ -1112,4 +1210,3 @@ toml_edit = "0.1.5"
 "#
     );
 }
-
