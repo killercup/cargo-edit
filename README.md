@@ -56,7 +56,7 @@ $ cargo add lib/trial-and-error/
 $ # Add a crates.io crate with a local development path
 $ cargo add my_helper --vers=1.3.1 --path=lib/my-helper/
 $ # Add a renamed dependency
-$ caro add thiserror --rename error
+$ cargo add thiserror --rename error
 ```
 
 #### Usage
