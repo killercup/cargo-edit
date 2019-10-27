@@ -106,6 +106,23 @@ fn upgrade_all_allow_prerelease() {
 }
 
 #[test]
+fn upgrade_prerelease_already_prereleased() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Setup manifest with `docopt`
+    execute_command(&["add", "docopt", "--vers", "0.8-alpha"], &manifest);
+
+    // Now, upgrade `docopt` to the latest version
+    execute_command(&["upgrade", "--allow-prerelease"], &manifest);
+
+    // Verify that `docopt` has been updated successfully.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["docopt"].as_str(),
+        Some("docopt--PRERELEASE_VERSION_TEST")
+    );
+}
+
+#[test]
 fn upgrade_all_dry_run() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -132,7 +149,7 @@ fn upgrade_all_allow_prerelease_dry_run() {
     // Now, upgrade `docopt` to the latest version
     execute_command(&["upgrade", "--allow-prerelease", "--dry-run"], &manifest);
 
-    // Verify that `docopt` has been updated successfully.
+    // Verify that `docopt` has not been updated.
     assert_eq!(
         get_toml(&manifest)["dependencies"]["docopt"].as_str(),
         Some("0.8")
