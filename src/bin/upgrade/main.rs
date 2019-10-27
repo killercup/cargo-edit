@@ -20,8 +20,7 @@ use cargo_edit::{
     LocalManifest,
 };
 use failure::Fail;
-use itertools::Itertools;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -238,6 +237,7 @@ impl Manifests {
 }
 
 /// The set of dependencies to be upgraded, alongside the registries returned from cargo metadata, and
+/// the desired versions, if specified by the user.
 struct DesiredUpgrades(HashMap<Dependency, (Option<String>, Option<String>)>);
 
 /// The complete specification of the upgrades that will be performed. Map of the dependency names
@@ -310,7 +310,7 @@ fn process(args: Args) -> Result<()> {
             .0
             .values()
             .filter_map(|(registry, _)| registry.as_ref())
-            .unique()
+            .collect::<HashSet<_>>()
         {
             update_registry_index(&Url::parse(registry_url).map_err(|_| {
                 ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)

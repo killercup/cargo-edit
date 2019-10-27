@@ -27,18 +27,6 @@ pub fn setup_alt_registry_config(path: &std::path::Path) {
         path.join(".cargo").join("config"),
     )
     .unwrap_or_else(|err| panic!("could not copy test cargo config: {}", err));
-    // Workaround for https://github.com/killercup/cargo-edit/issues/339
-    let call = process::Command::new("cargo")
-        .args(&["search", "--registry=alternative", "failure"])
-        .current_dir(path)
-        .output()
-        .unwrap();
-    if !call.status.success() {
-        println!("Status code: {:?}", call.status);
-        println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
-        println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
-        panic!("Failed to initialize alternative registry");
-    }
 }
 
 /// Execute local cargo command, includes `--manifest-path`, expect command failed

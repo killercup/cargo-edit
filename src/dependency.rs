@@ -54,8 +54,7 @@ impl Dependency {
         // store in the cargo toml files.  This would cause a warning upon compilation
         // ("version requirement […] includes semver metadata which will be ignored")
         let version = version.split('+').next().unwrap();
-        let old_source = self.source;
-        let (old_path, old_registry) = match old_source {
+        let (old_path, old_registry) = match self.source {
             DependencySource::Version { path, registry, .. } => (path, registry),
             _ => (None, None),
         };
@@ -75,8 +74,7 @@ impl Dependency {
 
     /// Set dependency to a given path
     pub fn set_path(mut self, path: &str) -> Dependency {
-        let old_source = self.source;
-        let old_version = match old_source {
+        let old_version = match self.source {
             DependencySource::Version { version, .. } => version,
             _ => None,
         };
@@ -115,8 +113,7 @@ impl Dependency {
 
     /// Set the value of registry for the dependency
     pub fn set_registry(mut self, registry: &str) -> Dependency {
-        let old_source = self.source;
-        let old_version = match old_source {
+        let old_version = match self.source {
             DependencySource::Version { version, .. } => version,
             _ => None,
         };

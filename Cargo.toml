@@ -69,7 +69,6 @@ git2 = "0.10.1"
 hex = "0.3.2"
 url = "2.1.0"
 toml = "0.5.1"
-itertools = "0.8.0"
 
 [dependencies.semver]
 features = ["serde"]
