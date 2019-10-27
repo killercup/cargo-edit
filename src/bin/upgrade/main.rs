@@ -58,7 +58,7 @@ All packages in the workspace will be upgraded if the `--all` flag is supplied. 
 be supplied in the presence of a virtual manifest.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
-version as recorded in the Cargo.lock file. This flags requires that the Cargo.lock file is
+version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is
 up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
 error. If the '--to-lockfile' flag is supplied then the network won't be accessed."
     )]
