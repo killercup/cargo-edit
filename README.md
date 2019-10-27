@@ -24,7 +24,7 @@ To help us help you get pull requests merged quickly and smoothly, open an issue
 
 `cargo-edit` has a moderately comprehensive test suite. Contributions that add/improve tests are awesome. Please add tests for every change.
 
-`cargo-edit` uses [`rustfmt-nightly`](https://github.com/rust-lang-nursery/rustfmt) for formatting and [`clippy`](https://github.com/rust-lang-nursery/rust-clippy) for linting.
+`cargo-edit` uses [`rustfmt`](https://github.com/rust-lang-nursery/rustfmt) for formatting and [`clippy`](https://github.com/rust-lang-nursery/rust-clippy) for linting.
 
 ## Installation
 
@@ -55,6 +55,8 @@ $ # Add a non-crates.io crate; the crate name will be found automatically
 $ cargo add lib/trial-and-error/
 $ # Add a crates.io crate with a local development path
 $ cargo add my_helper --vers=1.3.1 --path=lib/my-helper/
+$ # Add a renamed dependency
+$ caro add thiserror --rename error
 ```
 
 #### Usage
@@ -84,6 +86,7 @@ Specify where to add the crate:
                             for `dev-dependencies` or `build-dependencies`.
 
 Options:
+    --rename=<alias>        Rename the dependency to alias in Cargo.toml
     --sort                  Keep dependencies sorted
     --upgrade=<method>      Choose method of semantic version upgrade. Must be one of
                             "none" (exact version), "patch" (`~` modifier), "minor"
