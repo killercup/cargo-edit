@@ -202,6 +202,7 @@ impl Manifests {
                 .flat_map(|&(_, ref package)| package.dependencies.clone())
                 .filter(is_version_dep)
                 .filter_map(|dependency| {
+                    let is_prerelease = dependency.req.to_string().contains("-");
                     if selected_dependencies.is_empty() {
                         // User hasn't asked for any specific dependencies to be upgraded,
                         // so upgrade all the dependencies.
@@ -209,7 +210,6 @@ impl Manifests {
                         if let Some(rename) = dependency.rename {
                             dep = dep.set_rename(&rename);
                         }
-                        let is_prerelease = dependency.req.to_string().contains("-");
                         Some((
                             dep,
                             UpgradeMetadata {
@@ -227,7 +227,7 @@ impl Manifests {
                                 UpgradeMetadata {
                                     registry: dependency.registry,
                                     version: version.clone(),
-                                    is_prerelease: false,
+                                    is_prerelease,
                                 },
                             )),
                             None => None,
