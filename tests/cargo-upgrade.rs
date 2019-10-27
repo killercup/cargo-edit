@@ -113,7 +113,7 @@ fn upgrade_prerelease_already_prereleased() {
     execute_command(&["add", "docopt", "--vers", "0.8-alpha"], &manifest);
 
     // Now, upgrade `docopt` to the latest version
-    execute_command(&["upgrade", "--allow-prerelease"], &manifest);
+    execute_command(&["upgrade"], &manifest);
 
     // Verify that `docopt` has been updated successfully.
     assert_eq!(
