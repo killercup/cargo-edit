@@ -37,14 +37,14 @@ use crate::errors::*;
 #[structopt(bin_name = "cargo")]
 enum Command {
     /// Remove a dependency from a Cargo.toml manifest file.
-    #[structopt(name = "rm", author = "")]
+    #[structopt(name = "rm")]
     Rm(Args),
 }
 
 #[derive(Debug, StructOpt)]
 struct Args {
     /// Crates to be removed.
-    #[structopt(name = "crates", raw(required = "true"))]
+    #[structopt(name = "crates", required = true)]
     crates: Vec<String>,
 
     /// Remove crate as development dependency.

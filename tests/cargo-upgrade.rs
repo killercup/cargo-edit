@@ -106,6 +106,46 @@ fn upgrade_all_allow_prerelease() {
 }
 
 #[test]
+fn upgrade_prereleased_without_the_flag() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Setup manifest with alpha `b`.
+    execute_command(&["add", "b", "--vers", "0.8-alpha"], &manifest);
+
+    // Now, upgrade `b` to its latest version
+    execute_command(&["upgrade", "b"], &manifest);
+
+    // Verify that `b` has been updated successfully to a prerelease version.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["b"].as_str(),
+        Some("b--PRERELEASE_VERSION_TEST")
+    );
+}
+
+#[test]
+fn upgrade_prerelease_already_prereleased() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Setup manifest with stable `a` and alpha `b`.
+    execute_command(&["add", "a", "--vers", "1.0"], &manifest);
+    execute_command(&["add", "b", "--vers", "0.8-alpha"], &manifest);
+
+    // Now, upgrade all dependencies to their latest versions
+    execute_command(&["upgrade"], &manifest);
+
+    // Verify that `a` has been updated successfully to a stable version.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["a"].as_str(),
+        Some("a--CURRENT_VERSION_TEST")
+    );
+    // Verify that `b` has been updated successfully to a prerelease version.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["b"].as_str(),
+        Some("b--PRERELEASE_VERSION_TEST")
+    );
+}
+
+#[test]
 fn upgrade_all_dry_run() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -132,7 +172,7 @@ fn upgrade_all_allow_prerelease_dry_run() {
     // Now, upgrade `docopt` to the latest version
     execute_command(&["upgrade", "--allow-prerelease", "--dry-run"], &manifest);
 
-    // Verify that `docopt` has been updated successfully.
+    // Verify that `docopt` has not been updated.
     assert_eq!(
         get_toml(&manifest)["dependencies"]["docopt"].as_str(),
         Some("0.8")
