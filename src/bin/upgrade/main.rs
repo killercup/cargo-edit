@@ -210,11 +210,14 @@ impl Manifests {
                             dep = dep.set_rename(&rename);
                         }
                         let is_prerelease = dependency.req.to_string().contains("-");
-                        Some((dep, UpgradeMetadata {
-                            registry: dependency.registry,
-                            version: None,
-                            is_prerelease
-                        }))
+                        Some((
+                            dep,
+                            UpgradeMetadata {
+                                registry: dependency.registry,
+                                version: None,
+                                is_prerelease,
+                            },
+                        ))
                     } else {
                         // User has asked for specific dependencies. Check if this dependency
                         // was specified, populating the registry from the lockfile metadata.
@@ -225,7 +228,7 @@ impl Manifests {
                                     registry: dependency.registry,
                                     version: version.clone(),
                                     is_prerelease: false,
-                                }
+                                },
                             )),
                             None => None,
                         }
@@ -336,18 +339,31 @@ impl DesiredUpgrades {
     fn get_upgraded(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
         self.0
             .into_iter()
-            .map(|(dep, UpgradeMetadata{ registry, version, is_prerelease })| {
-                if let Some(v) = version {
-                    Ok((dep, v))
-                } else {
-                    let registry_url = match registry {
-                        Some(x) => Some(Url::parse(&x).map_err(|_| {
-                            ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                        })?),
-                        None => None,
-                    };
-                    let allow_prerelease = allow_prerelease || is_prerelease;
-                    get_latest_dependency(&dep.name, allow_prerelease, manifest_path, &registry_url)
+            .map(
+                |(
+                    dep,
+                    UpgradeMetadata {
+                        registry,
+                        version,
+                        is_prerelease,
+                    },
+                )| {
+                    if let Some(v) = version {
+                        Ok((dep, v))
+                    } else {
+                        let registry_url = match registry {
+                            Some(x) => Some(Url::parse(&x).map_err(|_| {
+                                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+                            })?),
+                            None => None,
+                        };
+                        let allow_prerelease = allow_prerelease || is_prerelease;
+                        get_latest_dependency(
+                            &dep.name,
+                            allow_prerelease,
+                            manifest_path,
+                            &registry_url,
+                        )
                         .map(|new_dep| {
                             (
                                 dep,
@@ -358,8 +374,9 @@ impl DesiredUpgrades {
                             )
                         })
                         .chain_err(|| "Failed to get new version")
-                }
-            })
+                    }
+                },
+            )
             .collect::<Result<_>>()
             .map(ActualUpgrades)
     }
