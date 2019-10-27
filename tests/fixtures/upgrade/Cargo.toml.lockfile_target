@@ -6,6 +6,5 @@ version = "0.1.0"
 path = "../dummy.rs"
 
 [dependencies]
-libc = "0.2.28"
-rand = "0.3"
-three = { path = "../implicit/three"}
+libc = "0.2.65"
+rand = "0.3.10"

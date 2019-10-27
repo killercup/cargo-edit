@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate pretty_assertions;
 
-use std::fs;
+use std::{fs, path::Path};
 
 mod utils;
 use crate::utils::{
@@ -41,6 +41,7 @@ pub fn copy_workspace_test() -> (tempdir::TempDir, String, Vec<String>) {
 
         let root_manifest_path = copy_in(".", "Cargo.toml");
         copy_in(".", "dummy.rs");
+        copy_in(".", "Cargo.lock");
 
         let workspace_manifest_paths = ["one", "two", "implicit/three", "explicit/four"]
             .iter()
@@ -413,6 +414,40 @@ USAGE:
 For more information try --help ",
     )
     .unwrap();
+}
+
+// Verify that an upgraded Cargo.toml matches what we expect.
+#[test]
+fn upgrade_to_lockfile() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.lockfile_source");
+    fs::copy(
+        Path::new("tests/fixtures/upgrade/Cargo.lock"),
+        tmpdir.path().join("Cargo.lock"),
+    )
+    .unwrap_or_else(|err| panic!("could not copy test lock file: {}", err));;
+    execute_command(&["upgrade", "--to-lockfile"], &manifest);
+
+    let upgraded = get_toml(&manifest);
+    let target = get_toml("tests/fixtures/upgrade/Cargo.toml.lockfile_target");
+
+    assert_eq!(target.to_string(), upgraded.to_string());
+}
+
+#[test]
+fn upgrade_workspace_to_lockfile() {
+    let (tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
+
+    execute_command(&["upgrade", "--all", "--to-lockfile"], &root_manifest);
+
+    // The members one and two both request different, semver incompatible
+    // versions of rand. Test that both were upgraded correctly.
+    let one_upgraded = get_toml(tmpdir.path().join("one/Cargo.toml").to_str().unwrap());
+    let one_target = get_toml("tests/fixtures/workspace/one/Cargo.toml.lockfile_target");
+    assert_eq!(one_target.to_string(), one_upgraded.to_string());
+
+    let two_upgraded = get_toml(tmpdir.path().join("two/Cargo.toml").to_str().unwrap());
+    let two_target = get_toml("tests/fixtures/workspace/two/Cargo.toml.lockfile_target");
+    assert_eq!(two_target.to_string(), two_upgraded.to_string());
 }
 
 #[test]
