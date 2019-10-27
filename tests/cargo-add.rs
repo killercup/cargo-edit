@@ -119,6 +119,37 @@ fn adds_multiple_dependencies() {
 }
 
 #[test]
+fn adds_renamed_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(&["add", "my-package1", "--rename", "renamed"], &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let renamed = &toml["dependencies"]["renamed"];
+    assert_eq!(renamed["version"].as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
+    assert_eq!(renamed["package"].as_str().unwrap(), "my-package1");
+}
+
+#[test]
+fn adds_multiple_dependencies_conficts_with_rename() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_bad_command(
+        &["add", "--rename", "rename", "my-package1", "my-package2"],
+        &manifest,
+    );
+}
+
+#[test]
 fn adds_multiple_dependencies_with_conflicts_option() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
