@@ -15,12 +15,12 @@
 extern crate error_chain;
 
 use crate::args::{Args, Command};
-use cargo_edit::{find, update_registry_index, Dependency, Manifest};
+use cargo_edit::{find, registry_url, update_registry_index, Dependency, Manifest};
 use std::io::Write;
 use std::process;
 use structopt::StructOpt;
-use toml_edit::Item as TomlItem;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use toml_edit::Item as TomlItem;
 
 mod args;
 
@@ -83,7 +83,11 @@ fn handle_add(args: &Args) -> Result<()> {
     let deps = &args.parse_dependencies()?;
 
     if !args.offline {
-        update_registry_index(&find(manifest_path)?)?;
+        let url = registry_url(
+            &find(&manifest_path)?,
+            args.registry.as_ref().map(String::as_ref),
+        )?;
+        update_registry_index(&url)?;
     }
 
     deps.iter()

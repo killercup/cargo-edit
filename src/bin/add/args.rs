@@ -1,6 +1,6 @@
 //! Handle `cargo add` arguments
 
-use cargo_edit::{find, Dependency};
+use cargo_edit::{find, registry_url, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
 use semver;
 use std::path::PathBuf;
@@ -104,6 +104,10 @@ pub struct Args {
     /// Keep dependencies sorted
     #[structopt(long = "sort", short = "s")]
     pub sort: bool,
+
+    /// Registry to use
+    #[structopt(long = "registry", conflicts_with = "git", conflicts_with = "path")]
+    pub registry: Option<String>,
 }
 
 fn parse_version_req(s: &str) -> Result<&str> {
@@ -153,6 +157,8 @@ impl Args {
         } else {
             assert_eq!(self.git.is_some() && self.vers.is_some(), false);
             assert_eq!(self.git.is_some() && self.path.is_some(), false);
+            assert_eq!(self.git.is_some() && self.registry.is_some(), false);
+            assert_eq!(self.path.is_some() && self.registry.is_some(), false);
 
             let mut dependency = Dependency::new(crate_name.name());
 
@@ -165,12 +171,18 @@ impl Args {
             if let Some(version) = &self.vers {
                 dependency = dependency.set_version(parse_version_req(version)?);
             }
+            let registry_url = if let Some(registry) = &self.registry {
+                Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
+            } else {
+                None
+            };
 
             if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
                 let dep = get_latest_dependency(
                     crate_name.name(),
                     self.allow_prerelease,
                     &find(&self.manifest_path)?,
+                    &registry_url,
                 )?;
                 let v = format!(
                     "{prefix}{version}",
@@ -180,6 +192,12 @@ impl Args {
                     version = dep.version().unwrap_or_else(|| unreachable!())
                 );
                 dependency = dep.set_version(&v);
+            }
+
+            // Set the registry after getting the latest version as
+            // get_latest_dependency returns a registry-less Dependency
+            if let Some(registry) = &self.registry {
+                dependency = dependency.set_registry(registry);
             }
 
             Ok(dependency)
@@ -236,6 +254,7 @@ impl Default for Args {
             quiet: false,
             offline: true,
             sort: false,
+            registry: None,
         }
     }
 }

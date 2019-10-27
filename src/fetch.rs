@@ -1,5 +1,5 @@
 use crate::errors::*;
-use crate::registry::{registry_path, registry_url};
+use crate::registry::{registry_path, registry_path_from_url};
 use crate::{Dependency, Manifest};
 use env_proxy;
 use regex::Regex;
@@ -10,6 +10,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use url::Url;
 
 #[derive(Deserialize)]
 struct CrateVersion {
@@ -21,15 +22,19 @@ struct CrateVersion {
 
 /// Query latest version from a registry index
 ///
+/// The registry argument must be specified for crates
+/// from alternative registries.
+///
 /// The latest version will be returned as a `Dependency`. This will fail, when
 ///
 /// - there is no Internet connection and offline is false.
 /// - summaries in registry index with an incorrect format.
-/// - a crate with the given name does not exist on crates.io.
+/// - a crate with the given name does not exist on the registry.
 pub fn get_latest_dependency(
     crate_name: &str,
     flag_allow_prerelease: bool,
     manifest_path: &Path,
+    registry: &Option<Url>,
 ) -> Result<Dependency> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
@@ -42,11 +47,16 @@ pub fn get_latest_dependency(
 
         return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
+
     if crate_name.is_empty() {
         return Err(ErrorKind::EmptyCrateName.into());
     }
 
-    let registry_path = registry_path(manifest_path)?;
+    let registry_path = match registry {
+        Some(url) => registry_path_from_url(url)?,
+        None => registry_path(manifest_path, None)?,
+    };
+
     let crate_versions = fuzzy_query_registry_index(crate_name, &registry_path)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
@@ -81,35 +91,44 @@ fn read_latest_version(
 }
 
 /// update registry index for given project
-pub fn update_registry_index(manifest_path: &Path) -> Result<()> {
-    let registry_path = registry_path(manifest_path)?;
-    let registry_url = registry_url(manifest_path)?;
+pub fn update_registry_index(registry: &Url) -> Result<()> {
+    let registry_path = registry_path_from_url(registry)?;
 
-    let repo = git2::Repository::open(&registry_path)?;
     let colorchoice = if atty::is(atty::Stream::Stdout) {
         ColorChoice::Auto
     } else {
         ColorChoice::Never
     };
     let mut output = StandardStream::stdout(colorchoice);
+
+    if !registry_path.as_path().exists() {
+        output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+        write!(output, "{:>12}", "Initializing")?;
+        output.reset()?;
+        writeln!(output, " '{}' index", registry)?;
+
+        let mut opts = git2::RepositoryInitOptions::new();
+        opts.bare(true);
+        git2::Repository::init_opts(&registry_path, &opts)?;
+        return Ok(());
+    }
+
+    let repo = git2::Repository::open(&registry_path)?;
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Updating")?;
     output.reset()?;
-    writeln!(output, " '{}' index", registry_url)?;
+    writeln!(output, " '{}' index", registry)?;
 
     let refspec = "refs/heads/master:refs/remotes/origin/master";
-    fetch_with_cli(&repo, registry_url.as_str(), refspec)?;
+    fetch_with_cli(&repo, registry.as_str(), refspec)?;
 
     Ok(())
 }
 
 // https://github.com/rust-lang/cargo/blob/57986eac7157261c33f0123bade7ccd20f15200f/src/cargo/sources/git/utils.rs#L758
-fn fetch_with_cli(
-    repo: &git2::Repository,
-    url: &str,
-    refspec: &str,
-) -> Result<()> {
-    let cmd = subprocess::Exec::shell("git").arg("fetch")
+fn fetch_with_cli(repo: &git2::Repository, url: &str, refspec: &str) -> Result<()> {
+    let cmd = subprocess::Exec::shell("git")
+        .arg("fetch")
         .arg("--tags") // fetch all tags
         .arg("--force") // handle force pushes
         .arg("--update-head-ok") // see discussion in rust-lang/cargo#2078
@@ -130,8 +149,9 @@ fn fetch_with_cli(
 
     let _ = cmd.capture().map_err(|e| match e {
         subprocess::PopenError::IoError(io) => ErrorKind::Io(io),
-        subprocess::PopenError::LogicError(_) |
-        subprocess::PopenError::Utf8Error(_) => unreachable!("expected only io error"),
+        subprocess::PopenError::LogicError(_) | subprocess::PopenError::Utf8Error(_) => {
+            unreachable!("expected only io error")
+        }
     })?;
     Ok(())
 }
