@@ -258,7 +258,20 @@ impl Manifest {
             table[name] = new_dependency.clone();
         } else {
             // update an existing entry
-            merge_dependencies(&mut table[&dep.name], dep);
+
+            // if the `dep` is renamed in the `add` command,
+            // but was present before, then we need to remove
+            // the old entry and insert a new one
+            // as the key has changed, e.g. from
+            // a = "0.1"
+            // to
+            // alias = { version = "0.2", package = "a" }
+            if let Some(renamed) = dep.rename() {
+                let old_copy = table[&dep.name].clone();
+                table[renamed] = old_copy;
+                table[&dep.name] = toml_edit::Item::None;
+            }
+            merge_dependencies(&mut table[dep.name_in_manifest()], dep);
             if let Some(t) = table.as_inline_table_mut() {
                 t.fmt()
             }

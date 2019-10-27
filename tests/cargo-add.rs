@@ -1065,7 +1065,7 @@ fn overwrite_renamed() {
         &["add", "versioned-package", "--rename", "renamed"],
         r#"
 [dependencies]
-renamed = { package = "versioned-package", version = "0.1" }
+renamed = { version = "versioned-package--CURRENT_VERSION_TEST", package = "versioned-package" }
 "#,
     )
 }
@@ -1077,7 +1077,7 @@ fn overwrite_renamed_optional() {
         &["add", "versioned-package", "--rename", "renamed"],
         r#"
 [dependencies]
-renamed = { package = "versioned-package", optional = true, version = "0.1" }
+renamed = { version = "versioned-package--CURRENT_VERSION_TEST", optional = true, package = "versioned-package" }
 "#,
     )
 }
