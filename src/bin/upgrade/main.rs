@@ -43,7 +43,7 @@ mod errors {
 #[structopt(bin_name = "cargo")]
 enum Command {
     /// Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
-    #[structopt(name = "upgrade", author = "")]
+    #[structopt(name = "upgrade")]
     #[structopt(
         after_help = "This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).

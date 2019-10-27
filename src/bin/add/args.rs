@@ -12,7 +12,7 @@ use crate::errors::*;
 #[structopt(bin_name = "cargo")]
 pub enum Command {
     /// Add dependency to a Cargo.toml manifest file.
-    #[structopt(name = "add", author = "")]
+    #[structopt(name = "add")]
     #[structopt(
         after_help = "This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
 or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name
@@ -29,7 +29,7 @@ dependencies (version set to '*')."
 #[derive(Debug, StructOpt)]
 pub struct Args {
     /// Crates to be added.
-    #[structopt(name = "crate", raw(required = "true"))]
+    #[structopt(name = "crate", required = true)]
     pub crates: Vec<String>,
 
     /// Rename a dependency in Cargo.toml,
