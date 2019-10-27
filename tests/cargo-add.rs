@@ -119,6 +119,37 @@ fn adds_multiple_dependencies() {
 }
 
 #[test]
+fn adds_renamed_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(&["add", "my-package1", "--rename", "renamed"], &manifest);
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let renamed = &toml["dependencies"]["renamed"];
+    assert_eq!(renamed["version"].as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
+    assert_eq!(renamed["package"].as_str().unwrap(), "my-package1");
+}
+
+#[test]
+fn adds_multiple_dependencies_conficts_with_rename() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependencies not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_bad_command(
+        &["add", "--rename", "rename", "my-package1", "my-package2"],
+        &manifest,
+    );
+}
+
+#[test]
 fn adds_multiple_dependencies_with_conflicts_option() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -1026,6 +1057,55 @@ versioned-package = { optional = true, path = "../foo" }
 "#,
     )
 }
+
+#[test]
+fn overwrite_renamed() {
+    overwrite_dependency_test(
+        &["add", "versioned-package", "--vers", "0.1"],
+        &["add", "versioned-package", "--rename", "renamed"],
+        r#"
+[dependencies]
+renamed = { version = "versioned-package--CURRENT_VERSION_TEST", package = "versioned-package" }
+"#,
+    )
+}
+
+#[test]
+fn overwrite_renamed_optional() {
+    overwrite_dependency_test(
+        &["add", "versioned-package", "--vers", "0.1", "--optional"],
+        &["add", "versioned-package", "--rename", "renamed"],
+        r#"
+[dependencies]
+renamed = { version = "versioned-package--CURRENT_VERSION_TEST", optional = true, package = "versioned-package" }
+"#,
+    )
+}
+
+// FIXME: make it work
+// #[test]
+// fn overwrite_differently_renamed() {
+//     overwrite_dependency_test(
+//         &["add", "a", "--vers", "0.1", "--rename", "a1"],
+//         &["add", "a", "--vers", "0.2", "--rename", "a2"],
+//         r#"
+// [dependencies]
+// a2 = { version = "0.2", package = "a" }
+// "#,
+//     )
+// }
+
+// #[test]
+// fn overwrite_previously_renamed() {
+//     overwrite_dependency_test(
+//         &["add", "a", "--vers", "0.1", "--rename", "a1"],
+//         &["add", "a", "--vers", "0.2"],
+//         r#"
+// [dependencies]
+// a = "0.2"
+// "#,
+//     )
+// }
 
 #[test]
 fn overwrite_git_with_path() {
