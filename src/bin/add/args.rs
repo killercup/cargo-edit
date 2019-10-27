@@ -32,6 +32,12 @@ pub struct Args {
     #[structopt(name = "crate", raw(required = "true"))]
     pub crates: Vec<String>,
 
+    /// Rename a dependency in Cargo.toml,
+    /// https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
+    /// Only works when specifying a single dependency.
+    #[structopt(long = "rename", short = "r")]
+    pub rename: Option<String>,
+
     /// Add crate as development dependency.
     #[structopt(long = "dev", short = "D", conflicts_with = "build")]
     pub dev: bool,
@@ -216,8 +222,12 @@ impl Args {
             .iter()
             .map(|crate_name| {
                 self.parse_single_dependency(crate_name).map(|x| {
-                    x.set_optional(self.optional)
-                        .set_default_features(!self.no_default_features)
+                    let mut x = x.set_optional(self.optional)
+                        .set_default_features(!self.no_default_features);
+                    if let Some(ref rename) = self.rename {
+                        x = x.set_rename(rename);
+                    }
+                    x
                 })
             })
             .collect()
@@ -240,6 +250,7 @@ impl Default for Args {
     fn default() -> Args {
         Args {
             crates: vec!["demo".to_owned()],
+            rename: None,
             dev: false,
             build: false,
             vers: None,
