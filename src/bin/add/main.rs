@@ -33,9 +33,14 @@ mod errors {
                 display("Cannot specify a git URL (`{}`) with a version (`{}`).", git, version)
             }
             /// Specified multiple crates with path or git or vers
-            MultipleCratesWithGitOrPathOrVers{
+            MultipleCratesWithGitOrPathOrVers {
                 description("Specified multiple crates with path or git or vers")
                 display("Cannot specify multiple crates with path or git or vers")
+            }
+            /// Specified multiple crates with renaming.
+            MultipleCratesWithRename {
+                description("Specified multiple crates with rename")
+                display("Cannot specify multiple crates with rename")
             }
         }
         links {

@@ -218,6 +218,10 @@ impl Args {
             return Err(ErrorKind::MultipleCratesWithGitOrPathOrVers.into());
         }
 
+        if self.crates.len() > 1 && self.rename.is_some() {
+            return Err(ErrorKind::MultipleCratesWithRename.into());
+        }
+
         self.crates
             .iter()
             .map(|crate_name| {
