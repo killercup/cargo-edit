@@ -1059,6 +1059,30 @@ versioned-package = { optional = true, path = "../foo" }
 }
 
 #[test]
+fn overwrite_renamed() {
+    overwrite_dependency_test(
+        &["add", "versioned-package", "--vers", "0.1"],
+        &["add", "versioned-package", "--rename", "renamed"],
+        r#"
+[dependencies]
+renamed = { package = "versioned-package", version = "0.1" }
+"#,
+    )
+}
+
+#[test]
+fn overwrite_renamed_optional() {
+    overwrite_dependency_test(
+        &["add", "versioned-package", "--vers", "0.1", "--optional"],
+        &["add", "versioned-package", "--rename", "renamed"],
+        r#"
+[dependencies]
+renamed = { package = "versioned-package", optional = true, version = "0.1" }
+"#,
+    )
+}
+
+#[test]
 fn overwrite_git_with_path() {
     overwrite_dependency_test(
         &[
