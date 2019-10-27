@@ -419,7 +419,7 @@ For more information try --help ",
 // Verify that an upgraded Cargo.toml matches what we expect.
 #[test]
 fn upgrade_to_lockfile() {
-    let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.source");
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.lockfile_source");
     fs::copy(
         Path::new("tests/fixtures/upgrade/Cargo.lock"),
         tmpdir.path().join("Cargo.lock"),

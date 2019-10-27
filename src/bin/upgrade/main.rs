@@ -57,9 +57,10 @@ supported. Git/path dependencies will be ignored.
 All packages in the workspace will be upgraded if the `--all` flag is supplied. The `--all` flag may
 be supplied in the presence of a virtual manifest.
 
-If the '--to-lockfile' flag is supplied, all dependencies will be upraged to the currently locked
-version as recorded in the local lock file. The local lock file must be present and up to date if
-this flag is passed."
+If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
+version as recorded in the Cargo.lock file. This flags requires that the Cargo.lock file is
+up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
+error. If the '--to-lockfile' flag is supplied then the network won't be accessed."
     )]
     Upgrade(Args),
 }
@@ -287,7 +288,7 @@ impl Manifests {
                 .filter_map(|d| {
                     for p in &locked {
                         // The requested dependency may be present in the lock file with different versions,
-                        // but only one will be semver-compatible with therequested version.
+                        // but only one will be semver-compatible with the requested version.
                         if d.name == p.name && d.req.matches(&p.version) {
                             return Some((d.name, p.version.to_string()));
                         }
@@ -357,7 +358,7 @@ fn process(args: Args) -> Result<()> {
         ..
     } = args;
 
-    if !args.offline {
+    if !args.offline && !to_lockfile {
         let url = registry_url(&find(&manifest_path)?, None)?;
         update_registry_index(&url)?;
     }
@@ -373,20 +374,20 @@ fn process(args: Args) -> Result<()> {
     } else {
         let existing_dependencies = manifests.get_dependencies(dependency)?;
 
-    // Update indices for any alternative registries, unless
-    // we're offline.
-    if !args.offline {
-        for registry_url in existing_dependencies
-            .0
-            .values()
-            .filter_map(|(registry, _)| registry.as_ref())
-            .collect::<HashSet<_>>()
-        {
-            update_registry_index(&Url::parse(registry_url).map_err(|_| {
-                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-            })?)?;
+        // Update indices for any alternative registries, unless
+        // we're offline.
+        if !args.offline {
+            for registry_url in existing_dependencies
+                .0
+                .values()
+                .filter_map(|(registry, _)| registry.as_ref())
+                .collect::<HashSet<_>>()
+            {
+                update_registry_index(&Url::parse(registry_url).map_err(|_| {
+                    ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+                })?)?;
+            }
         }
-    }
 
         let upgraded_dependencies =
             existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;
