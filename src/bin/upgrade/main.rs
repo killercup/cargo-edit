@@ -209,14 +209,23 @@ impl Manifests {
                         if let Some(rename) = dependency.rename {
                             dep = dep.set_rename(&rename);
                         }
-                        Some((dep, (dependency.registry, None)))
+                        let is_prerelease = dependency.req.to_string().contains("-");
+                        Some((dep, UpgradeMetadata {
+                            registry: dependency.registry,
+                            version: None,
+                            is_prerelease
+                        }))
                     } else {
                         // User has asked for specific dependencies. Check if this dependency
                         // was specified, populating the registry from the lockfile metadata.
                         match selected_dependencies.get(&dependency.name) {
                             Some(version) => Some((
                                 Dependency::new(&dependency.name),
-                                (dependency.registry, version.clone()),
+                                UpgradeMetadata {
+                                    registry: dependency.registry,
+                                    version: version.clone(),
+                                    is_prerelease: false,
+                                }
                             )),
                             None => None,
                         }
@@ -303,9 +312,19 @@ impl Manifests {
     }
 }
 
+// Some metadata about the dependency
+// we're trying to upgrade.
+struct UpgradeMetadata {
+    registry: Option<String>,
+    // `Some` if the user has specified an explicit
+    // version to upgrade to.
+    version: Option<String>,
+    is_prerelease: bool,
+}
+
 /// The set of dependencies to be upgraded, alongside the registries returned from cargo metadata, and
 /// the desired versions, if specified by the user.
-struct DesiredUpgrades(HashMap<Dependency, (Option<String>, Option<String>)>);
+struct DesiredUpgrades(HashMap<Dependency, UpgradeMetadata>);
 
 /// The complete specification of the upgrades that will be performed. Map of the dependency names
 /// to the new versions.
@@ -317,7 +336,7 @@ impl DesiredUpgrades {
     fn get_upgraded(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
         self.0
             .into_iter()
-            .map(|(dep, (registry, version))| {
+            .map(|(dep, UpgradeMetadata{ registry, version, is_prerelease })| {
                 if let Some(v) = version {
                     Ok((dep, v))
                 } else {
@@ -327,6 +346,7 @@ impl DesiredUpgrades {
                         })?),
                         None => None,
                     };
+                    let allow_prerelease = allow_prerelease || is_prerelease;
                     get_latest_dependency(&dep.name, allow_prerelease, manifest_path, &registry_url)
                         .map(|new_dep| {
                             (
@@ -380,7 +400,7 @@ fn process(args: Args) -> Result<()> {
             for registry_url in existing_dependencies
                 .0
                 .values()
-                .filter_map(|(registry, _)| registry.as_ref())
+                .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
                 .collect::<HashSet<_>>()
             {
                 update_registry_index(&Url::parse(registry_url).map_err(|_| {
