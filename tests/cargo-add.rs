@@ -1083,29 +1083,29 @@ renamed = { version = "versioned-package--CURRENT_VERSION_TEST", optional = true
 }
 
 // FIXME: make it work
-// #[test]
-// fn overwrite_differently_renamed() {
-//     overwrite_dependency_test(
-//         &["add", "a", "--vers", "0.1", "--rename", "a1"],
-//         &["add", "a", "--vers", "0.2", "--rename", "a2"],
-//         r#"
-// [dependencies]
-// a2 = { version = "0.2", package = "a" }
-// "#,
-//     )
-// }
+#[test]
+fn overwrite_differently_renamed() {
+    overwrite_dependency_test(
+        &["add", "a", "--vers", "0.1", "--rename", "a1"],
+        &["add", "a", "--vers", "0.2", "--rename", "a2"],
+        r#"
+[dependencies]
+a2 = { version = "0.2", package = "a" }
+"#,
+    )
+}
 
-// #[test]
-// fn overwrite_previously_renamed() {
-//     overwrite_dependency_test(
-//         &["add", "a", "--vers", "0.1", "--rename", "a1"],
-//         &["add", "a", "--vers", "0.2"],
-//         r#"
-// [dependencies]
-// a = "0.2"
-// "#,
-//     )
-// }
+#[test]
+fn overwrite_previously_renamed() {
+    overwrite_dependency_test(
+        &["add", "a", "--vers", "0.1", "--rename", "a1"],
+        &["add", "a", "--vers", "0.2"],
+        r#"
+[dependencies]
+a = "0.2"
+"#,
+    )
+}
 
 #[test]
 fn overwrite_git_with_path() {

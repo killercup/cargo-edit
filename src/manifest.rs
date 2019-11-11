@@ -252,12 +252,32 @@ impl Manifest {
     pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
         let table = self.get_table(table_path)?;
 
-        if table[&dep.name].is_none() {
+        let mut existing_dep: Option<String> = None;
+        {
+            let table_iter = table.clone();
+            existing_dep = table_iter
+                .as_table()
+                .unwrap()
+                .iter()
+                .find(|item| match item {
+                    (name, _) if name == &dep.name => true,
+                    (_name, toml_edit::Item::Value(toml_edit::Value::InlineTable(inline_dep)))
+                        if inline_dep.contains_key("package") =>
+                    {
+                        inline_dep.get("package").unwrap().as_str() == Some(&dep.name)
+                    }
+                    _ => false,
+                })
+                .and_then(|dep| Some(dep.0.into()));
+        }
+
+        if existing_dep.is_none() {
             // insert a new entry
             let (ref name, ref mut new_dependency) = dep.to_toml();
             table[name] = new_dependency.clone();
         } else {
             // update an existing entry
+            let mut dep_name = existing_dep.unwrap();
 
             // if the `dep` is renamed in the `add` command,
             // but was present before, then we need to remove
@@ -267,11 +287,17 @@ impl Manifest {
             // to
             // alias = { version = "0.2", package = "a" }
             if let Some(renamed) = dep.rename() {
-                let old_copy = table[&dep.name].clone();
+                let old_copy = table[&dep_name].clone();
                 table[renamed] = old_copy;
-                table[&dep.name] = toml_edit::Item::None;
+                table[&dep_name] = toml_edit::Item::None;
+                dep_name = renamed.to_string();
+            } else if dep.name != dep_name {
+                table[&dep_name] = toml_edit::Item::None;
+                let (ref name, ref mut new_dependency) = dep.to_toml();
+                table[name] = new_dependency.clone();
+                dep_name = dep.name.to_owned();
             }
-            merge_dependencies(&mut table[dep.name_in_manifest()], dep);
+            merge_dependencies(&mut table[dep_name], dep);
             if let Some(t) = table.as_inline_table_mut() {
                 t.fmt()
             }
