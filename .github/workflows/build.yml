@@ -19,7 +19,7 @@ jobs:
     - name: Check Formatting
       run: cargo fmt --all -- --write-mode=diff
     - name: Lint
-     run: cargo clippy -- -D warnings -A deprecated
+      run: cargo clippy -- -D warnings -A deprecated
     - name: Build
       run: cargo build --verbose
     - name: Run tests
