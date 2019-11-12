@@ -1,4 +1,10 @@
 status = [
+  "build (ubuntu-latest, stable)",
+  "build (ubuntu-latest, nightly)",
+  "build (windows-latest, stable)",
+  "build (windows-latest, nightly)",
+  "build (macOS-latest, stable)",
+  "build (macOS-latest, nightly)",  
   "continuous-integration/travis-ci/push",
-  "continuous-integration/appveyor/branch",
+  "continuous-integration/appveyor/branch", 
 ]

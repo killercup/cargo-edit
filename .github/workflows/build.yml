@@ -1,0 +1,26 @@
+name: build
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [stable, nightly]
+
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
+        components: rustfmt, clippy
+    - uses: actions/checkout@master
+    - name: Check Formatting
+      run: cargo fmt --all -- --write-mode=diff
+    - name: Lint
+     run: cargo clippy -- -D warnings -A deprecated
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
