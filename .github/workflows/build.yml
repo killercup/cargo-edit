@@ -17,7 +17,7 @@ jobs:
         components: rustfmt, clippy
     - uses: actions/checkout@master
     - name: Check Formatting
-      run: cargo fmt --all -- --write-mode=diff
+      run: cargo fmt --all -- --check
     - name: Lint
       run: cargo clippy -- -D warnings -A deprecated
     - name: Build
