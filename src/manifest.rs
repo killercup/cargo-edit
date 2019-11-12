@@ -252,7 +252,7 @@ impl Manifest {
     pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
         let table = self.get_table(table_path)?;
 
-        let existing_dep = Self::find_dep(table, &dep.name)?;
+        let existing_dep = Self::find_dep(table, &dep.name);
         if existing_dep.is_none() {
             // insert a new entry
             let (ref name, ref mut new_dependency) = dep.to_toml();
@@ -378,11 +378,11 @@ impl Manifest {
     }
 
     /// Find a dependency by name (matching on package name for renamed deps)
-    fn find_dep<'a>(
+    pub fn find_dep<'a>(
         table: &'a mut toml_edit::Item,
         dep_name: &'a str,
-    ) -> Result<Option<(String, &'a toml_edit::Item)>> {
-        Ok(table
+    ) -> Option<(String, &'a toml_edit::Item)> {
+        table
             .as_table_like()
             .unwrap()
             .iter()
@@ -400,7 +400,7 @@ impl Manifest {
                 }
                 _ => false,
             })
-            .and_then(|dep| Some((dep.0.into(), dep.1))))
+            .and_then(|dep| Some((dep.0.into(), dep.1)))
     }
 }
 
