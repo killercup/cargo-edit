@@ -252,24 +252,26 @@ impl Manifest {
     pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
         let table = self.get_table(table_path)?;
 
-        let mut existing_dep: Option<String> = None;
-        {
-            let table_iter = table.clone();
-            existing_dep = table_iter
-                .as_table()
-                .unwrap()
-                .iter()
-                .find(|item| match item {
-                    (name, _) if name == &dep.name => true,
-                    (_name, toml_edit::Item::Value(toml_edit::Value::InlineTable(inline_dep)))
-                        if inline_dep.contains_key("package") =>
-                    {
-                        inline_dep.get("package").unwrap().as_str() == Some(&dep.name)
-                    }
-                    _ => false,
-                })
-                .and_then(|dep| Some(dep.0.into()));
-        }
+        let table_iter = table.clone(); //FIXME: to avoid double borrow issue ... not ideal
+        let existing_dep = table_iter
+            .as_table_like()
+            .unwrap()
+            .iter()
+            .find(|item| match item {
+                (name, _) if name == &dep.name => true,
+                (_alias, toml_edit::Item::Table(table_dep))
+                    if table_dep.contains_key("package") =>
+                {
+                    table_dep.get("package").unwrap().as_str() == Some(&dep.name)
+                }
+                (_alias, toml_edit::Item::Value(toml_edit::Value::InlineTable(inline_dep)))
+                    if inline_dep.contains_key("package") =>
+                {
+                    inline_dep.get("package").unwrap().as_str() == Some(&dep.name)
+                }
+                _ => false,
+            })
+            .and_then(|dep| Some(dep.0.into()));
 
         if existing_dep.is_none() {
             // insert a new entry
@@ -290,8 +292,15 @@ impl Manifest {
                 let old_copy = table[&dep_name].clone();
                 table[renamed] = old_copy;
                 table[&dep_name] = toml_edit::Item::None;
-                dep_name = renamed.to_string();
+                dep_name = renamed.to_owned();
             } else if dep.name != dep_name {
+                // if `dep` had been renamed in the manifest,
+                // and is not rename in the `add` command,
+                // we need to remove the old entry and insert a new one
+                // e.g. from
+                // alias = { version = "0.1", package = "a" }
+                // to
+                // a = "0.2"
                 table[&dep_name] = toml_edit::Item::None;
                 let (ref name, ref mut new_dependency) = dep.to_toml();
                 table[name] = new_dependency.clone();
