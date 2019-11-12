@@ -1082,7 +1082,6 @@ renamed = { version = "versioned-package--CURRENT_VERSION_TEST", optional = true
     )
 }
 
-// FIXME: make it work
 #[test]
 fn overwrite_differently_renamed() {
     overwrite_dependency_test(

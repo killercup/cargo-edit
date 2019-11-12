@@ -252,34 +252,14 @@ impl Manifest {
     pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
         let table = self.get_table(table_path)?;
 
-        let table_iter = table.clone(); //FIXME: to avoid double borrow issue ... not ideal
-        let existing_dep = table_iter
-            .as_table_like()
-            .unwrap()
-            .iter()
-            .find(|item| match item {
-                (name, _) if name == &dep.name => true,
-                (_alias, toml_edit::Item::Table(table_dep))
-                    if table_dep.contains_key("package") =>
-                {
-                    table_dep.get("package").unwrap().as_str() == Some(&dep.name)
-                }
-                (_alias, toml_edit::Item::Value(toml_edit::Value::InlineTable(inline_dep)))
-                    if inline_dep.contains_key("package") =>
-                {
-                    inline_dep.get("package").unwrap().as_str() == Some(&dep.name)
-                }
-                _ => false,
-            })
-            .and_then(|dep| Some(dep.0.into()));
-
+        let existing_dep = Self::find_dep(table, &dep.name)?;
         if existing_dep.is_none() {
             // insert a new entry
             let (ref name, ref mut new_dependency) = dep.to_toml();
             table[name] = new_dependency.clone();
         } else {
             // update an existing entry
-            let mut dep_name = existing_dep.unwrap();
+            let (mut dep_name, dep_item) = existing_dep.unwrap();
 
             // if the `dep` is renamed in the `add` command,
             // but was present before, then we need to remove
@@ -289,8 +269,7 @@ impl Manifest {
             // to
             // alias = { version = "0.2", package = "a" }
             if let Some(renamed) = dep.rename() {
-                let old_copy = table[&dep_name].clone();
-                table[renamed] = old_copy;
+                table[renamed] = dep_item.clone();
                 table[&dep_name] = toml_edit::Item::None;
                 dep_name = renamed.to_owned();
             } else if dep.name != dep_name {
@@ -396,6 +375,32 @@ impl Manifest {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(())
+    }
+
+    /// Find a dependency by name (matching on package name for renamed deps)
+    fn find_dep<'a>(
+        table: &'a mut toml_edit::Item,
+        dep_name: &'a str,
+    ) -> Result<Option<(String, &'a toml_edit::Item)>> {
+        Ok(table
+            .as_table_like()
+            .unwrap()
+            .iter()
+            .find(|&item| match item {
+                (name, _) if name == dep_name => true,
+                (_alias, toml_edit::Item::Table(table_dep))
+                    if table_dep.contains_key("package") =>
+                {
+                    table_dep.get("package").unwrap().as_str() == Some(dep_name)
+                }
+                (_alias, toml_edit::Item::Value(toml_edit::Value::InlineTable(inline_dep)))
+                    if inline_dep.contains_key("package") =>
+                {
+                    inline_dep.get("package").unwrap().as_str() == Some(dep_name)
+                }
+                _ => false,
+            })
+            .and_then(|dep| Some((dep.0.into(), dep.1))))
     }
 }
 
