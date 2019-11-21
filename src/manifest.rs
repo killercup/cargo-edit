@@ -214,7 +214,7 @@ impl Manifest {
                             vec![
                                 "target".to_string(),
                                 target_name.to_string(),
-                                dependency_type.to_string(),
+                                (*dependency_type).to_string(),
                             ],
                             dependency_table.clone(),
                         )
@@ -321,7 +321,6 @@ impl Manifest {
     /// # Examples
     ///
     /// ```
-    /// # fn main() {
     ///     use cargo_edit::{Dependency, Manifest};
     ///     use toml_edit;
     ///
@@ -331,7 +330,6 @@ impl Manifest {
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
     ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     ///     assert!(manifest.data["dependencies"].is_none());
-    /// # }
     /// ```
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<()> {
         if !self.data[table].is_table_like() {
