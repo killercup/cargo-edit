@@ -894,14 +894,14 @@ fn adds_dependency_with_custom_target() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     execute_command(
-        &["add", "--target", "x86_64/windows.json", "my-package1"],
+        &["add", "--target", "windows.json", "my-package1"],
         &manifest,
     );
 
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     // Get package by hand because toml-rs does not currently handle escaping dots in get()
-    let val = &toml["target"]["x86_64/windows.json"]["dependencies"]["my-package1"];
+    let val = &toml["target"]["windows.json"]["dependencies"]["my-package1"];
     assert_eq!(val.as_str(), Some("my-package1--CURRENT_VERSION_TEST"));
 }
 
