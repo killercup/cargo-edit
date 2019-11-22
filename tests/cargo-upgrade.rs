@@ -464,7 +464,7 @@ fn upgrade_to_lockfile() {
         Path::new("tests/fixtures/upgrade/Cargo.lock"),
         tmpdir.path().join("Cargo.lock"),
     )
-    .unwrap_or_else(|err| panic!("could not copy test lock file: {}", err));;
+    .unwrap_or_else(|err| panic!("could not copy test lock file: {}", err));
     execute_command(&["upgrade", "--to-lockfile"], &manifest);
 
     let upgraded = get_toml(&manifest);

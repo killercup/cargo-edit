@@ -131,7 +131,10 @@ fn adds_renamed_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let renamed = &toml["dependencies"]["renamed"];
-    assert_eq!(renamed["version"].as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
+    assert_eq!(
+        renamed["version"].as_str().unwrap(),
+        "my-package1--CURRENT_VERSION_TEST"
+    );
     assert_eq!(renamed["package"].as_str().unwrap(), "my-package1");
 }
 
