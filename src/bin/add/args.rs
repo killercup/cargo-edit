@@ -226,7 +226,8 @@ impl Args {
             .iter()
             .map(|crate_name| {
                 self.parse_single_dependency(crate_name).map(|x| {
-                    let mut x = x.set_optional(self.optional)
+                    let mut x = x
+                        .set_optional(self.optional)
                         .set_default_features(!self.no_default_features);
                     if let Some(ref rename) = self.rename {
                         x = x.set_rename(rename);

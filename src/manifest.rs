@@ -194,7 +194,7 @@ impl Manifest {
             // Dependencies can be in the three standard sections...
             if self.data[dependency_type].is_table_like() {
                 sections.push((
-                    vec![dependency_type.to_string()],
+                    vec![String::from(*dependency_type)],
                     self.data[dependency_type].clone(),
                 ))
             }
@@ -214,7 +214,7 @@ impl Manifest {
                             vec![
                                 "target".to_string(),
                                 target_name.to_string(),
-                                dependency_type.to_string(),
+                                String::from(*dependency_type),
                             ],
                             dependency_table.clone(),
                         )
@@ -335,17 +335,15 @@ impl Manifest {
     /// # Examples
     ///
     /// ```
-    /// # fn main() {
-    ///     use cargo_edit::{Dependency, Manifest};
-    ///     use toml_edit;
+    ///   use cargo_edit::{Dependency, Manifest};
+    ///   use toml_edit;
     ///
-    ///     let mut manifest = Manifest { data: toml_edit::Document::new() };
-    ///     let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-    ///     let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
-    ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
-    ///     assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
-    ///     assert!(manifest.data["dependencies"].is_none());
-    /// # }
+    ///   let mut manifest = Manifest { data: toml_edit::Document::new() };
+    ///   let dep = Dependency::new("cargo-edit").set_version("0.1.0");
+    ///   let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
+    ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
+    ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
+    ///   assert!(manifest.data["dependencies"].is_none());
     /// ```
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<()> {
         if !self.data[table].is_table_like() {
