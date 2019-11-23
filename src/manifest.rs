@@ -194,7 +194,7 @@ impl Manifest {
             // Dependencies can be in the three standard sections...
             if self.data[dependency_type].is_table_like() {
                 sections.push((
-                    vec![(*dependency_type).to_string()],
+                    vec![String::from(*dependency_type)],
                     self.data[dependency_type].clone(),
                 ))
             }
