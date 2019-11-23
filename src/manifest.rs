@@ -214,7 +214,7 @@ impl Manifest {
                             vec![
                                 "target".to_string(),
                                 target_name.to_string(),
-                                (*dependency_type).to_string(),
+                                String::from(*dependency_type),
                             ],
                             dependency_table.clone(),
                         )
