@@ -433,7 +433,7 @@ impl LocalManifest {
         &mut self,
         dependency: &Dependency,
         dry_run: bool,
-        only_breaking: bool,
+        skip_compatible: bool,
     ) -> Result<()> {
         for (table_path, table) in self.get_sections() {
             let table_like = table.as_table_like().expect("Unexpected non-table");
@@ -445,7 +445,7 @@ impl LocalManifest {
                 if dep_name == dependency.name {
                     let old_version = get_old_version(toml_item);
                     if let Some(old_version) = old_version {
-                        if only_breaking
+                        if skip_compatible
                             && VersionReq::parse(&old_version)
                                 .chain_err(|| ErrorKind::ParseVersion(name.into(), old_version))?
                                 .matches(

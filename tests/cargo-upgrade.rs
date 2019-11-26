@@ -200,13 +200,13 @@ fn upgrade_specified_only() {
 }
 
 #[test]
-fn upgrade_major_only() {
+fn upgrade_skip_compatible() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     execute_command(&["add", "test_breaking", "--vers", "0.1"], &manifest);
     execute_command(&["add", "test_nonbreaking", "--vers", "0.1"], &manifest);
 
-    execute_command(&["upgrade", "--major-only"], &manifest);
+    execute_command(&["upgrade", "--skip-compatible"], &manifest);
 
     // Verify that `docopt` was upgraded, but not `env_proxy`
     let dependencies = &get_toml(&manifest)["dependencies"];
