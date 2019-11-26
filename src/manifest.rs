@@ -108,6 +108,27 @@ fn get_old_version(old_dep: &toml_edit::Item) -> Option<String> {
     }
 }
 
+fn old_version_compatible(dependency: &Dependency, toml_item: &toml_edit::Item) -> Result<bool> {
+    let old_version = match get_old_version(toml_item) {
+        Some(old_version) => old_version,
+        None => return Ok(false),
+    };
+
+    let old_version = VersionReq::parse(&old_version)
+        .chain_err(|| ErrorKind::ParseVersion(dependency.name.to_string(), old_version))?;
+
+    let current_version = match dependency.version() {
+        Some(current_version) => current_version,
+        None => return Ok(false),
+    };
+
+    let current_version = Version::parse(&current_version).chain_err(|| {
+        ErrorKind::ParseVersion(dependency.name.to_string(), current_version.into())
+    })?;
+
+    Ok(old_version.matches(&current_version))
+}
+
 /// Print a message if the new dependency version is different from the old one.
 fn print_upgrade_if_necessary(
     crate_name: &str,
@@ -443,24 +464,8 @@ impl LocalManifest {
                     .and_then(|t| t.get("package").and_then(|p| p.as_str()))
                     .unwrap_or(name);
                 if dep_name == dependency.name {
-                    let old_version = get_old_version(toml_item);
-                    if let Some(old_version) = old_version {
-                        if skip_compatible
-                            && VersionReq::parse(&old_version)
-                                .chain_err(|| ErrorKind::ParseVersion(name.into(), old_version))?
-                                .matches(
-                                    &Version::parse(&dependency.version().unwrap()).chain_err(
-                                        || {
-                                            ErrorKind::ParseVersion(
-                                                name.into(),
-                                                dependency.version().unwrap().into(),
-                                            )
-                                        },
-                                    )?,
-                                )
-                        {
-                            continue;
-                        }
+                    if skip_compatible && old_version_compatible(dependency, toml_item)? {
+                        continue;
                     }
                     self.manifest.update_table_named_entry(
                         &table_path,
