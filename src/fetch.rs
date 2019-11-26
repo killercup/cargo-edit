@@ -42,12 +42,10 @@ pub fn get_latest_dependency(
         let new_version = if flag_allow_prerelease {
             format!("{}--PRERELEASE_VERSION_TEST", crate_name)
         } else {
-            if crate_name == "test_breaking" {
-                "0.2.0".to_string()
-            } else if crate_name == "test_nonbreaking" {
-                "0.1.1".to_string()
-            } else {
-                format!("{}--CURRENT_VERSION_TEST", crate_name)
+            match crate_name {
+                "test_breaking" => "0.2.0".to_string(),
+                "test_nonbreaking" => "0.1.1".to_string(),
+                other => format!("{}--CURRENT_VERSION_TEST", other),
             }
         };
 
