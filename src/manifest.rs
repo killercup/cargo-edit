@@ -95,22 +95,24 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new: &Dependency) {
     }
 }
 
-fn get_old_version(old_dep: &toml_edit::Item) -> Option<String> {
-    assert!(!old_dep.is_none());
-
+fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
     if str_or_1_len_table(old_dep) {
-        old_dep.as_str().map(|v| v.to_string())
+        Ok(old_dep.clone())
     } else if old_dep.is_table_like() {
         let version = old_dep["version"].clone();
-        version.as_str().map(|v| v.to_string())
+        if version.is_none() {
+            Err("Missing version field".into())
+        } else {
+            Ok(version)
+        }
     } else {
-        None
+        unreachable!("Invalid old dependency type")
     }
 }
 
 fn old_version_compatible(dependency: &Dependency, toml_item: &toml_edit::Item) -> Result<bool> {
-    let old_version = match get_old_version(toml_item) {
-        Some(old_version) => old_version,
+    let old_version = match get_version(toml_item)?.as_str() {
+        Some(old_version) => old_version.to_string(),
         None => return Ok(false),
     };
 
@@ -135,17 +137,7 @@ fn print_upgrade_if_necessary(
     old_dep: &toml_edit::Item,
     new_version: &toml_edit::Item,
 ) -> Result<()> {
-    let old_version = if str_or_1_len_table(old_dep) {
-        old_dep.clone()
-    } else if old_dep.is_table_like() {
-        let version = old_dep["version"].clone();
-        if version.is_none() {
-            return Err("Missing version field".into());
-        }
-        version
-    } else {
-        unreachable!("Invalid old dependency type")
-    };
+    let old_version = get_version(old_dep)?;
 
     if let (Some(old_version), Some(new_version)) = (old_version.as_str(), new_version.as_str()) {
         if old_version == new_version {
