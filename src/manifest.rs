@@ -553,4 +553,29 @@ mod tests {
             .remove_from_table("dependencies", &dep.name)
             .is_err());
     }
+
+    #[test]
+    fn old_version_is_compatible() -> Result<()> {
+        let with_version = Dependency::new("foo").set_version("2.3.4");
+        assert!(!old_version_compatible(&with_version, "1")?);
+        assert!(old_version_compatible(&with_version, "2")?);
+        assert!(!old_version_compatible(&with_version, "3")?);
+        Ok(())
+    }
+
+    #[test]
+    fn old_incompatible_with_missing_new_version() -> Result<()> {
+        let no_version = Dependency::new("foo");
+        assert!(!old_version_compatible(&no_version, "1")?);
+        assert!(!old_version_compatible(&no_version, "2")?);
+        Ok(())
+    }
+
+    #[test]
+    fn old_incompatible_with_invalid() {
+        let bad_version = Dependency::new("foo").set_version("CAKE CAKE");
+        let good_version = Dependency::new("foo").set_version("1.2.3");
+        assert!(old_version_compatible(&bad_version, "1").is_err());
+        assert!(old_version_compatible(&good_version, "CAKE CAKE").is_err());
+    }
 }
