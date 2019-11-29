@@ -87,7 +87,7 @@ struct Args {
     dry_run: bool,
 
     /// Only update a dependency if the new version is semver incompatible.
-    #[structopt(long = "skip-compatible")]
+    #[structopt(long = "skip-compatible", conflicts_with = "to_lockfile")]
     skip_compatible: bool,
 
     /// Run without accessing the network
