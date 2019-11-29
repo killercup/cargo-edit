@@ -110,14 +110,10 @@ fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
     }
 }
 
-fn old_version_compatible(dependency: &Dependency, toml_item: &toml_edit::Item) -> Result<bool> {
-    let old_version = match get_version(toml_item)?.as_str() {
-        Some(old_version) => old_version.to_string(),
-        None => return Ok(false),
-    };
-
-    let old_version = VersionReq::parse(&old_version)
-        .chain_err(|| ErrorKind::ParseVersion(dependency.name.to_string(), old_version))?;
+fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<bool> {
+    let old_version = VersionReq::parse(old_version).chain_err(|| {
+        ErrorKind::ParseVersion(dependency.name.to_string(), old_version.to_string())
+    })?;
 
     let current_version = match dependency.version() {
         Some(current_version) => current_version,
@@ -456,8 +452,12 @@ impl LocalManifest {
                     .and_then(|t| t.get("package").and_then(|p| p.as_str()))
                     .unwrap_or(name);
                 if dep_name == dependency.name {
-                    if skip_compatible && old_version_compatible(dependency, toml_item)? {
-                        continue;
+                    if skip_compatible {
+                        if let Some(old_version) = get_version(toml_item)?.as_str() {
+                            if old_version_compatible(dependency, old_version)? {
+                                continue;
+                            }
+                        }
                     }
                     self.manifest.update_table_named_entry(
                         &table_path,
