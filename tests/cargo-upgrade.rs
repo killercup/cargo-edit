@@ -208,7 +208,7 @@ fn upgrade_skip_compatible() {
 
     execute_command(&["upgrade", "--skip-compatible"], &manifest);
 
-    // Verify that `docopt` was upgraded, but not `env_proxy`
+    // Verify that `test_breaking` was upgraded, but not `test_nonbreaking`
     let dependencies = &get_toml(&manifest)["dependencies"];
     assert_eq!(dependencies["test_breaking"].as_str(), Some("0.2.0"));
     assert_eq!(dependencies["test_nonbreaking"].as_str(), Some("0.1"));
