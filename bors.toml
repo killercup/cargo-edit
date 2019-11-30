@@ -6,6 +6,5 @@ status = [
   "build (macOS-latest, stable)",
   "build (macOS-latest, nightly)",  
   "continuous-integration/travis-ci/push",
-  "continuous-integration/appveyor/branch", 
 ]
 use_squash_merge = true
