@@ -200,6 +200,21 @@ fn upgrade_specified_only() {
 }
 
 #[test]
+fn upgrade_skip_compatible() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    execute_command(&["add", "test_breaking", "--vers", "0.1"], &manifest);
+    execute_command(&["add", "test_nonbreaking", "--vers", "0.1"], &manifest);
+
+    execute_command(&["upgrade", "--skip-compatible"], &manifest);
+
+    // Verify that `test_breaking` was upgraded, but not `test_nonbreaking`
+    let dependencies = &get_toml(&manifest)["dependencies"];
+    assert_eq!(dependencies["test_breaking"].as_str(), Some("0.2.0"));
+    assert_eq!(dependencies["test_nonbreaking"].as_str(), Some("0.1"));
+}
+
+#[test]
 fn fails_to_upgrade_missing_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 

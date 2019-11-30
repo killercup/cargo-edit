@@ -69,5 +69,10 @@ error_chain! {
         NoSuchRegistryFound(name: String) {
             display("The registry '{}' could not be found", name)
         }
+        /// Failed to parse a version for a dependency
+        ParseVersion(version: String, dep: String) {
+            description("Failed to parse a version for a dependency")
+            display("The version `{}` for the dependency `{}` couldn't be parsed", version, dep)
+        }
     }
 }
