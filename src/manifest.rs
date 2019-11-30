@@ -10,6 +10,8 @@ use toml_edit;
 use crate::dependency::Dependency;
 use crate::errors::*;
 
+use semver::{Version, VersionReq};
+
 const MANIFEST_FILENAME: &str = "Cargo.toml";
 
 /// A Cargo manifest
@@ -93,23 +95,45 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new: &Dependency) {
     }
 }
 
+fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
+    if str_or_1_len_table(old_dep) {
+        Ok(old_dep.clone())
+    } else if old_dep.is_table_like() {
+        let version = old_dep["version"].clone();
+        if version.is_none() {
+            Err("Missing version field".into())
+        } else {
+            Ok(version)
+        }
+    } else {
+        unreachable!("Invalid old dependency type")
+    }
+}
+
+fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<bool> {
+    let old_version = VersionReq::parse(old_version).chain_err(|| {
+        ErrorKind::ParseVersion(dependency.name.to_string(), old_version.to_string())
+    })?;
+
+    let current_version = match dependency.version() {
+        Some(current_version) => current_version,
+        None => return Ok(false),
+    };
+
+    let current_version = Version::parse(&current_version).chain_err(|| {
+        ErrorKind::ParseVersion(dependency.name.to_string(), current_version.into())
+    })?;
+
+    Ok(old_version.matches(&current_version))
+}
+
 /// Print a message if the new dependency version is different from the old one.
 fn print_upgrade_if_necessary(
     crate_name: &str,
     old_dep: &toml_edit::Item,
     new_version: &toml_edit::Item,
 ) -> Result<()> {
-    let old_version = if str_or_1_len_table(old_dep) {
-        old_dep.clone()
-    } else if old_dep.is_table_like() {
-        let version = old_dep["version"].clone();
-        if version.is_none() {
-            return Err("Missing version field".into());
-        }
-        version
-    } else {
-        unreachable!("Invalid old dependency type")
-    };
+    let old_version = get_version(old_dep)?;
 
     if let (Some(old_version), Some(new_version)) = (old_version.as_str(), new_version.as_str()) {
         if old_version == new_version {
@@ -414,7 +438,12 @@ impl LocalManifest {
 
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
     /// dependency, it does nothing.
-    pub fn upgrade(&mut self, dependency: &Dependency, dry_run: bool) -> Result<()> {
+    pub fn upgrade(
+        &mut self,
+        dependency: &Dependency,
+        dry_run: bool,
+        skip_compatible: bool,
+    ) -> Result<()> {
         for (table_path, table) in self.get_sections() {
             let table_like = table.as_table_like().expect("Unexpected non-table");
             for (name, toml_item) in table_like.iter() {
@@ -423,6 +452,13 @@ impl LocalManifest {
                     .and_then(|t| t.get("package").and_then(|p| p.as_str()))
                     .unwrap_or(name);
                 if dep_name == dependency.name {
+                    if skip_compatible {
+                        if let Some(old_version) = get_version(toml_item)?.as_str() {
+                            if old_version_compatible(dependency, old_version)? {
+                                continue;
+                            }
+                        }
+                    }
                     self.manifest.update_table_named_entry(
                         &table_path,
                         &name,
@@ -516,5 +552,30 @@ mod tests {
         assert!(manifest
             .remove_from_table("dependencies", &dep.name)
             .is_err());
+    }
+
+    #[test]
+    fn old_version_is_compatible() -> Result<()> {
+        let with_version = Dependency::new("foo").set_version("2.3.4");
+        assert!(!old_version_compatible(&with_version, "1")?);
+        assert!(old_version_compatible(&with_version, "2")?);
+        assert!(!old_version_compatible(&with_version, "3")?);
+        Ok(())
+    }
+
+    #[test]
+    fn old_incompatible_with_missing_new_version() -> Result<()> {
+        let no_version = Dependency::new("foo");
+        assert!(!old_version_compatible(&no_version, "1")?);
+        assert!(!old_version_compatible(&no_version, "2")?);
+        Ok(())
+    }
+
+    #[test]
+    fn old_incompatible_with_invalid() {
+        let bad_version = Dependency::new("foo").set_version("CAKE CAKE");
+        let good_version = Dependency::new("foo").set_version("1.2.3");
+        assert!(old_version_compatible(&bad_version, "1").is_err());
+        assert!(old_version_compatible(&good_version, "CAKE CAKE").is_err());
     }
 }
