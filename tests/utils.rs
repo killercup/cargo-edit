@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::ffi::{OsStr, OsString};
 use std::io::prelude::*;
 use std::{env, fs, path::Path, path::PathBuf, process};
