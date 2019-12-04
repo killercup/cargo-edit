@@ -385,6 +385,7 @@ fn upgrade_workspace() {
 
 /// Detect if attempting to run against a workspace root and give a helpful warning.
 #[test]
+#[cfg(feature = "test-external-apis")]
 fn detect_workspace() {
     let (_tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
 
@@ -414,6 +415,7 @@ fn invalid_manifest() {
         "--manifest-path",
         &manifest,
     ])
+    .with_env(&[("CARGO_IS_TEST", "1")])
     .fails_with(1)
     .and()
     .stderr()
@@ -442,6 +444,7 @@ fn invalid_root_manifest() {
         "--manifest-path",
         &manifest,
     ])
+    .with_env(&[("CARGO_IS_TEST", "1")])
     .fails_with(1)
     .and()
     .stderr()
@@ -457,6 +460,7 @@ fn unknown_flags() {
         "foo",
         "--flag",
     ])
+    .with_env(&[("CARGO_IS_TEST", "1")])
     .fails_with(1)
     .and()
     .stderr()
@@ -473,6 +477,7 @@ For more information try --help ",
 
 // Verify that an upgraded Cargo.toml matches what we expect.
 #[test]
+#[cfg(feature = "test-external-apis")]
 fn upgrade_to_lockfile() {
     let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.lockfile_source");
     fs::copy(
@@ -489,6 +494,7 @@ fn upgrade_to_lockfile() {
 }
 
 #[test]
+#[cfg(feature = "test-external-apis")]
 fn upgrade_workspace_to_lockfile() {
     let (tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
 
