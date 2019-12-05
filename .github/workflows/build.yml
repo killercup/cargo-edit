@@ -16,15 +16,38 @@ jobs:
         rust-version: ${{ matrix.rust }}
         components: rustfmt, clippy
     - uses: actions/checkout@master
-    - name: Lint
-      run: cargo clippy -- -D warnings -A deprecated
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
 
+  check:
+    name: check (ubuntu-latest, stable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+      - name: Checkout sources
+        uses: actions/checkout@v1
+      - name: Cargo Check
+        run: cargo check
+
+  clippy:
+    name: clippy (ubuntu-latest, stable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+          components: clippy
+      - name: Checkout sources
+        uses: actions/checkout@v1
+      - name: Cargo Clippy
+        run: cargo clippy -- -D warnings -A deprecated
+
   fmt:
-    name: Rustfmt
+    name: fmt (ubuntu-latest, stable)
     runs-on: ubuntu-latest
     steps:
       - uses: hecrj/setup-rust-action@v1
