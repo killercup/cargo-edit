@@ -23,7 +23,7 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
-fmt:
+  fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
