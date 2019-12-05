@@ -1184,6 +1184,7 @@ fn add_prints_message() {
         "--vers=0.6.0",
         &format!("--manifest-path={}", manifest),
     ])
+    .with_env(&[("CARGO_IS_TEST", "1")])
     .succeeds()
     .and()
     .stdout()
@@ -1204,6 +1205,7 @@ fn add_prints_message_with_section() {
         "--vers=0.1.0",
         &format!("--manifest-path={}", manifest),
     ])
+    .with_env(&[("CARGO_IS_TEST", "1")])
     .succeeds()
     .and()
     .stdout()
@@ -1224,6 +1226,7 @@ fn add_prints_message_for_dev_deps() {
         "0.8.0",
         &format!("--manifest-path={}", manifest),
     ])
+    .with_env(&[("CARGO_IS_TEST", "1")])
     .succeeds()
     .and()
     .stdout()
@@ -1244,6 +1247,7 @@ fn add_prints_message_for_build_deps() {
         "0.1.0",
         &format!("--manifest-path={}", manifest),
     ])
+    .with_env(&[("CARGO_IS_TEST", "1")])
     .succeeds()
     .and()
     .stdout()

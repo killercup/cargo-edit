@@ -87,7 +87,7 @@ fn handle_add(args: &Args) -> Result<()> {
     let mut manifest = Manifest::open(manifest_path)?;
     let deps = &args.parse_dependencies()?;
 
-    if !args.offline {
+    if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(
             &find(&manifest_path)?,
             args.registry.as_ref().map(String::as_ref),
