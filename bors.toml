@@ -2,9 +2,7 @@ status = [
   "build (ubuntu-latest, stable)",
   "build (ubuntu-latest, nightly)",
   "build (windows-latest, stable)",
-  "build (windows-latest, nightly)",
   "build (macOS-latest, stable)",
-  "build (macOS-latest, nightly)",  
   "continuous-integration/travis-ci/push",
 ]
 use_squash_merge = true
