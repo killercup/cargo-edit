@@ -1,5 +1,8 @@
 status = [
+  "build (ubuntu-latest, stable)",
+  "build (ubuntu-latest, nightly)",
+  "build (windows-latest, stable)",
+  "build (macOS-latest, stable)",
   "continuous-integration/travis-ci/push",
-  "continuous-integration/appveyor/branch",
 ]
 use_squash_merge = true
