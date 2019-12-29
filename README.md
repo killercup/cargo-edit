@@ -1,12 +1,13 @@
 # cargo edit
 
-This tool extends [Cargo](http://doc.crates.io/) to allow you to add, remove, and upgrade dependencies by modifying your `Cargo.toml` file from the command line.
+This tool extends [Cargo](http://doc.crates.io/) to allow you to add, remove, upgrade dependencies and set the version by modifying your `Cargo.toml` file from the command line.
 
 Currently available subcommands:
 
 - [`cargo add`](#cargo-add)
 - [`cargo rm`](#cargo-rm)
 - [`cargo upgrade`](#cargo-upgrade)
+- [`cargo set-version`](#cargo-set-version)
 
 [![Build Status](https://github.com/killercup/cargo-edit/workflows/build/badge.svg)](https://github.com/killercup/cargo-edit/actions)
 [![Build Status](https://travis-ci.org/killercup/cargo-edit.svg?branch=master)](https://travis-ci.org/killercup/cargo-edit)
@@ -223,6 +224,49 @@ If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to th
 version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is
 up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
 error. If the '--to-lockfile' flag is supplied then the network won't be accessed.
+```
+
+### `cargo set-version`
+
+Set the version in your `Cargo.toml`.
+
+#### Examples
+
+```sh
+# Set the version to the version 1.0.0
+$ cargo set-version 1.0.0
+# Bump the version to the next major
+$ cargo set-version --major
+# Bump version to the next minor
+$ cargo set-version --minor
+# Bump version to the next patch
+$ cargo set-version --patch
+```
+
+#### Usage
+
+```plain
+cargo-set-version
+Sets the version specified in the local manifest file (i.e. Cargo.toml)
+
+USAGE:
+    cargo set-version [FLAGS] [OPTIONS] [version]
+
+FLAGS:
+        --dry-run      Print changes to be made without making them
+    -h, --help         Prints help information
+        --major        Bump to next major version
+        --minor        Bump to next minor version
+        --patch        Bump to next patch version
+    -V, --version      Prints version information
+        --workspace    Set version of all packages in the workspace
+
+OPTIONS:
+        --manifest-path <path>    Path to the manifest to set version
+    -p, --package <pkgid>         Package id of the crate to add this dependency to
+
+ARGS:
+    <version>    Set a specific semantic version
 ```
 
 ## License

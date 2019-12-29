@@ -475,6 +475,26 @@ impl LocalManifest {
         Manifest::find_file(&Some(self.path.clone()))
     }
 
+    /// Set the version of the manifest
+    pub fn set_version(&mut self, dry_run: bool, new_version: &Version) -> Result<()> {
+        let table_path = &["package".to_string()];
+        let table = self.manifest.get_table(table_path)?.as_table_mut();
+        if let Some(table) = table {
+            let old_version = table.entry("version").as_value_mut();
+            let new_version = toml_edit::value(new_version.to_string());
+            let new_version = new_version.as_value();
+            if let (Some(old_version), Some(new_version)) = (old_version, new_version) {
+                *old_version = new_version.clone();
+                if !dry_run {
+                    let mut file = self.get_file()?;
+                    self.write_to_file(&mut file)
+                        .chain_err(|| "Failed to write new manifest contents")?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
     /// dependency, it does nothing.
     pub fn upgrade(
