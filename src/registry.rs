@@ -1,6 +1,5 @@
 use self::code_from_cargo::Kind;
 use crate::errors::*;
-use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use url::Url;

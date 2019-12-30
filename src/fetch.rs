@@ -378,8 +378,8 @@ const fn get_default_timeout() -> Duration {
     Duration::from_secs(10)
 }
 
-fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Response> {
-    let client = reqwest::ClientBuilder::new()
+fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::blocking::Response> {
+    let client = reqwest::blocking::ClientBuilder::new()
         .timeout(timeout)
         .proxy(reqwest::Proxy::custom(|url| {
             env_proxy::for_url(url).to_url()
@@ -389,7 +389,7 @@ fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Re
     client
         .get(url)
         .send()
-        .and_then(reqwest::Response::error_for_status)
+        .and_then(reqwest::blocking::Response::error_for_status)
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
