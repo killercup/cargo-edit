@@ -43,12 +43,6 @@ name = "cargo-upgrade"
 path = "src/bin/upgrade/main.rs"
 required-features = ["upgrade"]
 
-[badges.appveyor]
-repository = "killercup/cargo-edit"
-
-[badges.travis-ci]
-repository = "killercup/cargo-edit"
-
 [dependencies]
 atty = "0.2.13"
 cargo_metadata = "0.9.0"
