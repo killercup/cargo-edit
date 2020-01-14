@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate pretty_assertions;
 
-use std::{fs, path::Path};
+use std::fs;
 
 mod utils;
 use crate::utils::{
