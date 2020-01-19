@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate pretty_assertions;
 
-use std::{fs, path::Path};
+use std::fs;
 
 mod utils;
 use crate::utils::{
@@ -481,7 +481,7 @@ For more information try --help ",
 fn upgrade_to_lockfile() {
     let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.lockfile_source");
     fs::copy(
-        Path::new("tests/fixtures/upgrade/Cargo.lock"),
+        std::path::Path::new("tests/fixtures/upgrade/Cargo.lock"),
         tmpdir.path().join("Cargo.lock"),
     )
     .unwrap_or_else(|err| panic!("could not copy test lock file: {}", err));
