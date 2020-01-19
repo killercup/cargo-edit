@@ -409,7 +409,7 @@ fn process(args: Args) -> Result<()> {
         ..
     } = args;
 
-    if !args.offline && !to_lockfile {
+    if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(&find(&manifest_path)?, None)?;
         update_registry_index(&url)?;
     }
@@ -427,7 +427,7 @@ fn process(args: Args) -> Result<()> {
 
         // Update indices for any alternative registries, unless
         // we're offline.
-        if !args.offline {
+        if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
             for registry_url in existing_dependencies
                 .0
                 .values()
