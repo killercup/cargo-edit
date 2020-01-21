@@ -178,8 +178,7 @@ impl Args {
             let mut dependency = Dependency::new(crate_name.name());
 
             if let Some(repo) = &self.git {
-                dependency = dependency.set_git(repo,
-                    self.branch.clone());
+                dependency = dependency.set_git(repo, self.branch.clone());
             }
             if let Some(path) = &self.path {
                 dependency = dependency.set_path(path.to_str().unwrap());
