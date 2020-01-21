@@ -62,11 +62,11 @@ impl<'a> CrateName<'a> {
     pub fn parse_crate_name_from_uri(&self) -> Result<Dependency> {
         if self.is_github_url() {
             if let Ok(ref crate_name) = get_crate_name_from_github(self.0) {
-                return Ok(Dependency::new(crate_name).set_git(self.0));
+                return Ok(Dependency::new(crate_name).set_git(self.0, None));
             }
         } else if self.is_gitlab_url() {
             if let Ok(ref crate_name) = get_crate_name_from_gitlab(self.0) {
-                return Ok(Dependency::new(crate_name).set_git(self.0));
+                return Ok(Dependency::new(crate_name).set_git(self.0, None));
             }
         } else if self.is_path() {
             if let Ok(ref crate_name) = get_crate_name_from_path(self.0) {

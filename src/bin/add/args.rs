@@ -61,6 +61,15 @@ pub struct Args {
     )]
     pub git: Option<String>,
 
+    /// Specify a git branch to download the crate from.
+    #[structopt(
+        long = "branch",
+        value_name = "branch",
+        conflicts_with = "vers",
+        conflicts_with = "path"
+    )]
+    pub branch: Option<String>,
+
     /// Specify the path the crate should be loaded from.
     #[structopt(long = "path", conflicts_with = "git")]
     pub path: Option<PathBuf>,
@@ -169,7 +178,8 @@ impl Args {
             let mut dependency = Dependency::new(crate_name.name());
 
             if let Some(repo) = &self.git {
-                dependency = dependency.set_git(repo);
+                dependency = dependency.set_git(repo,
+                    self.branch.clone());
             }
             if let Some(path) = &self.path {
                 dependency = dependency.set_path(path.to_str().unwrap());
@@ -303,7 +313,7 @@ mod tests {
         };
         assert_eq!(
             args_github.parse_dependencies().unwrap(),
-            vec![Dependency::new("cargo-edit").set_git(github_url)]
+            vec![Dependency::new("cargo-edit").set_git(github_url, None)]
         );
 
         let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
@@ -313,7 +323,7 @@ mod tests {
         };
         assert_eq!(
             args_gitlab.parse_dependencies().unwrap(),
-            vec![Dependency::new("polly").set_git(gitlab_url)]
+            vec![Dependency::new("polly").set_git(gitlab_url, None)]
         );
     }
 
