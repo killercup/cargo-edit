@@ -373,6 +373,7 @@ fn adds_git_source_using_flag() {
         val["git"].as_str(),
         Some("http://localhost/git-package.git")
     );
+    assert_eq!(val["branch"].as_str(), None);
 
     // check this works with other flags (e.g. --dev) as well
     let toml = get_toml(&manifest);
@@ -386,6 +387,7 @@ fn adds_git_source_using_flag() {
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["git-dev-pkg"];
     assert_eq!(val["git"].as_str(), Some("http://site/gp.git"));
+    assert_eq!(val["branch"].as_str(), None);
 }
 
 #[test]
