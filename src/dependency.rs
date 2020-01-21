@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn to_toml_dep_with_git_source() {
         let toml = Dependency::new("dep")
-            .set_git("https://foor/bar.git")
+            .set_git("https://foor/bar.git", None)
             .to_toml();
 
         assert_eq!(toml.0, "dep".to_owned());

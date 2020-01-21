@@ -269,6 +269,7 @@ impl Default for Args {
             build: false,
             vers: None,
             git: None,
+            branch: None,
             path: None,
             target: None,
             optional: false,
