@@ -7,7 +7,10 @@ enum DependencySource {
         path: Option<String>,
         registry: Option<String>,
     },
-    Git(String),
+    Git {
+        repo: String,
+        branch: Option<String>,
+    },
 }
 
 /// A dependency handled by Cargo
@@ -67,8 +70,11 @@ impl Dependency {
     }
 
     /// Set dependency to a given repository
-    pub fn set_git(mut self, repo: &str) -> Dependency {
-        self.source = DependencySource::Git(repo.into());
+    pub fn set_git(mut self, repo: &str, branch: Option<String>) -> Dependency {
+        self.source = DependencySource::Git {
+            repo: repo.into(),
+            branch,
+        };
         self
     }
 
@@ -190,8 +196,9 @@ impl Dependency {
                             data.get_or_insert("registry", r);
                         }
                     }
-                    DependencySource::Git(v) => {
-                        data.get_or_insert("git", v);
+                    DependencySource::Git { repo, branch } => {
+                        data.get_or_insert("git", repo);
+                        branch.map(|branch| data.get_or_insert("branch", branch));
                     }
                 }
                 if self.optional {
@@ -268,7 +275,7 @@ mod tests {
     #[test]
     fn to_toml_dep_with_git_source() {
         let toml = Dependency::new("dep")
-            .set_git("https://foor/bar.git")
+            .set_git("https://foor/bar.git", None)
             .to_toml();
 
         assert_eq!(toml.0, "dep".to_owned());

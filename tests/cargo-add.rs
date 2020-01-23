@@ -373,6 +373,7 @@ fn adds_git_source_using_flag() {
         val["git"].as_str(),
         Some("http://localhost/git-package.git")
     );
+    assert_eq!(val["branch"].as_str(), None);
 
     // check this works with other flags (e.g. --dev) as well
     let toml = get_toml(&manifest);
@@ -386,6 +387,59 @@ fn adds_git_source_using_flag() {
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["git-dev-pkg"];
     assert_eq!(val["git"].as_str(), Some("http://site/gp.git"));
+    assert_eq!(val["branch"].as_str(), None);
+}
+
+#[test]
+fn adds_git_branch_using_flag() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "git-package",
+            "--git",
+            "http://localhost/git-package.git",
+            "--branch",
+            "master",
+        ],
+        &manifest,
+    );
+
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["git-package"];
+    assert_eq!(
+        val["git"].as_str(),
+        Some("http://localhost/git-package.git")
+    );
+
+    assert_eq!(val["branch"].as_str(), Some("master"));
+
+    // check this works with other flags (e.g. --dev) as well
+    let toml = get_toml(&manifest);
+    assert!(toml["dev-dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "git-dev-pkg",
+            "--git",
+            "http://site/gp.git",
+            "--branch",
+            "master",
+            "--dev",
+        ],
+        &manifest,
+    );
+
+    let toml = get_toml(&manifest);
+    let val = &toml["dev-dependencies"]["git-dev-pkg"];
+    assert_eq!(val["git"].as_str(), Some("http://site/gp.git"));
+    assert_eq!(val["branch"].as_str(), Some("master"));
 }
 
 #[test]
