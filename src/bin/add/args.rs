@@ -86,7 +86,9 @@ pub struct Args {
     #[structopt(long = "manifest-path", value_name = "path")]
     pub manifest_path: Option<PathBuf>,
 
-    /// Choose method of semantic version upgrade.
+    /// Choose method of semantic version upgrade.  Must be one of "none" (exact version, `=`
+    /// modifier), "patch" (`~` modifier), "minor" (`^` modifier), "all" (`>=`), or "default" (no
+    /// modifier).
     #[structopt(
         long = "upgrade",
         value_name = "method",
