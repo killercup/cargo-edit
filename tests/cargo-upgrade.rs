@@ -10,11 +10,10 @@ use crate::utils::{
 };
 
 /// Helper function that copies the workspace test into a temporary directory.
-pub fn copy_workspace_test() -> (tempdir::TempDir, String, Vec<String>) {
+pub fn copy_workspace_test() -> (tempfile::TempDir, String, Vec<String>) {
     // Create a temporary directory and copy in the root manifest, the dummy rust file, and
     // workspace member manifests.
-    let tmpdir = tempdir::TempDir::new("upgrade_workspace")
-        .expect("failed to construct temporary directory");
+    let tmpdir = tempfile::tempdir().expect("failed to construct temporary directory");
 
     let (root_manifest_path, workspace_manifest_paths) = {
         // Helper to copy in files to the temporary workspace. The standard library doesn't have a

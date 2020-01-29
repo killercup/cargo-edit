@@ -4,9 +4,8 @@ use std::io::prelude::*;
 use std::{env, fs, path::Path, path::PathBuf, process};
 
 /// Create temporary working directory with Cargo.toml manifest
-pub fn clone_out_test(source: &str) -> (tempdir::TempDir, String) {
-    let tmpdir =
-        tempdir::TempDir::new("cargo-edit-test").expect("failed to construct temporary directory");
+pub fn clone_out_test(source: &str) -> (tempfile::TempDir, String) {
+    let tmpdir = tempfile::tempdir().expect("failed to construct temporary directory");
     fs::copy(source, tmpdir.path().join("Cargo.toml"))
         .unwrap_or_else(|err| panic!("could not copy test manifest: {}", err));
     let path = tmpdir
