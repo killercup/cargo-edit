@@ -277,13 +277,8 @@ impl Manifest {
         let table = self.get_table(table_path)?;
 
         let existing_dep = Self::find_dep(table, &dep.name);
-        if existing_dep.is_none() {
-            // insert a new entry
-            let (ref name, ref mut new_dependency) = dep.to_toml();
-            table[name] = new_dependency.clone();
-        } else {
+        if let Some((mut dep_name, dep_item)) = existing_dep {
             // update an existing entry
-            let (mut dep_name, dep_item) = existing_dep.unwrap();
 
             // if the `dep` is renamed in the `add` command,
             // but was present before, then we need to remove
@@ -313,6 +308,10 @@ impl Manifest {
             if let Some(t) = table.as_inline_table_mut() {
                 t.fmt()
             }
+        } else {
+            // insert a new entry
+            let (ref name, ref mut new_dependency) = dep.to_toml();
+            table[name] = new_dependency.clone();
         }
         Ok(())
     }
@@ -422,7 +421,7 @@ impl Manifest {
                 }
                 _ => false,
             })
-            .and_then(|dep| Some((dep.0.into(), dep.1)))
+            .map(|dep| (dep.0.into(), dep.1))
     }
 }
 
