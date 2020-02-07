@@ -1076,7 +1076,10 @@ path = "dummy.rs"
     .to_string()
         + expected;
     let expected_dep: toml_edit::Document = expected.parse().expect("toml parse error");
-    assert_eq!(expected_dep.to_string(), toml.to_string());
+    assert_eq!(
+        expected_dep.to_string(),
+        toml.to_string().replace("\r\n", "\n"),
+    );
 }
 
 #[test]
@@ -1338,7 +1341,7 @@ fn adds_sorted_dependencies() {
     // and all the dependencies in the output get sorted
     let toml = get_toml(&manifest);
     assert_eq!(
-        toml.to_string(),
+        toml.to_string().replace("\r\n", "\n"),
         r#"[package]
 name = "cargo-list-test-fixture"
 version = "0.0.0"
