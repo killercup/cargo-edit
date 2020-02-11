@@ -85,8 +85,7 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = &args.manifest_path;
     let mut manifest = Manifest::open(manifest_path)?;
-    let deps = &args.parse_dependencies()?;
-
+    // Update index prior to looking for crates in case crate is newly published.
     if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(
             &find(&manifest_path)?,
@@ -94,6 +93,7 @@ fn handle_add(args: &Args) -> Result<()> {
         )?;
         update_registry_index(&url)?;
     }
+    let deps = &args.parse_dependencies()?;
 
     deps.iter()
         .map(|dep| {
