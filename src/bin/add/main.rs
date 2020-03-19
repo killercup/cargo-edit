@@ -15,9 +15,10 @@
 extern crate error_chain;
 
 use crate::args::{Args, Command};
-use cargo_edit::{find, registry_url, update_registry_index, Dependency, Manifest};
+use cargo_edit::{find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, Manifest};
 use std::io::Write;
 use std::process;
+use std::borrow::Cow;
 use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
@@ -83,8 +84,12 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
 }
 
 fn handle_add(args: &Args) -> Result<()> {
-    let manifest_path = &args.manifest_path;
-    let mut manifest = Manifest::open(manifest_path)?;
+    let manifest_path = if let Some(ref pkgid) = args.pkgid {
+        Cow::Owned(manifest_from_pkgid(pkgid)?)
+    } else {
+        Cow::Borrowed(&args.manifest_path)
+    };
+    let mut manifest = Manifest::open(&manifest_path)?;
     let deps = &args.parse_dependencies()?;
 
     if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
@@ -122,7 +127,7 @@ fn handle_add(args: &Args) -> Result<()> {
             err
         })?;
 
-    let mut file = Manifest::find_file(manifest_path)?;
+    let mut file = Manifest::find_file(&manifest_path)?;
     manifest.write_to_file(&mut file)?;
 
     Ok(())
