@@ -87,6 +87,7 @@ FLAGS:
 OPTIONS:
         --git <uri>               Specify a git repository to download the crate from
         --manifest-path <path>    Path to the manifest to add a dependency to
+    -p, --package <package>       Specify the package in the workspace to add a dependency to (see `cargo help pkgid`)
         --path <path>             Specify the path the crate should be loaded from
         --registry <registry>     Registry to use
     -r, --rename <rename>         Rename a dependency in Cargo.toml, https://doc.rust-
@@ -147,6 +148,7 @@ FLAGS:
 
 OPTIONS:
         --manifest-path <path>    Path to the manifest to remove a dependency from
+    -p, --package <package>       Specify the package in the workspace to add a dependency to (see `cargo help pkgid`)
 
 ARGS:
     <crates>...    Crates to be removed
@@ -170,7 +172,7 @@ $ cargo upgrade
 # Upgrade docopt (to ~0.9) and serde (to >=0.9,<2.0)
 $ cargo upgrade docopt@~0.9 serde@>=0.9,<2.0
 # Upgrade regex (to the latest version) across all crates in the workspace
-$ cargo upgrade regex --all
+$ cargo upgrade regex --workspace
 ```
 
 #### Usage
@@ -184,7 +186,7 @@ USAGE:
     cargo upgrade [FLAGS] [OPTIONS] [dependency]...
 
 FLAGS:
-        --all                 Upgrade all packages in the workspace
+        --workspace           Upgrade all packages in the workspace
         --allow-prerelease    Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha')
         --dry-run             Print changes to be made without making them
     -h, --help                Prints help information
@@ -195,6 +197,7 @@ FLAGS:
 
 OPTIONS:
         --manifest-path <path>    Path to the manifest to upgrade
+    -p, --package <package>       Specify the package in the workspace to add a dependency to (see `cargo help pkgid`)
 
 ARGS:
     <dependency>...    Crates to be upgraded
@@ -208,8 +211,8 @@ upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.
 
-All packages in the workspace will be upgraded if the `--all` flag is supplied. The `--all` flag may
-be supplied in the presence of a virtual manifest.
+All packages in the workspace will be upgraded if the `--workspace` flag is supplied. 
+The `--workspace` flag may be supplied in the presence of a virtual manifest.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
 version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is
