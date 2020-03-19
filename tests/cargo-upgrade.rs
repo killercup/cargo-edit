@@ -320,10 +320,43 @@ fn upgrade_at() {
 }
 
 #[test]
-fn upgrade_workspace() {
+fn all_flag_is_deprecated() {
+    let (_tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
+
+    assert_cli::Assert::command(&[
+        get_command_path("upgrade").as_str(),
+        "upgrade",
+        "--all",
+        "--manifest-path",
+        &root_manifest,
+    ])
+    .succeeds()
+    .and()
+    .stderr()
+    .contains("The flag `--all` has been deprecated in favor of `--workspace`")
+    .unwrap();
+}
+
+#[test]
+fn upgrade_workspace_all() {
     let (_tmpdir, root_manifest, workspace_manifests) = copy_workspace_test();
 
     execute_command(&["upgrade", "--all"], &root_manifest);
+
+    // All of the workspace members have `libc` as a dependency.
+    for workspace_member in workspace_manifests {
+        assert_eq!(
+            get_toml(&workspace_member)["dependencies"]["libc"].as_str(),
+            Some("libc--CURRENT_VERSION_TEST")
+        );
+    }
+}
+
+#[test]
+fn upgrade_workspace_workspace() {
+    let (_tmpdir, root_manifest, workspace_manifests) = copy_workspace_test();
+
+    execute_command(&["upgrade", "--workspace"], &root_manifest);
 
     // All of the workspace members have `libc` as a dependency.
     for workspace_member in workspace_manifests {
@@ -403,13 +436,32 @@ Expected `=`")
 }
 
 #[test]
-fn invalid_root_manifest() {
+fn invalid_root_manifest_all() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
 
     assert_cli::Assert::command(&[
         get_command_path("upgrade").as_str(),
         "upgrade",
         "--all",
+        "--manifest-path",
+        &manifest,
+    ])
+    .with_env(&[("CARGO_IS_TEST", "1")])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .contains("Command failed due to unhandled error: Failed to get workspace metadata")
+    .unwrap();
+}
+
+#[test]
+fn invalid_root_manifest_workspace() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
+
+    assert_cli::Assert::command(&[
+        get_command_path("upgrade").as_str(),
+        "upgrade",
+        "--workspace",
         "--manifest-path",
         &manifest,
     ])
@@ -464,10 +516,28 @@ fn upgrade_to_lockfile() {
 
 #[test]
 #[cfg(feature = "test-external-apis")]
-fn upgrade_workspace_to_lockfile() {
+fn upgrade_workspace_to_lockfile_all() {
     let (tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
 
     execute_command(&["upgrade", "--all", "--to-lockfile"], &root_manifest);
+
+    // The members one and two both request different, semver incompatible
+    // versions of rand. Test that both were upgraded correctly.
+    let one_upgraded = get_toml(tmpdir.path().join("one/Cargo.toml").to_str().unwrap());
+    let one_target = get_toml("tests/fixtures/workspace/one/Cargo.toml.lockfile_target");
+    assert_eq!(one_target.to_string(), one_upgraded.to_string());
+
+    let two_upgraded = get_toml(tmpdir.path().join("two/Cargo.toml").to_str().unwrap());
+    let two_target = get_toml("tests/fixtures/workspace/two/Cargo.toml.lockfile_target");
+    assert_eq!(two_target.to_string(), two_upgraded.to_string());
+}
+
+#[test]
+#[cfg(feature = "test-external-apis")]
+fn upgrade_workspace_to_lockfile_workspace() {
+    let (tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
+
+    execute_command(&["upgrade", "--workspace", "--to-lockfile"], &root_manifest);
 
     // The members one and two both request different, semver incompatible
     // versions of rand. Test that both were upgraded correctly.
