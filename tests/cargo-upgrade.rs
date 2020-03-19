@@ -5,57 +5,9 @@ use std::fs;
 
 mod utils;
 use crate::utils::{
-    clone_out_test, execute_command, execute_command_in_dir, get_command_path, get_toml,
-    setup_alt_registry_config,
+    clone_out_test, copy_workspace_test, execute_command, execute_command_in_dir, get_command_path,
+    get_toml, setup_alt_registry_config,
 };
-
-/// Helper function that copies the workspace test into a temporary directory.
-pub fn copy_workspace_test() -> (tempfile::TempDir, String, Vec<String>) {
-    // Create a temporary directory and copy in the root manifest, the dummy rust file, and
-    // workspace member manifests.
-    let tmpdir = tempfile::tempdir().expect("failed to construct temporary directory");
-
-    let (root_manifest_path, workspace_manifest_paths) = {
-        // Helper to copy in files to the temporary workspace. The standard library doesn't have a
-        // good equivalent of `cp -r`, hence this oddity.
-        let copy_in = |dir, file| {
-            let file_path = tmpdir
-                .path()
-                .join(dir)
-                .join(file)
-                .to_str()
-                .unwrap()
-                .to_string();
-
-            fs::create_dir_all(tmpdir.path().join(dir)).unwrap();
-
-            fs::copy(
-                format!("tests/fixtures/workspace/{}/{}", dir, file),
-                &file_path,
-            )
-            .unwrap_or_else(|err| panic!("could not copy test file: {}", err));
-
-            file_path
-        };
-
-        let root_manifest_path = copy_in(".", "Cargo.toml");
-        copy_in(".", "dummy.rs");
-        copy_in(".", "Cargo.lock");
-
-        let workspace_manifest_paths = ["one", "two", "implicit/three", "explicit/four"]
-            .iter()
-            .map(|member| copy_in(member, "Cargo.toml"))
-            .collect::<Vec<_>>();
-
-        (root_manifest_path, workspace_manifest_paths)
-    };
-
-    (
-        tmpdir,
-        root_manifest_path,
-        workspace_manifest_paths.to_owned(),
-    )
-}
 
 // Verify that an upgraded Cargo.toml matches what we expect.
 #[test]
