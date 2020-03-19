@@ -4,7 +4,7 @@
 
 # see: https://www.appveyor.com/docs/windows-images-software/#mingw-msys-cygwin
 # MinGW pre-installed.
-image: Visual Studio 2015
+image: Visual Studio 2019
 
 environment:
   matrix:

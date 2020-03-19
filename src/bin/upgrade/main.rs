@@ -79,7 +79,9 @@ struct Args {
         long = "package",
         short = "p",
         value_name = "pkgid",
-        conflicts_with = "path"
+        conflicts_with = "path",
+        conflicts_with = "all",
+        conflicts_with = "workspace"
     )]
     pkgid: Option<String>,
 
@@ -87,12 +89,13 @@ struct Args {
     #[structopt(
         long = "all",
         help = "[deprecated in favor of `--workspace`]",
-        conflicts_with = "workspace"
+        conflicts_with = "workspace",
+        conflicts_with = "pkgid"
     )]
     all: bool,
 
     /// Upgrade all packages in the workspace.
-    #[structopt(long = "workspace", conflicts_with = "all")]
+    #[structopt(long = "workspace", conflicts_with = "all", conflicts_with = "pkgid")]
     workspace: bool,
 
     /// Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha').
