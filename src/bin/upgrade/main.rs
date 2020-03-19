@@ -16,8 +16,8 @@ extern crate error_chain;
 
 use crate::errors::*;
 use cargo_edit::{
-    find, get_latest_dependency, registry_url, update_registry_index, CrateName, Dependency,
-    LocalManifest,
+    find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
+    CrateName, Dependency, LocalManifest,
 };
 use failure::Fail;
 use std::collections::{HashMap, HashSet};
@@ -71,8 +71,17 @@ struct Args {
     dependency: Vec<String>,
 
     /// Path to the manifest to upgrade
-    #[structopt(long = "manifest-path", value_name = "path")]
+    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
     manifest_path: Option<PathBuf>,
+
+    /// Package id of the crate to add this dependency to.
+    #[structopt(
+        long = "package",
+        short = "p",
+        value_name = "pkgid",
+        conflicts_with = "path"
+    )]
+    pkgid: Option<String>,
 
     /// Upgrade all packages in the workspace.
     #[structopt(long = "all")]
@@ -151,6 +160,12 @@ impl Manifests {
             })
             .collect::<Result<Vec<_>>>()
             .map(Manifests)
+    }
+
+    fn get_pkgid(pkgid: &str) -> Result<Self> {
+        let package = manifest_from_pkgid(pkgid)?;
+        let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
+        Ok(Manifests(vec![(manifest, package.to_owned())]))
     }
 
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
@@ -401,6 +416,7 @@ fn process(args: Args) -> Result<()> {
     let Args {
         dependency,
         manifest_path,
+        pkgid,
         all,
         allow_prerelease,
         dry_run,
@@ -416,6 +432,8 @@ fn process(args: Args) -> Result<()> {
 
     let manifests = if all {
         Manifests::get_all(&manifest_path)
+    } else if let Some(ref pkgid) = pkgid {
+        Manifests::get_pkgid(pkgid)
     } else {
         Manifests::get_local_one(&manifest_path)
     }?;

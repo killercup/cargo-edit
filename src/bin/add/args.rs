@@ -83,8 +83,17 @@ pub struct Args {
     pub optional: bool,
 
     /// Path to the manifest to add a dependency to.
-    #[structopt(long = "manifest-path", value_name = "path")]
+    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
     pub manifest_path: Option<PathBuf>,
+
+    /// Package id of the crate to add this dependency to.
+    #[structopt(
+        long = "package",
+        short = "p",
+        value_name = "pkgid",
+        conflicts_with = "path"
+    )]
+    pub pkgid: Option<String>,
 
     /// Choose method of semantic version upgrade.  Must be one of "none" (exact version, `=`
     /// modifier), "patch" (`~` modifier), "minor" (`^` modifier), "all" (`>=`), or "default" (no
@@ -276,6 +285,7 @@ impl Default for Args {
             target: None,
             optional: false,
             manifest_path: None,
+            pkgid: None,
             upgrade: "minor".to_string(),
             allow_prerelease: false,
             no_default_features: false,

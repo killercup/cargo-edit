@@ -4,8 +4,8 @@ extern crate pretty_assertions;
 use std::process;
 mod utils;
 use crate::utils::{
-    clone_out_test, execute_bad_command, execute_command, get_command_path, get_toml,
-    setup_alt_registry_config,
+    clone_out_test, copy_workspace_test, execute_bad_command, execute_command,
+    execute_command_for_pkg, get_command_path, get_toml, setup_alt_registry_config,
 };
 
 /// Some of the tests need to have a crate name that does not exist on crates.io. Hence this rather
@@ -1351,5 +1351,24 @@ atty = "0.2.13"
 toml = "toml--CURRENT_VERSION_TEST"
 toml_edit = "0.1.5"
 "#
+    );
+}
+
+#[test]
+fn add_dependency_to_workspace_member() {
+    let (tmpdir, _root_manifest, workspace_manifests) = copy_workspace_test();
+    execute_command_for_pkg(&["add", "toml"], "one", &tmpdir);
+
+    let one = workspace_manifests
+        .iter()
+        .map(|manifest| get_toml(manifest))
+        .find(|manifest| manifest["package"]["name"].as_str() == Some("one"))
+        .expect("Couldn't find workspace member `one'");
+
+    assert_eq!(
+        one["dependencies"]["toml"]
+            .as_str()
+            .expect("toml dependency did not exist"),
+        "toml--CURRENT_VERSION_TEST",
     );
 }

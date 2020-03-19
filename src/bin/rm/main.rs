@@ -14,7 +14,8 @@
 #[macro_use]
 extern crate error_chain;
 
-use cargo_edit::Manifest;
+use cargo_edit::{manifest_from_pkgid, Manifest};
+use std::borrow::Cow;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
@@ -56,8 +57,17 @@ struct Args {
     build: bool,
 
     /// Path to the manifest to remove a dependency from.
-    #[structopt(long = "manifest-path", value_name = "path")]
+    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
     manifest_path: Option<PathBuf>,
+
+    /// Package id of the crate to add this dependency to.
+    #[structopt(
+        long = "package",
+        short = "p",
+        value_name = "pkgid",
+        conflicts_with = "path"
+    )]
+    pkgid: Option<String>,
 
     /// Do not print any output in case of success.
     #[structopt(long = "quiet", short = "q")]
@@ -92,8 +102,13 @@ fn print_msg(name: &str, section: &str) -> Result<()> {
 }
 
 fn handle_rm(args: &Args) -> Result<()> {
-    let manifest_path = &args.manifest_path;
-    let mut manifest = Manifest::open(manifest_path)?;
+    let manifest_path = if let Some(ref pkgid) = args.pkgid {
+        let pkg = manifest_from_pkgid(pkgid)?;
+        Cow::Owned(Some(pkg.manifest_path))
+    } else {
+        Cow::Borrowed(&args.manifest_path)
+    };
+    let mut manifest = Manifest::open(&manifest_path)?;
     let deps = &args.crates;
 
     deps.iter()
@@ -111,7 +126,7 @@ fn handle_rm(args: &Args) -> Result<()> {
             err
         })?;
 
-    let mut file = Manifest::find_file(manifest_path)?;
+    let mut file = Manifest::find_file(&manifest_path)?;
     manifest.write_to_file(&mut file)?;
 
     Ok(())
