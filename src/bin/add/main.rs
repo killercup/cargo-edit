@@ -15,10 +15,12 @@
 extern crate error_chain;
 
 use crate::args::{Args, Command};
-use cargo_edit::{find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, Manifest};
+use cargo_edit::{
+    find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, Manifest,
+};
+use std::borrow::Cow;
 use std::io::Write;
 use std::process;
-use std::borrow::Cow;
 use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;

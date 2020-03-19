@@ -75,7 +75,12 @@ struct Args {
     manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to add this dependency to.
-    #[structopt(long = "package", short = "p", value_name = "pkgid", conflicts_with = "path")]
+    #[structopt(
+        long = "package",
+        short = "p",
+        value_name = "pkgid",
+        conflicts_with = "path"
+    )]
     pkgid: Option<String>,
 
     /// Upgrade all packages in the workspace.

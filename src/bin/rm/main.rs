@@ -15,10 +15,10 @@
 extern crate error_chain;
 
 use cargo_edit::{manifest_from_pkgid, Manifest};
+use std::borrow::Cow;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
-use std::borrow::Cow;
 use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
@@ -61,7 +61,12 @@ struct Args {
     manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to add this dependency to.
-    #[structopt(long = "package", short = "p", value_name = "pkgid", conflicts_with = "path")]
+    #[structopt(
+        long = "package",
+        short = "p",
+        value_name = "pkgid",
+        conflicts_with = "path"
+    )]
     pkgid: Option<String>,
 
     /// Do not print any output in case of success.
