@@ -16,8 +16,8 @@ extern crate error_chain;
 
 use crate::errors::*;
 use cargo_edit::{
-    find, get_latest_dependency, registry_url, update_registry_index, CrateName, Dependency,
-    LocalManifest,
+    find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
+    CrateName, Dependency, LocalManifest,
 };
 use failure::Fail;
 use std::collections::{HashMap, HashSet};
@@ -163,19 +163,7 @@ impl Manifests {
     }
 
     fn get_pkgid(pkgid: &str) -> Result<Self> {
-        let mut cmd = cargo_metadata::MetadataCommand::new();
-        cmd.no_deps();
-        let result = cmd
-            .exec()
-            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
-        let packages = result.packages;
-        let package = packages
-            .into_iter()
-            .find(|pkg| &pkg.name == pkgid)
-            .chain_err(|| {
-                "Found virtual manifest, but this command requires running against an \
-                 actual package in this workspace. Try adding `--all`."
-            })?;
+        let package = manifest_from_pkgid(pkgid)?;
         let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
         Ok(Manifests(vec![(manifest, package.to_owned())]))
     }

@@ -1,9 +1,9 @@
 use crate::errors::*;
+use cargo_metadata::Package;
 use failure::Fail;
-use std::path::PathBuf;
 
 /// Takes a pkgid and attempts to find the path to it's `Cargo.toml`, using `cargo`'s metadata
-pub fn manifest_from_pkgid(pkgid: &str) -> Result<Option<PathBuf>> {
+pub fn manifest_from_pkgid(pkgid: &str) -> Result<Package> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.no_deps();
     let result = cmd
@@ -17,5 +17,5 @@ pub fn manifest_from_pkgid(pkgid: &str) -> Result<Option<PathBuf>> {
             "Found virtual manifest, but this command requires running against an \
              actual package in this workspace. Try adding `--all`."
         })?;
-    Ok(Some(PathBuf::from(&package.manifest_path)))
+    Ok(package)
 }

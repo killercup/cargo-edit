@@ -87,7 +87,8 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
 
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
-        Cow::Owned(manifest_from_pkgid(pkgid)?)
+        let pkg = manifest_from_pkgid(pkgid)?;
+        Cow::Owned(Some(pkg.manifest_path))
     } else {
         Cow::Borrowed(&args.manifest_path)
     };
