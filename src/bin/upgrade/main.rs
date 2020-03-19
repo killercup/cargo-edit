@@ -84,8 +84,16 @@ struct Args {
     pkgid: Option<String>,
 
     /// Upgrade all packages in the workspace.
-    #[structopt(long = "all")]
+    #[structopt(
+        long = "all",
+        help = "[deprecated in favor of `--workspace`]",
+        conflicts_with = "workspace"
+    )]
     all: bool,
+
+    /// Upgrade all packages in the workspace.
+    #[structopt(long = "workspace", conflicts_with = "all")]
+    workspace: bool,
 
     /// Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha').
     #[structopt(long = "allow-prerelease")]
@@ -119,6 +127,21 @@ fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
         Some(ref s) => s.splitn(2, '+').next() == Some("registry"),
         _ => false,
     }
+}
+
+fn deprecated_message(message: &str) -> Result<()> {
+    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let mut buffer = bufwtr.buffer();
+    buffer
+        .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
+        .chain_err(|| "Failed to set output colour")?;
+    writeln!(&mut buffer, "{}", message).chain_err(|| "Failed to write dry run message")?;
+    buffer
+        .set_color(&ColorSpec::new())
+        .chain_err(|| "Failed to clear output colour")?;
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print dry run message")
 }
 
 fn dry_run_message() -> Result<()> {
@@ -422,8 +445,15 @@ fn process(args: Args) -> Result<()> {
         dry_run,
         skip_compatible,
         to_lockfile,
+        workspace,
         ..
     } = args;
+
+    if all {
+        deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
+    }
+
+    let all = workspace || all;
 
     if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(&find(&manifest_path)?, None)?;
