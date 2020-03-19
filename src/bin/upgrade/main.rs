@@ -71,8 +71,12 @@ struct Args {
     dependency: Vec<String>,
 
     /// Path to the manifest to upgrade
-    #[structopt(long = "manifest-path", value_name = "path")]
+    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
     manifest_path: Option<PathBuf>,
+
+    /// Package id of the crate to add this dependency to.
+    #[structopt(long = "package", short = "p", value_name = "pkgid", conflicts_with = "path")]
+    pkgid: Option<String>,
 
     /// Upgrade all packages in the workspace.
     #[structopt(long = "all")]
@@ -151,6 +155,24 @@ impl Manifests {
             })
             .collect::<Result<Vec<_>>>()
             .map(Manifests)
+    }
+
+    fn get_pkgid(pkgid: &str) -> Result<Self> {
+        let mut cmd = cargo_metadata::MetadataCommand::new();
+        cmd.no_deps();
+        let result = cmd
+            .exec()
+            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
+        let packages = result.packages;
+        let package = packages
+            .into_iter()
+            .find(|pkg| &pkg.name == pkgid)
+            .chain_err(|| {
+                "Found virtual manifest, but this command requires running against an \
+                 actual package in this workspace. Try adding `--all`."
+            })?;
+        let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
+        Ok(Manifests(vec![(manifest, package.to_owned())]))
     }
 
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
@@ -401,6 +423,7 @@ fn process(args: Args) -> Result<()> {
     let Args {
         dependency,
         manifest_path,
+        pkgid,
         all,
         allow_prerelease,
         dry_run,
@@ -416,6 +439,8 @@ fn process(args: Args) -> Result<()> {
 
     let manifests = if all {
         Manifests::get_all(&manifest_path)
+    } else if let Some(ref pkgid) = pkgid {
+        Manifests::get_pkgid(pkgid)
     } else {
         Manifests::get_local_one(&manifest_path)
     }?;
