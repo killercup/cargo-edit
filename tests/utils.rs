@@ -102,6 +102,35 @@ where
     }
 }
 
+/// Execute local cargo command, includes `--package`
+pub fn execute_command_for_pkg<S, P>(command: &[S], pkgid: &str, cwd: P)
+where
+    S: AsRef<OsStr>,
+    P: AsRef<Path>,
+{
+    let subcommand_name = &command[0].as_ref();
+    let cwd = cwd.as_ref();
+
+    let call = process::Command::new(&get_command_path(subcommand_name))
+        .args(command)
+        .arg("--package")
+        .arg(pkgid)
+        .current_dir(&cwd)
+        .env("CARGO_IS_TEST", "1")
+        .output()
+        .expect("call to test command failed");
+
+    if !call.status.success() {
+        println!("Status code: {:?}", call.status);
+        println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
+        println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
+        panic!(
+            "cargo-{} failed to execute",
+            subcommand_name.to_string_lossy()
+        )
+    }
+}
+
 /// Execute local cargo command, includes `--manifest-path`
 pub fn execute_command<S>(command: &[S], manifest: &str)
 where
