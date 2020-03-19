@@ -5,8 +5,8 @@ use std::fs;
 
 mod utils;
 use crate::utils::{
-    clone_out_test, copy_workspace_test, execute_command, execute_command_in_dir, get_command_path,
-    get_toml, setup_alt_registry_config,
+    clone_out_test, copy_workspace_test, execute_command, execute_command_for_pkg,
+    execute_command_in_dir, get_command_path, get_toml, setup_alt_registry_config,
 };
 
 // Verify that an upgraded Cargo.toml matches what we expect.
@@ -332,6 +332,25 @@ fn upgrade_workspace() {
             Some("libc--CURRENT_VERSION_TEST")
         );
     }
+}
+
+#[test]
+fn upgrade_dependency_in_workspace_member() {
+    let (tmpdir, _root_manifest, workspace_manifests) = copy_workspace_test();
+    execute_command_for_pkg(&["upgrade", "libc"], "one", &tmpdir);
+
+    let one = workspace_manifests
+        .iter()
+        .map(|manifest| get_toml(manifest))
+        .find(|manifest| manifest["package"]["name"].as_str() == Some("one"))
+        .expect("Couldn't find workspace member `one'");
+
+    assert_eq!(
+        one["dependencies"]["libc"]
+            .as_str()
+            .expect("libc dependency did not exist"),
+        "libc--CURRENT_VERSION_TEST",
+    );
 }
 
 /// Detect if attempting to run against a workspace root and give a helpful warning.
