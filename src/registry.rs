@@ -41,7 +41,7 @@ struct CargoConfig {
 fn cargo_home() -> Result<PathBuf> {
     let default_cargo_home = dirs::home_dir()
         .map(|x| x.join(".cargo"))
-        .chain_err(|| ErrorKind::ReadHomeDirFailure)?;
+        .ok_or_else(|| Error::ReadHomeDirFailure)?;
     let cargo_home = std::env::var("CARGO_HOME")
         .map(PathBuf::from)
         .unwrap_or(default_cargo_home);
@@ -55,7 +55,7 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
         // TODO unit test for source replacement
         let content = std::fs::read(path)?;
         let config =
-            toml::from_slice::<CargoConfig>(&content).map_err(|_| ErrorKind::InvalidCargoConfig)?;
+            toml::from_slice::<CargoConfig>(&content).map_err(|_| Error::InvalidCargoConfig)?;
         for (key, value) in config.registries {
             registries.entry(key).or_insert(Source {
                 registry: value.index,
@@ -100,20 +100,20 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
         }
         Some(r) => registries
             .remove(r)
-            .chain_err(|| ErrorKind::NoSuchRegistryFound(r.to_string()))?,
+            .ok_or_else(|| Error::NoSuchRegistryFound(r.to_string()))?,
     };
 
     // search this linked list and find the tail
     while let Some(replace_with) = &source.replace_with {
         source = registries
             .remove(replace_with)
-            .chain_err(|| ErrorKind::NoSuchSourceFound(replace_with.to_string()))?;
+            .ok_or_else(|| Error::NoSuchSourceFound(replace_with.to_string()))?;
     }
 
     let registry_url = source
         .registry
         .and_then(|x| Url::parse(&x).ok())
-        .chain_err(|| ErrorKind::InvalidCargoConfig)?;
+        .ok_or_else(|| Error::InvalidCargoConfig)?;
 
     Ok(registry_url)
 }

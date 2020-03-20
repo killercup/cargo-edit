@@ -50,7 +50,8 @@ impl<'a> CrateName<'a> {
         if self.has_version() {
             let xs: Vec<_> = self.0.splitn(2, '@').collect();
             let (name, version) = (xs[0], xs[1]);
-            semver::VersionReq::parse(version).chain_err(|| "Invalid crate version requirement")?;
+            semver::VersionReq::parse(version)
+                .map_err(|e| Error::wrap("Invalid crate version requirement", e))?;
 
             Ok(Some(Dependency::new(name).set_version(version)))
         } else {
@@ -74,6 +75,9 @@ impl<'a> CrateName<'a> {
             }
         }
 
-        bail!("Unable to obtain crate informations from `{}`.\n", self.0)
+        return Err(Error::from(format!(
+            "Unable to obtain crate informations from `{}`.\n",
+            self.0
+        )));
     }
 }

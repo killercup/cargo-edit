@@ -54,7 +54,6 @@ atty = { version = "0.2.14", optional = true }
 cargo_metadata = "0.9.1"
 dirs = "2.0.2"
 env_proxy = "0.4.0"
-error-chain = "0.12.2"
 failure = "0.1.7"
 git2 = "0.13.0"
 hex = "0.4.2"
@@ -69,6 +68,7 @@ termcolor = "1.1.0"
 toml = "0.5.6"
 toml_edit = "0.1.5"
 url = "2.1.1"
+thiserror = "1.0.11"
 
 [dependencies.semver]
 features = ["serde"]

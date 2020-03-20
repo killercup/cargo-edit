@@ -53,7 +53,7 @@ pub fn get_latest_dependency(
     }
 
     if crate_name.is_empty() {
-        return Err(ErrorKind::EmptyCrateName.into());
+        return Err(Error::EmptyCrateName);
     }
 
     let registry_path = match registry {
@@ -87,7 +87,7 @@ fn read_latest_version(
         .filter(|&v| flag_allow_prerelease || version_is_stable(v))
         .filter(|&v| !v.yanked)
         .max_by_key(|&v| v.version.clone())
-        .ok_or(ErrorKind::NoVersionsAvailable)?;
+        .ok_or(Error::NoVersionsAvailable)?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
@@ -152,7 +152,11 @@ fn fetch_with_cli(repo: &git2::Repository, url: &str, refspec: &str) -> Result<(
         .cwd(repo.path());
 
     let _ = cmd.capture().map_err(|e| match e {
+<<<<<<< HEAD
         subprocess::PopenError::IoError(io) => ErrorKind::Io(io),
+=======
+        subprocess::PopenError::IoError(io) => Error::Io(io),
+>>>>>>> Move cargo-edit lib to thiserror
         _ => unreachable!("expected only io error"),
     })?;
     Ok(())
@@ -282,18 +286,17 @@ fn fuzzy_query_registry_index(
             Ok(x) => x.to_object(&repo)?.peel_to_blob()?,
             Err(_) => continue,
         };
-        let content = String::from_utf8(file.content().to_vec())
-            .map_err(|_| ErrorKind::InvalidSummaryJson)?;
+        let content =
+            String::from_utf8(file.content().to_vec()).map_err(|_| Error::InvalidSummaryJson)?;
 
         return content
             .lines()
             .map(|line: &str| {
-                serde_json::from_str::<CrateVersion>(line)
-                    .map_err(|_| ErrorKind::InvalidSummaryJson.into())
+                serde_json::from_str::<CrateVersion>(line).map_err(|_| Error::InvalidSummaryJson)
             })
             .collect::<Result<Vec<CrateVersion>>>();
     }
-    Err(ErrorKind::NoCrate(crate_name).into())
+    Err(Error::NoCrate(crate_name))
 }
 
 fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
@@ -307,7 +310,7 @@ where
             (Some(user), Some(repo)) => {
                 let url = url_template(user.as_str(), repo.as_str());
                 let data: Result<Manifest> = get_cargo_toml_from_git_url(&url)
-                    .and_then(|m| m.parse().chain_err(|| ErrorKind::ParseCargoToml));
+                    .and_then(|m| m.parse().map_err(|e| Error::ParseCargoToml.wraps(e)));
                 data.and_then(|ref manifest| get_name_from_manifest(manifest))
             }
             _ => Err("Git repo url seems incomplete".into()),
@@ -359,7 +362,7 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
 pub fn get_crate_name_from_path(path: &str) -> Result<String> {
     let cargo_file = Path::new(path).join("Cargo.toml");
     Manifest::open(&Some(cargo_file))
-        .chain_err(|| "Unable to open local Cargo.toml")
+        .map_err(|e| Error::wrap("Unable to open local Cargo.toml", e))
         .and_then(|ref manifest| get_name_from_manifest(manifest))
 }
 
@@ -369,7 +372,7 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
         .as_table()
         .get("package")
         .and_then(|m| m["name"].as_str().map(std::string::ToString::to_string))
-        .ok_or_else(|| ErrorKind::ParseCargoToml.into())
+        .ok_or_else(|| Error::ParseCargoToml)
 }
 
 const fn get_default_timeout() -> Duration {
@@ -392,10 +395,10 @@ fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::bl
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
     let mut res = get_with_timeout(url, get_default_timeout())
-        .chain_err(|| "Failed to fetch crate from git")?;
+        .map_err(|e| Error::wrap("Failed to fetch crate from git", e))?;
     let mut body = String::new();
     res.read_to_string(&mut body)
-        .chain_err(|| "Git response not a valid `String`")?;
+        .map_err(|e| Error::wrap("Git response not a valid `String`", e))?;
     Ok(body)
 }
 
