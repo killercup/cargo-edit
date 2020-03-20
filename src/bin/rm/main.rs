@@ -11,9 +11,6 @@
     unused_qualifications
 )]
 
-#[macro_use]
-extern crate error_chain;
-
 use cargo_edit::{manifest_from_pkgid, Manifest};
 use std::borrow::Cow;
 use std::io::Write;
@@ -23,14 +20,35 @@ use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 mod errors {
-    error_chain! {
-        links {
-            CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
-        }
-        foreign_links {
-            Io(::std::io::Error);
+    use thiserror::Error as ThisError;
+
+    #[derive(Debug, ThisError)]
+    pub enum Error {
+        /// An error originating from the cargo-edit library
+        #[error(transparent)]
+        CargoEditLib(#[from] ::cargo_edit::Error),
+
+        /// An IO error
+        #[error(transparent)]
+        Io(#[from] ::std::io::Error),
+
+        #[error("{0}")]
+        Custom(String),
+    }
+
+    impl<'a> From<&'a str> for Error {
+        fn from(s: &'a str) -> Error {
+            Error::Custom(s.into())
         }
     }
+
+    impl From<String> for Error {
+        fn from(s: String) -> Error {
+            Error::Custom(s)
+        }
+    }
+
+    pub type Result<T> = ::std::result::Result<T, Error>;
 }
 use crate::errors::*;
 
@@ -133,17 +151,27 @@ fn handle_rm(args: &Args) -> Result<()> {
 }
 
 fn main() {
+    use failure::Fail;
+    use std::error::Error;
+
     let args: Command = Command::from_args();
     let Command::Rm(args) = args;
 
     if let Err(err) = handle_rm(&args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);
 
-        for e in err.iter().skip(1) {
-            eprintln!("Caused by: {}", e);
+        if let Some(mut source) = err.source() {
+            loop {
+                eprintln!("Caused by: {}", source);
+                source = if let Some(source) = source.source() {
+                    source
+                } else {
+                    break;
+                }
+            }
         }
 
-        if let Some(backtrace) = err.backtrace() {
+        if let Some(backtrace) = Fail::backtrace(&err) {
             eprintln!("Backtrace: {:?}", backtrace);
         }
 
