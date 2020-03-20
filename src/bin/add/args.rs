@@ -142,7 +142,8 @@ pub struct Args {
 }
 
 fn parse_version_req(s: &str) -> Result<&str> {
-    semver::VersionReq::parse(s).chain_err(|| "Invalid dependency version requirement")?;
+    semver::VersionReq::parse(s)
+        .map_err(|e| Error::wrap("Invalid dependency version requirement", e))?;
     Ok(s)
 }
 
@@ -175,7 +176,7 @@ impl Args {
             if let Some(ref url) = self.git {
                 let url = url.clone();
                 let version = dependency.version().unwrap().to_string();
-                return Err(ErrorKind::GitUrlWithVersion(url, version).into());
+                return Err(Error::GitUrlWithVersion { git: url, version });
             }
 
             if let Some(ref path) = self.path {
@@ -239,11 +240,11 @@ impl Args {
         if self.crates.len() > 1
             && (self.git.is_some() || self.path.is_some() || self.vers.is_some())
         {
-            return Err(ErrorKind::MultipleCratesWithGitOrPathOrVers.into());
+            return Err(Error::MultipleCratesWithGitOrPathOrVers);
         }
 
         if self.crates.len() > 1 && self.rename.is_some() {
-            return Err(ErrorKind::MultipleCratesWithRename.into());
+            return Err(Error::MultipleCratesWithRename);
         }
 
         if self.crates.len() > 1 && self.features.is_some() {

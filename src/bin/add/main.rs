@@ -11,9 +11,6 @@
     unused_qualifications
 )]
 
-#[macro_use]
-extern crate error_chain;
-
 use crate::args::{Args, Command};
 use cargo_edit::{
     find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, Manifest,
@@ -28,22 +25,58 @@ use toml_edit::Item as TomlItem;
 mod args;
 
 mod errors {
-    error_chain! {
-        errors {
-            /// Specified a dependency with both a git URL and a version.
-            GitUrlWithVersion(git: String, version: String) {
-                description("Specified git URL with version")
-                display("Cannot specify a git URL (`{}`) with a version (`{}`).", git, version)
-            }
-            /// Specified multiple crates with path or git or vers
-            MultipleCratesWithGitOrPathOrVers {
-                description("Specified multiple crates with path or git or vers")
-                display("Cannot specify multiple crates with path or git or vers")
-            }
-            /// Specified multiple crates with renaming.
-            MultipleCratesWithRename {
-                description("Specified multiple crates with rename")
-                display("Cannot specify multiple crates with rename")
+    use thiserror::Error as ThisError;
+
+    #[derive(Debug, ThisError)]
+    pub enum Error {
+        /// Specified a dependency with both a git URL and a version.
+        #[error("Cannot specify a git URL (`{git}`) with a version (`{version}`).")]
+        GitUrlWithVersion {
+            /// git URL
+            git: String,
+            /// Version
+            version: String,
+        },
+        /// Specified multiple crates with path or git or vers
+        #[error("Cannot specify multiple crates with path or git or vers")]
+        MultipleCratesWithGitOrPathOrVers,
+        /// Specified multiple crates with renaming.
+        #[error("Cannot specify multiple crates with rename")]
+        MultipleCratesWithRename,
+
+        /// An error originating from the cargo-edit library
+        #[error(transparent)]
+        CargoEditLib(#[from] ::cargo_edit::Error),
+
+        /// An IO error
+        #[error(transparent)]
+        Io(#[from] ::std::io::Error),
+
+        /// An erorr from the semver crate
+        #[error(transparent)]
+        SemVerParse(#[from] semver::ReqParseError),
+
+        /// An ad-hoc error
+        #[error("{0}")]
+        Custom(String),
+
+        /// An error with it's source
+        #[error("{error}")]
+        Wrapped {
+            error: Box<Error>,
+            source: Box<Error>,
+        },
+    }
+
+    impl Error {
+        pub fn wrap<T, U>(error: T, source: U) -> Error
+        where
+            T: Into<Error>,
+            U: Into<Error>,
+        {
+            Error::Wrapped {
+                error: Box::new(error.into()),
+                source: Box::new(source.into()),
             }
             /// Specified multiple crates with features.
             MultipleCratesWithFeatures {
@@ -51,13 +84,21 @@ mod errors {
                 display("Cannot specify multiple crates with features")
             }
         }
-        links {
-            CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
-        }
-        foreign_links {
-            Io(::std::io::Error);
+    }
+
+    impl<'a> From<&'a str> for Error {
+        fn from(s: &'a str) -> Error {
+            Error::Custom(s.into())
         }
     }
+
+    impl From<String> for Error {
+        fn from(s: String) -> Error {
+            Error::Custom(s)
+        }
+    }
+
+    pub type Result<T> = ::std::result::Result<T, Error>;
 }
 
 use crate::errors::*;
@@ -148,17 +189,28 @@ fn handle_add(args: &Args) -> Result<()> {
 }
 
 fn main() {
+    use failure::Fail;
+    use std::error::Error;
+
     let args: Command = Command::from_args();
     let Command::Add(args) = args;
 
     if let Err(err) = handle_add(&args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);
 
-        for e in err.iter().skip(1) {
-            eprintln!("Caused by: {}", e);
+        if let Some(mut source) = err.source() {
+            loop {
+                eprintln!("Caused by: {}", source);
+                source = if let Some(source) = source.source() {
+                    source
+                } else {
+                    break;
+                }
+            }
         }
 
-        if let Some(backtrace) = err.backtrace() {
+        // this should change to use std::backtrace::Backtrace when that is stabilized
+        if let Some(backtrace) = Fail::backtrace(&err) {
             eprintln!("Backtrace: {:?}", backtrace);
         }
 
