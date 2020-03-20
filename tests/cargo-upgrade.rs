@@ -498,6 +498,8 @@ For more information try --help ",
 #[test]
 #[cfg(feature = "test-external-apis")]
 fn upgrade_to_lockfile() {
+    use std::fs;
+
     let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.lockfile_source");
     std::fs::copy(
         std::path::Path::new("tests/fixtures/upgrade/Cargo.lock"),

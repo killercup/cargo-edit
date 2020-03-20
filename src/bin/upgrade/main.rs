@@ -11,9 +11,6 @@
     unused_qualifications
 )]
 
-#[macro_use]
-extern crate error_chain;
-
 use crate::errors::*;
 use cargo_edit::{
     find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
@@ -29,14 +26,64 @@ use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use url::Url;
 
 mod errors {
-    error_chain! {
-        links {
-            CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
-        }
-        foreign_links {
-            CargoMetadata(::failure::Compat<::cargo_metadata::Error>);
+    use thiserror::Error as ThisError;
+
+    #[derive(Debug, ThisError)]
+    pub enum Error {
+        /// An error originating from the cargo-edit library
+        #[error(transparent)]
+        CargoEditLib(#[from] ::cargo_edit::Error),
+
+        /// An error originating from the cargo-metadata library
+        #[error(transparent)]
+        CargoMetadata(#[from] ::failure::Compat<::cargo_metadata::Error>),
+
+        /// An IO error
+        #[error(transparent)]
+        Io(#[from] ::std::io::Error),
+
+        /// A URL-parsing error
+        #[error(transparent)]
+        Url(#[from] url::ParseError),
+
+        /// An ad-hoc error
+        #[error("{0}")]
+        Custom(String),
+
+        /// An ad-hoc error
+        #[error("{error}")]
+        Wrapped {
+            error: Box<Error>,
+            source: Box<Error>,
+        },
+    }
+
+    impl Error {
+        pub fn wrap<T, U>(error: T, source: U) -> Error
+        where
+            T: Into<Error>,
+            U: Into<Error>,
+        {
+            Error::Wrapped {
+                error: Box::new(error.into()),
+                source: Box::new(source.into()),
+            }
         }
     }
+
+    impl<'a> From<&'a str> for Error {
+        fn from(s: &'a str) -> Error {
+            Error::Custom(s.into())
+        }
+    }
+
+    impl From<String> for Error {
+        fn from(s: String) -> Error {
+            Error::Custom(s)
+        }
+    }
+
+    pub type Result<T> = ::std::result::Result<T, Error>;
 }
 
 #[derive(Debug, StructOpt)]
@@ -137,14 +184,15 @@ fn deprecated_message(message: &str) -> Result<()> {
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    writeln!(&mut buffer, "{}", message).chain_err(|| "Failed to write dry run message")?;
+        .map_err(|e| Error::wrap("Failed to set output colour", e))?;
+    writeln!(&mut buffer, "{}", message)
+        .map_err(|e| Error::wrap("Failed to write deprecated message", e))?;
     buffer
         .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
+        .map_err(|e| Error::wrap("Failed to clear output colour", e))?;
     bufwtr
         .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
+        .map_err(|e| Error::wrap("Failed to print deprecated message", e))
 }
 
 fn dry_run_message() -> Result<()> {
@@ -152,16 +200,17 @@ fn dry_run_message() -> Result<()> {
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    write!(&mut buffer, "Starting dry run. ").chain_err(|| "Failed to write dry run message")?;
+        .map_err(|e| Error::wrap("Failed to set output colour", e))?;
+    write!(&mut buffer, "Starting dry run. ")
+        .map_err(|e| Error::wrap("Failed to write dry run message", e))?;
     buffer
         .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
+        .map_err(|e| Error::wrap("Failed to clear output colour", e))?;
     writeln!(&mut buffer, "Changes will not be saved.")
-        .chain_err(|| "Failed to write dry run message")?;
-    bufwtr
+        .map_err(|e| Error::wrap("Failed to write dry run message", e))?;
+    Ok(bufwtr
         .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
+        .map_err(|e| Error::wrap("Failed to print dry run message", e))?)
 }
 
 impl Manifests {
@@ -172,9 +221,9 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd.exec().map_err(|e| {
-            Error::from(e.compat()).chain_err(|| "Failed to get workspace metadata")
-        })?;
+        let result = cmd
+            .exec()
+            .map_err(|e| Error::wrap("Failed to get workspace metadata", e.compat()))?;
         result
             .packages
             .into_iter()
@@ -208,14 +257,14 @@ impl Manifests {
         }
         let result = cmd
             .exec()
-            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
+            .map_err(|e| Error::wrap("Invalid manifest", e.compat()))?;
         let packages = result.packages;
         let package = packages
             .iter()
             .find(|p| p.manifest_path.to_string_lossy() == resolved_manifest_path)
             // If we have successfully got metadata, but our manifest path does not correspond to a
             // package, we must have been called against a virtual manifest.
-            .chain_err(|| {
+            .ok_or_else(|| {
                 "Found virtual manifest, but this command requires running against an \
                  actual package in this workspace. Try adding `--all`."
             })?;
@@ -315,17 +364,18 @@ impl Manifests {
         // Get locked dependencies. For workspaces with multiple Cargo.toml
         // files, there is only a single lockfile, so it suffices to get
         // metadata for any one of Cargo.toml files.
-        let (manifest, _package) =
-            self.0.iter().next().ok_or_else(|| {
-                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-            })?;
+        let (manifest, _package) = self
+            .0
+            .iter()
+            .next()
+            .ok_or_else(|| Error::from(::cargo_edit::Error::InvalidCargoConfig))?;
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.manifest_path(manifest.path.clone());
         cmd.other_options(vec!["--locked".to_string()]);
 
         let result = cmd
             .exec()
-            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
+            .map_err(|e| Error::wrap("Invalid manifest", e.compat()))?;
 
         let locked = result
             .packages
@@ -406,8 +456,8 @@ impl DesiredUpgrades {
                         Ok((dep, v))
                     } else {
                         let registry_url = match registry {
-                            Some(x) => Some(Url::parse(&x).map_err(|_| {
-                                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+                            Some(x) => Some(Url::parse(&x).map_err(|e| {
+                                Error::wrap(::cargo_edit::Error::InvalidCargoConfig, e)
                             })?),
                             None => None,
                         };
@@ -427,7 +477,7 @@ impl DesiredUpgrades {
                                     .to_string(),
                             )
                         })
-                        .chain_err(|| "Failed to get new version")
+                        .map_err(|e| Error::wrap("Failed to get new version", e))
                     }
                 },
             )
@@ -485,9 +535,10 @@ fn process(args: Args) -> Result<()> {
                 .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
                 .collect::<HashSet<_>>()
             {
-                update_registry_index(&Url::parse(registry_url).map_err(|_| {
-                    ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                })?)?;
+                update_registry_index(
+                    &Url::parse(registry_url)
+                        .map_err(|e| Error::wrap(::cargo_edit::Error::InvalidCargoConfig, e))?,
+                )?;
             }
         }
 
@@ -499,17 +550,26 @@ fn process(args: Args) -> Result<()> {
 }
 
 fn main() {
+    use std::error::Error;
+
     let args: Command = Command::from_args();
     let Command::Upgrade(args) = args;
 
     if let Err(err) = process(args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);
 
-        for e in err.iter().skip(1) {
-            eprintln!("Caused by: {}", e);
+        if let Some(mut source) = err.source() {
+            loop {
+                eprintln!("Caused by: {}", source);
+                source = if let Some(source) = source.source() {
+                    source
+                } else {
+                    break;
+                }
+            }
         }
 
-        if let Some(backtrace) = err.backtrace() {
+        if let Some(backtrace) = Fail::backtrace(&err) {
             eprintln!("Backtrace: {:?}", backtrace);
         }
 
