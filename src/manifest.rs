@@ -444,7 +444,7 @@ impl str::FromStr for Manifest {
     type Err = Error;
 
     /// Read manifest data from string
-    fn from_str(input: &str) -> ::std::result::Result<Self, Self::Err> {
+    fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
         let d: toml_edit::Document = input
             .parse()
             .map_err(|e| Error::wrap("Manifest not valid TOML", e))?;

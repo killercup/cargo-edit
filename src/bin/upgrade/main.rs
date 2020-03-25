@@ -32,15 +32,15 @@ mod errors {
     pub enum Error {
         /// An error originating from the cargo-edit library
         #[error(transparent)]
-        CargoEditLib(#[from] ::cargo_edit::Error),
+        CargoEditLib(#[from] cargo_edit::Error),
 
         /// An error originating from the cargo-metadata library
         #[error(transparent)]
-        CargoMetadata(#[from] ::failure::Compat<::cargo_metadata::Error>),
+        CargoMetadata(#[from] failure::Compat<::cargo_metadata::Error>),
 
         /// An IO error
         #[error(transparent)]
-        Io(#[from] ::std::io::Error),
+        Io(#[from] std::io::Error),
 
         /// A URL-parsing error
         #[error(transparent)]
@@ -83,7 +83,7 @@ mod errors {
         }
     }
 
-    pub type Result<T> = ::std::result::Result<T, Error>;
+    pub type Result<T> = std::result::Result<T, Error>;
 }
 
 #[derive(Debug, StructOpt)]

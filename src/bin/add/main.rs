@@ -46,11 +46,11 @@ mod errors {
 
         /// An error originating from the cargo-edit library
         #[error(transparent)]
-        CargoEditLib(#[from] ::cargo_edit::Error),
+        CargoEditLib(#[from] cargo_edit::Error),
 
         /// An IO error
         #[error(transparent)]
-        Io(#[from] ::std::io::Error),
+        Io(#[from] std::io::Error),
 
         /// An erorr from the semver crate
         #[error(transparent)]
@@ -98,7 +98,7 @@ mod errors {
         }
     }
 
-    pub type Result<T> = ::std::result::Result<T, Error>;
+    pub type Result<T> = std::result::Result<T, Error>;
 }
 
 use crate::errors::*;

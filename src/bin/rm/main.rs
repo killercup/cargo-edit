@@ -26,11 +26,11 @@ mod errors {
     pub enum Error {
         /// An error originating from the cargo-edit library
         #[error(transparent)]
-        CargoEditLib(#[from] ::cargo_edit::Error),
+        CargoEditLib(#[from] cargo_edit::Error),
 
         /// An IO error
         #[error(transparent)]
-        Io(#[from] ::std::io::Error),
+        Io(#[from] std::io::Error),
 
         #[error("{0}")]
         Custom(String),
@@ -48,7 +48,7 @@ mod errors {
         }
     }
 
-    pub type Result<T> = ::std::result::Result<T, Error>;
+    pub type Result<T> = std::result::Result<T, Error>;
 }
 use crate::errors::*;
 

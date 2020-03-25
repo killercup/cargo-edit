@@ -6,16 +6,16 @@ pub enum Error {
     // foreign links
     /// An error from the std::io module
     #[error(transparent)]
-    Io(#[from] ::std::io::Error),
+    Io(#[from] std::io::Error),
     ///  An error from the git2 crate
     #[error(transparent)]
-    Git(#[from] ::git2::Error),
+    Git(#[from] git2::Error),
     /// An error from the cargo_metadata crate
     #[error(transparent)]
-    CargoMetadata(#[from] ::failure::Compat<::cargo_metadata::Error>),
+    CargoMetadata(#[from] failure::Compat<::cargo_metadata::Error>),
     /// An error from the toml_edit crate
     #[error(transparent)]
-    TomlEditParse(#[from] ::toml_edit::TomlError),
+    TomlEditParse(#[from] toml_edit::TomlError),
     /// A ReqParseError from the semver crate
     #[error(transparent)]
     SemVerParse(#[from] semver::ReqParseError),
@@ -24,7 +24,7 @@ pub enum Error {
     SemVer(#[from] semver::SemVerError),
     /// An error from the reqwest crate
     #[error(transparent)]
-    Reqwest(#[from] ::reqwest::Error),
+    Reqwest(#[from] reqwest::Error),
 
     // links
     /// Failed to read home directory
@@ -149,4 +149,4 @@ impl<'a> From<&'a str> for Error {
 }
 
 /// Result wrapper type
-pub type Result<T> = ::std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
