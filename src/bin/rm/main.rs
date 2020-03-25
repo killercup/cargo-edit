@@ -160,15 +160,10 @@ fn main() {
     if let Err(err) = handle_rm(&args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);
 
-        if let Some(mut source) = err.source() {
-            loop {
-                eprintln!("Caused by: {}", source);
-                source = if let Some(source) = source.source() {
-                    source
-                } else {
-                    break;
-                }
-            }
+        let mut sources: &dyn Error = &err;
+        while let Some(source) = sources.source() {
+            eprintln!("Caused by: {}", source);
+            sources = source;
         }
 
         if let Some(backtrace) = Fail::backtrace(&err) {
