@@ -85,10 +85,12 @@ FLAGS:
     -V, --version                Prints version information
 
 OPTIONS:
+        --branch <branch>         Specify a git branch to download the crate from
+        --features <features>     Space-separated list of features to add
         --git <uri>               Specify a git repository to download the crate from
         --manifest-path <path>    Path to the manifest to add a dependency to
-    -p, --package <package>       Specify the package in the workspace to add a dependency to (see `cargo help pkgid`)
         --path <path>             Specify the path the crate should be loaded from
+    -p, --package <pkgid>         Package id of the crate to add this dependency to
         --registry <registry>     Registry to use
     -r, --rename <rename>         Rename a dependency in Cargo.toml, https://doc.rust-
                                   lang.org/cargo/reference/specifying-

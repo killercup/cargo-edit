@@ -54,6 +54,7 @@ mod errors {
         }
     }
 }
+
 use crate::errors::*;
 
 fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
@@ -81,7 +82,12 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
     } else {
         format!("{} for target `{}`", &section[2], &section[1])
     };
-    writeln!(output, " {}", section)?;
+    write!(output, " {}", section)?;
+    if let Some(f) = &dep.features {
+        writeln!(output, " with features: {:?}", f)?
+    } else {
+        writeln!(output)?
+    }
     Ok(())
 }
 

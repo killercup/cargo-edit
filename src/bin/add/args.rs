@@ -115,6 +115,10 @@ pub struct Args {
     #[structopt(long = "allow-prerelease")]
     pub allow_prerelease: bool,
 
+    /// Space-separated list of features to add.
+    #[structopt(long = "features", number_of_values = 1)]
+    pub features: Option<Vec<String>>,
+
     /// Set `default-features = false` for the added dependency.
     #[structopt(long = "no-default-features")]
     pub no_default_features: bool,
@@ -225,7 +229,6 @@ impl Args {
             if let Some(registry) = &self.registry {
                 dependency = dependency.set_registry(registry);
             }
-
             Ok(dependency)
         }
     }
@@ -248,6 +251,7 @@ impl Args {
                 self.parse_single_dependency(crate_name).map(|x| {
                     let mut x = x
                         .set_optional(self.optional)
+                        .set_features(self.features.clone())
                         .set_default_features(!self.no_default_features);
                     if let Some(ref rename) = self.rename {
                         x = x.set_rename(rename);
@@ -288,6 +292,7 @@ impl Default for Args {
             pkgid: None,
             upgrade: "minor".to_string(),
             allow_prerelease: false,
+            features: None,
             no_default_features: false,
             quiet: false,
             offline: true,
