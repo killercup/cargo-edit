@@ -115,7 +115,8 @@ pub struct Args {
     #[structopt(long = "allow-prerelease")]
     pub allow_prerelease: bool,
 
-    /// Space-separated list of features to add.
+    /// Space-separated list of features to add. For an alternative approach to
+    /// enabling features, consider installing the `cargo-feature` utility.
     #[structopt(long = "features", number_of_values = 1)]
     pub features: Option<Vec<String>>,
 
