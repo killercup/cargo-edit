@@ -45,6 +45,11 @@ mod errors {
                 description("Specified multiple crates with rename")
                 display("Cannot specify multiple crates with rename")
             }
+            /// Specified multiple crates with features.
+            MultipleCratesWithFeatures {
+                description("Specified multiple crates with features")
+                display("Cannot specify multiple crates with features")
+            }
         }
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);

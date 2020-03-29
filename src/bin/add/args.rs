@@ -246,6 +246,10 @@ impl Args {
             return Err(ErrorKind::MultipleCratesWithRename.into());
         }
 
+        if self.crates.len() > 1 && self.features.is_some() {
+            return Err(ErrorKind::MultipleCratesWithFeatures.into());
+        }
+
         self.crates
             .iter()
             .map(|crate_name| {

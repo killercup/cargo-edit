@@ -1035,18 +1035,23 @@ your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth", 
 }
 
 #[test]
-fn only_consumes_one_argument_to_features_option() {
-    // The resulting behaviour is a bit nonsensical.
-    // The alternative would be to force it to explode.
-    overwrite_dependency_test(
-        &["add", "your-face"],
-        &["add", "your-face", "--features", "mouth", "nose"],
-        r#"
-[dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth"] }
-nose = { version = "nose--CURRENT_VERSION_TEST", features = ["mouth"] }
-"#,
-    )
+#[cfg(feature = "test-external-apis")]
+fn forbids_multiple_crates_with_features_option() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        get_command_path("add").as_str(),
+        "add",
+        "your-face",
+        "--features",
+        "mouth",
+        "nose",
+    ])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .contains("Cannot specify multiple crates with features")
+    .unwrap();
 }
 
 #[test]
