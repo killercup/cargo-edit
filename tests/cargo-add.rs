@@ -1035,7 +1035,6 @@ your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth", 
 }
 
 #[test]
-#[cfg(feature = "test-external-apis")]
 fn forbids_multiple_crates_with_features_option() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
