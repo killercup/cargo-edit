@@ -944,6 +944,116 @@ fn adds_dependency_with_target_cfg() {
 }
 
 #[test]
+fn adds_features_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "https://github.com/killercup/cargo-edit.git",
+            "--features",
+            "jui",
+        ],
+        &manifest,
+    );
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml["dependencies"]["cargo-edit"]["features"][0].as_str();
+    assert_eq!(val, Some("jui"));
+}
+
+#[test]
+fn overrides_existing_features() {
+    overwrite_dependency_test(
+        &["add", "your-face", "--features", "nose"],
+        &["add", "your-face", "--features", "mouth"],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth"] }
+"#,
+    )
+}
+
+#[test]
+fn keeps_existing_features_by_default() {
+    overwrite_dependency_test(
+        &["add", "your-face", "--features", "nose"],
+        &["add", "your-face"],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["nose"] }
+"#,
+    )
+}
+
+#[test]
+fn handles_specifying_features_option_multiple_times() {
+    overwrite_dependency_test(
+        &["add", "your-face"],
+        &[
+            "add",
+            "your-face",
+            "--features",
+            "nose",
+            "--features",
+            "mouth",
+        ],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["nose", "mouth"] }
+"#,
+    )
+}
+
+#[test]
+fn can_be_forced_to_provide_an_empty_features_list() {
+    overwrite_dependency_test(
+        &["add", "your-face"],
+        &["add", "your-face", "--features", ""],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = [] }
+"#,
+    )
+}
+
+#[test]
+fn parses_space_separated_argument_to_features() {
+    overwrite_dependency_test(
+        &["add", "your-face", "--features", "nose"],
+        &["add", "your-face", "--features", "mouth ears"],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth", "ears"] }
+"#,
+    )
+}
+
+#[test]
+fn forbids_multiple_crates_with_features_option() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        get_command_path("add").as_str(),
+        "add",
+        "your-face",
+        "--features",
+        "mouth",
+        "nose",
+    ])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .contains("Cannot specify multiple crates with features")
+    .unwrap();
+}
+
+#[test]
 fn adds_dependency_with_custom_target() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -1371,4 +1481,24 @@ fn add_dependency_to_workspace_member() {
             .expect("toml dependency did not exist"),
         "toml--CURRENT_VERSION_TEST",
     );
+}
+#[test]
+fn add_prints_message_for_features_deps() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "hello-world",
+        "--vers",
+        "0.1.0",
+        "--features",
+        "jui",
+        &format!("--manifest-path={}", manifest),
+    ])
+    .succeeds()
+    .and()
+    .stdout()
+    .contains(r#"Adding hello-world v0.1.0 to dependencies with features: ["jui"]"#)
+    .unwrap();
 }

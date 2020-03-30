@@ -191,7 +191,7 @@ impl Manifests {
     fn get_pkgid(pkgid: &str) -> Result<Self> {
         let package = manifest_from_pkgid(pkgid)?;
         let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
-        Ok(Manifests(vec![(manifest, package.to_owned())]))
+        Ok(Manifests(vec![(manifest, package)]))
     }
 
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is

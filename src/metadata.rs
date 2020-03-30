@@ -12,7 +12,7 @@ pub fn manifest_from_pkgid(pkgid: &str) -> Result<Package> {
     let packages = result.packages;
     let package = packages
         .into_iter()
-        .find(|pkg| &pkg.name == pkgid)
+        .find(|pkg| pkg.name == pkgid)
         .chain_err(|| {
             "Found virtual manifest, but this command requires running against an \
              actual package in this workspace. Try adding `--all`."

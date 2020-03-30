@@ -153,9 +153,7 @@ fn fetch_with_cli(repo: &git2::Repository, url: &str, refspec: &str) -> Result<(
 
     let _ = cmd.capture().map_err(|e| match e {
         subprocess::PopenError::IoError(io) => ErrorKind::Io(io),
-        _ => {
-            unreachable!("expected only io error")
-        }
+        _ => unreachable!("expected only io error"),
     })?;
     Ok(())
 }

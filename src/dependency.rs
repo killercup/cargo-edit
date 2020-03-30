@@ -1,3 +1,4 @@
+use std::iter::FromIterator;
 use toml_edit;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
@@ -19,6 +20,8 @@ pub struct Dependency {
     /// The name of the dependency (as it is set in its `Cargo.toml` and known to crates.io)
     pub name: String,
     optional: bool,
+    /// List of features to add (or None to keep features unchanged).
+    pub features: Option<Vec<String>>,
     default_features: bool,
     source: DependencySource,
     /// If the dependency is renamed, this is the new name for the dependency
@@ -32,6 +35,7 @@ impl Default for Dependency {
             name: "".into(),
             rename: None,
             optional: false,
+            features: None,
             default_features: true,
             source: DependencySource::Version {
                 version: None,
@@ -95,6 +99,17 @@ impl Dependency {
     /// Set whether the dependency is optional
     pub fn set_optional(mut self, opt: bool) -> Dependency {
         self.optional = opt;
+        self
+    }
+    /// Set features as an array of string (does some basic parsing)
+    pub fn set_features(mut self, features: Option<Vec<String>>) -> Dependency {
+        self.features = features.map(|f| {
+            f.iter()
+                .map(|x| x.split(' ').map(String::from))
+                .flatten()
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<String>>()
+        });
         self
     }
 
@@ -161,6 +176,7 @@ impl Dependency {
     pub fn to_toml(&self) -> (String, toml_edit::Item) {
         let data: toml_edit::Item = match (
             self.optional,
+            self.features.as_ref(),
             self.default_features,
             self.source.clone(),
             self.rename.as_ref(),
@@ -168,6 +184,7 @@ impl Dependency {
             // Extra short when version flag only
             (
                 false,
+                None,
                 true,
                 DependencySource::Version {
                     version: Some(v),
@@ -177,7 +194,7 @@ impl Dependency {
                 None,
             ) => toml_edit::value(v),
             // Other cases are represented as an inline table
-            (optional, default_features, source, rename) => {
+            (optional, features, default_features, source, rename) => {
                 let mut data = toml_edit::InlineTable::default();
 
                 match source {
@@ -203,6 +220,10 @@ impl Dependency {
                 }
                 if self.optional {
                     data.get_or_insert("optional", optional);
+                }
+                if let Some(features) = features {
+                    let features = toml_edit::Value::from_iter(features.iter().cloned());
+                    data.get_or_insert("features", features);
                 }
                 if !self.default_features {
                     data.get_or_insert("default-features", default_features);

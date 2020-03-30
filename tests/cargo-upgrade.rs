@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate pretty_assertions;
 
-use std::fs;
-
 mod utils;
 use crate::utils::{
     clone_out_test, copy_workspace_test, execute_command, execute_command_for_pkg,
@@ -501,7 +499,7 @@ For more information try --help ",
 #[cfg(feature = "test-external-apis")]
 fn upgrade_to_lockfile() {
     let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.lockfile_source");
-    fs::copy(
+    std::fs::copy(
         std::path::Path::new("tests/fixtures/upgrade/Cargo.lock"),
         tmpdir.path().join("Cargo.lock"),
     )

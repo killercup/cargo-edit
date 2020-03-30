@@ -45,6 +45,11 @@ mod errors {
                 description("Specified multiple crates with rename")
                 display("Cannot specify multiple crates with rename")
             }
+            /// Specified multiple crates with features.
+            MultipleCratesWithFeatures {
+                description("Specified multiple crates with features")
+                display("Cannot specify multiple crates with features")
+            }
         }
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
@@ -54,6 +59,7 @@ mod errors {
         }
     }
 }
+
 use crate::errors::*;
 
 fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
@@ -81,7 +87,12 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
     } else {
         format!("{} for target `{}`", &section[2], &section[1])
     };
-    writeln!(output, " {}", section)?;
+    write!(output, " {}", section)?;
+    if let Some(f) = &dep.features {
+        writeln!(output, " with features: {:?}", f)?
+    } else {
+        writeln!(output)?
+    }
     Ok(())
 }
 

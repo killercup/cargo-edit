@@ -85,24 +85,29 @@ FLAGS:
     -V, --version                Prints version information
 
 OPTIONS:
-        --git <uri>               Specify a git repository to download the crate from
-        --manifest-path <path>    Path to the manifest to add a dependency to
-    -p, --package <package>       Specify the package in the workspace to add a dependency to (see `cargo help pkgid`)
-        --path <path>             Specify the path the crate should be loaded from
-        --registry <registry>     Registry to use
-    -r, --rename <rename>         Rename a dependency in Cargo.toml, https://doc.rust-
-                                  lang.org/cargo/reference/specifying-
-                                  dependencies.html#renaming-dependencies-in-cargotoml Only works when
-                                  specifying a single dependency
-        --target <target>         Add as dependency to the given target platform
-        --upgrade <method>        Choose method of semantic version upgrade.  Must be one of "none" (exact version, `=`
-                                  modifier), "patch" (`~` modifier), "minor" (`^` modifier), "all" (`>=`), or "default"
-                                  (no modifier) [default: default]  [possible values: none, patch, minor, all, default]
-        --vers <uri>              Specify the version to grab from the registry(crates.io). You can also specify version
-                                  as part of name, e.g `cargo add bitflags@0.3.2`
+        --branch <branch>           Specify a git branch to download the crate from
+        --features <features>...    Space-separated list of features to add. For an alternative approach to enabling
+                                    features, consider installing the `cargo-feature` utility
+        --git <uri>                 Specify a git repository to download the crate from
+        --manifest-path <path>      Path to the manifest to add a dependency to
+        --path <path>               Specify the path the crate should be loaded from
+    -p, --package <pkgid>           Package id of the crate to add this dependency to
+        --registry <registry>       Registry to use
+    -r, --rename <rename>           Rename a dependency in Cargo.toml, https://doc.rust-
+                                    lang.org/cargo/reference/specifying-
+                                    dependencies.html#renaming-dependencies-in-cargotoml Only works
+                                    when specifying a single dependency
+        --target <target>           Add as dependency to the given target platform
+        --upgrade <method>          Choose method of semantic version upgrade.  Must be one of "none" (exact version,
+                                    `=` modifier), "patch" (`~` modifier), "minor" (`^` modifier), "all" (`>=`), or
+                                    "default" (no modifier) [default: default]  [possible values: none, patch, minor,
+                                    all, default]
+        --vers <uri>                Specify the version to grab from the registry(crates.io). You can also specify
+                                    version as part of name, e.g `cargo add bitflags@0.3.2`
 
 ARGS:
     <crate>...    Crates to be added
+
 
 This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
 or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name
