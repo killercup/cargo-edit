@@ -1,0 +1,1 @@
+tests/fixtures/*/Cargo.toml.* -text
