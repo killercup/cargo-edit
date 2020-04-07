@@ -11,6 +11,7 @@
     unused_qualifications
 )]
 
+use anyhow::Result;
 use cargo_edit::{manifest_from_pkgid, Manifest};
 use std::borrow::Cow;
 use std::io::Write;
@@ -31,26 +32,8 @@ mod errors {
         /// An IO error
         #[error(transparent)]
         Io(#[from] std::io::Error),
-
-        #[error("{0}")]
-        Custom(String),
     }
-
-    impl<'a> From<&'a str> for Error {
-        fn from(s: &'a str) -> Error {
-            Error::Custom(s.into())
-        }
-    }
-
-    impl From<String> for Error {
-        fn from(s: String) -> Error {
-            Error::Custom(s)
-        }
-    }
-
-    pub type Result<T> = std::result::Result<T, Error>;
 }
-use crate::errors::*;
 
 #[derive(Debug, StructOpt)]
 #[structopt(bin_name = "cargo")]
@@ -151,23 +134,14 @@ fn handle_rm(args: &Args) -> Result<()> {
 }
 
 fn main() {
-    use failure::Fail;
-    use std::error::Error;
-
     let args: Command = Command::from_args();
     let Command::Rm(args) = args;
 
     if let Err(err) = handle_rm(&args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);
 
-        let mut sources: &dyn Error = &err;
-        while let Some(source) = sources.source() {
+        for source in err.chain().skip(1) {
             eprintln!("Caused by: {}", source);
-            sources = source;
-        }
-
-        if let Some(backtrace) = Fail::backtrace(&err) {
-            eprintln!("Backtrace: {:?}", backtrace);
         }
 
         process::exit(1);
