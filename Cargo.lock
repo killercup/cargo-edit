@@ -146,7 +146,6 @@ dependencies = [
  "cargo_metadata",
  "dirs",
  "env_proxy",
- "failure",
  "git2",
  "hex",
  "pretty_assertions",
