@@ -1,5 +1,6 @@
 //! Handle `cargo add` arguments
 
+use anyhow::{Context, Result};
 use cargo_edit::{find, registry_url, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
 use semver;
@@ -143,7 +144,7 @@ pub struct Args {
 
 fn parse_version_req(s: &str) -> Result<&str> {
     semver::VersionReq::parse(s)
-        .map_err(|e| Error::wrap("Invalid dependency version requirement", e))?;
+        .with_context(|| "Invalid dependency version requirement")?;
     Ok(s)
 }
 
@@ -176,7 +177,7 @@ impl Args {
             if let Some(ref url) = self.git {
                 let url = url.clone();
                 let version = dependency.version().unwrap().to_string();
-                return Err(Error::GitUrlWithVersion { git: url, version });
+                return Err(Error::GitUrlWithVersion(url, version).into());
             }
 
             if let Some(ref path) = self.path {
@@ -240,15 +241,15 @@ impl Args {
         if self.crates.len() > 1
             && (self.git.is_some() || self.path.is_some() || self.vers.is_some())
         {
-            return Err(Error::MultipleCratesWithGitOrPathOrVers);
+            return Err(Error::MultipleCratesWithGitOrPathOrVers.into());
         }
 
         if self.crates.len() > 1 && self.rename.is_some() {
-            return Err(Error::MultipleCratesWithRename);
+            return Err(Error::MultipleCratesWithRename.into());
         }
 
         if self.crates.len() > 1 && self.features.is_some() {
-            return Err(ErrorKind::MultipleCratesWithFeatures.into());
+            return Err(Error::MultipleCratesWithFeatures.into());
         }
 
         self.crates

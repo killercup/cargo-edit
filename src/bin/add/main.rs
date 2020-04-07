@@ -18,6 +18,7 @@ use cargo_edit::{
 use std::borrow::Cow;
 use std::io::Write;
 use std::process;
+use anyhow::Result;
 use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
@@ -30,19 +31,17 @@ mod errors {
     #[derive(Debug, ThisError)]
     pub enum Error {
         /// Specified a dependency with both a git URL and a version.
-        #[error("Cannot specify a git URL (`{git}`) with a version (`{version}`).")]
-        GitUrlWithVersion {
-            /// git URL
-            git: String,
-            /// Version
-            version: String,
-        },
+        #[error("Cannot specify a git URL (`{0}`) with a version (`{1}`).")]
+        GitUrlWithVersion(String, String),
         /// Specified multiple crates with path or git or vers
         #[error("Cannot specify multiple crates with path or git or vers")]
         MultipleCratesWithGitOrPathOrVers,
         /// Specified multiple crates with renaming.
         #[error("Cannot specify multiple crates with rename")]
         MultipleCratesWithRename,
+        /// Specified multiple crates with features.
+        #[error("Cannot specify multiple crates with features")]
+        MultipleCratesWithFeatures,
 
         /// An error originating from the cargo-edit library
         #[error(transparent)]
@@ -52,56 +51,11 @@ mod errors {
         #[error(transparent)]
         Io(#[from] std::io::Error),
 
-        /// An erorr from the semver crate
+        /// An error from the semver crate
         #[error(transparent)]
         SemVerParse(#[from] semver::ReqParseError),
-
-        /// An ad-hoc error
-        #[error("{0}")]
-        Custom(String),
-
-        /// An error with it's source
-        #[error("{error}")]
-        Wrapped {
-            error: Box<Error>,
-            source: Box<Error>,
-        },
     }
-
-    impl Error {
-        pub fn wrap<T, U>(error: T, source: U) -> Error
-        where
-            T: Into<Error>,
-            U: Into<Error>,
-        {
-            Error::Wrapped {
-                error: Box::new(error.into()),
-                source: Box::new(source.into()),
-            }
-            /// Specified multiple crates with features.
-            MultipleCratesWithFeatures {
-                description("Specified multiple crates with features")
-                display("Cannot specify multiple crates with features")
-            }
-        }
-    }
-
-    impl<'a> From<&'a str> for Error {
-        fn from(s: &'a str) -> Error {
-            Error::Custom(s.into())
-        }
-    }
-
-    impl From<String> for Error {
-        fn from(s: String) -> Error {
-            Error::Custom(s)
-        }
-    }
-
-    pub type Result<T> = std::result::Result<T, Error>;
 }
-
-use crate::errors::*;
 
 fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
     let colorchoice = if atty::is(atty::Stream::Stdout) {
@@ -189,24 +143,14 @@ fn handle_add(args: &Args) -> Result<()> {
 }
 
 fn main() {
-    use failure::Fail;
-    use std::error::Error;
-
     let args: Command = Command::from_args();
     let Command::Add(args) = args;
 
     if let Err(err) = handle_add(&args) {
         eprintln!("Command failed due to unhandled error: {}\n", err);
 
-        let mut sources: &dyn Error = &err;
-        while let Some(source) = sources.source() {
+        for source in err.chain().skip(1) {
             eprintln!("Caused by: {}", source);
-            sources = source;
-        }
-
-        // this should change to use std::backtrace::Backtrace when that is stabilized
-        if let Some(backtrace) = Fail::backtrace(&err) {
-            eprintln!("Backtrace: {:?}", backtrace);
         }
 
         process::exit(1);
