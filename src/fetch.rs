@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use url::Url;
+use anyhow::{anyhow, Context, Result};
 
 #[derive(Deserialize)]
 struct CrateVersion {
@@ -53,7 +54,7 @@ pub fn get_latest_dependency(
     }
 
     if crate_name.is_empty() {
-        return Err(Error::EmptyCrateName);
+        return Err(Error::EmptyCrateName.into());
     }
 
     let registry_path = match registry {
@@ -152,11 +153,7 @@ fn fetch_with_cli(repo: &git2::Repository, url: &str, refspec: &str) -> Result<(
         .cwd(repo.path());
 
     let _ = cmd.capture().map_err(|e| match e {
-<<<<<<< HEAD
-        subprocess::PopenError::IoError(io) => ErrorKind::Io(io),
-=======
         subprocess::PopenError::IoError(io) => Error::Io(io),
->>>>>>> Move cargo-edit lib to thiserror
         _ => unreachable!("expected only io error"),
     })?;
     Ok(())
@@ -292,11 +289,11 @@ fn fuzzy_query_registry_index(
         return content
             .lines()
             .map(|line: &str| {
-                serde_json::from_str::<CrateVersion>(line).map_err(|_| Error::InvalidSummaryJson)
+                serde_json::from_str::<CrateVersion>(line).map_err(|_| Error::InvalidSummaryJson.into())
             })
             .collect::<Result<Vec<CrateVersion>>>();
     }
-    Err(Error::NoCrate(crate_name))
+    Err(Error::NoCrate(crate_name).into())
 }
 
 fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
@@ -305,15 +302,15 @@ where
 {
     matcher
         .captures(repo)
-        .ok_or_else(|| "Unable to parse git repo URL".into())
+        .ok_or_else(|| anyhow!("Unable to parse git repo URL"))
         .and_then(|cap| match (cap.get(1), cap.get(2)) {
             (Some(user), Some(repo)) => {
                 let url = url_template(user.as_str(), repo.as_str());
                 let data: Result<Manifest> = get_cargo_toml_from_git_url(&url)
-                    .and_then(|m| m.parse().map_err(|e| Error::ParseCargoToml.wraps(e)));
+                    .and_then(|m| m.parse().with_context(|| Error::ParseCargoToml));
                 data.and_then(|ref manifest| get_name_from_manifest(manifest))
             }
-            _ => Err("Git repo url seems incomplete".into()),
+            _ => Err(anyhow!("Git repo url seems incomplete")),
         })
 }
 
@@ -362,7 +359,7 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
 pub fn get_crate_name_from_path(path: &str) -> Result<String> {
     let cargo_file = Path::new(path).join("Cargo.toml");
     Manifest::open(&Some(cargo_file))
-        .map_err(|e| Error::wrap("Unable to open local Cargo.toml", e))
+        .with_context(|| "Unable to open local Cargo.toml")
         .and_then(|ref manifest| get_name_from_manifest(manifest))
 }
 
@@ -372,7 +369,7 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
         .as_table()
         .get("package")
         .and_then(|m| m["name"].as_str().map(std::string::ToString::to_string))
-        .ok_or_else(|| Error::ParseCargoToml)
+        .ok_or_else(|| Error::ParseCargoToml.into())
 }
 
 const fn get_default_timeout() -> Duration {
@@ -395,10 +392,10 @@ fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::bl
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
     let mut res = get_with_timeout(url, get_default_timeout())
-        .map_err(|e| Error::wrap("Failed to fetch crate from git", e))?;
+        .with_context(|| "Failed to fetch crate from git")?;
     let mut body = String::new();
     res.read_to_string(&mut body)
-        .map_err(|e| Error::wrap("Git response not a valid `String`", e))?;
+        .with_context(|| "Git response not a valid `String`")?;
     Ok(body)
 }
 

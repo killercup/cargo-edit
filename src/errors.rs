@@ -12,7 +12,7 @@ pub enum Error {
     Git(#[from] git2::Error),
     /// An error from the cargo_metadata crate
     #[error(transparent)]
-    CargoMetadata(#[from] failure::Compat<::cargo_metadata::Error>),
+    CargoMetadata(#[from] cargo_metadata::Error),
     /// An error from the toml_edit crate
     #[error(transparent)]
     TomlEditParse(#[from] toml_edit::TomlError),
@@ -96,57 +96,4 @@ pub enum Error {
         /// The dependency with an invalid version
         dep: String,
     },
-
-    /// A string error
-    #[error("{0}")]
-    Custom(String),
-
-    /// Wraps another error in order to provide more context
-    #[error("{error}")]
-    Wrapped {
-        /// Current error
-        error: Box<Error>,
-        /// Source error
-        source: Box<Error>,
-    },
 }
-
-impl Error {
-    /// Transforms an error into an Error, and adds a string as context
-    pub fn wrap<T, U>(error: T, source: U) -> Error
-    where
-        T: Into<Error>,
-        U: Into<Error>,
-    {
-        Error::Wrapped {
-            error: Box::new(error.into()),
-            source: Box::new(source.into()),
-        }
-    }
-
-    /// Takes an existing Error and turns it into an Error::Wrapped, with the given source error
-    ///
-    /// Basically equivalent to `Error::wrap(error.into(), source)` but slightly less verbose than
-    /// something like `Error::wrap(Error::SomeError, source)`
-    pub fn wraps<U>(self, source: U) -> Error
-    where
-        U: Into<Error>,
-    {
-        Error::wrap(self, source)
-    }
-}
-
-impl From<String> for Error {
-    fn from(s: String) -> Error {
-        Error::Custom(s)
-    }
-}
-
-impl<'a> From<&'a str> for Error {
-    fn from(e: &'a str) -> Error {
-        Error::Custom(e.into())
-    }
-}
-
-/// Result wrapper type
-pub type Result<T> = std::result::Result<T, Error>;

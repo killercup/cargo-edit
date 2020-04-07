@@ -51,6 +51,7 @@ repository = "killercup/cargo-edit"
 
 [dependencies]
 atty = { version = "0.2.14", optional = true }
+anyhow = "1.0.28"
 cargo_metadata = "0.9.1"
 dirs = "2.0.2"
 env_proxy = "0.4.0"

@@ -1,7 +1,7 @@
 //! Crate name parsing.
 use semver;
+use anyhow::{anyhow, Context, Result};
 
-use crate::errors::*;
 use crate::Dependency;
 use crate::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path};
 
@@ -51,7 +51,7 @@ impl<'a> CrateName<'a> {
             let xs: Vec<_> = self.0.splitn(2, '@').collect();
             let (name, version) = (xs[0], xs[1]);
             semver::VersionReq::parse(version)
-                .map_err(|e| Error::wrap("Invalid crate version requirement", e))?;
+                .with_context(|| "Invalid crate version requirement")?;
 
             Ok(Some(Dependency::new(name).set_version(version)))
         } else {
@@ -75,9 +75,9 @@ impl<'a> CrateName<'a> {
             }
         }
 
-        return Err(Error::from(format!(
+        return Err(anyhow!(
             "Unable to obtain crate informations from `{}`.\n",
             self.0
-        )));
+        ));
     }
 }

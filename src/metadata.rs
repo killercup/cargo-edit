@@ -1,21 +1,18 @@
-use crate::errors::*;
 use cargo_metadata::Package;
-use failure::Fail;
+use anyhow::{anyhow, Result};
 
 /// Takes a pkgid and attempts to find the path to it's `Cargo.toml`, using `cargo`'s metadata
 pub fn manifest_from_pkgid(pkgid: &str) -> Result<Package> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.no_deps();
-    let result = cmd.exec().map_err(|e| Error::from(e.compat()))?;
+    let result = cmd.exec()?;
     let packages = result.packages;
     let package = packages
         .into_iter()
         .find(|pkg| &pkg.name == pkgid)
-        .ok_or_else(|| {
-            Error::from(
-                "Found virtual manifest, but this command requires running against an \
-             actual package in this workspace. Try adding `--all`.",
-            )
-        })?;
+        .ok_or_else(|| anyhow!(
+            "Found virtual manifest, but this command requires running against an \
+             actual package in this workspace. Try adding `--all`."
+        ))?;
     Ok(package)
 }
