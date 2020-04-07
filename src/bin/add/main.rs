@@ -12,13 +12,13 @@
 )]
 
 use crate::args::{Args, Command};
+use anyhow::Result;
 use cargo_edit::{
     find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, Manifest,
 };
 use std::borrow::Cow;
 use std::io::Write;
 use std::process;
-use anyhow::Result;
 use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;

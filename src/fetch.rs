@@ -1,6 +1,7 @@
 use crate::errors::*;
 use crate::registry::{registry_path, registry_path_from_url};
 use crate::{Dependency, Manifest};
+use anyhow::{anyhow, Context, Result};
 use env_proxy;
 use regex::Regex;
 use reqwest;
@@ -11,7 +12,6 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use url::Url;
-use anyhow::{anyhow, Context, Result};
 
 #[derive(Deserialize)]
 struct CrateVersion {
@@ -289,7 +289,8 @@ fn fuzzy_query_registry_index(
         return content
             .lines()
             .map(|line: &str| {
-                serde_json::from_str::<CrateVersion>(line).map_err(|_| Error::InvalidSummaryJson.into())
+                serde_json::from_str::<CrateVersion>(line)
+                    .map_err(|_| Error::InvalidSummaryJson.into())
             })
             .collect::<Result<Vec<CrateVersion>>>();
     }

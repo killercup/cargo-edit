@@ -37,9 +37,7 @@ pub fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
             Ok(path.to_owned())
         }
         Some(ref path) => search(path),
-        None => search(
-            &env::current_dir().with_context(|| "Failed to get current directory")?,
-        ),
+        None => search(&env::current_dir().with_context(|| "Failed to get current directory")?),
     }
 }
 
@@ -114,20 +112,18 @@ fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
 }
 
 fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<bool> {
-    let old_version = VersionReq::parse(old_version)
-        .with_context(||
-            Error::ParseVersion {
-                dep: dependency.name.to_string(),
-                version: old_version.to_string(),
-            })?;
+    let old_version = VersionReq::parse(old_version).with_context(|| Error::ParseVersion {
+        dep: dependency.name.to_string(),
+        version: old_version.to_string(),
+    })?;
 
     let current_version = match dependency.version() {
         Some(current_version) => current_version,
         None => return Ok(false),
     };
 
-    let current_version = Version::parse(&current_version)
-        .with_context(|| Error::ParseVersion {
+    let current_version =
+        Version::parse(&current_version).with_context(|| Error::ParseVersion {
             dep: dependency.name.to_string(),
             version: current_version.into(),
         })?;
@@ -152,8 +148,7 @@ fn print_upgrade_if_necessary(
         buffer
             .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
             .with_context(|| "Failed to set output colour")?;
-        write!(&mut buffer, "    Upgrading ")
-            .with_context(|| "Failed to write upgrade message")?;
+        write!(&mut buffer, "    Upgrading ").with_context(|| "Failed to write upgrade message")?;
         buffer
             .set_color(&ColorSpec::new())
             .with_context(|| "Failed to clear output colour")?;
@@ -192,8 +187,7 @@ impl Manifest {
         file.read_to_string(&mut data)
             .with_context(|| "Failed to read manifest contents")?;
 
-        data.parse()
-            .with_context(|| "Unable to parse Cargo.toml")
+        data.parse().with_context(|| "Unable to parse Cargo.toml")
     }
 
     /// Get the specified table from the manifest.
@@ -388,7 +382,8 @@ impl Manifest {
                     return Err(Error::NonExistentDependency {
                         name: name.into(),
                         table: table.into(),
-                    }.into());
+                    }
+                    .into());
                 }
                 // remove the dependency
                 *dep = toml_edit::Item::None;
@@ -443,9 +438,7 @@ impl str::FromStr for Manifest {
 
     /// Read manifest data from string
     fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
-        let d: toml_edit::Document = input
-            .parse()
-            .with_context(|| "Manifest not valid TOML")?;
+        let d: toml_edit::Document = input.parse().with_context(|| "Manifest not valid TOML")?;
 
         Ok(Manifest { data: d })
     }

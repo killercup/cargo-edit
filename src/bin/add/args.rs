@@ -143,8 +143,7 @@ pub struct Args {
 }
 
 fn parse_version_req(s: &str) -> Result<&str> {
-    semver::VersionReq::parse(s)
-        .with_context(|| "Invalid dependency version requirement")?;
+    semver::VersionReq::parse(s).with_context(|| "Invalid dependency version requirement")?;
     Ok(s)
 }
 

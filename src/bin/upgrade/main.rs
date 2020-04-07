@@ -146,8 +146,7 @@ fn deprecated_message(message: &str) -> Result<()> {
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
         .with_context(|| "Failed to set output colour")?;
-    writeln!(&mut buffer, "{}", message)
-        .with_context(|| "Failed to write deprecated message")?;
+    writeln!(&mut buffer, "{}", message).with_context(|| "Failed to write deprecated message")?;
     buffer
         .set_color(&ColorSpec::new())
         .with_context(|| "Failed to clear output colour")?;
@@ -162,8 +161,7 @@ fn dry_run_message() -> Result<()> {
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
         .with_context(|| "Failed to set output colour")?;
-    write!(&mut buffer, "Starting dry run. ")
-        .with_context(|| "Failed to write dry run message")?;
+    write!(&mut buffer, "Starting dry run. ").with_context(|| "Failed to write dry run message")?;
     buffer
         .set_color(&ColorSpec::new())
         .with_context(|| "Failed to clear output colour")?;
@@ -216,19 +214,19 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd
-            .exec()
-            .with_context(|| "Invalid manifest")?;
+        let result = cmd.exec().with_context(|| "Invalid manifest")?;
         let packages = result.packages;
         let package = packages
             .iter()
             .find(|p| p.manifest_path.to_string_lossy() == resolved_manifest_path)
             // If we have successfully got metadata, but our manifest path does not correspond to a
             // package, we must have been called against a virtual manifest.
-            .ok_or_else(||
-                anyhow!("Found virtual manifest, but this command requires running against an \
-                 actual package in this workspace. Try adding `--all`.")
-            )?;
+            .ok_or_else(|| {
+                anyhow!(
+                    "Found virtual manifest, but this command requires running against an \
+                 actual package in this workspace. Try adding `--all`."
+                )
+            })?;
 
         Ok(Manifests(vec![(manifest, package.to_owned())]))
     }
@@ -334,9 +332,7 @@ impl Manifests {
         cmd.manifest_path(manifest.path.clone());
         cmd.other_options(vec!["--locked".to_string()]);
 
-        let result = cmd
-            .exec()
-            .with_context(|| "Invalid manifest")?;
+        let result = cmd.exec().with_context(|| "Invalid manifest")?;
 
         let locked = result
             .packages
@@ -417,8 +413,9 @@ impl DesiredUpgrades {
                         Ok((dep, v))
                     } else {
                         let registry_url = match registry {
-                            Some(x) => Some(Url::parse(&x)
-                                .with_context(|| cargo_edit::Error::InvalidCargoConfig)?
+                            Some(x) => Some(
+                                Url::parse(&x)
+                                    .with_context(|| cargo_edit::Error::InvalidCargoConfig)?,
                             ),
                             None => None,
                         };
