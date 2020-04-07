@@ -10,6 +10,8 @@
     unused_import_braces,
     unused_qualifications
 )]
+// if the user has compiled with the `backtrace` feature, enable the stdlib `backtrace` feature
+#![cfg_attr(feature = "backtrace", feature(backtrace))]
 
 use crate::args::{Args, Command};
 use anyhow::Result;
@@ -151,6 +153,11 @@ fn main() {
 
         for source in err.chain().skip(1) {
             eprintln!("Caused by: {}", source);
+        }
+
+        #[cfg(feature = "backtrace")]
+        {
+            eprintln!("Backtrace: {:?}", err.backtrace());
         }
 
         process::exit(1);

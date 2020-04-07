@@ -1,7 +1,6 @@
 use crate::errors::*;
 use crate::registry::{registry_path, registry_path_from_url};
 use crate::{Dependency, Manifest};
-use anyhow::{anyhow, Context, Result};
 use env_proxy;
 use regex::Regex;
 use reqwest;
@@ -303,15 +302,15 @@ where
 {
     matcher
         .captures(repo)
-        .ok_or_else(|| anyhow!("Unable to parse git repo URL"))
+        .ok_or_else(|| Error::ParseGitUrl)
         .and_then(|cap| match (cap.get(1), cap.get(2)) {
             (Some(user), Some(repo)) => {
                 let url = url_template(user.as_str(), repo.as_str());
                 let data: Result<Manifest> = get_cargo_toml_from_git_url(&url)
-                    .and_then(|m| m.parse().with_context(|| Error::ParseCargoToml));
+                    .and_then(|m| m.parse().map_err(|_| Error::ParseCargoToml));
                 data.and_then(|ref manifest| get_name_from_manifest(manifest))
             }
-            _ => Err(anyhow!("Git repo url seems incomplete")),
+            _ => Err(Error::IncompleteGitUrl),
         })
 }
 
@@ -360,7 +359,7 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
 pub fn get_crate_name_from_path(path: &str) -> Result<String> {
     let cargo_file = Path::new(path).join("Cargo.toml");
     Manifest::open(&Some(cargo_file))
-        .with_context(|| "Unable to open local Cargo.toml")
+        .map_err(|e| Error::OpenLocalManifest(Box::new(e)))
         .and_then(|ref manifest| get_name_from_manifest(manifest))
 }
 
@@ -370,7 +369,7 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
         .as_table()
         .get("package")
         .and_then(|m| m["name"].as_str().map(std::string::ToString::to_string))
-        .ok_or_else(|| Error::ParseCargoToml.into())
+        .ok_or_else(|| Error::ParseCargoToml)
 }
 
 const fn get_default_timeout() -> Duration {
@@ -392,11 +391,10 @@ fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::bl
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
-    let mut res = get_with_timeout(url, get_default_timeout())
-        .with_context(|| "Failed to fetch crate from git")?;
+    let mut res = get_with_timeout(url, get_default_timeout()).map_err(Error::FetchCrateFromGit)?;
     let mut body = String::new();
     res.read_to_string(&mut body)
-        .with_context(|| "Git response not a valid `String`")?;
+        .map_err(Error::InvalidGitResponse)?;
     Ok(body)
 }
 

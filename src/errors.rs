@@ -26,7 +26,6 @@ pub enum Error {
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
 
-    // links
     /// Failed to read home directory
     #[error("Failed to read home directory")]
     ReadHomeDirFailure,
@@ -89,11 +88,105 @@ pub enum Error {
     NoSuchRegistryFound(String),
 
     /// Failed to parse a version for a dependency
-    #[error("The version `{version}` for the dependency `{dep}` couldn't be parsed")]
-    ParseVersion {
-        /// The invalid version
-        version: String,
-        /// The dependency with an invalid version
-        dep: String,
-    },
+    #[error("The version `{0}` for the dependency `{1}` couldn't be parsed")]
+    ParseReqVersion(String, String, #[source] semver::ReqParseError),
+
+    /// Failed to parse a version for a dependency
+    #[error("The version `{0}` for the dependency `{1}` couldn't be parsed")]
+    ParseVersion(String, String, #[source] semver::SemVerError),
+
+    /// An invalid crate version requirement was encountered
+    #[error("Invalid crate version requirement")]
+    InvalidCrateVersionReq(#[source] semver::ReqParseError),
+
+    /// Unable to get crate name from a URI
+    #[error("Unable to obtain crate informations from `{0}`.\n")]
+    ParseCrateNameFromUri(String),
+
+    /// Unable to get a crate from a git repository
+    #[error("Failed to fetch crate from git")]
+    FetchCrateFromGit(#[source] reqwest::Error),
+
+    /// Received an invalid response from a git repository
+    #[error("Git response not a valid `String`")]
+    InvalidGitResponse(#[source] std::io::Error),
+
+    /// Could not read manifest contents
+    #[error("Failed to read manifest contents")]
+    ManifestReadError(#[source] std::io::Error),
+
+    /// Could not parse Cargo.toml
+    #[error("Unable to parse Cargo.toml")]
+    ManifestParseError(#[source] Box<Error>),
+
+    /// Cargo.toml contained invalid TOML
+    #[error("Manifest not valid TOML")]
+    ManifestInvalidToml(#[source] toml_edit::TomlError),
+
+    /// Could not found Cargo.toml
+    #[error("Failed to find Cargo.toml")]
+    ManifestNotLocated(#[source] std::io::Error),
+
+    /// Could not get cargo metadata
+    #[error("Failed to get cargo file metadata")]
+    GetCargoMetadata(#[source] std::io::Error),
+
+    /// Could not get current directory
+    #[error("Failed to get current directory")]
+    GetCwd(#[source] std::io::Error),
+
+    /// Could not set output colour
+    #[error("Failed to set output colour")]
+    SetOutputColour(#[source] std::io::Error),
+
+    /// Could not write upgrade message
+    #[error("Failed to write upgrade message")]
+    WriteUpgradeMessage(#[source] std::io::Error),
+
+    /// Could not clear output colour
+    #[error("Failed to clear output colour")]
+    ClearOutputColour(#[source] std::io::Error),
+
+    /// Could not write upgraded versions
+    #[error("Failed to write upgrade versions")]
+    WriteUpgradeVersions(#[source] std::io::Error),
+
+    /// Could not print upgrade message
+    #[error("Failed to print upgrade message")]
+    PrintUpgradeMessage(#[source] std::io::Error),
+
+    /// Could not truncate Cargo.toml
+    #[error("Failed to truncate Cargo.toml")]
+    TruncateCargoToml(#[source] std::io::Error),
+
+    /// Could not write updated Cargo.toml
+    #[error("Failed to write updated Cargo.toml")]
+    WriteUpdatedCargoToml(#[source] std::io::Error),
+
+    /// Missing Version Field
+    #[error("Missing version field")]
+    MissingVersionField,
+
+    /// Could not write new manifest contents
+    #[error("Failed to write new manifest contents")]
+    WriteNewManifestContents(#[source] Box<Error>),
+
+    /// Could not open Cargo.toml
+    #[error("Unable to open local Cargo.toml")]
+    OpenLocalManifest(#[source] Box<Error>),
+
+    /// Git repo URL seems incomplete
+    #[error("Git repo url seems incomplete")]
+    IncompleteGitUrl,
+
+    /// Could not parse git repo URL
+    #[error("Unable to parse git repo URL")]
+    ParseGitUrl,
+
+    /// Found a virtual manifest instead of an actual manifest
+    #[error("Found virtual manifest, but this command requires running against an  actual package in this workspace. Try adding `--workspace`.")]
+    VirtualManifest,
 }
+
+/// Library-specific alias for `Result`
+pub type Result<T> = std::result::Result<T, Error>;

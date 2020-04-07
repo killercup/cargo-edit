@@ -4,7 +4,6 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{env, str};
 
-use anyhow::{anyhow, Context, Result};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use toml_edit;
 
@@ -31,13 +30,13 @@ pub fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
     match *specified {
         Some(ref path)
             if fs::metadata(&path)
-                .with_context(|| "Failed to get cargo file metadata")?
+                .map_err(Error::GetCargoMetadata)?
                 .is_file() =>
         {
             Ok(path.to_owned())
         }
         Some(ref path) => search(path),
-        None => search(&env::current_dir().with_context(|| "Failed to get current directory")?),
+        None => search(&env::current_dir().map_err(Error::GetCwd)?),
     }
 }
 
@@ -102,7 +101,7 @@ fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
     } else if old_dep.is_table_like() {
         let version = old_dep["version"].clone();
         if version.is_none() {
-            Err(anyhow!("Missing version field"))
+            Err(Error::MissingVersionField)
         } else {
             Ok(version)
         }
@@ -112,9 +111,8 @@ fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
 }
 
 fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<bool> {
-    let old_version = VersionReq::parse(old_version).with_context(|| Error::ParseVersion {
-        dep: dependency.name.to_string(),
-        version: old_version.to_string(),
+    let old_version = VersionReq::parse(old_version).map_err(|e| {
+        Error::ParseReqVersion(dependency.name.to_string(), old_version.to_string(), e)
     })?;
 
     let current_version = match dependency.version() {
@@ -122,11 +120,8 @@ fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<
         None => return Ok(false),
     };
 
-    let current_version =
-        Version::parse(&current_version).with_context(|| Error::ParseVersion {
-            dep: dependency.name.to_string(),
-            version: current_version.into(),
-        })?;
+    let current_version = Version::parse(&current_version)
+        .map_err(|e| Error::ParseVersion(dependency.name.to_string(), current_version.into(), e))?;
 
     Ok(old_version.matches(&current_version))
 }
@@ -147,20 +142,18 @@ fn print_upgrade_if_necessary(
         let mut buffer = bufwtr.buffer();
         buffer
             .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-            .with_context(|| "Failed to set output colour")?;
-        write!(&mut buffer, "    Upgrading ").with_context(|| "Failed to write upgrade message")?;
+            .map_err(Error::SetOutputColour)?;
+        write!(&mut buffer, "    Upgrading ").map_err(Error::WriteUpgradeMessage)?;
         buffer
             .set_color(&ColorSpec::new())
-            .with_context(|| "Failed to clear output colour")?;
+            .map_err(Error::ClearOutputColour)?;
         writeln!(
             &mut buffer,
             "{} v{} -> v{}",
             crate_name, old_version, new_version,
         )
-        .with_context(|| "Failed to write upgrade versions")?;
-        bufwtr
-            .print(&buffer)
-            .with_context(|| "Failed to print upgrade message")?;
+        .map_err(Error::WriteUpgradeVersions)?;
+        bufwtr.print(&buffer).map_err(Error::PrintUpgradeMessage)?;
     }
     Ok(())
 }
@@ -176,7 +169,7 @@ impl Manifest {
                 .read(true)
                 .write(true)
                 .open(path)
-                .with_context(|| "Failed to find Cargo.toml")
+                .map_err(Error::ManifestNotLocated)
         })
     }
 
@@ -185,9 +178,10 @@ impl Manifest {
         let mut file = Manifest::find_file(path)?;
         let mut data = String::new();
         file.read_to_string(&mut data)
-            .with_context(|| "Failed to read manifest contents")?;
+            .map_err(Error::ManifestReadError)?;
 
-        data.parse().with_context(|| "Unable to parse Cargo.toml")
+        data.parse()
+            .map_err(|e| Error::ManifestParseError(Box::new(e)))
     }
 
     /// Get the specified table from the manifest.
@@ -271,9 +265,9 @@ impl Manifest {
         // We need to truncate the file, otherwise the new contents
         // will be mixed up with the old ones.
         file.set_len(new_contents_bytes.len() as u64)
-            .with_context(|| "Failed to truncate Cargo.toml")?;
+            .map_err(Error::TruncateCargoToml)?;
         file.write_all(new_contents_bytes)
-            .with_context(|| "Failed to write updated Cargo.toml")
+            .map_err(Error::WriteUpdatedCargoToml)
     }
 
     /// Add entry to a Cargo.toml.
@@ -434,11 +428,11 @@ impl Manifest {
 }
 
 impl str::FromStr for Manifest {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     /// Read manifest data from string
-    fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
-        let d: toml_edit::Document = input.parse().with_context(|| "Manifest not valid TOML")?;
+    fn from_str(input: &str) -> Result<Self> {
+        let d: toml_edit::Document = input.parse().map_err(Error::ManifestInvalidToml)?;
 
         Ok(Manifest { data: d })
     }
@@ -479,7 +473,7 @@ impl LocalManifest {
     }
 
     /// Get the `File` corresponding to this manifest.
-    fn get_file(&self) -> Result<File> {
+    fn get_file(&self) -> std::result::Result<File, Error> {
         Manifest::find_file(&Some(self.path.clone()))
     }
 
@@ -518,7 +512,7 @@ impl LocalManifest {
 
         let mut file = self.get_file()?;
         self.write_to_file(&mut file)
-            .with_context(|| "Failed to write new manifest contents")
+            .map_err(|e| Error::WriteNewManifestContents(Box::new(e)))
     }
 }
 
