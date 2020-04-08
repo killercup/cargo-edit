@@ -50,7 +50,7 @@ impl<'a> CrateName<'a> {
         if self.has_version() {
             let xs: Vec<_> = self.0.splitn(2, '@').collect();
             let (name, version) = (xs[0], xs[1]);
-            semver::VersionReq::parse(version).map_err(Error::InvalidCrateVersionReq)?;
+            semver::VersionReq::parse(version).map_err(|e| Error::ParseReqVersion(version.into(), name.into(), e))?;
 
             Ok(Some(Dependency::new(name).set_version(version)))
         } else {
@@ -74,6 +74,6 @@ impl<'a> CrateName<'a> {
             }
         }
 
-        Err(Error::ParseCrateNameFromUri(self.0.into()))
+        Err(Error::Invalid(self.0.into()))
     }
 }

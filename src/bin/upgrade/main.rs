@@ -329,7 +329,7 @@ impl Manifests {
             .0
             .iter()
             .next()
-            .ok_or_else(|| cargo_edit::Error::InvalidCargoConfig)?;
+            .ok_or_else(|| cargo_edit::Error::Invalid("Invalid cargo config".into()))?;
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.manifest_path(manifest.path.clone());
         cmd.other_options(vec!["--locked".to_string()]);
@@ -417,7 +417,7 @@ impl DesiredUpgrades {
                         let registry_url = match registry {
                             Some(x) => Some(
                                 Url::parse(&x)
-                                    .with_context(|| cargo_edit::Error::InvalidCargoConfig)?,
+                                    .with_context(|| cargo_edit::Error::Invalid("Invalid cargo config".into()))?,
                             ),
                             None => None,
                         };
@@ -497,7 +497,7 @@ fn process(args: Args) -> Result<()> {
             {
                 update_registry_index(
                     &Url::parse(registry_url)
-                        .with_context(|| cargo_edit::Error::InvalidCargoConfig)?,
+                        .with_context(|| cargo_edit::Error::Invalid("Invalid cargo config".into()))?,
                 )?;
             }
         }

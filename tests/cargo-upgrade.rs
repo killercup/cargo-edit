@@ -421,10 +421,7 @@ fn invalid_manifest() {
     .and()
     .stderr()
     .is("\
-Command failed due to unhandled error: Unable to parse Cargo.toml
-
-Caused by: Manifest not valid TOML
-Caused by: TOML parse error at line 1, column 6
+Command failed due to unhandled error: TOML parse error at line 1, column 6
   |
 1 | This is clearly not a valid Cargo.toml.
   |      ^

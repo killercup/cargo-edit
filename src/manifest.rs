@@ -29,14 +29,13 @@ pub struct Manifest {
 pub fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
     match *specified {
         Some(ref path)
-            if fs::metadata(&path)
-                .map_err(Error::GetCargoMetadata)?
+            if fs::metadata(&path)?
                 .is_file() =>
         {
             Ok(path.to_owned())
         }
         Some(ref path) => search(path),
-        None => search(&env::current_dir().map_err(Error::GetCwd)?),
+        None => search(&env::current_dir()?),
     }
 }
 
@@ -48,7 +47,7 @@ fn search(dir: &Path) -> Result<PathBuf> {
         Ok(manifest)
     } else {
         dir.parent()
-            .ok_or_else(|| Error::MissingManifest.into())
+            .ok_or_else(|| Error::NotFound(format!("Parent directory of {} not found", dir.display())))
             .and_then(|dir| search(dir))
     }
 }
@@ -101,7 +100,7 @@ fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
     } else if old_dep.is_table_like() {
         let version = old_dep["version"].clone();
         if version.is_none() {
-            Err(Error::MissingVersionField)
+            Err(Error::NotFound("Version not found".into()))
         } else {
             Ok(version)
         }
@@ -141,19 +140,16 @@ fn print_upgrade_if_necessary(
         let bufwtr = BufferWriter::stdout(ColorChoice::Always);
         let mut buffer = bufwtr.buffer();
         buffer
-            .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-            .map_err(Error::SetOutputColour)?;
-        write!(&mut buffer, "    Upgrading ").map_err(Error::WriteUpgradeMessage)?;
+            .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+        write!(&mut buffer, "    Upgrading ")?;
         buffer
-            .set_color(&ColorSpec::new())
-            .map_err(Error::ClearOutputColour)?;
+            .set_color(&ColorSpec::new())?;
         writeln!(
             &mut buffer,
             "{} v{} -> v{}",
             crate_name, old_version, new_version,
-        )
-        .map_err(Error::WriteUpgradeVersions)?;
-        bufwtr.print(&buffer).map_err(Error::PrintUpgradeMessage)?;
+        )?;
+        bufwtr.print(&buffer)?;
     }
     Ok(())
 }
@@ -165,11 +161,10 @@ impl Manifest {
     /// found. If no path is given, the process's working directory is used as a starting point.
     pub fn find_file(path: &Option<PathBuf>) -> Result<File> {
         find(path).and_then(|path| {
-            OpenOptions::new()
+            Ok(OpenOptions::new()
                 .read(true)
                 .write(true)
-                .open(path)
-                .map_err(Error::ManifestNotLocated)
+                .open(path)?)
         })
     }
 
@@ -177,11 +172,9 @@ impl Manifest {
     pub fn open(path: &Option<PathBuf>) -> Result<Manifest> {
         let mut file = Manifest::find_file(path)?;
         let mut data = String::new();
-        file.read_to_string(&mut data)
-            .map_err(Error::ManifestReadError)?;
+        file.read_to_string(&mut data)?;
 
         data.parse()
-            .map_err(|e| Error::ManifestParseError(Box::new(e)))
     }
 
     /// Get the specified table from the manifest.
@@ -197,7 +190,7 @@ impl Manifest {
                 if value.is_table_like() {
                     descend(value, &path[1..])
                 } else {
-                    Err(Error::NonExistentTable(segment.clone()).into())
+                    Err(Error::NotFound(segment.clone()))
                 }
             } else {
                 Ok(input)
@@ -253,9 +246,9 @@ impl Manifest {
     pub fn write_to_file(&self, file: &mut File) -> Result<()> {
         if self.data["package"].is_none() && self.data["project"].is_none() {
             if !self.data["workspace"].is_none() {
-                return Err(Error::UnexpectedRootManifest.into());
+                return Err(Error::UnexpectedRootManifest);
             } else {
-                return Err(Error::InvalidManifest.into());
+                return Err(Error::Invalid("Cargo.toml missing expected `package` or `project` fields".into()));
             }
         }
 
@@ -264,10 +257,8 @@ impl Manifest {
 
         // We need to truncate the file, otherwise the new contents
         // will be mixed up with the old ones.
-        file.set_len(new_contents_bytes.len() as u64)
-            .map_err(Error::TruncateCargoToml)?;
-        file.write_all(new_contents_bytes)
-            .map_err(Error::WriteUpdatedCargoToml)
+        file.set_len(new_contents_bytes.len() as u64)?;
+        Ok(file.write_all(new_contents_bytes)?)
     }
 
     /// Add entry to a Cargo.toml.
@@ -368,16 +359,12 @@ impl Manifest {
     /// ```
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<()> {
         if !self.data[table].is_table_like() {
-            return Err(Error::NonExistentTable(table.into()).into());
+            return Err(Error::NotFound(table.into()));
         } else {
             {
                 let dep = &mut self.data[table][name];
                 if dep.is_none() {
-                    return Err(Error::NonExistentDependency {
-                        name: name.into(),
-                        table: table.into(),
-                    }
-                    .into());
+                    return Err(Error::NotFoundIn(name.into(), table.into()));
                 }
                 // remove the dependency
                 *dep = toml_edit::Item::None;
@@ -432,7 +419,7 @@ impl str::FromStr for Manifest {
 
     /// Read manifest data from string
     fn from_str(input: &str) -> Result<Self> {
-        let d: toml_edit::Document = input.parse().map_err(Error::ManifestInvalidToml)?;
+        let d: toml_edit::Document = input.parse()?;
 
         Ok(Manifest { data: d })
     }
@@ -473,7 +460,7 @@ impl LocalManifest {
     }
 
     /// Get the `File` corresponding to this manifest.
-    fn get_file(&self) -> std::result::Result<File, Error> {
+    fn get_file(&self) -> Result<File> {
         Manifest::find_file(&Some(self.path.clone()))
     }
 
@@ -512,7 +499,6 @@ impl LocalManifest {
 
         let mut file = self.get_file()?;
         self.write_to_file(&mut file)
-            .map_err(|e| Error::WriteNewManifestContents(Box::new(e)))
     }
 }
 

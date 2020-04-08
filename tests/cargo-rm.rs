@@ -111,7 +111,7 @@ fn invalid_dependency() {
     .and()
     .stderr()
     .contains(
-        "Command failed due to unhandled error: The dependency `invalid_dependency_name` could \
+        "Command failed due to unhandled error: The resource `invalid_dependency_name` could \
          not be found in `dependencies`.",
     )
     .unwrap();
@@ -133,7 +133,7 @@ fn invalid_section() {
     .and()
     .stderr()
     .contains(
-        "Command failed due to unhandled error: The table `build-dependencies` could not be \
+        "Command failed due to unhandled error: The resource `build-dependencies` could not be \
          found.",
     )
     .unwrap();
@@ -155,7 +155,7 @@ fn invalid_dependency_in_section() {
     .and()
     .stderr()
     .contains(
-        "Command failed due to unhandled error: The dependency `semver` could not be found in \
+        "Command failed due to unhandled error: The resource `semver` could not be found in \
          `dev-dependencies`.",
     )
     .unwrap();
