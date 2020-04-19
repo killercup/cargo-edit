@@ -1082,6 +1082,7 @@ fn adds_dependency_normalized_name() {
         get_command_path("add").as_str(),
         "add",
         "linked_hash_map",
+        "Inflector",
         &format!("--manifest-path={}", manifest),
     ])
     .succeeds()
