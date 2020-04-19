@@ -461,6 +461,7 @@ fn test_gen_fuzzy_crate_names() {
 }
 
 fn summary_raw_path(crate_name: &str) -> String {
+    let crate_name = crate_name.to_ascii_lowercase();
     match crate_name.len() {
         0 => unreachable!("we check that crate_name is not empty here"),
         1 => format!("1/{}", crate_name),
@@ -477,4 +478,5 @@ fn test_summary_raw_path() {
     assert_eq!(summary_raw_path("abc"), "3/a/abc");
     assert_eq!(summary_raw_path("abcd"), "ab/cd/abcd");
     assert_eq!(summary_raw_path("abcdefg"), "ab/cd/abcdefg");
+    assert_eq!(summary_raw_path("Inflector"), "in/fl/inflector");
 }
