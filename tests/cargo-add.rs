@@ -520,6 +520,8 @@ fn adds_local_source_without_flag() {
     let (tmpdir, _) = clone_out_test("tests/fixtures/add/local/Cargo.toml.sample");
     let tmppath = tmpdir.into_path();
     let tmpdirstr = tmppath.to_str().unwrap();
+    // Note: all paths are normalised to "/"
+    let expected_path = tmpdirstr.replace('\\', "/");
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
@@ -529,7 +531,7 @@ fn adds_local_source_without_flag() {
 
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["foo-crate"];
-    assert_eq!(val["path"].as_str(), Some(tmpdirstr));
+    assert_eq!(val["path"].as_str(), Some(expected_path.as_str()));
 
     // check this works with other flags (e.g. --dev) as well
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
@@ -540,7 +542,7 @@ fn adds_local_source_without_flag() {
 
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["foo-crate"];
-    assert_eq!(val["path"].as_str(), Some(tmpdirstr));
+    assert_eq!(val["path"].as_str(), Some(expected_path.as_str()));
 }
 
 #[test]
