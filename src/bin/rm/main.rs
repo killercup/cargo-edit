@@ -60,7 +60,7 @@ struct Args {
     #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
     manifest_path: Option<PathBuf>,
 
-    /// Package id of the crate to add this dependency to.
+    /// Package id of the crate to remove this dependency from.
     #[structopt(
         long = "package",
         short = "p",
