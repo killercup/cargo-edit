@@ -43,6 +43,11 @@ name = "cargo-upgrade"
 path = "src/bin/upgrade/main.rs"
 required-features = ["upgrade"]
 
+[[bin]]
+name = "cargo-why"
+path = "src/bin/why/main.rs"
+required-features = ["why"]
+
 [badges.appveyor]
 repository = "killercup/cargo-edit"
 
@@ -51,6 +56,7 @@ repository = "killercup/cargo-edit"
 
 [dependencies]
 atty = { version = "0.2.14", optional = true }
+cargo = "0.44.1"
 cargo_metadata = "0.9.1"
 dirs = "2.0.2"
 env_proxy = "0.4.0"
@@ -84,9 +90,11 @@ default = [
     "add",
     "rm",
     "upgrade",
+    "why",
 ]
 add = ["cli"]
 rm = ["cli"]
 upgrade = ["cli"]
+why = ["cli"]
 cli = ["atty", "structopt"]
 test-external-apis = []
