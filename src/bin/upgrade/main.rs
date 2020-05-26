@@ -54,7 +54,7 @@ upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.
 
-All packages in the workspace will be upgraded if the `--all` flag is supplied. The `--all` flag may
+All packages in the workspace will be upgraded if the `--workspace` flag is supplied. The `--workspace` flag may
 be supplied in the presence of a virtual manifest.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
@@ -217,7 +217,7 @@ impl Manifests {
             // package, we must have been called against a virtual manifest.
             .chain_err(|| {
                 "Found virtual manifest, but this command requires running against an \
-                 actual package in this workspace. Try adding `--all`."
+                 actual package in this workspace. Try adding `--workspace`."
             })?;
 
         Ok(Manifests(vec![(manifest, package.to_owned())]))
