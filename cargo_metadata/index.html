@@ -1,0 +1,148 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `cargo_metadata` crate."><meta name="keywords" content="rust, rustlang, rust-lang, cargo_metadata"><title>cargo_metadata - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../cargo_metadata/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate cargo_metadata</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all cargo_metadata's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li><li><a href="#types">Type Definitions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'cargo_metadata', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/cargo_metadata/lib.rs.html#1-577' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>cargo_metadata</a></span></h1><div class='docblock'><p>Structured access to the output of <code>cargo metadata</code> and <code>cargo --message-format=json</code>.
+Usually used from within a <code>cargo-*</code> executable</p>
+<p>See the <a href="https://doc.rust-lang.org/cargo/index.html">cargo book</a> for
+details on cargo itself.</p>
+<h2 id="examples" class="section-header"><a href="#examples">Examples</a></h2>
+<p>With <a href="https://doc.rust-lang.org/std/env/fn.args.html"><code>std::env::args()</code></a>:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">env</span>::<span class="ident">args</span>().<span class="ident">skip_while</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> <span class="op">!</span><span class="ident">val</span>.<span class="ident">starts_with</span>(<span class="string">&quot;--manifest-path&quot;</span>));
+
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cmd</span> <span class="op">=</span> <span class="ident">cargo_metadata</span>::<span class="ident">MetadataCommand</span>::<span class="ident">new</span>();
+<span class="kw">let</span> <span class="ident">manifest_path</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">args</span>.<span class="ident">next</span>() {
+    <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">p</span>) <span class="kw">if</span> <span class="ident">p</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;--manifest-path&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">cmd</span>.<span class="ident">manifest_path</span>(<span class="ident">args</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>());
+    }
+    <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">cmd</span>.<span class="ident">manifest_path</span>(<span class="ident">p</span>.<span class="ident">trim_start_matches</span>(<span class="string">&quot;--manifest-path=&quot;</span>));
+    }
+    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {}
+};
+
+<span class="kw">let</span> <span class="ident">_metadata</span> <span class="op">=</span> <span class="ident">cmd</span>.<span class="ident">exec</span>().<span class="ident">unwrap</span>();</pre></div>
+<p>With <a href="https://docs.rs/docopt"><code>docopt</code></a>:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">const</span> <span class="ident">USAGE</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;
+    Cargo metadata test function
+
+    Usage:
+      cargo_metadata [--manifest-path PATH]
+&quot;</span>;
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">struct</span> <span class="ident">Args</span> {
+    <span class="ident">arg_manifest_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">let</span> <span class="ident">args</span>: <span class="ident">Args</span> <span class="op">=</span> <span class="ident">Docopt</span>::<span class="ident">new</span>(<span class="ident">USAGE</span>)
+    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">deserialize</span>())
+    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">exit</span>());
+
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cmd</span> <span class="op">=</span> <span class="ident">cargo_metadata</span>::<span class="ident">MetadataCommand</span>::<span class="ident">new</span>();
+<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">args</span>.<span class="ident">arg_manifest_path</span> {
+    <span class="ident">cmd</span>.<span class="ident">manifest_path</span>(<span class="ident">path</span>);
+}
+<span class="kw">let</span> <span class="ident">_metadata</span> <span class="op">=</span> <span class="ident">cmd</span>.<span class="ident">exec</span>().<span class="ident">unwrap</span>();</pre></div>
+<p>With <a href="https://docs.rs/clap"><code>clap</code></a>:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">let</span> <span class="ident">matches</span> <span class="op">=</span> <span class="ident">clap</span>::<span class="ident">App</span>::<span class="ident">new</span>(<span class="string">&quot;myapp&quot;</span>)
+    .<span class="ident">arg</span>(
+        <span class="ident">clap</span>::<span class="ident">Arg</span>::<span class="ident">with_name</span>(<span class="string">&quot;manifest-path&quot;</span>)
+            .<span class="ident">long</span>(<span class="string">&quot;manifest-path&quot;</span>)
+            .<span class="ident">value_name</span>(<span class="string">&quot;PATH&quot;</span>)
+            .<span class="ident">takes_value</span>(<span class="bool-val">true</span>),
+    )
+    .<span class="ident">get_matches</span>();
+
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cmd</span> <span class="op">=</span> <span class="ident">cargo_metadata</span>::<span class="ident">MetadataCommand</span>::<span class="ident">new</span>();
+<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;manifest-path&quot;</span>) {
+    <span class="ident">cmd</span>.<span class="ident">manifest_path</span>(<span class="ident">path</span>);
+}
+<span class="kw">let</span> <span class="ident">_metadata</span> <span class="op">=</span> <span class="ident">cmd</span>.<span class="ident">exec</span>().<span class="ident">unwrap</span>();</pre></div>
+<p>With <a href="https://docs.rs/structopt"><code>structopt</code></a>:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="kw">struct</span> <span class="ident">Opt</span> {
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;PATH&quot;</span>, <span class="ident">long</span><span class="op">=</span><span class="string">&quot;manifest-path&quot;</span>, <span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
+    <span class="ident">manifest_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">Opt</span>::<span class="ident">from_args</span>();
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cmd</span> <span class="op">=</span> <span class="ident">cargo_metadata</span>::<span class="ident">MetadataCommand</span>::<span class="ident">new</span>();
+<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">opt</span>.<span class="ident">manifest_path</span> {
+    <span class="ident">cmd</span>.<span class="ident">manifest_path</span>(<span class="ident">path</span>);
+}
+<span class="kw">let</span> <span class="ident">_metadata</span> <span class="op">=</span> <span class="ident">cmd</span>.<span class="ident">exec</span>().<span class="ident">unwrap</span>();</pre></div>
+<p>Pass features flags</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">cargo_metadata</span>::{<span class="ident">MetadataCommand</span>, <span class="ident">CargoOpt</span>};
+
+<span class="kw">let</span> <span class="ident">_metadata</span> <span class="op">=</span> <span class="ident">MetadataCommand</span>::<span class="ident">new</span>()
+    .<span class="ident">manifest_path</span>(<span class="string">&quot;./Cargo.toml&quot;</span>)
+    .<span class="ident">features</span>(<span class="ident">CargoOpt</span>::<span class="ident">AllFeatures</span>)
+    .<span class="ident">exec</span>()
+    .<span class="ident">unwrap</span>();</pre></div>
+<p>Parse message-format output:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">process</span>::{<span class="ident">Stdio</span>, <span class="ident">Command</span>};
+<span class="kw">use</span> <span class="ident">cargo_metadata</span>::<span class="ident">Message</span>;
+
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">command</span> <span class="op">=</span> <span class="ident">Command</span>::<span class="ident">new</span>(<span class="string">&quot;cargo&quot;</span>)
+    .<span class="ident">args</span>(<span class="kw-2">&amp;</span>[<span class="string">&quot;build&quot;</span>, <span class="string">&quot;--message-format=json&quot;</span>])
+    .<span class="ident">stdout</span>(<span class="ident">Stdio</span>::<span class="ident">piped</span>())
+    .<span class="ident">spawn</span>()
+    .<span class="ident">unwrap</span>();
+
+<span class="kw">for</span> <span class="ident">message</span> <span class="kw">in</span> <span class="ident">cargo_metadata</span>::<span class="ident">parse_messages</span>(<span class="ident">command</span>.<span class="ident">stdout</span>.<span class="ident">take</span>().<span class="ident">unwrap</span>()) {
+    <span class="kw">match</span> <span class="ident">message</span>.<span class="ident">unwrap</span>() {
+        <span class="ident">Message</span>::<span class="ident">CompilerMessage</span>(<span class="ident">msg</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">msg</span>);
+        },
+        <span class="ident">Message</span>::<span class="ident">CompilerArtifact</span>(<span class="ident">artifact</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">artifact</span>);
+        },
+        <span class="ident">Message</span>::<span class="ident">BuildScriptExecuted</span>(<span class="ident">script</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">script</span>);
+        },
+        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> () <span class="comment">// Unknown message</span>
+    }
+}
+
+<span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">command</span>.<span class="ident">wait</span>().<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t get cargo&#39;s exit status&quot;</span>);</pre></div>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr class='module-item'><td><a class="mod" href="diagnostic/index.html" title='cargo_metadata::diagnostic mod'>diagnostic</a></td><td class='docblock-short'><p>This module contains <code>Diagnostic</code> and the types/functions it uses for deserialization.</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Artifact.html" title='cargo_metadata::Artifact struct'>Artifact</a></td><td class='docblock-short'><p>A compiler-generated file.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ArtifactProfile.html" title='cargo_metadata::ArtifactProfile struct'>ArtifactProfile</a></td><td class='docblock-short'><p>Profile settings used to determine which compiler flags to use for a
+target.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.BuildScript.html" title='cargo_metadata::BuildScript struct'>BuildScript</a></td><td class='docblock-short'><p>Output of a build script execution.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.CompilerMessage.html" title='cargo_metadata::CompilerMessage struct'>CompilerMessage</a></td><td class='docblock-short'><p>Message left by the compiler</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.DepKindInfo.html" title='cargo_metadata::DepKindInfo struct'>DepKindInfo</a></td><td class='docblock-short'><p>Information about a dependency kind.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Dependency.html" title='cargo_metadata::Dependency struct'>Dependency</a></td><td class='docblock-short'><p>A dependency of the main crate</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Metadata.html" title='cargo_metadata::Metadata struct'>Metadata</a></td><td class='docblock-short'><p>Starting point for metadata returned by <code>cargo metadata</code></p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.MetadataCommand.html" title='cargo_metadata::MetadataCommand struct'>MetadataCommand</a></td><td class='docblock-short'><p>A builder for configurating <code>cargo metadata</code> invocation.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Node.html" title='cargo_metadata::Node struct'>Node</a></td><td class='docblock-short'><p>A node in a dependencies graph</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.NodeDep.html" title='cargo_metadata::NodeDep struct'>NodeDep</a></td><td class='docblock-short'><p>A dependency in a node</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Package.html" title='cargo_metadata::Package struct'>Package</a></td><td class='docblock-short'><p>A crate</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.PackageId.html" title='cargo_metadata::PackageId struct'>PackageId</a></td><td class='docblock-short'><p>An &quot;opaque&quot; identifier for a package.
+It is possible to inspect the <code>repr</code> field, if the need arises, but its
+precise format is an implementation detail and is subject to change.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Resolve.html" title='cargo_metadata::Resolve struct'>Resolve</a></td><td class='docblock-short'><p>A dependency graph</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Source.html" title='cargo_metadata::Source struct'>Source</a></td><td class='docblock-short'><p>The source of a package such as crates.io.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Target.html" title='cargo_metadata::Target struct'>Target</a></td><td class='docblock-short'><p>A single target (lib, bin, example, ...) provided by a crate</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.CargoOpt.html" title='cargo_metadata::CargoOpt enum'>CargoOpt</a></td><td class='docblock-short'><p>Cargo features flags</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.DependencyKind.html" title='cargo_metadata::DependencyKind enum'>DependencyKind</a></td><td class='docblock-short'><p>Dependencies can come in three kinds</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.Error.html" title='cargo_metadata::Error enum'>Error</a></td><td class='docblock-short'><p>Error returned when executing/parsing <code>cargo metadata</code> fails.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.Message.html" title='cargo_metadata::Message enum'>Message</a></td><td class='docblock-short'><p>A cargo message</p>
+</td></tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table><tr class='module-item'><td><a class="fn" href="fn.parse_messages.html" title='cargo_metadata::parse_messages fn'>parse_messages</a></td><td class='docblock-short'><p>Creates an iterator of Message from a Read outputting a stream of JSON
+messages. For usage information, look at the top-level documentation.</p>
+</td></tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
+<table><tr class='module-item'><td><a class="type" href="type.Result.html" title='cargo_metadata::Result type'>Result</a></td><td class='docblock-short'><p>Custom result type for <code>cargo_metadata::Error</code></p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "cargo_metadata";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

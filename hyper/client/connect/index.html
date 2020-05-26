@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `connect` mod in crate `hyper`."><meta name="keywords" content="rust, rustlang, rust-lang, connect"><title>hyper::client::connect - Rust</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="shortcut icon" href="../../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../hyper/index.html'><div class='logo-container'><img src='../../../rust-logo.png' alt='logo'></div></a><p class='location'>Module connect</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li></ul></div><p class='location'><a href='../../index.html'>hyper</a>::<wbr><a href='../index.html'>client</a></p><script>window.sidebarCurrent = {name: 'connect', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../../../src/hyper/client/connect/mod.rs.html#1-381' title='goto source code'>[src]</a></span><span class='in-band'>Module <a href='../../index.html'>hyper</a>::<wbr><a href='../index.html'>client</a>::<wbr><a class="mod" href=''>connect</a></span></h1><div class='docblock'><p>Connectors used by the <code>Client</code>.</p>
+<p>This module contains:</p>
+<ul>
+<li>A default <a href="HttpConnector"><code>HttpConnector</code></a> that does DNS resolution and establishes
+connections over TCP.</li>
+<li>Types to build custom connectors.</li>
+</ul>
+<h1 id="connectors" class="section-header"><a href="#connectors">Connectors</a></h1>
+<p>A &quot;connector&quot; is a <a href="crate::service::Service"><code>Service</code></a> that takes a <a href="http::Uri"><code>Uri</code></a> destination, and
+its <code>Response</code> is some type implementing <a href="tokio::io::AsyncRead"><code>AsyncRead</code></a>, <a href="tokio::io::AsyncWrite"><code>AsyncWrite</code></a>,
+and <a href="Connection"><code>Connection</code></a>.</p>
+<h2 id="custom-connectors" class="section-header"><a href="#custom-connectors">Custom Connectors</a></h2>
+<p>A simple connector that ignores the <code>Uri</code> destination and always returns
+a TCP connection to the same address could be written like this:</p>
+
+<div class='information'><div class='tooltip ignore'>ⓘ<span class='tooltiptext'>This example is not tested</span></div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore">
+<span class="kw">let</span> <span class="ident">connector</span> <span class="op">=</span> <span class="ident">tower</span>::<span class="ident">service_fn</span>(<span class="op">|</span><span class="ident">_dst</span><span class="op">|</span> <span class="kw">async</span> {
+    <span class="ident">tokio</span>::<span class="ident">net</span>::<span class="ident">TcpStream</span>::<span class="ident">connect</span>(<span class="string">&quot;127.0.0.1:1337&quot;</span>)
+})</pre></div>
+<p>Or, fully written out:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">future</span>::<span class="ident">Future</span>, <span class="ident">net</span>::<span class="ident">SocketAddr</span>, <span class="ident">pin</span>::<span class="ident">Pin</span>, <span class="ident">task</span>::{<span class="self">self</span>, <span class="ident">Poll</span>}};
+<span class="kw">use</span> <span class="ident">hyper</span>::{<span class="ident">service</span>::<span class="ident">Service</span>, <span class="ident">Uri</span>};
+<span class="kw">use</span> <span class="ident">tokio</span>::<span class="ident">net</span>::<span class="ident">TcpStream</span>;
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="kw">struct</span> <span class="ident">LocalConnector</span>;
+
+<span class="kw">impl</span> <span class="ident">Service</span><span class="op">&lt;</span><span class="ident">Uri</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LocalConnector</span> {
+    <span class="kw">type</span> <span class="ident">Response</span> <span class="op">=</span> <span class="ident">TcpStream</span>;
+    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Error</span>;
+    <span class="comment">// We can&#39;t &quot;name&quot; an `async` generated future.</span>
+    <span class="kw">type</span> <span class="ident">Future</span> <span class="op">=</span> <span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span>
+        <span class="kw">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Response</span>, <span class="self">Self</span>::<span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Send</span>
+    <span class="op">&gt;</span><span class="op">&gt;</span>;
+
+    <span class="kw">fn</span> <span class="ident">poll_ready</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">task</span>::<span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="self">Self</span>::<span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="comment">// This connector is always ready, but others might not be.</span>
+        <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Ok</span>(()))
+    }
+
+    <span class="kw">fn</span> <span class="ident">call</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Uri</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">Future</span> {
+        <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">TcpStream</span>::<span class="ident">connect</span>(<span class="ident">SocketAddr</span>::<span class="ident">from</span>(([<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>], <span class="number">1337</span>))))
+    }
+}</pre></div>
+<p>It's worth noting that for <code>TcpStream</code>s, the <a href="HttpConnector"><code>HttpConnector</code></a> is a
+better starting place to extend from.</p>
+<p>Using either of the above connector examples, it can be used with the
+<code>Client</code> like this:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="comment">// let connector = ...</span>
+
+<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">hyper</span>::<span class="ident">Client</span>::<span class="ident">builder</span>()
+    .<span class="ident">build</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">hyper</span>::<span class="ident">Body</span><span class="op">&gt;</span>(<span class="ident">connector</span>);</pre></div>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr class='module-item'><td><a class="mod" href="dns/index.html" title='hyper::client::connect::dns mod'>dns</a></td><td class='docblock-short'><p>DNS Resolution used by the <code>HttpConnector</code>.</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Connected.html" title='hyper::client::connect::Connected struct'>Connected</a></td><td class='docblock-short'><p>Extra information about the connected transport.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.HttpConnector.html" title='hyper::client::connect::HttpConnector struct'>HttpConnector</a></td><td class='docblock-short'><p>A connector for the <code>http</code> scheme.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.HttpInfo.html" title='hyper::client::connect::HttpInfo struct'>HttpInfo</a></td><td class='docblock-short'><p>Extra information about the transport when an HttpConnector is used.</p>
+</td></tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table><tr class='module-item'><td><a class="trait" href="trait.Connect.html" title='hyper::client::connect::Connect trait'>Connect</a></td><td class='docblock-short'><p>Connect to a destination, returning an IO transport.</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.Connection.html" title='hyper::client::connect::Connection trait'>Connection</a></td><td class='docblock-short'><p>Describes a type returned by a connector.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../";window.currentCrate = "hyper";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script defer src="../../../search-index.js"></script></body></html>

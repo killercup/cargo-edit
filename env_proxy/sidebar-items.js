@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["for_url","Determine proxy parameters for a URL by examining the environment variables."],["for_url_str","Determine proxy parameters for a URL given as a string."]],"struct":[["ProxyUrl","A wrapper for the proxy URL retrieved from the environment."]]});

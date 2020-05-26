@@ -1,0 +1,161 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../cargo_edit/index.html'><div class='logo-container'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1"> 1</span>
+<span id="2"> 2</span>
+<span id="3"> 3</span>
+<span id="4"> 4</span>
+<span id="5"> 5</span>
+<span id="6"> 6</span>
+<span id="7"> 7</span>
+<span id="8"> 8</span>
+<span id="9"> 9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+</pre><div class="example-wrap"><pre class="rust ">
+<span class="macro">error_chain</span><span class="macro">!</span> {
+    <span class="ident">foreign_links</span> {
+        <span class="ident">Io</span>(::<span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Error</span>) <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot;An error from the std::io module&quot;</span>]</span>;
+        <span class="ident">Git</span>(::<span class="ident">git2</span>::<span class="ident">Error</span>)<span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot;An error from the git2 crate&quot;</span>]</span>;
+        <span class="ident">CargoMetadata</span>(::<span class="ident">failure</span>::<span class="ident">Compat</span><span class="op">&lt;</span>::<span class="ident">cargo_metadata</span>::<span class="ident">Error</span><span class="op">&gt;</span>)<span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot;An error from the cargo_metadata crate&quot;</span>]</span>;
+    }
+
+    <span class="ident">errors</span> {
+        <span class="doccomment">/// Failed to read home directory</span>
+        <span class="ident">ReadHomeDirFailure</span> {
+            <span class="ident">description</span>(<span class="string">&quot;Failed to read home directory&quot;</span>)
+        }
+        <span class="doccomment">/// Invalid JSON in registry index</span>
+        <span class="ident">InvalidSummaryJson</span> {
+            <span class="ident">description</span>(<span class="string">&quot;Invalid JSON in registry index&quot;</span>)
+        }
+        <span class="doccomment">/// Given crate name is empty</span>
+        <span class="ident">EmptyCrateName</span>{
+            <span class="ident">description</span>(<span class="string">&quot;Found empty crate name&quot;</span>)
+        }
+        <span class="doccomment">/// No crate by that name exists</span>
+        <span class="ident">NoCrate</span>(<span class="ident">name</span>: <span class="ident">String</span>) {
+            <span class="ident">description</span>(<span class="string">&quot;The crate could not be found in registry index.&quot;</span>)
+            <span class="ident">display</span>(<span class="string">&quot;The crate `{}` could not be found in registry index.&quot;</span>, <span class="ident">name</span>)
+        }
+        <span class="doccomment">/// No versions available</span>
+        <span class="ident">NoVersionsAvailable</span> {
+            <span class="ident">description</span>(<span class="string">&quot;No available versions exist. Either all were yanked \
+                         or only prerelease versions exist. Trying with the \
+                         --allow-prerelease flag might solve the issue.&quot;</span>
+            )
+        }
+        <span class="doccomment">/// Unable to parse external Cargo.toml</span>
+        <span class="ident">ParseCargoToml</span> {
+            <span class="ident">description</span>(<span class="string">&quot;Unable to parse external Cargo.toml&quot;</span>)
+        }
+        <span class="doccomment">/// Cargo.toml could not be found.</span>
+        <span class="ident">MissingManifest</span> {
+            <span class="ident">description</span>(<span class="string">&quot;Unable to find Cargo.toml&quot;</span>)
+        }
+        <span class="doccomment">/// Cargo.toml is valid toml, but doesn&#39;t contain the expected fields</span>
+        <span class="ident">InvalidManifest</span> {
+            <span class="ident">description</span>(<span class="string">&quot;Cargo.toml missing expected `package` or `project` fields&quot;</span>)
+        }
+        <span class="doccomment">/// Found a workspace manifest when expecting a normal manifest</span>
+        <span class="ident">UnexpectedRootManifest</span> {
+            <span class="ident">description</span>(<span class="string">&quot;Found virtual manifest, but this command requires running against an \
+                         actual package in this workspace.&quot;</span>)
+        }
+        <span class="doccomment">/// The TOML table could not be found.</span>
+        <span class="ident">NonExistentTable</span>(<span class="ident">table</span>: <span class="ident">String</span>) {
+            <span class="ident">description</span>(<span class="string">&quot;non existent table&quot;</span>)
+            <span class="ident">display</span>(<span class="string">&quot;The table `{}` could not be found.&quot;</span>, <span class="ident">table</span>)
+        }
+        <span class="doccomment">/// The dependency could not be found.</span>
+        <span class="ident">NonExistentDependency</span>(<span class="ident">name</span>: <span class="ident">String</span>, <span class="ident">table</span>: <span class="ident">String</span>) {
+            <span class="ident">description</span>(<span class="string">&quot;non existent dependency&quot;</span>)
+            <span class="ident">display</span>(<span class="string">&quot;The dependency `{}` could not be found in `{}`.&quot;</span>, <span class="ident">name</span>, <span class="ident">table</span>)
+        }
+        <span class="doccomment">/// Config of cargo is invalid</span>
+        <span class="ident">InvalidCargoConfig</span> {
+            <span class="ident">description</span>(<span class="string">&quot;Invalid cargo config&quot;</span>)
+        }
+        <span class="doccomment">/// Unable to find the source specified by &#39;replace-with&#39;</span>
+        <span class="ident">NoSuchSourceFound</span>(<span class="ident">name</span>: <span class="ident">String</span>) {
+            <span class="ident">description</span>(<span class="string">&quot;Unable to find the source specified by &#39;replace-with&#39;&quot;</span>)
+            <span class="ident">display</span>(<span class="string">&quot;The source &#39;{}&#39; could not be found&quot;</span>, <span class="ident">name</span>)
+        }
+        <span class="doccomment">/// Unable to find the specified registry</span>
+        <span class="ident">NoSuchRegistryFound</span>(<span class="ident">name</span>: <span class="ident">String</span>) {
+            <span class="ident">display</span>(<span class="string">&quot;The registry &#39;{}&#39; could not be found&quot;</span>, <span class="ident">name</span>)
+        }
+        <span class="doccomment">/// Failed to parse a version for a dependency</span>
+        <span class="ident">ParseVersion</span>(<span class="ident">version</span>: <span class="ident">String</span>, <span class="ident">dep</span>: <span class="ident">String</span>) {
+            <span class="ident">description</span>(<span class="string">&quot;Failed to parse a version for a dependency&quot;</span>)
+            <span class="ident">display</span>(<span class="string">&quot;The version `{}` for the dependency `{}` couldn&#39;t be parsed&quot;</span>, <span class="ident">version</span>, <span class="ident">dep</span>)
+        }
+    }
+}
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "cargo_edit";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>

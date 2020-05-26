@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["enable","Moves the library into or out of the FIPS 140-2 mode of operation."],["enabled","Determines if the library is running in the FIPS 140-2 mode of operation."]]});

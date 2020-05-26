@@ -1,0 +1,1 @@
+initSidebarItems({"trait":[["PopenExt","Unix-specific extension methods for `Popen`"]]});

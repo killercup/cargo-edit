@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `sha` mod in crate `openssl`."><meta name="keywords" content="rust, rustlang, rust-lang, sha"><title>openssl::sha - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../openssl/index.html'><div class='logo-container'><img src='../../rust-logo.png' alt='logo'></div></a><p class='location'>Module sha</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'><a href='../index.html'>openssl</a></p><script>window.sidebarCurrent = {name: 'sha', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../../src/openssl/sha.rs.html#1-409' title='goto source code'>[src]</a></span><span class='in-band'>Module <a href='../index.html'>openssl</a>::<wbr><a class="mod" href=''>sha</a></span></h1><div class='docblock'><p>The SHA family of hashes.</p>
+<p>SHA, or Secure Hash Algorithms, are a family of cryptographic hashing algorithms published by
+the National Institute of Standards and Technology (NIST).  Hash algorithms such as those in
+the SHA family are used to map data of an arbitrary size to a fixed-size string of bytes.
+As cryptographic hashing algorithms, these mappings have the property of being irreversable.
+This property makes hash algorithms like these excellent for uses such as verifying the
+contents of a file- if you know the hash you expect beforehand, then you can verify that the
+data you have is correct if it hashes to the same value.</p>
+<h1 id="examples" class="section-header"><a href="#examples">Examples</a></h1>
+<p>When dealing with data that becomes available in chunks, such as while buffering data from IO,
+you can create a hasher that you can repeatedly update to add bytes to.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">openssl</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">hex</span>;
+
+<span class="kw">use</span> <span class="ident">openssl</span>::<span class="ident">sha</span>;
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hasher</span> <span class="op">=</span> <span class="ident">sha</span>::<span class="ident">Sha256</span>::<span class="ident">new</span>();
+
+    <span class="ident">hasher</span>.<span class="ident">update</span>(<span class="string">b&quot;Hello, &quot;</span>);
+    <span class="ident">hasher</span>.<span class="ident">update</span>(<span class="string">b&quot;world&quot;</span>);
+
+    <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">finish</span>();
+    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Hashed \&quot;Hello, world\&quot; to {}&quot;</span>, <span class="ident">hex</span>::<span class="ident">encode</span>(<span class="ident">hash</span>));
+}</pre></div>
+<p>On the other hand, if you already have access to all of the data you woud like to hash, you
+may prefer to use the slightly simpler method of simply calling the hash function corresponding
+to the algorithm you want to use.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">openssl</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">hex</span>;
+
+<span class="kw">use</span> <span class="ident">openssl</span>::<span class="ident">sha</span>::<span class="ident">sha256</span>;
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">sha256</span>(<span class="string">b&quot;your data or message&quot;</span>);
+    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Hash = {}&quot;</span>, <span class="ident">hex</span>::<span class="ident">encode</span>(<span class="ident">hash</span>));
+}</pre></div>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Sha1.html" title='openssl::sha::Sha1 struct'>Sha1</a></td><td class='docblock-short'><p>An object which calculates a SHA1 hash of some data.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Sha224.html" title='openssl::sha::Sha224 struct'>Sha224</a></td><td class='docblock-short'><p>An object which calculates a SHA224 hash of some data.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Sha256.html" title='openssl::sha::Sha256 struct'>Sha256</a></td><td class='docblock-short'><p>An object which calculates a SHA256 hash of some data.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Sha384.html" title='openssl::sha::Sha384 struct'>Sha384</a></td><td class='docblock-short'><p>An object which calculates a SHA384 hash of some data.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Sha512.html" title='openssl::sha::Sha512 struct'>Sha512</a></td><td class='docblock-short'><p>An object which calculates a SHA512 hash of some data.</p>
+</td></tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table><tr class='module-item'><td><a class="fn" href="fn.sha1.html" title='openssl::sha::sha1 fn'>sha1</a></td><td class='docblock-short'><p>Computes the SHA1 hash of some data.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.sha224.html" title='openssl::sha::sha224 fn'>sha224</a></td><td class='docblock-short'><p>Computes the SHA224 hash of some data.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.sha256.html" title='openssl::sha::sha256 fn'>sha256</a></td><td class='docblock-short'><p>Computes the SHA256 hash of some data.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.sha384.html" title='openssl::sha::sha384 fn'>sha384</a></td><td class='docblock-short'><p>Computes the SHA384 hash of some data.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.sha512.html" title='openssl::sha::sha512 fn'>sha512</a></td><td class='docblock-short'><p>Computes the SHA512 hash of some data.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "openssl";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>

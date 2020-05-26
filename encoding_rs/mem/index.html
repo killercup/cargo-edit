@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `mem` mod in crate `encoding_rs`."><meta name="keywords" content="rust, rustlang, rust-lang, mem"><title>encoding_rs::mem - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../encoding_rs/index.html'><div class='logo-container'><img src='../../rust-logo.png' alt='logo'></div></a><p class='location'>Module mem</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'><a href='../index.html'>encoding_rs</a></p><script>window.sidebarCurrent = {name: 'mem', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../../src/encoding_rs/mem.rs.html#10-3335' title='goto source code'>[src]</a></span><span class='in-band'>Module <a href='../index.html'>encoding_rs</a>::<wbr><a class="mod" href=''>mem</a></span></h1><div class='docblock'><p>Functions for converting between different in-RAM representations of text
+and for quickly checking if the Unicode Bidirectional Algorithm can be
+avoided.</p>
+<p>By using slices for output, the functions here seek to enable by-register
+(ALU register or SIMD register as available) operations in order to
+outperform iterator-based conversions available in the Rust standard
+library.</p>
+<p><em>Note:</em> &quot;Latin1&quot; in this module refers to the Unicode range from U+0000 to
+U+00FF, inclusive, and does not refer to the windows-1252 range. This
+in-memory encoding is sometimes used as a storage optimization of text
+when UTF-16 indexing and length semantics are exposed.</p>
+<p>The FFI binding for this module are in the
+<a href="https://github.com/hsivonen/encoding_c_mem">encoding_c_mem crate</a>.</p>
+</div><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.Latin1Bidi.html" title='encoding_rs::mem::Latin1Bidi enum'>Latin1Bidi</a></td><td class='docblock-short'><p>Classification of text as Latin1 (all code points are below U+0100),
+left-to-right with some non-Latin1 characters or as containing at least
+some right-to-left characters.</p>
+</td></tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table><tr class='module-item'><td><a class="fn" href="fn.check_str_for_latin1_and_bidi.html" title='encoding_rs::mem::check_str_for_latin1_and_bidi fn'>check_str_for_latin1_and_bidi</a></td><td class='docblock-short'><p>Checks whether a valid UTF-8 buffer contains code points
+that trigger right-to-left processing or is all-Latin1.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.check_utf16_for_latin1_and_bidi.html" title='encoding_rs::mem::check_utf16_for_latin1_and_bidi fn'>check_utf16_for_latin1_and_bidi</a></td><td class='docblock-short'><p>Checks whether a potentially invalid UTF-16 buffer contains code points
+that trigger right-to-left processing or is all-Latin1.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.check_utf8_for_latin1_and_bidi.html" title='encoding_rs::mem::check_utf8_for_latin1_and_bidi fn'>check_utf8_for_latin1_and_bidi</a></td><td class='docblock-short'><p>Checks whether a potentially invalid UTF-8 buffer contains code points
+that trigger right-to-left processing or is all-Latin1.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_latin1_to_str_partial.html" title='encoding_rs::mem::convert_latin1_to_str_partial fn'>convert_latin1_to_str_partial</a></td><td class='docblock-short'><p>Converts bytes whose unsigned value is interpreted as Unicode code point
+(i.e. U+0000 to U+00FF, inclusive) to UTF-8 such that the validity of the
+output is signaled using the Rust type system with potentially insufficient
+output space.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_latin1_to_str.html" title='encoding_rs::mem::convert_latin1_to_str fn'>convert_latin1_to_str</a></td><td class='docblock-short'><p>Converts bytes whose unsigned value is interpreted as Unicode code point
+(i.e. U+0000 to U+00FF, inclusive) to UTF-8 such that the validity of the
+output is signaled using the Rust type system.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_latin1_to_utf8_partial.html" title='encoding_rs::mem::convert_latin1_to_utf8_partial fn'>convert_latin1_to_utf8_partial</a></td><td class='docblock-short'><p>Converts bytes whose unsigned value is interpreted as Unicode code point
+(i.e. U+0000 to U+00FF, inclusive) to UTF-8 with potentially insufficient
+output space.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_latin1_to_utf8.html" title='encoding_rs::mem::convert_latin1_to_utf8 fn'>convert_latin1_to_utf8</a></td><td class='docblock-short'><p>Converts bytes whose unsigned value is interpreted as Unicode code point
+(i.e. U+0000 to U+00FF, inclusive) to UTF-8.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_latin1_to_utf16.html" title='encoding_rs::mem::convert_latin1_to_utf16 fn'>convert_latin1_to_utf16</a></td><td class='docblock-short'><p>Converts bytes whose unsigned value is interpreted as Unicode code point
+(i.e. U+0000 to U+00FF, inclusive) to UTF-16.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_str_to_utf16.html" title='encoding_rs::mem::convert_str_to_utf16 fn'>convert_str_to_utf16</a></td><td class='docblock-short'><p>Converts valid UTF-8 to valid UTF-16.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_utf16_to_str_partial.html" title='encoding_rs::mem::convert_utf16_to_str_partial fn'>convert_utf16_to_str_partial</a></td><td class='docblock-short'><p>Converts potentially-invalid UTF-16 to valid UTF-8 with errors replaced
+with the REPLACEMENT CHARACTER such that the validity of the output is
+signaled using the Rust type system with potentially insufficient output
+space.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_utf16_to_str.html" title='encoding_rs::mem::convert_utf16_to_str fn'>convert_utf16_to_str</a></td><td class='docblock-short'><p>Converts potentially-invalid UTF-16 to valid UTF-8 with errors replaced
+with the REPLACEMENT CHARACTER such that the validity of the output is
+signaled using the Rust type system.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_utf16_to_latin1_lossy.html" title='encoding_rs::mem::convert_utf16_to_latin1_lossy fn'>convert_utf16_to_latin1_lossy</a></td><td class='docblock-short'><p>If the input is valid UTF-16 representing only Unicode code points from
+U+0000 to U+00FF, inclusive, converts the input into output that
+represents the value of each code point as the unsigned byte value of
+each output byte.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_utf16_to_utf8_partial.html" title='encoding_rs::mem::convert_utf16_to_utf8_partial fn'>convert_utf16_to_utf8_partial</a></td><td class='docblock-short'><p>Converts potentially-invalid UTF-16 to valid UTF-8 with errors replaced
+with the REPLACEMENT CHARACTER with potentially insufficient output
+space.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_utf16_to_utf8.html" title='encoding_rs::mem::convert_utf16_to_utf8 fn'>convert_utf16_to_utf8</a></td><td class='docblock-short'><p>Converts potentially-invalid UTF-16 to valid UTF-8 with errors replaced
+with the REPLACEMENT CHARACTER.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_utf8_to_latin1_lossy.html" title='encoding_rs::mem::convert_utf8_to_latin1_lossy fn'>convert_utf8_to_latin1_lossy</a></td><td class='docblock-short'><p>If the input is valid UTF-8 representing only Unicode code points from
+U+0000 to U+00FF, inclusive, converts the input into output that
+represents the value of each code point as the unsigned byte value of
+each output byte.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_utf8_to_utf16.html" title='encoding_rs::mem::convert_utf8_to_utf16 fn'>convert_utf8_to_utf16</a></td><td class='docblock-short'><p>Converts potentially-invalid UTF-8 to valid UTF-16 with errors replaced
+with the REPLACEMENT CHARACTER.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.convert_utf8_to_utf16_without_replacement.html" title='encoding_rs::mem::convert_utf8_to_utf16_without_replacement fn'>convert_utf8_to_utf16_without_replacement</a></td><td class='docblock-short'><p>Converts potentially-invalid UTF-8 to valid UTF-16 signaling on error.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.copy_ascii_to_ascii.html" title='encoding_rs::mem::copy_ascii_to_ascii fn'>copy_ascii_to_ascii</a></td><td class='docblock-short'><p>Copies ASCII from source to destination up to the first non-ASCII byte
+(or the end of the input if it is ASCII in its entirety).</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.copy_ascii_to_basic_latin.html" title='encoding_rs::mem::copy_ascii_to_basic_latin fn'>copy_ascii_to_basic_latin</a></td><td class='docblock-short'><p>Copies ASCII from source to destination zero-extending it to UTF-16 up to
+the first non-ASCII byte (or the end of the input if it is ASCII in its
+entirety).</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.copy_basic_latin_to_ascii.html" title='encoding_rs::mem::copy_basic_latin_to_ascii fn'>copy_basic_latin_to_ascii</a></td><td class='docblock-short'><p>Copies Basic Latin from source to destination narrowing it to ASCII up to
+the first non-Basic Latin code unit (or the end of the input if it is
+Basic Latin in its entirety).</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.decode_latin1.html" title='encoding_rs::mem::decode_latin1 fn'>decode_latin1</a></td><td class='docblock-short'><p>Converts bytes whose unsigned value is interpreted as Unicode code point
+(i.e. U+0000 to U+00FF, inclusive) to UTF-8.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.encode_latin1_lossy.html" title='encoding_rs::mem::encode_latin1_lossy fn'>encode_latin1_lossy</a></td><td class='docblock-short'><p>If the input is valid UTF-8 representing only Unicode code points from
+U+0000 to U+00FF, inclusive, converts the input into output that
+represents the value of each code point as the unsigned byte value of
+each output byte.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.ensure_utf16_validity.html" title='encoding_rs::mem::ensure_utf16_validity fn'>ensure_utf16_validity</a></td><td class='docblock-short'><p>Replaces unpaired surrogates in the input with the REPLACEMENT CHARACTER.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_ascii.html" title='encoding_rs::mem::is_ascii fn'>is_ascii</a></td><td class='docblock-short'><p>Checks whether the buffer is all-ASCII.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_basic_latin.html" title='encoding_rs::mem::is_basic_latin fn'>is_basic_latin</a></td><td class='docblock-short'><p>Checks whether the buffer is all-Basic Latin (i.e. UTF-16 representing
+only ASCII characters).</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_char_bidi.html" title='encoding_rs::mem::is_char_bidi fn'>is_char_bidi</a></td><td class='docblock-short'><p>Checks whether a scalar value triggers right-to-left processing.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_str_bidi.html" title='encoding_rs::mem::is_str_bidi fn'>is_str_bidi</a></td><td class='docblock-short'><p>Checks whether a valid UTF-8 buffer contains code points that trigger
+right-to-left processing.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_str_latin1.html" title='encoding_rs::mem::is_str_latin1 fn'>is_str_latin1</a></td><td class='docblock-short'><p>Checks whether the buffer represents only code points less than or equal
+to U+00FF.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_utf8_bidi.html" title='encoding_rs::mem::is_utf8_bidi fn'>is_utf8_bidi</a></td><td class='docblock-short'><p>Checks whether a potentially-invalid UTF-8 buffer contains code points
+that trigger right-to-left processing.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_utf16_bidi.html" title='encoding_rs::mem::is_utf16_bidi fn'>is_utf16_bidi</a></td><td class='docblock-short'><p>Checks whether a UTF-16 buffer contains code points that trigger
+right-to-left processing.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_utf16_code_unit_bidi.html" title='encoding_rs::mem::is_utf16_code_unit_bidi fn'>is_utf16_code_unit_bidi</a></td><td class='docblock-short'><p>Checks whether a UTF-16 code unit triggers right-to-left processing.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_utf16_latin1.html" title='encoding_rs::mem::is_utf16_latin1 fn'>is_utf16_latin1</a></td><td class='docblock-short'><p>Checks whether the buffer represents only code point less than or equal
+to U+00FF.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.is_utf8_latin1.html" title='encoding_rs::mem::is_utf8_latin1 fn'>is_utf8_latin1</a></td><td class='docblock-short'><p>Checks whether the buffer is valid UTF-8 representing only code points
+less than or equal to U+00FF.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.str_latin1_up_to.html" title='encoding_rs::mem::str_latin1_up_to fn'>str_latin1_up_to</a></td><td class='docblock-short'><p>Returns the index of first byte that starts a non-Latin1 byte
+sequence, or the length of the string if there are none.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.utf16_valid_up_to.html" title='encoding_rs::mem::utf16_valid_up_to fn'>utf16_valid_up_to</a></td><td class='docblock-short'><p>Returns the index of the first unpaired surrogate or, if the input is
+valid UTF-16 in its entirety, the length of the input.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.utf8_latin1_up_to.html" title='encoding_rs::mem::utf8_latin1_up_to fn'>utf8_latin1_up_to</a></td><td class='docblock-short'><p>Returns the index of first byte that starts an invalid byte
+sequence or a non-Latin1 byte sequence, or the length of the
+string if there are neither.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "encoding_rs";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>

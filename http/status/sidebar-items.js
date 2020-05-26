@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["InvalidStatusCode","A possible error value when converting a `StatusCode` from a `u16` or `&str`"],["StatusCode","An HTTP status code (`status-code` in RFC 7230 et al.)."]]});

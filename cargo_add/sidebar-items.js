@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["handle_add",""],["main",""],["print_msg",""]],"mod":[["args","Handle `cargo add` arguments"],["errors",""]]});

@@ -1,0 +1,29 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `pinned_drop` attr in crate `pin_project`."><meta name="keywords" content="rust, rustlang, rust-lang, pinned_drop"><title>pin_project::pinned_drop - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc attr"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../pin_project/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><div class="sidebar-elems"><p class='location'><a href='index.html'>pin_project</a></p><script>window.sidebarCurrent = {name: 'pinned_drop', ty: 'attr', relpath: ''};</script><script defer src="sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/pin_project_internal/lib.rs.html#378-381' title='goto source code'>[src]</a></span><span class='in-band'>Attribute Macro <a href='index.html'>pin_project</a>::<wbr><a class="attr" href=''>pinned_drop</a></span></h1><pre class='rust attr'>#[pinned_drop]</pre><div class='docblock'><p>An attribute for annotating an impl block that implements [<code>Drop</code>].</p>
+<p>This attribute is only needed when you wish to provide a [<code>Drop</code>]
+impl for your type. The impl block annotated with <code>#[pinned_drop]</code> acts just
+like a normal [<code>Drop</code>] impl, except for the fact that <code>drop</code> method takes
+<code>Pin&lt;&amp;mut Self&gt;</code>. In particular, it will never be called more than once,
+just like [<code>Drop::drop</code>].</p>
+<h2 id="example" class="section-header"><a href="#example">Example</a></h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">pin_project</span>::{<span class="ident">pin_project</span>, <span class="ident">pinned_drop</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">pin</span>::<span class="ident">Pin</span>;
+
+<span class="attribute">#[<span class="ident">pin_project</span>(<span class="ident">PinnedDrop</span>)]</span>
+<span class="kw">struct</span> <span class="ident">Foo</span> {
+    <span class="attribute">#[<span class="ident">pin</span>]</span>
+    <span class="ident">field</span>: <span class="ident">u8</span>,
+}
+
+<span class="attribute">#[<span class="ident">pinned_drop</span>]</span>
+<span class="kw">impl</span> <span class="ident">PinnedDrop</span> <span class="kw">for</span> <span class="ident">Foo</span> {
+    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="self">self</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span><span class="op">&gt;</span>) {
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Dropping: {}&quot;</span>, <span class="self">self</span>.<span class="ident">field</span>);
+    }
+}
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="ident">_x</span> <span class="op">=</span> <span class="ident">Foo</span> { <span class="ident">field</span>: <span class="number">50</span> };
+}</pre></div>
+<p>See <a href="./attr.pin_project.html#pinned_drop">&quot;pinned-drop&quot; section of <code>pin_project</code> attribute</a> for more details.</p>
+</div></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "pin_project";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

@@ -1,0 +1,1 @@
+initSidebarItems({"macro":[["pin_mut","Pins a value on the stack."],["ready","Extracts the successful type of a `Poll<T>`."]],"mod":[["future","Futures"],["io","IO"],["lock","Futures-powered synchronization primitives."],["never","Definition of the `Never` type, a stand-in for the `!` type until it becomes stable."],["stream","Streams"],["task","Task notification"]]});

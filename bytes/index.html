@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `bytes` crate."><meta name="keywords" content="rust, rustlang, rust-lang, bytes"><title>bytes - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../bytes/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate bytes</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all bytes's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'bytes', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/bytes/lib.rs.html#1-117' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>bytes</a></span></h1><div class='docblock'><p>Provides abstractions for working with bytes.</p>
+<p>The <code>bytes</code> crate provides an efficient byte buffer structure
+(<a href="struct.Bytes.html"><code>Bytes</code></a>) and traits for working with buffer
+implementations (<a href="trait.Buf.html"><code>Buf</code></a>, <a href="trait.BufMut.html"><code>BufMut</code></a>).</p>
+<h1 id="bytes" class="section-header"><a href="#bytes"><code>Bytes</code></a></h1>
+<p><code>Bytes</code> is an efficient container for storing and operating on contiguous
+slices of memory. It is intended for use primarily in networking code, but
+could have applications elsewhere as well.</p>
+<p><code>Bytes</code> values facilitate zero-copy network programming by allowing multiple
+<code>Bytes</code> objects to point to the same underlying memory. This is managed by
+using a reference count to track when the memory is no longer needed and can
+be freed.</p>
+<p>A <code>Bytes</code> handle can be created directly from an existing byte store (such as <code>&amp;[u8]</code>
+or <code>Vec&lt;u8&gt;</code>), but usually a <code>BytesMut</code> is used first and written to. For
+example:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">bytes</span>::{<span class="ident">BytesMut</span>, <span class="ident">BufMut</span>};
+
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">BytesMut</span>::<span class="ident">with_capacity</span>(<span class="number">1024</span>);
+<span class="ident">buf</span>.<span class="ident">put</span>(<span class="kw-2">&amp;</span><span class="string">b&quot;hello world&quot;</span>[..]);
+<span class="ident">buf</span>.<span class="ident">put_u16</span>(<span class="number">1234</span>);
+
+<span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">split</span>();
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">a</span>, <span class="string">b&quot;hello world\x04\xD2&quot;</span>[..]);
+
+<span class="ident">buf</span>.<span class="ident">put</span>(<span class="kw-2">&amp;</span><span class="string">b&quot;goodbye world&quot;</span>[..]);
+
+<span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">split</span>();
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">b</span>, <span class="string">b&quot;goodbye world&quot;</span>[..]);
+
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">buf</span>.<span class="ident">capacity</span>(), <span class="number">998</span>);</pre></div>
+<p>In the above example, only a single buffer of 1024 is allocated. The handles
+<code>a</code> and <code>b</code> will share the underlying buffer and maintain indices tracking
+the view into the buffer represented by the handle.</p>
+<p>See the <a href="struct.Bytes.html">struct docs</a> for more details.</p>
+<h1 id="buf-bufmut" class="section-header"><a href="#buf-bufmut"><code>Buf</code>, <code>BufMut</code></a></h1>
+<p>These two traits provide read and write access to buffers. The underlying
+storage may or may not be in contiguous memory. For example, <code>Bytes</code> is a
+buffer that guarantees contiguous memory, but a <a href="https://en.wikipedia.org/wiki/Rope_(data_structure)">rope</a> stores the bytes in
+disjoint chunks. <code>Buf</code> and <code>BufMut</code> maintain cursors tracking the current
+position in the underlying byte storage. When bytes are read or written, the
+cursor is advanced.</p>
+<h2 id="relation-with-read-and-write" class="section-header"><a href="#relation-with-read-and-write">Relation with <code>Read</code> and <code>Write</code></a></h2>
+<p>At first glance, it may seem that <code>Buf</code> and <code>BufMut</code> overlap in
+functionality with <code>std::io::Read</code> and <code>std::io::Write</code>. However, they
+serve different purposes. A buffer is the value that is provided as an
+argument to <code>Read::read</code> and <code>Write::write</code>. <code>Read</code> and <code>Write</code> may then
+perform a syscall, which has the potential of failing. Operations on <code>Buf</code>
+and <code>BufMut</code> are infallible.</p>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr class='module-item'><td><a class="mod" href="buf/index.html" title='bytes::buf mod'>buf</a></td><td class='docblock-short'><p>Utilities for working with buffers.</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Bytes.html" title='bytes::Bytes struct'>Bytes</a></td><td class='docblock-short'><p>A reference counted contiguous slice of memory.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.BytesMut.html" title='bytes::BytesMut struct'>BytesMut</a></td><td class='docblock-short'><p>A unique reference to a contiguous slice of memory.</p>
+</td></tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table><tr class='module-item'><td><a class="trait" href="trait.Buf.html" title='bytes::Buf trait'>Buf</a></td><td class='docblock-short'><p>Read bytes from a buffer.</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.BufMut.html" title='bytes::BufMut trait'>BufMut</a></td><td class='docblock-short'><p>A trait for values that provide sequential write access to bytes.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "bytes";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

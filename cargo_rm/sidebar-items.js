@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Command",""]],"fn":[["handle_rm",""],["main",""],["print_msg",""]],"mod":[["errors",""]],"struct":[["Args",""]]});

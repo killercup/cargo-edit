@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `hyper` crate."><meta name="keywords" content="rust, rustlang, rust-lang, hyper"><title>hyper - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../hyper/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate hyper</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all hyper's items</p></a><div class="block items"><ul><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#types">Type Definitions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'hyper', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/hyper/lib.rs.html#1-71' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>hyper</a></span></h1><div class='docblock'><h1 id="hyper" class="section-header"><a href="#hyper">hyper</a></h1>
+<p>hyper is a <strong>fast</strong> and <strong>correct</strong> HTTP implementation written in and for Rust.</p>
+<h2 id="features" class="section-header"><a href="#features">Features</a></h2>
+<ul>
+<li>HTTP/1 and HTTP/2</li>
+<li>Asynchronous design</li>
+<li>Leading in performance</li>
+<li>Tested and <strong>correct</strong></li>
+<li>Extensive production use</li>
+<li><a href="client/index.html">Client</a> and <a href="server/index.html">Server</a> APIs</li>
+</ul>
+<p>If just starting out, <strong>check out the <a href="https://hyper.rs/guides">Guides</a>
+first.</strong></p>
+<h2 id="low-level" class="section-header"><a href="#low-level">&quot;Low-level&quot;</a></h2>
+<p>hyper is a lower-level HTTP library, meant to be a building block
+for libaries and applications.</p>
+<p>If looking for just a convenient HTTP client, consider the
+<a href="https://crates.io/crates/reqwest">reqwest</a> crate.</p>
+<h1 id="optional-features" class="section-header"><a href="#optional-features">Optional Features</a></h1>
+<p>The following optional features are available:</p>
+<ul>
+<li><code>runtime</code> (<em>enabled by default</em>): Enables convenient integration with
+<code>tokio</code>, providing connectors and acceptors for TCP, and a default
+executor.</li>
+<li><code>tcp</code> (<em>enabled by default</em>): Enables convenient implementations over
+TCP (using tokio).</li>
+<li><code>stream</code> (<em>enabled by default</em>): Provides <code>futures::Stream</code> capabilities.</li>
+</ul>
+</div><h2 id='reexports' class='section-header'><a href="#reexports">Re-exports</a></h2>
+<table><tr><td><code>pub use crate::client::<a class="struct" href="../hyper/client/struct.Client.html" title="struct hyper::client::Client">Client</a>;</code></td></tr><tr><td><code>pub use crate::server::<a class="struct" href="../hyper/server/struct.Server.html" title="struct hyper::server::Server">Server</a>;</code></td></tr></table><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr class='module-item'><td><a class="mod" href="body/index.html" title='hyper::body mod'>body</a></td><td class='docblock-short'><p>Streaming bodies for Requests and Responses</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="client/index.html" title='hyper::client mod'>client</a></td><td class='docblock-short'><p>HTTP Client</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="header/index.html" title='hyper::header mod'>header</a></td><td class='docblock-short'><p>HTTP header types</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="rt/index.html" title='hyper::rt mod'>rt</a></td><td class='docblock-short'><p>Runtime components</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="server/index.html" title='hyper::server mod'>server</a></td><td class='docblock-short'><p>HTTP Server</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="service/index.html" title='hyper::service mod'>service</a></td><td class='docblock-short'><p>Asynchronous Services</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="upgrade/index.html" title='hyper::upgrade mod'>upgrade</a></td><td class='docblock-short'><p>HTTP Upgrades</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Body.html" title='hyper::Body struct'>Body</a></td><td class='docblock-short'><p>A stream of <code>Bytes</code>, used when receiving bodies.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Error.html" title='hyper::Error struct'>Error</a></td><td class='docblock-short'><p>Represents errors that can occur handling HTTP streams.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.HeaderMap.html" title='hyper::HeaderMap struct'>HeaderMap</a></td><td class='docblock-short'><p>A set of HTTP headers</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Method.html" title='hyper::Method struct'>Method</a></td><td class='docblock-short'><p>The Request Method (VERB)</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Request.html" title='hyper::Request struct'>Request</a></td><td class='docblock-short'><p>Represents an HTTP request.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Response.html" title='hyper::Response struct'>Response</a></td><td class='docblock-short'><p>Represents an HTTP response</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.StatusCode.html" title='hyper::StatusCode struct'>StatusCode</a></td><td class='docblock-short'><p>An HTTP status code (<code>status-code</code> in RFC 7230 et al.).</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Uri.html" title='hyper::Uri struct'>Uri</a></td><td class='docblock-short'><p>The URI component of a request.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Version.html" title='hyper::Version struct'>Version</a></td><td class='docblock-short'><p>Represents a version of the HTTP spec.</p>
+</td></tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
+<table><tr class='module-item'><td><a class="type" href="type.Result.html" title='hyper::Result type'>Result</a></td><td class='docblock-short'><p>Result type often returned from methods that can have hyper <code>Error</code>s.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "hyper";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

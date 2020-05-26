@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Incoming","Stream returned by the `TcpListener::incoming` function representing the stream of sockets received from a listener."],["ReadHalf","Read half of a `TcpStream`."],["WriteHalf","Write half of a `TcpStream`."]]});

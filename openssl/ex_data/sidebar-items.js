@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Index","A slot in a type's \"extra data\" structure."]]});

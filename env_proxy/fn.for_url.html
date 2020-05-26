@@ -1,0 +1,35 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `for_url` fn in crate `env_proxy`."><meta name="keywords" content="rust, rustlang, rust-lang, for_url"><title>env_proxy::for_url - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc fn"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../env_proxy/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><div class="sidebar-elems"><p class='location'><a href='index.html'>env_proxy</a></p><script>window.sidebarCurrent = {name: 'for_url', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/env_proxy/lib.rs.html#272-289' title='goto source code'>[src]</a></span><span class='in-band'>Function <a href='index.html'>env_proxy</a>::<wbr><a class="fn" href=''>for_url</a></span></h1><pre class='rust fn'>pub fn for_url(url: &amp;<a class="struct" href="../url/struct.Url.html" title="struct url::Url">Url</a>) -&gt; <a class="struct" href="../env_proxy/struct.ProxyUrl.html" title="struct env_proxy::ProxyUrl">ProxyUrl</a></pre><div class='docblock'><p>Determine proxy parameters for a URL by examining the environment variables.</p>
+<p><strong>Attention</strong>: in a multithreaded program, care should be taken not to change the environment
+in multiple threads simultaneously without some form of serialization.</p>
+<p>Most environment variables described here can be defined either with an all-lowercase or an
+all-uppercase name. If both versions are defined, the all-lowercase name takes precedence
+(e.g., <strong>no_proxy</strong> will be used even if <strong>NO_PROXY</strong> is defined.) The only exception is
+<strong>http_proxy</strong>, where only the lowercase name is checked for. This text will use the
+lowercase variants for simplicity.</p>
+<p>If <strong>no_proxy</strong> is defined, check the host part of the URL against its components and return
+<code>None</code> if there is any match. The value of <strong>no_proxy</strong> should be a space- or comma-separated
+list of host/domain names or IP addresses for which no proxying should be done, or a single
+' <strong>*</strong> ' (asterisk) which means that proxying is disabled for all hosts. Empty names
+are skipped. Names beginning with a dot are not treated specially; matching is always done
+by full domain name component. A name consisting of a bare dot is skipped (this is different
+from <strong>curl</strong>'s behavior.)</p>
+<p>The rules are summarized in the following table, where the two rightmost columns are headed by two
+<strong>no_proxy</strong> components, the leftmost column contains hostnames, and the symbol inside each cell
+represents the result of checking the hostname against the corresponding component:</p>
+<table><thead><tr><th></th><th align="center">example.org</th><th align="center">.example.org</th></tr></thead><tbody>
+<tr><td>example.org</td><td align="center">✔</td><td align="center">✔</td></tr>
+<tr><td>a.example.org</td><td align="center">✔</td><td align="center">✔</td></tr>
+<tr><td>xample.org</td><td align="center">✘</td><td align="center">✘</td></tr>
+<tr><td>org</td><td align="center">✘</td><td align="center">✘</td></tr>
+</tbody></table>
+<p>For the <strong>ftp</strong> protocol scheme, <strong>ftp_proxy</strong> is checked first; for <strong>http</strong>, <strong>http_proxy</strong>
+is checked, and for <strong>https</strong>, it's <strong>https_proxy</strong>. These three schemes will fall back to <strong>all_proxy</strong>
+if the original variable is undefined. For all other schemes only <strong>all_proxy</strong> is checked. In this
+context, &quot;checked&quot; means that the value of a variable is used if present, and the search for further
+definitions stops.</p>
+<p>The return value, if not <code>None</code>, is an opaque structure wrapping the value (possibly canonicalized,
+see <a href="struct.ProxyUrl.html#method.to_url"><code>ProxyUrl::to_url()</code></a>) of the chosen environment variable.</p>
+<p>If the target URL matches <strong>no_proxy</strong>, or if the hostname cannot be extracted from the URL,
+the function returns <code>None</code>. If the port is not explicitly defined in the proxy URL, the value 8080
+is used.</p>
+</div></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "env_proxy";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

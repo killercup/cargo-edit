@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["TlsAcceptor","A wrapper around a `native_tls::TlsAcceptor`, providing an async `accept` method."],["TlsConnector","A wrapper around a `native_tls::TlsConnector`, providing an async `connect` method."],["TlsStream","A wrapper around an underlying raw stream which implements the TLS or SSL protocol."]]});

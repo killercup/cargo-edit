@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["bytes_to_key","Derives a key and an IV from various parameters."],["pbkdf2_hmac","Derives a key from a password and salt using the PBKDF2-HMAC algorithm with a digest function."]],"struct":[["KeyIvPair",""]]});

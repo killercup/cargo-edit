@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Data","Future that resolves to the next data chunk from `Body`"],["SizeHint","A `Body` size hint"],["Trailers","Future that resolves to the optional trailers from `Body`"]],"trait":[["Body","Trait representing a streaming body of a Request or Response."]]});

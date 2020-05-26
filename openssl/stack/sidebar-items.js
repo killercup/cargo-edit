@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["IntoIter",""],["Iter","An iterator over the stack's contents."],["IterMut","A mutable iterator over the stack's contents."],["Stack","An owned stack of `T`."],["StackRef",""]],"trait":[["Stackable","Trait implemented by types which can be placed in a stack."]]});
