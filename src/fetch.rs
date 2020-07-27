@@ -272,12 +272,12 @@ fn fuzzy_query_registry_index(
         .read_dir()?
         .next() // Is there always only one branch? (expecting either master og HEAD)
         .ok_or_else(|| ErrorKind::MissingRegistraryCheckout(checkout_dir))??
-        .path();
+        .file_name();
     let repo = git2::Repository::open(registry_path)?;
     let tree = repo
         .find_reference(
             remotes
-                .join(checkout.file_name().unwrap()) //unwrap here is ok as we have know there is a file there
+                .join(checkout)
                 .to_str()
                 .ok_or_else(|| ErrorKind::NonUnicodeGitPath)?,
         )?
