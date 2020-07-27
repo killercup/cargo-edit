@@ -266,9 +266,21 @@ fn fuzzy_query_registry_index(
     registry_path: impl AsRef<Path>,
 ) -> Result<Vec<CrateVersion>> {
     let crate_name = crate_name.into();
+    let remotes = PathBuf::from("refs/remotes/origin/");
+    let checkout_dir = registry_path.as_ref().join(".git").join(&remotes);
+    let checkout = checkout_dir
+        .read_dir()?
+        .next() // Is there always only one branch? (expecting either master og HEAD)
+        .ok_or_else(|| ErrorKind::MissingRegistraryCheckout(checkout_dir))??
+        .path();
     let repo = git2::Repository::open(registry_path)?;
     let tree = repo
-        .find_reference("refs/remotes/origin/master")?
+        .find_reference(
+            remotes
+                .join(checkout.file_name().unwrap()) //unwrap here is ok as we have know there is a file there
+                .to_str()
+                .ok_or_else(|| ErrorKind::NonUnicodeGitPath)?,
+        )?
         .peel_to_tree()?;
 
     let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
