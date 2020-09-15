@@ -81,7 +81,7 @@ FLAGS:
         --offline                Run without accessing the network
         --optional               Add as an optional dependency (for use in features)
     -q, --quiet                  Do not print any output in case of success
-    -s, --sort                   Keep dependencies sorted
+    -s, --sort                   Sort dependencies even if currently unsorted
     -V, --version                Prints version information
 
 OPTIONS:

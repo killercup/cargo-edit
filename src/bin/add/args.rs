@@ -132,7 +132,7 @@ pub struct Args {
     #[structopt(long = "offline")]
     pub offline: bool,
 
-    /// Keep dependencies sorted
+    /// Sort dependencies even if currently unsorted
     #[structopt(long = "sort", short = "s")]
     pub sort: bool,
 

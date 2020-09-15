@@ -1444,11 +1444,57 @@ fn add_typo() {
 }
 
 #[test]
-fn adds_sorted_dependencies() {
+fn sorts_unsorted_dependencies() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.unsorted");
 
     // adds one dependency
     execute_command(&["add", "--sort", "toml"], &manifest);
+
+    // and all the dependencies in the output get sorted
+    let toml = get_toml(&manifest);
+    assert_eq!(
+        toml.to_string().replace("\r\n", "\n"),
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[dependencies]
+atty = "0.2.13"
+toml = "toml--CURRENT_VERSION_TEST"
+toml_edit = "0.1.5"
+"#
+    );
+}
+
+#[test]
+fn adds_unsorted_dependencies() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.unsorted");
+
+    // adds one dependency
+    execute_command(&["add", "toml"], &manifest);
+
+    // and unsorted dependencies stay unsorted
+    let toml = get_toml(&manifest);
+    assert_eq!(
+        toml.to_string().replace("\r\n", "\n"),
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[dependencies]
+toml_edit = "0.1.5"
+atty = "0.2.13"
+toml = "toml--CURRENT_VERSION_TEST"
+"#
+    );
+}
+
+#[test]
+fn keeps_sorted_dependencies_sorted() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sorted");
+
+    // adds one dependency
+    execute_command(&["add", "toml"], &manifest);
 
     // and all the dependencies in the output get sorted
     let toml = get_toml(&manifest);
