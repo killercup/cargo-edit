@@ -96,6 +96,23 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
     Ok(())
 }
 
+// Based on Iterator::is_sorted from nightly std; remove in favor of that when stabilized.
+fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
+    let mut last = match it.next() {
+        Some(e) => e,
+        None => return true,
+    };
+
+    while let Some(curr) = it.next() {
+        if curr < last {
+            return false;
+        }
+        last = curr;
+    }
+
+    true
+}
+
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
         let pkg = manifest_from_pkgid(pkgid)?;
@@ -114,6 +131,12 @@ fn handle_add(args: &Args) -> Result<()> {
         update_registry_index(&url)?;
     }
 
+    let was_sorted = manifest
+        .get_table(&args.get_section())
+        .map(TomlItem::as_table_mut)
+        .map_or(true, |table_option| {
+            table_option.map_or(true, |table| is_sorted(table.iter().map(|(name, _)| name)))
+        });
     deps.iter()
         .map(|dep| {
             if !args.quiet {
@@ -127,7 +150,7 @@ fn handle_add(args: &Args) -> Result<()> {
                         .map(TomlItem::as_table_mut)
                         .map(|table_option| {
                             table_option.map(|table| {
-                                if args.sort {
+                                if was_sorted || args.sort {
                                     table.sort_values();
                                 }
                             })
