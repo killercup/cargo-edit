@@ -123,7 +123,7 @@ fn short_name(registry: &Url) -> String {
     #![allow(deprecated)]
     use std::hash::{Hash, Hasher, SipHasher};
 
-    let mut hasher = SipHasher::new_with_keys(0, 0);
+    let mut hasher = SipHasher::new();
     Kind::Registry.hash(&mut hasher);
     registry.as_str().hash(&mut hasher);
     let hash = hex::encode(hasher.finish().to_le_bytes());
@@ -133,7 +133,7 @@ fn short_name(registry: &Url) -> String {
     format!("{}-{}", ident, hash)
 }
 
-#[test]
+#[cfg_attr(target_pointer_width = "64", test)]
 fn test_short_name() {
     fn test_helper(url: &str, name: &str) {
         let url = Url::parse(url).unwrap();
@@ -162,5 +162,6 @@ mod code_from_cargo {
         Tag(String),
         Branch(String),
         Rev(String),
+        DefaultBranch,
     }
 }
