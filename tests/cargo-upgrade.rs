@@ -339,7 +339,7 @@ fn all_flag_is_deprecated() {
 fn upgrade_workspace_all() {
     let (_tmpdir, root_manifest, workspace_manifests) = copy_workspace_test();
 
-    execute_command(&["upgrade", "--all"], &root_manifest);
+    execute_command(&["upgrade", "--workspace"], &root_manifest);
 
     // All of the workspace members have `libc` as a dependency.
     for workspace_member in workspace_manifests {
@@ -401,7 +401,7 @@ fn detect_workspace() {
     .stderr()
     .is(
         "Command failed due to unhandled error: Found virtual manifest, but this command \
-         requires running against an actual package in this workspace. Try adding `--all`.",
+         requires running against an actual package in this workspace. Try adding `--workspace`.",
     )
     .unwrap();
 }
@@ -440,7 +440,7 @@ fn invalid_root_manifest_all() {
     assert_cli::Assert::command(&[
         get_command_path("upgrade").as_str(),
         "upgrade",
-        "--all",
+        "--workspace",
         "--manifest-path",
         &manifest,
     ])
@@ -517,7 +517,7 @@ fn upgrade_to_lockfile() {
 fn upgrade_workspace_to_lockfile_all() {
     let (tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
 
-    execute_command(&["upgrade", "--all", "--to-lockfile"], &root_manifest);
+    execute_command(&["upgrade", "--workspace", "--to-lockfile"], &root_manifest);
 
     // The members one and two both request different, semver incompatible
     // versions of rand. Test that both were upgraded correctly.

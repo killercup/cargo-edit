@@ -1,5 +1,4 @@
 use std::iter::FromIterator;
-use toml_edit;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 enum DependencySource {
@@ -90,7 +89,7 @@ impl Dependency {
         };
         self.source = DependencySource::Version {
             version: old_version,
-            path: Some(path.into()),
+            path: Some(path.replace('\\', "/")),
             registry: None,
         };
         self
@@ -346,5 +345,30 @@ mod tests {
         assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
         assert_eq!(dep.get("version").unwrap().as_str(), Some("1.0"));
         assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
+    }
+
+    #[test]
+    fn paths_with_forward_slashes_are_left_as_is() {
+        let path = "../sibling/crate";
+        let dep = Dependency::new("dep").set_path(path);
+
+        let (_, toml) = dep.to_toml();
+
+        let table = toml.as_inline_table().unwrap();
+        let got = table.get("path").unwrap().as_str().unwrap();
+        assert_eq!(got, path);
+    }
+
+    #[test]
+    fn normalise_windows_style_paths() {
+        let original = r"..\sibling\crate";
+        let should_be = "../sibling/crate";
+        let dep = Dependency::new("dep").set_path(original);
+
+        let (_, toml) = dep.to_toml();
+
+        let table = toml.as_inline_table().unwrap();
+        let got = table.get("path").unwrap().as_str().unwrap();
+        assert_eq!(got, should_be);
     }
 }
