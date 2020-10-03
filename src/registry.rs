@@ -118,19 +118,6 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
     Ok(registry_url)
 }
 
-fn to_hex(num: u64) -> String {
-    hex::encode(&[
-        (num >> 0) as u8,
-        (num >> 8) as u8,
-        (num >> 16) as u8,
-        (num >> 24) as u8,
-        (num >> 32) as u8,
-        (num >> 40) as u8,
-        (num >> 48) as u8,
-        (num >> 56) as u8,
-    ])
-}
-
 fn short_name(registry: &Url) -> String {
     // ref: https://github.com/rust-lang/cargo/blob/4c1fa54d10f58d69ac9ff55be68e1b1c25ecb816/src/cargo/sources/registry/mod.rs#L386-L390
     #![allow(deprecated)]
@@ -139,14 +126,14 @@ fn short_name(registry: &Url) -> String {
     let mut hasher = SipHasher::new();
     Kind::Registry.hash(&mut hasher);
     registry.as_str().hash(&mut hasher);
-    let hash = to_hex(hasher.finish());
+    let hash = hex::encode(hasher.finish().to_le_bytes());
 
     let ident = registry.host_str().unwrap_or("").to_string();
 
     format!("{}-{}", ident, hash)
 }
 
-#[test]
+#[cfg_attr(target_pointer_width = "64", test)]
 fn test_short_name() {
     fn test_helper(url: &str, name: &str) {
         let url = Url::parse(url).unwrap();
