@@ -2,7 +2,6 @@
 
 use cargo_edit::{find, registry_url, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
-use semver;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

@@ -1,5 +1,4 @@
 use std::iter::FromIterator;
-use toml_edit;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 enum DependencySource {

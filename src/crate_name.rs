@@ -1,6 +1,4 @@
 //! Crate name parsing.
-use semver;
-
 use crate::errors::*;
 use crate::Dependency;
 use crate::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path};

@@ -1,10 +1,7 @@
 use crate::errors::*;
 use crate::registry::{registry_path, registry_path_from_url};
 use crate::{Dependency, Manifest};
-use env_proxy;
 use regex::Regex;
-use reqwest;
-use semver;
 use std::env;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -123,7 +120,10 @@ pub fn update_registry_index(registry: &Url) -> Result<()> {
     output.reset()?;
     writeln!(output, " '{}' index", registry)?;
 
-    let refspec = format!("refs/heads/{0}:refs/remotes/origin/{0}", get_checkout_name(registry_path)?);
+    let refspec = format!(
+        "refs/heads/{0}:refs/remotes/origin/{0}",
+        get_checkout_name(registry_path)?
+    );
     fetch_with_cli(&repo, registry.as_str(), &refspec)?;
 
     Ok(())
@@ -262,7 +262,10 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
 
 /// Gets the checkedout branch name of .cargo/registry/index/github.com-*/.git/refs
 fn get_checkout_name(registry_path: impl AsRef<Path>) -> Result<String> {
-    let checkout_dir = registry_path.as_ref().join(".git").join("refs/remotes/origin/");
+    let checkout_dir = registry_path
+        .as_ref()
+        .join(".git")
+        .join("refs/remotes/origin/");
     Ok(checkout_dir
         .read_dir()?
         .next() //Is there always only one branch? (expecting either master og HEAD)
