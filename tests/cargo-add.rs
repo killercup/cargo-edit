@@ -1038,8 +1038,6 @@ your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth", 
 
 #[test]
 fn forbids_multiple_crates_with_features_option() {
-    let (_tmpdir, _manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
-
     assert_cli::Assert::command(&[
         get_command_path("add").as_str(),
         "add",
