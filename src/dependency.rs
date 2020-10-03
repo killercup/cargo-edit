@@ -1,4 +1,4 @@
-use toml_edit;
+use std::iter::FromIterator;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 enum DependencySource {
@@ -7,7 +7,10 @@ enum DependencySource {
         path: Option<String>,
         registry: Option<String>,
     },
-    Git(String),
+    Git {
+        repo: String,
+        branch: Option<String>,
+    },
 }
 
 /// A dependency handled by Cargo
@@ -16,6 +19,8 @@ pub struct Dependency {
     /// The name of the dependency (as it is set in its `Cargo.toml` and known to crates.io)
     pub name: String,
     optional: bool,
+    /// List of features to add (or None to keep features unchanged).
+    pub features: Option<Vec<String>>,
     default_features: bool,
     source: DependencySource,
     /// If the dependency is renamed, this is the new name for the dependency
@@ -29,6 +34,7 @@ impl Default for Dependency {
             name: "".into(),
             rename: None,
             optional: false,
+            features: None,
             default_features: true,
             source: DependencySource::Version {
                 version: None,
@@ -67,8 +73,11 @@ impl Dependency {
     }
 
     /// Set dependency to a given repository
-    pub fn set_git(mut self, repo: &str) -> Dependency {
-        self.source = DependencySource::Git(repo.into());
+    pub fn set_git(mut self, repo: &str, branch: Option<String>) -> Dependency {
+        self.source = DependencySource::Git {
+            repo: repo.into(),
+            branch,
+        };
         self
     }
 
@@ -80,7 +89,7 @@ impl Dependency {
         };
         self.source = DependencySource::Version {
             version: old_version,
-            path: Some(path.into()),
+            path: Some(path.replace('\\', "/")),
             registry: None,
         };
         self
@@ -89,6 +98,17 @@ impl Dependency {
     /// Set whether the dependency is optional
     pub fn set_optional(mut self, opt: bool) -> Dependency {
         self.optional = opt;
+        self
+    }
+    /// Set features as an array of string (does some basic parsing)
+    pub fn set_features(mut self, features: Option<Vec<String>>) -> Dependency {
+        self.features = features.map(|f| {
+            f.iter()
+                .map(|x| x.split(' ').map(String::from))
+                .flatten()
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<String>>()
+        });
         self
     }
 
@@ -155,6 +175,7 @@ impl Dependency {
     pub fn to_toml(&self) -> (String, toml_edit::Item) {
         let data: toml_edit::Item = match (
             self.optional,
+            self.features.as_ref(),
             self.default_features,
             self.source.clone(),
             self.rename.as_ref(),
@@ -162,6 +183,7 @@ impl Dependency {
             // Extra short when version flag only
             (
                 false,
+                None,
                 true,
                 DependencySource::Version {
                     version: Some(v),
@@ -171,7 +193,7 @@ impl Dependency {
                 None,
             ) => toml_edit::value(v),
             // Other cases are represented as an inline table
-            (optional, default_features, source, rename) => {
+            (optional, features, default_features, source, rename) => {
                 let mut data = toml_edit::InlineTable::default();
 
                 match source {
@@ -190,12 +212,17 @@ impl Dependency {
                             data.get_or_insert("registry", r);
                         }
                     }
-                    DependencySource::Git(v) => {
-                        data.get_or_insert("git", v);
+                    DependencySource::Git { repo, branch } => {
+                        data.get_or_insert("git", repo);
+                        branch.map(|branch| data.get_or_insert("branch", branch));
                     }
                 }
                 if self.optional {
                     data.get_or_insert("optional", optional);
+                }
+                if let Some(features) = features {
+                    let features = toml_edit::Value::from_iter(features.iter().cloned());
+                    data.get_or_insert("features", features);
                 }
                 if !self.default_features {
                     data.get_or_insert("default-features", default_features);
@@ -268,7 +295,7 @@ mod tests {
     #[test]
     fn to_toml_dep_with_git_source() {
         let toml = Dependency::new("dep")
-            .set_git("https://foor/bar.git")
+            .set_git("https://foor/bar.git", None)
             .to_toml();
 
         assert_eq!(toml.0, "dep".to_owned());
@@ -318,5 +345,30 @@ mod tests {
         assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
         assert_eq!(dep.get("version").unwrap().as_str(), Some("1.0"));
         assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
+    }
+
+    #[test]
+    fn paths_with_forward_slashes_are_left_as_is() {
+        let path = "../sibling/crate";
+        let dep = Dependency::new("dep").set_path(path);
+
+        let (_, toml) = dep.to_toml();
+
+        let table = toml.as_inline_table().unwrap();
+        let got = table.get("path").unwrap().as_str().unwrap();
+        assert_eq!(got, path);
+    }
+
+    #[test]
+    fn normalise_windows_style_paths() {
+        let original = r"..\sibling\crate";
+        let should_be = "../sibling/crate";
+        let dep = Dependency::new("dep").set_path(original);
+
+        let (_, toml) = dep.to_toml();
+
+        let table = toml.as_inline_table().unwrap();
+        let got = table.get("path").unwrap().as_str().unwrap();
+        assert_eq!(got, should_be);
     }
 }

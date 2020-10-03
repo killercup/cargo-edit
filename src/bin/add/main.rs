@@ -15,7 +15,10 @@
 extern crate error_chain;
 
 use crate::args::{Args, Command};
-use cargo_edit::{find, registry_url, update_registry_index, Dependency, Manifest};
+use cargo_edit::{
+    find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, Manifest,
+};
+use std::borrow::Cow;
 use std::io::Write;
 use std::process;
 use structopt::StructOpt;
@@ -42,6 +45,11 @@ mod errors {
                 description("Specified multiple crates with rename")
                 display("Cannot specify multiple crates with rename")
             }
+            /// Specified multiple crates with features.
+            MultipleCratesWithFeatures {
+                description("Specified multiple crates with features")
+                display("Cannot specify multiple crates with features")
+            }
         }
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
@@ -51,6 +59,7 @@ mod errors {
         }
     }
 }
+
 use crate::errors::*;
 
 fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
@@ -78,13 +87,40 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
     } else {
         format!("{} for target `{}`", &section[2], &section[1])
     };
-    writeln!(output, " {}", section)?;
+    write!(output, " {}", section)?;
+    if let Some(f) = &dep.features {
+        writeln!(output, " with features: {:?}", f)?
+    } else {
+        writeln!(output)?
+    }
     Ok(())
 }
 
+// Based on Iterator::is_sorted from nightly std; remove in favor of that when stabilized.
+fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
+    let mut last = match it.next() {
+        Some(e) => e,
+        None => return true,
+    };
+
+    for curr in it {
+        if curr < last {
+            return false;
+        }
+        last = curr;
+    }
+
+    true
+}
+
 fn handle_add(args: &Args) -> Result<()> {
-    let manifest_path = &args.manifest_path;
-    let mut manifest = Manifest::open(manifest_path)?;
+    let manifest_path = if let Some(ref pkgid) = args.pkgid {
+        let pkg = manifest_from_pkgid(pkgid)?;
+        Cow::Owned(Some(pkg.manifest_path))
+    } else {
+        Cow::Borrowed(&args.manifest_path)
+    };
+    let mut manifest = Manifest::open(&manifest_path)?;
     let deps = &args.parse_dependencies()?;
 
     if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
@@ -95,6 +131,12 @@ fn handle_add(args: &Args) -> Result<()> {
         update_registry_index(&url)?;
     }
 
+    let was_sorted = manifest
+        .get_table(&args.get_section())
+        .map(TomlItem::as_table_mut)
+        .map_or(true, |table_option| {
+            table_option.map_or(true, |table| is_sorted(table.iter().map(|(name, _)| name)))
+        });
     deps.iter()
         .map(|dep| {
             if !args.quiet {
@@ -108,7 +150,7 @@ fn handle_add(args: &Args) -> Result<()> {
                         .map(TomlItem::as_table_mut)
                         .map(|table_option| {
                             table_option.map(|table| {
-                                if args.sort {
+                                if was_sorted || args.sort {
                                     table.sort_values();
                                 }
                             })
@@ -122,7 +164,7 @@ fn handle_add(args: &Args) -> Result<()> {
             err
         })?;
 
-    let mut file = Manifest::find_file(manifest_path)?;
+    let mut file = Manifest::find_file(&manifest_path)?;
     manifest.write_to_file(&mut file)?;
 
     Ok(())

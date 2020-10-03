@@ -2,7 +2,6 @@
 
 use cargo_edit::{find, registry_url, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
-use semver;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -61,6 +60,15 @@ pub struct Args {
     )]
     pub git: Option<String>,
 
+    /// Specify a git branch to download the crate from.
+    #[structopt(
+        long = "branch",
+        value_name = "branch",
+        conflicts_with = "vers",
+        conflicts_with = "path"
+    )]
+    pub branch: Option<String>,
+
     /// Specify the path the crate should be loaded from.
     #[structopt(long = "path", conflicts_with = "git")]
     pub path: Option<PathBuf>,
@@ -74,10 +82,21 @@ pub struct Args {
     pub optional: bool,
 
     /// Path to the manifest to add a dependency to.
-    #[structopt(long = "manifest-path", value_name = "path")]
+    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
     pub manifest_path: Option<PathBuf>,
 
-    /// Choose method of semantic version upgrade.
+    /// Package id of the crate to add this dependency to.
+    #[structopt(
+        long = "package",
+        short = "p",
+        value_name = "pkgid",
+        conflicts_with = "path"
+    )]
+    pub pkgid: Option<String>,
+
+    /// Choose method of semantic version upgrade.  Must be one of "none" (exact version, `=`
+    /// modifier), "patch" (`~` modifier), "minor" (`^` modifier), "all" (`>=`), or "default" (no
+    /// modifier).
     #[structopt(
         long = "upgrade",
         value_name = "method",
@@ -95,6 +114,11 @@ pub struct Args {
     #[structopt(long = "allow-prerelease")]
     pub allow_prerelease: bool,
 
+    /// Space-separated list of features to add. For an alternative approach to
+    /// enabling features, consider installing the `cargo-feature` utility.
+    #[structopt(long = "features", number_of_values = 1)]
+    pub features: Option<Vec<String>>,
+
     /// Set `default-features = false` for the added dependency.
     #[structopt(long = "no-default-features")]
     pub no_default_features: bool,
@@ -107,7 +131,7 @@ pub struct Args {
     #[structopt(long = "offline")]
     pub offline: bool,
 
-    /// Keep dependencies sorted
+    /// Sort dependencies even if currently unsorted
     #[structopt(long = "sort", short = "s")]
     pub sort: bool,
 
@@ -169,7 +193,7 @@ impl Args {
             let mut dependency = Dependency::new(crate_name.name());
 
             if let Some(repo) = &self.git {
-                dependency = dependency.set_git(repo);
+                dependency = dependency.set_git(repo, self.branch.clone());
             }
             if let Some(path) = &self.path {
                 dependency = dependency.set_path(path.to_str().unwrap());
@@ -205,7 +229,6 @@ impl Args {
             if let Some(registry) = &self.registry {
                 dependency = dependency.set_registry(registry);
             }
-
             Ok(dependency)
         }
     }
@@ -222,12 +245,17 @@ impl Args {
             return Err(ErrorKind::MultipleCratesWithRename.into());
         }
 
+        if self.crates.len() > 1 && self.features.is_some() {
+            return Err(ErrorKind::MultipleCratesWithFeatures.into());
+        }
+
         self.crates
             .iter()
             .map(|crate_name| {
                 self.parse_single_dependency(crate_name).map(|x| {
                     let mut x = x
                         .set_optional(self.optional)
+                        .set_features(self.features.clone())
                         .set_default_features(!self.no_default_features);
                     if let Some(ref rename) = self.rename {
                         x = x.set_rename(rename);
@@ -260,12 +288,15 @@ impl Default for Args {
             build: false,
             vers: None,
             git: None,
+            branch: None,
             path: None,
             target: None,
             optional: false,
             manifest_path: None,
+            pkgid: None,
             upgrade: "minor".to_string(),
             allow_prerelease: false,
+            features: None,
             no_default_features: false,
             quiet: false,
             offline: true,
@@ -303,7 +334,7 @@ mod tests {
         };
         assert_eq!(
             args_github.parse_dependencies().unwrap(),
-            vec![Dependency::new("cargo-edit").set_git(github_url)]
+            vec![Dependency::new("cargo-edit").set_git(github_url, None)]
         );
 
         let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
@@ -313,7 +344,7 @@ mod tests {
         };
         assert_eq!(
             args_gitlab.parse_dependencies().unwrap(),
-            vec![Dependency::new("polly").set_git(gitlab_url)]
+            vec![Dependency::new("polly").set_git(gitlab_url, None)]
         );
     }
 

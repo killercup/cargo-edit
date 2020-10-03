@@ -25,7 +25,7 @@ license = "Apache-2.0/MIT"
 name = "cargo-edit"
 readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
-version = "0.4.2"
+version = "0.6.0"
 edition = "2018"
 
 [[bin]]
@@ -44,25 +44,25 @@ path = "src/bin/upgrade/main.rs"
 required-features = ["upgrade"]
 
 [dependencies]
-atty = "0.2.13"
-cargo_metadata = "0.9.0"
+atty = { version = "0.2.14", optional = true }
+cargo_metadata = "0.9.1"
 dirs = "2.0.2"
-env_proxy = "0.3.0"
-error-chain = "0.12.1"
-failure = "0.1.6"
-git2 = "0.11.0"
-hex = "0.4.0"
-regex = "1.3.1"
-reqwest = "0.9.22"
-serde = "1.0.102"
-serde_derive = "1.0.102"
-serde_json = "1.0.41"
-structopt = "0.3.3"
-subprocess = "0.1.18"
-termcolor = "1.0.5"
-toml = "0.5.3"
+env_proxy = "0.4.0"
+error-chain = "0.12.2"
+failure = "0.1.7"
+git2 = "0.13.0"
+hex = "0.4.2"
+regex = "1.3.5"
+reqwest = { version = "0.10.4", features = ["blocking"] }
+serde = "1.0.105"
+serde_derive = "1.0.105"
+serde_json = "1.0.48"
+structopt = { version = "0.3.12", optional = true }
+subprocess = "0.2.4"
+termcolor = "1.1.0"
+toml = "0.5.6"
 toml_edit = "0.1.5"
-url = "2.1.0"
+url = "2.1.1"
 
 [dependencies.semver]
 features = ["serde"]
@@ -71,16 +71,16 @@ version = "0.9.0"
 [dev-dependencies]
 assert_cli = "0.6.3"
 pretty_assertions = "0.6.1"
-tempdir = "0.3.7"
+tempfile = "3.1.0"
 
 [features]
-add = []
 default = [
     "add",
     "rm",
     "upgrade",
 ]
-rm = []
+add = ["cli"]
+rm = ["cli"]
+upgrade = ["cli"]
+cli = ["atty", "structopt"]
 test-external-apis = []
-unstable = []
-upgrade = []

@@ -4,8 +4,8 @@ extern crate pretty_assertions;
 use std::process;
 mod utils;
 use crate::utils::{
-    clone_out_test, execute_bad_command, execute_command, get_command_path, get_toml,
-    setup_alt_registry_config,
+    clone_out_test, copy_workspace_test, execute_bad_command, execute_command,
+    execute_command_for_pkg, get_command_path, get_toml, setup_alt_registry_config,
 };
 
 /// Some of the tests need to have a crate name that does not exist on crates.io. Hence this rather
@@ -373,6 +373,7 @@ fn adds_git_source_using_flag() {
         val["git"].as_str(),
         Some("http://localhost/git-package.git")
     );
+    assert_eq!(val["branch"].as_str(), None);
 
     // check this works with other flags (e.g. --dev) as well
     let toml = get_toml(&manifest);
@@ -386,6 +387,59 @@ fn adds_git_source_using_flag() {
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["git-dev-pkg"];
     assert_eq!(val["git"].as_str(), Some("http://site/gp.git"));
+    assert_eq!(val["branch"].as_str(), None);
+}
+
+#[test]
+fn adds_git_branch_using_flag() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "git-package",
+            "--git",
+            "http://localhost/git-package.git",
+            "--branch",
+            "master",
+        ],
+        &manifest,
+    );
+
+    let toml = get_toml(&manifest);
+    let val = &toml["dependencies"]["git-package"];
+    assert_eq!(
+        val["git"].as_str(),
+        Some("http://localhost/git-package.git")
+    );
+
+    assert_eq!(val["branch"].as_str(), Some("master"));
+
+    // check this works with other flags (e.g. --dev) as well
+    let toml = get_toml(&manifest);
+    assert!(toml["dev-dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "git-dev-pkg",
+            "--git",
+            "http://site/gp.git",
+            "--branch",
+            "master",
+            "--dev",
+        ],
+        &manifest,
+    );
+
+    let toml = get_toml(&manifest);
+    let val = &toml["dev-dependencies"]["git-dev-pkg"];
+    assert_eq!(val["git"].as_str(), Some("http://site/gp.git"));
+    assert_eq!(val["branch"].as_str(), Some("master"));
 }
 
 #[test]
@@ -466,6 +520,8 @@ fn adds_local_source_without_flag() {
     let (tmpdir, _) = clone_out_test("tests/fixtures/add/local/Cargo.toml.sample");
     let tmppath = tmpdir.into_path();
     let tmpdirstr = tmppath.to_str().unwrap();
+    // Note: all paths are normalised to "/"
+    let expected_path = tmpdirstr.replace('\\', "/");
 
     // dependency not present beforehand
     let toml = get_toml(&manifest);
@@ -475,7 +531,7 @@ fn adds_local_source_without_flag() {
 
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["foo-crate"];
-    assert_eq!(val["path"].as_str(), Some(tmpdirstr));
+    assert_eq!(val["path"].as_str(), Some(expected_path.as_str()));
 
     // check this works with other flags (e.g. --dev) as well
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
@@ -486,7 +542,7 @@ fn adds_local_source_without_flag() {
 
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["foo-crate"];
-    assert_eq!(val["path"].as_str(), Some(tmpdirstr));
+    assert_eq!(val["path"].as_str(), Some(expected_path.as_str()));
 }
 
 #[test]
@@ -890,6 +946,116 @@ fn adds_dependency_with_target_cfg() {
 }
 
 #[test]
+fn adds_features_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_command(
+        &[
+            "add",
+            "https://github.com/killercup/cargo-edit.git",
+            "--features",
+            "jui",
+        ],
+        &manifest,
+    );
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml["dependencies"]["cargo-edit"]["features"][0].as_str();
+    assert_eq!(val, Some("jui"));
+}
+
+#[test]
+fn overrides_existing_features() {
+    overwrite_dependency_test(
+        &["add", "your-face", "--features", "nose"],
+        &["add", "your-face", "--features", "mouth"],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth"] }
+"#,
+    )
+}
+
+#[test]
+fn keeps_existing_features_by_default() {
+    overwrite_dependency_test(
+        &["add", "your-face", "--features", "nose"],
+        &["add", "your-face"],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["nose"] }
+"#,
+    )
+}
+
+#[test]
+fn handles_specifying_features_option_multiple_times() {
+    overwrite_dependency_test(
+        &["add", "your-face"],
+        &[
+            "add",
+            "your-face",
+            "--features",
+            "nose",
+            "--features",
+            "mouth",
+        ],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["nose", "mouth"] }
+"#,
+    )
+}
+
+#[test]
+fn can_be_forced_to_provide_an_empty_features_list() {
+    overwrite_dependency_test(
+        &["add", "your-face"],
+        &["add", "your-face", "--features", ""],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = [] }
+"#,
+    )
+}
+
+#[test]
+fn parses_space_separated_argument_to_features() {
+    overwrite_dependency_test(
+        &["add", "your-face", "--features", "nose"],
+        &["add", "your-face", "--features", "mouth ears"],
+        r#"
+[dependencies]
+your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth", "ears"] }
+"#,
+    )
+}
+
+#[test]
+fn forbids_multiple_crates_with_features_option() {
+    let (_tmpdir, _manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        get_command_path("add").as_str(),
+        "add",
+        "your-face",
+        "--features",
+        "mouth",
+        "nose",
+    ])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .contains("Cannot specify multiple crates with features")
+    .unwrap();
+}
+
+#[test]
 fn adds_dependency_with_custom_target() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
@@ -918,6 +1084,7 @@ fn adds_dependency_normalized_name() {
         get_command_path("add").as_str(),
         "add",
         "linked_hash_map",
+        "Inflector",
         &format!("--manifest-path={}", manifest),
     ])
     .succeeds()
@@ -1022,7 +1189,10 @@ path = "dummy.rs"
     .to_string()
         + expected;
     let expected_dep: toml_edit::Document = expected.parse().expect("toml parse error");
-    assert_eq!(expected_dep.to_string(), toml.to_string());
+    assert_eq!(
+        expected_dep.to_string(),
+        toml.to_string().replace("\r\n", "\n"),
+    );
 }
 
 #[test]
@@ -1085,30 +1255,29 @@ renamed = { version = "versioned-package--CURRENT_VERSION_TEST", optional = true
     )
 }
 
-// FIXME: make it work
-// #[test]
-// fn overwrite_differently_renamed() {
-//     overwrite_dependency_test(
-//         &["add", "a", "--vers", "0.1", "--rename", "a1"],
-//         &["add", "a", "--vers", "0.2", "--rename", "a2"],
-//         r#"
-// [dependencies]
-// a2 = { version = "0.2", package = "a" }
-// "#,
-//     )
-// }
+#[test]
+fn overwrite_differently_renamed() {
+    overwrite_dependency_test(
+        &["add", "a", "--vers", "0.1", "--rename", "a1"],
+        &["add", "a", "--vers", "0.2", "--rename", "a2"],
+        r#"
+[dependencies]
+a2 = { version = "0.2", package = "a" }
+"#,
+    )
+}
 
-// #[test]
-// fn overwrite_previously_renamed() {
-//     overwrite_dependency_test(
-//         &["add", "a", "--vers", "0.1", "--rename", "a1"],
-//         &["add", "a", "--vers", "0.2"],
-//         r#"
-// [dependencies]
-// a = "0.2"
-// "#,
-//     )
-// }
+#[test]
+fn overwrite_previously_renamed() {
+    overwrite_dependency_test(
+        &["add", "a", "--vers", "0.1", "--rename", "a1"],
+        &["add", "a", "--vers", "0.2"],
+        r#"
+[dependencies]
+a = "0.2"
+"#,
+    )
+}
 
 #[test]
 fn overwrite_git_with_path() {
@@ -1276,7 +1445,7 @@ fn add_typo() {
 }
 
 #[test]
-fn adds_sorted_dependencies() {
+fn sorts_unsorted_dependencies() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.unsorted");
 
     // adds one dependency
@@ -1285,7 +1454,7 @@ fn adds_sorted_dependencies() {
     // and all the dependencies in the output get sorted
     let toml = get_toml(&manifest);
     assert_eq!(
-        toml.to_string(),
+        toml.to_string().replace("\r\n", "\n"),
         r#"[package]
 name = "cargo-list-test-fixture"
 version = "0.0.0"
@@ -1296,4 +1465,89 @@ toml = "toml--CURRENT_VERSION_TEST"
 toml_edit = "0.1.5"
 "#
     );
+}
+
+#[test]
+fn adds_unsorted_dependencies() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.unsorted");
+
+    // adds one dependency
+    execute_command(&["add", "toml"], &manifest);
+
+    // and unsorted dependencies stay unsorted
+    let toml = get_toml(&manifest);
+    assert_eq!(
+        toml.to_string().replace("\r\n", "\n"),
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[dependencies]
+toml_edit = "0.1.5"
+atty = "0.2.13"
+toml = "toml--CURRENT_VERSION_TEST"
+"#
+    );
+}
+
+#[test]
+fn keeps_sorted_dependencies_sorted() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sorted");
+
+    // adds one dependency
+    execute_command(&["add", "toml"], &manifest);
+
+    // and all the dependencies in the output get sorted
+    let toml = get_toml(&manifest);
+    assert_eq!(
+        toml.to_string().replace("\r\n", "\n"),
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[dependencies]
+atty = "0.2.13"
+toml = "toml--CURRENT_VERSION_TEST"
+toml_edit = "0.1.5"
+"#
+    );
+}
+
+#[test]
+fn add_dependency_to_workspace_member() {
+    let (tmpdir, _root_manifest, workspace_manifests) = copy_workspace_test();
+    execute_command_for_pkg(&["add", "toml"], "one", &tmpdir);
+
+    let one = workspace_manifests
+        .iter()
+        .map(|manifest| get_toml(manifest))
+        .find(|manifest| manifest["package"]["name"].as_str() == Some("one"))
+        .expect("Couldn't find workspace member `one'");
+
+    assert_eq!(
+        one["dependencies"]["toml"]
+            .as_str()
+            .expect("toml dependency did not exist"),
+        "toml--CURRENT_VERSION_TEST",
+    );
+}
+#[test]
+fn add_prints_message_for_features_deps() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    assert_cli::Assert::command(&[
+        "target/debug/cargo-add",
+        "add",
+        "hello-world",
+        "--vers",
+        "0.1.0",
+        "--features",
+        "jui",
+        &format!("--manifest-path={}", manifest),
+    ])
+    .succeeds()
+    .and()
+    .stdout()
+    .contains(r#"Adding hello-world v0.1.0 to dependencies with features: ["jui"]"#)
+    .unwrap();
 }

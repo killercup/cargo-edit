@@ -1,7 +1,10 @@
+use std::path::PathBuf;
+
 error_chain! {
     foreign_links {
         Io(::std::io::Error) #[doc = "An error from the std::io module"];
         Git(::git2::Error)#[doc = "An error from the git2 crate"];
+        CargoMetadata(::failure::Compat<::cargo_metadata::Error>)#[doc = "An error from the cargo_metadata crate"];
     }
 
     errors {
@@ -73,6 +76,16 @@ error_chain! {
         ParseVersion(version: String, dep: String) {
             description("Failed to parse a version for a dependency")
             display("The version `{}` for the dependency `{}` couldn't be parsed", version, dep)
+        }
+        /// Missing registrary checkout in the cargo registrary
+        MissingRegistraryCheckout(path: PathBuf) {
+            description("Missing registrary checkout in the cargo registrary")
+            display("Looks like ({}) is empty", path.display())
+        }
+        /// Non Unicode git path
+        NonUnicodeGitPath {
+            // this is because git2 function takes &str insted of something like AsRef<Path>
+            description("Path to cargos registrary contains non unicode characters")
         }
     }
 }

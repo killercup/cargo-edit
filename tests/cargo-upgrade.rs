@@ -1,62 +1,11 @@
 #[macro_use]
 extern crate pretty_assertions;
 
-use std::{fs, path::Path};
-
 mod utils;
 use crate::utils::{
-    clone_out_test, execute_command, execute_command_in_dir, get_command_path, get_toml,
-    setup_alt_registry_config,
+    clone_out_test, copy_workspace_test, execute_command, execute_command_for_pkg,
+    execute_command_in_dir, get_command_path, get_toml, setup_alt_registry_config,
 };
-
-/// Helper function that copies the workspace test into a temporary directory.
-pub fn copy_workspace_test() -> (tempdir::TempDir, String, Vec<String>) {
-    // Create a temporary directory and copy in the root manifest, the dummy rust file, and
-    // workspace member manifests.
-    let tmpdir = tempdir::TempDir::new("upgrade_workspace")
-        .expect("failed to construct temporary directory");
-
-    let (root_manifest_path, workspace_manifest_paths) = {
-        // Helper to copy in files to the temporary workspace. The standard library doesn't have a
-        // good equivalent of `cp -r`, hence this oddity.
-        let copy_in = |dir, file| {
-            let file_path = tmpdir
-                .path()
-                .join(dir)
-                .join(file)
-                .to_str()
-                .unwrap()
-                .to_string();
-
-            fs::create_dir_all(tmpdir.path().join(dir)).unwrap();
-
-            fs::copy(
-                format!("tests/fixtures/workspace/{}/{}", dir, file),
-                &file_path,
-            )
-            .unwrap_or_else(|err| panic!("could not copy test file: {}", err));
-
-            file_path
-        };
-
-        let root_manifest_path = copy_in(".", "Cargo.toml");
-        copy_in(".", "dummy.rs");
-        copy_in(".", "Cargo.lock");
-
-        let workspace_manifest_paths = ["one", "two", "implicit/three", "explicit/four"]
-            .iter()
-            .map(|member| copy_in(member, "Cargo.toml"))
-            .collect::<Vec<_>>();
-
-        (root_manifest_path, workspace_manifest_paths)
-    };
-
-    (
-        tmpdir,
-        root_manifest_path,
-        workspace_manifest_paths.to_owned(),
-    )
-}
 
 // Verify that an upgraded Cargo.toml matches what we expect.
 #[test]
@@ -369,10 +318,28 @@ fn upgrade_at() {
 }
 
 #[test]
-fn upgrade_workspace() {
+fn all_flag_is_deprecated() {
+    let (_tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
+
+    assert_cli::Assert::command(&[
+        get_command_path("upgrade").as_str(),
+        "upgrade",
+        "--all",
+        "--manifest-path",
+        &root_manifest,
+    ])
+    .succeeds()
+    .and()
+    .stderr()
+    .contains("The flag `--all` has been deprecated in favor of `--workspace`")
+    .unwrap();
+}
+
+#[test]
+fn upgrade_workspace_all() {
     let (_tmpdir, root_manifest, workspace_manifests) = copy_workspace_test();
 
-    execute_command(&["upgrade", "--all"], &root_manifest);
+    execute_command(&["upgrade", "--workspace"], &root_manifest);
 
     // All of the workspace members have `libc` as a dependency.
     for workspace_member in workspace_manifests {
@@ -381,6 +348,40 @@ fn upgrade_workspace() {
             Some("libc--CURRENT_VERSION_TEST")
         );
     }
+}
+
+#[test]
+fn upgrade_workspace_workspace() {
+    let (_tmpdir, root_manifest, workspace_manifests) = copy_workspace_test();
+
+    execute_command(&["upgrade", "--workspace"], &root_manifest);
+
+    // All of the workspace members have `libc` as a dependency.
+    for workspace_member in workspace_manifests {
+        assert_eq!(
+            get_toml(&workspace_member)["dependencies"]["libc"].as_str(),
+            Some("libc--CURRENT_VERSION_TEST")
+        );
+    }
+}
+
+#[test]
+fn upgrade_dependency_in_workspace_member() {
+    let (tmpdir, _root_manifest, workspace_manifests) = copy_workspace_test();
+    execute_command_for_pkg(&["upgrade", "libc"], "one", &tmpdir);
+
+    let one = workspace_manifests
+        .iter()
+        .map(|manifest| get_toml(manifest))
+        .find(|manifest| manifest["package"]["name"].as_str() == Some("one"))
+        .expect("Couldn't find workspace member `one'");
+
+    assert_eq!(
+        one["dependencies"]["libc"]
+            .as_str()
+            .expect("libc dependency did not exist"),
+        "libc--CURRENT_VERSION_TEST",
+    );
 }
 
 /// Detect if attempting to run against a workspace root and give a helpful warning.
@@ -400,7 +401,7 @@ fn detect_workspace() {
     .stderr()
     .is(
         "Command failed due to unhandled error: Found virtual manifest, but this command \
-         requires running against an actual package in this workspace. Try adding `--all`.",
+         requires running against an actual package in this workspace. Try adding `--workspace`.",
     )
     .unwrap();
 }
@@ -419,8 +420,8 @@ fn invalid_manifest() {
     .fails_with(1)
     .and()
     .stderr()
-    .is(
-        "Command failed due to unhandled error: Unable to parse Cargo.toml
+    .is("\
+Command failed due to unhandled error: Unable to parse Cargo.toml
 
 Caused by: Manifest not valid TOML
 Caused by: TOML parse error at line 1, column 6
@@ -428,19 +429,37 @@ Caused by: TOML parse error at line 1, column 6
 1 | This is clearly not a valid Cargo.toml.
   |      ^
 Unexpected `i`
-Expected `=`",
-    )
+Expected `=`")
     .unwrap();
 }
 
 #[test]
-fn invalid_root_manifest() {
+fn invalid_root_manifest_all() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
 
     assert_cli::Assert::command(&[
         get_command_path("upgrade").as_str(),
         "upgrade",
-        "--all",
+        "--workspace",
+        "--manifest-path",
+        &manifest,
+    ])
+    .with_env(&[("CARGO_IS_TEST", "1")])
+    .fails_with(1)
+    .and()
+    .stderr()
+    .contains("Command failed due to unhandled error: Failed to get workspace metadata")
+    .unwrap();
+}
+
+#[test]
+fn invalid_root_manifest_workspace() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
+
+    assert_cli::Assert::command(&[
+        get_command_path("upgrade").as_str(),
+        "upgrade",
+        "--workspace",
         "--manifest-path",
         &manifest,
     ])
@@ -480,8 +499,8 @@ For more information try --help ",
 #[cfg(feature = "test-external-apis")]
 fn upgrade_to_lockfile() {
     let (tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.lockfile_source");
-    fs::copy(
-        Path::new("tests/fixtures/upgrade/Cargo.lock"),
+    std::fs::copy(
+        std::path::Path::new("tests/fixtures/upgrade/Cargo.lock"),
         tmpdir.path().join("Cargo.lock"),
     )
     .unwrap_or_else(|err| panic!("could not copy test lock file: {}", err));
@@ -495,10 +514,28 @@ fn upgrade_to_lockfile() {
 
 #[test]
 #[cfg(feature = "test-external-apis")]
-fn upgrade_workspace_to_lockfile() {
+fn upgrade_workspace_to_lockfile_all() {
     let (tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
 
-    execute_command(&["upgrade", "--all", "--to-lockfile"], &root_manifest);
+    execute_command(&["upgrade", "--workspace", "--to-lockfile"], &root_manifest);
+
+    // The members one and two both request different, semver incompatible
+    // versions of rand. Test that both were upgraded correctly.
+    let one_upgraded = get_toml(tmpdir.path().join("one/Cargo.toml").to_str().unwrap());
+    let one_target = get_toml("tests/fixtures/workspace/one/Cargo.toml.lockfile_target");
+    assert_eq!(one_target.to_string(), one_upgraded.to_string());
+
+    let two_upgraded = get_toml(tmpdir.path().join("two/Cargo.toml").to_str().unwrap());
+    let two_target = get_toml("tests/fixtures/workspace/two/Cargo.toml.lockfile_target");
+    assert_eq!(two_target.to_string(), two_upgraded.to_string());
+}
+
+#[test]
+#[cfg(feature = "test-external-apis")]
+fn upgrade_workspace_to_lockfile_workspace() {
+    let (tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
+
+    execute_command(&["upgrade", "--workspace", "--to-lockfile"], &root_manifest);
 
     // The members one and two both request different, semver incompatible
     // versions of rand. Test that both were upgraded correctly.

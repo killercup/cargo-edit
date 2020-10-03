@@ -1,5 +1,8 @@
 mod utils;
-use crate::utils::{clone_out_test, execute_command, get_command_path, get_toml};
+use crate::utils::{
+    clone_out_test, copy_workspace_test, execute_command, execute_command_for_pkg,
+    get_command_path, get_toml,
+};
 
 #[test]
 fn remove_existing_dependency() {
@@ -224,4 +227,18 @@ fn rm_prints_messages_for_multiple() {
     .stdout()
     .is("Removing semver from dependencies\n    Removing docopt from dependencies")
     .unwrap();
+}
+
+#[test]
+fn rm_dependency_from_workspace_member() {
+    let (tmpdir, _root_manifest, workspace_manifests) = copy_workspace_test();
+    execute_command_for_pkg(&["rm", "libc"], "one", &tmpdir);
+
+    let one = workspace_manifests
+        .iter()
+        .map(|manifest| get_toml(manifest))
+        .find(|manifest| manifest["package"]["name"].as_str() == Some("one"))
+        .expect("Couldn't find workspace member `one'");
+
+    assert!(one["dependencies"]["libc"].as_str().is_none());
 }

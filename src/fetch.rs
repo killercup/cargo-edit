@@ -1,10 +1,7 @@
 use crate::errors::*;
 use crate::registry::{registry_path, registry_path_from_url};
 use crate::{Dependency, Manifest};
-use env_proxy;
 use regex::Regex;
-use reqwest;
-use semver;
 use std::env;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -123,8 +120,11 @@ pub fn update_registry_index(registry: &Url) -> Result<()> {
     output.reset()?;
     writeln!(output, " '{}' index", registry)?;
 
-    let refspec = "refs/heads/master:refs/remotes/origin/master";
-    fetch_with_cli(&repo, registry.as_str(), refspec)?;
+    let refspec = format!(
+        "refs/heads/{0}:refs/remotes/origin/{0}",
+        get_checkout_name(registry_path)?
+    );
+    fetch_with_cli(&repo, registry.as_str(), &refspec)?;
 
     Ok(())
 }
@@ -153,9 +153,7 @@ fn fetch_with_cli(repo: &git2::Repository, url: &str, refspec: &str) -> Result<(
 
     let _ = cmd.capture().map_err(|e| match e {
         subprocess::PopenError::IoError(io) => ErrorKind::Io(io),
-        subprocess::PopenError::LogicError(_) | subprocess::PopenError::Utf8Error(_) => {
-            unreachable!("expected only io error")
-        }
+        _ => unreachable!("expected only io error"),
     })?;
     Ok(())
 }
@@ -262,15 +260,36 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     assert!(read_latest_version(&versions, false).is_err());
 }
 
+/// Gets the checkedout branch name of .cargo/registry/index/github.com-*/.git/refs
+fn get_checkout_name(registry_path: impl AsRef<Path>) -> Result<String> {
+    let checkout_dir = registry_path
+        .as_ref()
+        .join(".git")
+        .join("refs/remotes/origin/");
+    Ok(checkout_dir
+        .read_dir()?
+        .next() //Is there always only one branch? (expecting either master og HEAD)
+        .ok_or_else(|| ErrorKind::MissingRegistraryCheckout(checkout_dir))??
+        .file_name()
+        .into_string()
+        .map_err(|_| ErrorKind::NonUnicodeGitPath)?)
+}
+
 /// Fuzzy query crate from registry index
 fn fuzzy_query_registry_index(
     crate_name: impl Into<String>,
     registry_path: impl AsRef<Path>,
 ) -> Result<Vec<CrateVersion>> {
     let crate_name = crate_name.into();
-    let repo = git2::Repository::open(registry_path)?;
+    let remotes = PathBuf::from("refs/remotes/origin/");
+    let repo = git2::Repository::open(&registry_path)?;
     let tree = repo
-        .find_reference("refs/remotes/origin/master")?
+        .find_reference(
+            remotes
+                .join(get_checkout_name(&registry_path)?)
+                .to_str()
+                .ok_or_else(|| ErrorKind::NonUnicodeGitPath)?,
+        )?
         .peel_to_tree()?;
 
     let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
@@ -378,8 +397,8 @@ const fn get_default_timeout() -> Duration {
     Duration::from_secs(10)
 }
 
-fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Response> {
-    let client = reqwest::ClientBuilder::new()
+fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::blocking::Response> {
+    let client = reqwest::blocking::ClientBuilder::new()
         .timeout(timeout)
         .proxy(reqwest::Proxy::custom(|url| {
             env_proxy::for_url(url).to_url()
@@ -389,7 +408,7 @@ fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::Re
     client
         .get(url)
         .send()
-        .and_then(reqwest::Response::error_for_status)
+        .and_then(reqwest::blocking::Response::error_for_status)
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
@@ -463,6 +482,7 @@ fn test_gen_fuzzy_crate_names() {
 }
 
 fn summary_raw_path(crate_name: &str) -> String {
+    let crate_name = crate_name.to_ascii_lowercase();
     match crate_name.len() {
         0 => unreachable!("we check that crate_name is not empty here"),
         1 => format!("1/{}", crate_name),
@@ -479,4 +499,5 @@ fn test_summary_raw_path() {
     assert_eq!(summary_raw_path("abc"), "3/a/abc");
     assert_eq!(summary_raw_path("abcd"), "ab/cd/abcd");
     assert_eq!(summary_raw_path("abcdefg"), "ab/cd/abcdefg");
+    assert_eq!(summary_raw_path("Inflector"), "in/fl/inflector");
 }

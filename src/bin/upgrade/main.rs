@@ -16,8 +16,8 @@ extern crate error_chain;
 
 use crate::errors::*;
 use cargo_edit::{
-    find, get_latest_dependency, registry_url, update_registry_index, CrateName, Dependency,
-    LocalManifest,
+    find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
+    CrateName, Dependency, LocalManifest,
 };
 use failure::Fail;
 use std::collections::{HashMap, HashSet};
@@ -54,7 +54,7 @@ upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.
 
-All packages in the workspace will be upgraded if the `--all` flag is supplied. The `--all` flag may
+All packages in the workspace will be upgraded if the `--workspace` flag is supplied. The `--workspace` flag may
 be supplied in the presence of a virtual manifest.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
@@ -71,12 +71,32 @@ struct Args {
     dependency: Vec<String>,
 
     /// Path to the manifest to upgrade
-    #[structopt(long = "manifest-path", value_name = "path")]
+    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
     manifest_path: Option<PathBuf>,
 
+    /// Package id of the crate to add this dependency to.
+    #[structopt(
+        long = "package",
+        short = "p",
+        value_name = "pkgid",
+        conflicts_with = "path",
+        conflicts_with = "all",
+        conflicts_with = "workspace"
+    )]
+    pkgid: Option<String>,
+
     /// Upgrade all packages in the workspace.
-    #[structopt(long = "all")]
+    #[structopt(
+        long = "all",
+        help = "[deprecated in favor of `--workspace`]",
+        conflicts_with = "workspace",
+        conflicts_with = "pkgid"
+    )]
     all: bool,
+
+    /// Upgrade all packages in the workspace.
+    #[structopt(long = "workspace", conflicts_with = "all", conflicts_with = "pkgid")]
+    workspace: bool,
 
     /// Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha').
     #[structopt(long = "allow-prerelease")]
@@ -110,6 +130,21 @@ fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
         Some(ref s) => s.splitn(2, '+').next() == Some("registry"),
         _ => false,
     }
+}
+
+fn deprecated_message(message: &str) -> Result<()> {
+    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let mut buffer = bufwtr.buffer();
+    buffer
+        .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
+        .chain_err(|| "Failed to set output colour")?;
+    writeln!(&mut buffer, "{}", message).chain_err(|| "Failed to write dry run message")?;
+    buffer
+        .set_color(&ColorSpec::new())
+        .chain_err(|| "Failed to clear output colour")?;
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print dry run message")
 }
 
 fn dry_run_message() -> Result<()> {
@@ -153,6 +188,12 @@ impl Manifests {
             .map(Manifests)
     }
 
+    fn get_pkgid(pkgid: &str) -> Result<Self> {
+        let package = manifest_from_pkgid(pkgid)?;
+        let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
+        Ok(Manifests(vec![(manifest, package)]))
+    }
+
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
     /// provided.
     fn get_local_one(manifest_path: &Option<PathBuf>) -> Result<Self> {
@@ -176,7 +217,7 @@ impl Manifests {
             // package, we must have been called against a virtual manifest.
             .chain_err(|| {
                 "Found virtual manifest, but this command requires running against an \
-                 actual package in this workspace. Try adding `--all`."
+                 actual package in this workspace. Try adding `--workspace`."
             })?;
 
         Ok(Manifests(vec![(manifest, package.to_owned())]))
@@ -189,7 +230,7 @@ impl Manifests {
         let selected_dependencies = only_update
             .into_iter()
             .map(|name| {
-                if let Some(dependency) = CrateName::new(&name.clone()).parse_as_version()? {
+                if let Some(dependency) = CrateName::new(&name).parse_as_version()? {
                     Ok((
                         dependency.name.clone(),
                         dependency.version().map(String::from),
@@ -274,10 +315,10 @@ impl Manifests {
         // Get locked dependencies. For workspaces with multiple Cargo.toml
         // files, there is only a single lockfile, so it suffices to get
         // metadata for any one of Cargo.toml files.
-        let (manifest, _package) =
-            self.0.iter().next().ok_or_else(|| {
-                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-            })?;
+        let (manifest, _package) = self
+            .0
+            .get(0)
+            .ok_or_else(|| ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig))?;
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.manifest_path(manifest.path.clone());
         cmd.other_options(vec!["--locked".to_string()]);
@@ -401,13 +442,21 @@ fn process(args: Args) -> Result<()> {
     let Args {
         dependency,
         manifest_path,
+        pkgid,
         all,
         allow_prerelease,
         dry_run,
         skip_compatible,
         to_lockfile,
+        workspace,
         ..
     } = args;
+
+    if all {
+        deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
+    }
+
+    let all = workspace || all;
 
     if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(&find(&manifest_path)?, None)?;
@@ -416,6 +465,8 @@ fn process(args: Args) -> Result<()> {
 
     let manifests = if all {
         Manifests::get_all(&manifest_path)
+    } else if let Some(ref pkgid) = pkgid {
+        Manifests::get_pkgid(pkgid)
     } else {
         Manifests::get_local_one(&manifest_path)
     }?;
