@@ -2,7 +2,6 @@
 
 use cargo_edit::{find, registry_url, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
-use semver;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -132,7 +131,7 @@ pub struct Args {
     #[structopt(long = "offline")]
     pub offline: bool,
 
-    /// Keep dependencies sorted
+    /// Sort dependencies even if currently unsorted
     #[structopt(long = "sort", short = "s")]
     pub sort: bool,
 

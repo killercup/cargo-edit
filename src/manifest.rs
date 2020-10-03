@@ -4,13 +4,11 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{env, str};
 
+use semver::{Version, VersionReq};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
-use toml_edit;
 
 use crate::dependency::Dependency;
 use crate::errors::*;
-
-use semver::{Version, VersionReq};
 
 const MANIFEST_FILENAME: &str = "Cargo.toml";
 

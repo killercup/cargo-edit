@@ -54,7 +54,7 @@ upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.
 
-All packages in the workspace will be upgraded if the `--all` flag is supplied. The `--all` flag may
+All packages in the workspace will be upgraded if the `--workspace` flag is supplied. The `--workspace` flag may
 be supplied in the presence of a virtual manifest.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
@@ -217,7 +217,7 @@ impl Manifests {
             // package, we must have been called against a virtual manifest.
             .chain_err(|| {
                 "Found virtual manifest, but this command requires running against an \
-                 actual package in this workspace. Try adding `--all`."
+                 actual package in this workspace. Try adding `--workspace`."
             })?;
 
         Ok(Manifests(vec![(manifest, package.to_owned())]))
@@ -230,7 +230,7 @@ impl Manifests {
         let selected_dependencies = only_update
             .into_iter()
             .map(|name| {
-                if let Some(dependency) = CrateName::new(&name.clone()).parse_as_version()? {
+                if let Some(dependency) = CrateName::new(&name).parse_as_version()? {
                     Ok((
                         dependency.name.clone(),
                         dependency.version().map(String::from),
@@ -315,10 +315,10 @@ impl Manifests {
         // Get locked dependencies. For workspaces with multiple Cargo.toml
         // files, there is only a single lockfile, so it suffices to get
         // metadata for any one of Cargo.toml files.
-        let (manifest, _package) =
-            self.0.iter().next().ok_or_else(|| {
-                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-            })?;
+        let (manifest, _package) = self
+            .0
+            .get(0)
+            .ok_or_else(|| ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig))?;
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.manifest_path(manifest.path.clone());
         cmd.other_options(vec!["--locked".to_string()]);
