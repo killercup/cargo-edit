@@ -103,7 +103,7 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
         None => return true,
     };
 
-    while let Some(curr) = it.next() {
+    for curr in it {
         if curr < last {
             return false;
         }
