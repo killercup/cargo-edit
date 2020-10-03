@@ -59,7 +59,7 @@ fn upgrade_prereleased_without_the_flag() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // Setup manifest with alpha `b`.
-    execute_command(&["add", "b", "--vers", "0.8-alpha"], &manifest);
+    execute_command(&["add", "b", "--vers", "0.8.0-alpha"], &manifest);
 
     // Now, upgrade `b` to its latest version
     execute_command(&["upgrade", "b"], &manifest);
@@ -77,7 +77,7 @@ fn upgrade_prerelease_already_prereleased() {
 
     // Setup manifest with stable `a` and alpha `b`.
     execute_command(&["add", "a", "--vers", "1.0"], &manifest);
-    execute_command(&["add", "b", "--vers", "0.8-alpha"], &manifest);
+    execute_command(&["add", "b", "--vers", "0.8.0-alpha"], &manifest);
 
     // Now, upgrade all dependencies to their latest versions
     execute_command(&["upgrade"], &manifest);

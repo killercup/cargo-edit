@@ -146,7 +146,7 @@ fn short_name(registry: &Url) -> String {
     format!("{}-{}", ident, hash)
 }
 
-#[test]
+#[cfg_attr(target_pointer_width = "64", test)]
 fn test_short_name() {
     fn test_helper(url: &str, name: &str) {
         let url = Url::parse(url).unwrap();
