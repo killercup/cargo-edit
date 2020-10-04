@@ -6,7 +6,7 @@ rust:
 matrix:
   include:
   - rust: stable
-    after_script:
+    script:
     - rustup component add rustfmt
     - rustup component add clippy
     - cargo fmt --all -- --write-mode=diff
