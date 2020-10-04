@@ -9,7 +9,7 @@ matrix:
     script:
     - rustup component add rustfmt
     - rustup component add clippy
-    - cargo fmt --all -- --write-mode=diff
+    - cargo fmt --all -- --check
     - cargo clippy -- -D warnings -A deprecated
   allow_failures:
   - rust: nightly
