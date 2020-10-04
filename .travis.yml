@@ -6,11 +6,7 @@ rust:
 matrix:
   include:
   - rust: stable
-    after_script:
-    - rustup component add rustfmt
-    - rustup component add clippy
-    - cargo fmt --all -- --write-mode=diff
-    - cargo clippy -- -D warnings -A deprecated
+    env: LINT=true
   allow_failures:
   - rust: nightly
 before_script:
@@ -24,6 +20,14 @@ script:
   travis-cargo bench &&
   travis-cargo --only stable doc
 - git diff --exit-code
+- |
+  if [[ "$TRAVIS_RUST_VERSION" == "stable" ]]; then
+    rustup component add rustfmt
+    rustup component add clippy
+    set -x
+    cargo fmt --all -- --check
+    cargo clippy -- -D warnings -A deprecated
+  fi
 addons:
   apt:
     packages:
