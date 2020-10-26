@@ -321,6 +321,7 @@ impl Manifests {
             .ok_or_else(|| ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig))?;
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.manifest_path(manifest.path.clone());
+        cmd.features(cargo_metadata::CargoOpt::AllFeatures);
         cmd.other_options(vec!["--locked".to_string()]);
 
         let result = cmd
