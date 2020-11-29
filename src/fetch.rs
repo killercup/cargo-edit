@@ -273,7 +273,7 @@ fn get_checkout_name(registry_path: impl AsRef<Path>) -> Result<String> {
         .read_dir() // .git repo
         .or_else(|_| bare_checkout_dir.read_dir())? // there's no .git, it's bare one
         .next() //Is there always only one branch? (expecting either master og HEAD)
-        .ok_or_else(|| ErrorKind::MissingRegistraryCheckout(checkout_dir))??
+        .ok_or(ErrorKind::MissingRegistraryCheckout(checkout_dir))??
         .file_name()
         .into_string()
         .map_err(|_| ErrorKind::NonUnicodeGitPath)?)
@@ -292,7 +292,7 @@ fn fuzzy_query_registry_index(
             remotes
                 .join(get_checkout_name(&registry_path)?)
                 .to_str()
-                .ok_or_else(|| ErrorKind::NonUnicodeGitPath)?,
+                .ok_or(ErrorKind::NonUnicodeGitPath)?,
         )?
         .peel_to_tree()?;
 

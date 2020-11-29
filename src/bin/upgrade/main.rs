@@ -315,10 +315,9 @@ impl Manifests {
         // Get locked dependencies. For workspaces with multiple Cargo.toml
         // files, there is only a single lockfile, so it suffices to get
         // metadata for any one of Cargo.toml files.
-        let (manifest, _package) = self
-            .0
-            .get(0)
-            .ok_or_else(|| ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig))?;
+        let (manifest, _package) = self.0.get(0).ok_or(ErrorKind::CargoEditLib(
+            ::cargo_edit::ErrorKind::InvalidCargoConfig,
+        ))?;
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.manifest_path(manifest.path.clone());
         cmd.features(cargo_metadata::CargoOpt::AllFeatures);
