@@ -260,14 +260,18 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     assert!(read_latest_version(&versions, false).is_err());
 }
 
-/// Gets the checkedout branch name of .cargo/registry/index/github.com-*/.git/refs
+/// Gets the checkedout branch name of .cargo/registry/index/github.com-*/.git/refs or
+/// .cargo/registry/index/github.com-*/refs for bare git repository
 fn get_checkout_name(registry_path: impl AsRef<Path>) -> Result<String> {
     let checkout_dir = registry_path
         .as_ref()
         .join(".git")
         .join("refs/remotes/origin/");
+    let bare_checkout_dir = registry_path.as_ref().join("refs/remotes/origin/");
+
     Ok(checkout_dir
-        .read_dir()?
+        .read_dir() // .git repo
+        .or_else(|_| bare_checkout_dir.read_dir())? // there's no .git, it's bare one
         .next() //Is there always only one branch? (expecting either master og HEAD)
         .ok_or_else(|| ErrorKind::MissingRegistraryCheckout(checkout_dir))??
         .file_name()
