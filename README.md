@@ -35,6 +35,8 @@ Ensure that you have a fairly recent version of rust/cargo installed. On Ubuntu 
 $ cargo install cargo-edit
 ```
 
+*Compiler support: requires rustc 1.44+*
+
 (Please check [`cargo`'s documentation](http://doc.crates.io/) to learn how `cargo install` works and how to set up your system so it finds binaries installed by `cargo`.)
 
 Install a sub-set of the commands with `cargo install -f --no-default-features --features "<COMMANDS>"`, where `<COMMANDS>` is a space-separated list of commands; i.e. `add rm upgrade` for the full set.
