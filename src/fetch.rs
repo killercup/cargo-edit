@@ -1,6 +1,7 @@
 use crate::errors::*;
 use crate::registry::{registry_path, registry_path_from_url};
 use crate::{Dependency, Manifest};
+use crate::config::{self, format_version};
 use regex::Regex;
 use std::env;
 use std::io::Write;
@@ -46,6 +47,10 @@ pub fn get_latest_dependency(
             }
         };
 
+        let version_fmt = config::get(manifest_path, "add.version_fmt")
+                            .or_else(|| config::get(manifest_path, "version_fmt"))
+                            .and_then(|fmt| fmt.as_str().map(|s| s.to_string()));
+        let new_version = format_version(&new_version, &version_fmt);
         return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
 
@@ -60,7 +65,7 @@ pub fn get_latest_dependency(
 
     let crate_versions = fuzzy_query_registry_index(crate_name, &registry_path)?;
 
-    let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
+    let dep = read_latest_version(&crate_versions, &manifest_path, flag_allow_prerelease)?;
 
     if dep.name != crate_name {
         println!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
@@ -77,6 +82,7 @@ fn version_is_stable(version: &CrateVersion) -> bool {
 /// Read latest version from Versions structure
 fn read_latest_version(
     versions: &[CrateVersion],
+    manifest_path: &Path,
     flag_allow_prerelease: bool,
 ) -> Result<Dependency> {
     let latest = versions
@@ -88,6 +94,10 @@ fn read_latest_version(
 
     let name = &latest.name;
     let version = latest.version.to_string();
+    let version_fmt = config::get(manifest_path, "add.version_fmt")
+                        .or_else(|| config::get(manifest_path, "version_fmt"))
+                        .and_then(|fmt| fmt.as_str().map(|s| s.to_string()));
+    let version = format_version(&version, &version_fmt);
     Ok(Dependency::new(name).set_version(&version))
 }
 
@@ -177,7 +187,7 @@ fn get_latest_stable_version_from_json() {
     .expect("crate version is correctly parsed");
 
     assert_eq!(
-        read_latest_version(&versions, false)
+        read_latest_version(&versions, &std::env::current_dir().unwrap(), false)
             .unwrap()
             .version()
             .unwrap(),
@@ -204,7 +214,7 @@ fn get_latest_unstable_or_stable_version_from_json() {
     .expect("crate version is correctly parsed");
 
     assert_eq!(
-        read_latest_version(&versions, true)
+        read_latest_version(&versions, &std::env::current_dir().unwrap(), true)
             .unwrap()
             .version()
             .unwrap(),
@@ -231,7 +241,7 @@ fn get_latest_version_from_json_test() {
     .expect("crate version is correctly parsed");
 
     assert_eq!(
-        read_latest_version(&versions, false)
+        read_latest_version(&versions, &std::env::current_dir().unwrap(), false)
             .unwrap()
             .version()
             .unwrap(),
@@ -257,7 +267,7 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     )
     .expect("crate version is correctly parsed");
 
-    assert!(read_latest_version(&versions, false).is_err());
+    assert!(read_latest_version(&versions, &std::env::current_dir().unwrap(), false).is_err());
 }
 
 /// Gets the checkedout branch name of .cargo/registry/index/github.com-*/.git/refs or

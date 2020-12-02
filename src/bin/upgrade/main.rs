@@ -16,7 +16,7 @@ extern crate error_chain;
 
 use crate::errors::*;
 use cargo_edit::{
-    find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
+    config::{self, format_version}, find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
     CrateName, Dependency, LocalManifest,
 };
 use failure::Fail;
@@ -297,8 +297,12 @@ impl Manifests {
         for (mut manifest, package) in self.0 {
             println!("{}:", package.name);
 
+            let version_fmt = config::get(&manifest.path, "upgrade.version_fmt")
+                                .or_else(|| config::get(&manifest.path, "version_fmt"))
+                                .and_then(|fmt| fmt.as_str().map(|s| s.to_string()));
             for (dep, version) in &upgraded_deps.0 {
-                let mut new_dep = Dependency::new(&dep.name).set_version(version);
+                let version = format_version(&version, &version_fmt);
+                let mut new_dep = Dependency::new(&dep.name).set_version(&version);
                 if let Some(rename) = dep.rename() {
                     new_dep = new_dep.set_rename(&rename);
                 }
@@ -340,6 +344,9 @@ impl Manifests {
         for (mut manifest, package) in self.0 {
             println!("{}:", package.name);
 
+            let version_fmt = config::get(&manifest.path, "upgrade.version_fmt")
+                                .or_else(|| config::get(&manifest.path, "version_fmt"))
+                                .and_then(|fmt| fmt.as_str().map(|s| s.to_string()));
             // Upgrade the manifests one at a time, as multiple manifests may
             // request the same dependency at differing versions.
             for (name, version) in package
@@ -358,6 +365,7 @@ impl Manifests {
                     None
                 })
             {
+                let version = format_version(&version, &version_fmt);
                 manifest.upgrade(
                     &Dependency::new(&name).set_version(&version),
                     dry_run,

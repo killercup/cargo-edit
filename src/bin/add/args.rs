@@ -2,6 +2,7 @@
 
 use cargo_edit::{find, registry_url, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
+use cargo_edit::config::format_version;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -166,7 +167,7 @@ impl Args {
         }
     }
 
-    fn parse_single_dependency(&self, crate_name: &str) -> Result<Dependency> {
+    fn parse_single_dependency(&self, crate_name: &str, version_fmt: &Option<String>) -> Result<Dependency> {
         let crate_name = CrateName::new(crate_name);
 
         if let Some(mut dependency) = crate_name.parse_as_version()? {
@@ -179,6 +180,11 @@ impl Args {
 
             if let Some(ref path) = self.path {
                 dependency = dependency.set_path(path.to_str().unwrap());
+            }
+
+            if let Some(ref version) = dependency.version() {
+                let version = format_version(version, version_fmt);
+                return Ok(dependency.set_version(&version));
             }
 
             Ok(dependency)
@@ -199,7 +205,9 @@ impl Args {
                 dependency = dependency.set_path(path.to_str().unwrap());
             }
             if let Some(version) = &self.vers {
-                dependency = dependency.set_version(parse_version_req(version)?);
+                let version = parse_version_req(version)?;
+                let version = format_version(&version, &version_fmt);
+                dependency = dependency.set_version(&version);
             }
             let registry_url = if let Some(registry) = &self.registry {
                 Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
@@ -221,6 +229,7 @@ impl Args {
                     // returned `Err(FetchVersionError::GetVersion)`
                     version = dep.version().unwrap_or_else(|| unreachable!())
                 );
+                let v = format_version(&v, &version_fmt);
                 dependency = dep.set_version(&v);
             }
 
@@ -234,7 +243,7 @@ impl Args {
     }
 
     /// Build dependencies from arguments
-    pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
+    pub fn parse_dependencies(&self, version_fmt: &Option<String>) -> Result<Vec<Dependency>> {
         if self.crates.len() > 1
             && (self.git.is_some() || self.path.is_some() || self.vers.is_some())
         {
@@ -252,7 +261,7 @@ impl Args {
         self.crates
             .iter()
             .map(|crate_name| {
-                self.parse_single_dependency(crate_name).map(|x| {
+                self.parse_single_dependency(crate_name, version_fmt).map(|x| {
                     let mut x = x
                         .set_optional(self.optional)
                         .set_features(self.features.clone())
@@ -319,7 +328,7 @@ mod tests {
         };
 
         assert_eq!(
-            args.parse_dependencies().unwrap(),
+            args.parse_dependencies(&None).unwrap(),
             vec![Dependency::new("demo").set_version("0.4.2")]
         );
     }
@@ -333,7 +342,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_github.parse_dependencies().unwrap(),
+            args_github.parse_dependencies(&None).unwrap(),
             vec![Dependency::new("cargo-edit").set_git(github_url, None)]
         );
 
@@ -343,7 +352,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_gitlab.parse_dependencies().unwrap(),
+            args_gitlab.parse_dependencies(&None).unwrap(),
             vec![Dependency::new("polly").set_git(gitlab_url, None)]
         );
     }
@@ -356,7 +365,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_path.parse_dependencies().unwrap(),
+            args_path.parse_dependencies(&None).unwrap(),
             vec![Dependency::new("cargo-edit").set_path(self_path)]
         );
     }

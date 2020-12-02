@@ -1,5 +1,6 @@
 use self::code_from_cargo::Kind;
 use crate::errors::*;
+use crate::config::{self, cargo_home};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use url::Url;
@@ -38,16 +39,6 @@ struct CargoConfig {
     source: HashMap<String, Source>,
 }
 
-fn cargo_home() -> Result<PathBuf> {
-    let default_cargo_home = dirs::home_dir()
-        .map(|x| x.join(".cargo"))
-        .chain_err(|| ErrorKind::ReadHomeDirFailure)?;
-    let cargo_home = std::env::var("CARGO_HOME")
-        .map(PathBuf::from)
-        .unwrap_or(default_cargo_home);
-    Ok(cargo_home)
-}
-
 /// Find the URL of a registry
 pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url> {
     // TODO support local registry sources, directory sources, git sources: https://doc.rust-lang.org/cargo/reference/source-replacement.html?highlight=replace-with#source-replacement
@@ -72,20 +63,8 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
     // put relations in this map.
     let mut registries: HashMap<String, Source> = HashMap::new();
     // ref: https://doc.rust-lang.org/cargo/reference/config.html#hierarchical-structure
-    for work_dir in manifest_path
-        .parent()
-        .expect("there must be a parent directory")
-        .ancestors()
-    {
-        let config_path = work_dir.join(".cargo").join("config");
-        if config_path.is_file() {
-            read_config(&mut registries, config_path)?;
-        }
-    }
-
-    let default_config_path = cargo_home()?.join("config");
-    if default_config_path.is_file() {
-        read_config(&mut registries, default_config_path)?;
+    for config_path in config::configs(&manifest_path.parent().expect("there must be a parent directory")) {
+        read_config(&mut registries, config_path)?;
     }
 
     // find head of the relevant linked list
