@@ -38,14 +38,16 @@ struct CargoConfig {
     source: HashMap<String, Source>,
 }
 
+/// Returns the user's configured, or default, cargo home directory.
 fn cargo_home() -> Result<PathBuf> {
-    let default_cargo_home = dirs::home_dir()
-        .map(|x| x.join(".cargo"))
-        .chain_err(|| ErrorKind::ReadHomeDirFailure)?;
-    let cargo_home = std::env::var("CARGO_HOME")
-        .map(PathBuf::from)
-        .unwrap_or(default_cargo_home);
-    Ok(cargo_home)
+    // use $HOME/.cargo if no $CARGO_HOME or $CARGO_HOME has bad UTF8
+    match std::env::var_os("CARGO_HOME") {
+        Some(cargo_home) => Ok(cargo_home.into()),
+        None => {
+            let userhome = dirs::home_dir().chain_err(|| ErrorKind::ReadHomeDirFailure)?;
+            Ok(userhome.join(".cargo"))
+        }
+    }
 }
 
 /// Find the URL of a registry
