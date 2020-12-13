@@ -1,5 +1,5 @@
 use crate::errors::*;
-use crate::registry::{registry_path, registry_path_from_url, RegistryReq};
+use crate::registry::{RegistryIndex, RegistryReq};
 use crate::{Dependency, Manifest};
 use regex::Regex;
 use std::env;
@@ -7,7 +7,6 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
-use url::Url;
 
 #[derive(Deserialize)]
 struct CrateVersion {
@@ -52,7 +51,7 @@ pub fn get_latest_dependency(
         return Err(ErrorKind::EmptyCrateName.into());
     }
 
-    let registry_cache = registry_path(&registry)?;
+    let registry_cache = registry.index_url()?.cache_path()?;
 
     let crate_versions = fuzzy_query_registry_index(crate_name, &registry_cache)?;
 
@@ -88,8 +87,8 @@ fn read_latest_version(
 }
 
 /// update registry index for given project
-pub fn update_registry_index(registry: &Url) -> Result<()> {
-    let registry_path = registry_path_from_url(registry)?;
+pub fn update_registry_index(registry: &RegistryIndex) -> Result<()> {
+    let registry_path = registry.cache_path()?;
 
     let colorchoice = if atty::is(atty::Stream::Stdout) {
         ColorChoice::Auto
@@ -99,6 +98,7 @@ pub fn update_registry_index(registry: &Url) -> Result<()> {
     let mut output = StandardStream::stdout(colorchoice);
 
     if !registry_path.as_path().exists() {
+        // make new bare git repo at registry_path
         output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
         write!(output, "{:>12}", "Initializing")?;
         output.reset()?;
@@ -110,6 +110,7 @@ pub fn update_registry_index(registry: &Url) -> Result<()> {
         return Ok(());
     }
 
+    // use existing git repo at registry_path
     let repo = git2::Repository::open(&registry_path)?;
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Updating")?;
@@ -120,7 +121,7 @@ pub fn update_registry_index(registry: &Url) -> Result<()> {
         "refs/heads/{0}:refs/remotes/origin/{0}",
         get_checkout_name(registry_path)?
     );
-    fetch_with_cli(&repo, registry.as_str(), &refspec)?;
+    fetch_with_cli(&repo, registry.as_ref().as_str(), &refspec)?;
 
     Ok(())
 }

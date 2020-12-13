@@ -16,8 +16,8 @@ extern crate error_chain;
 
 use crate::errors::*;
 use cargo_edit::{
-    find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
-    CrateName, Dependency, LocalManifest, RegistryReq,
+    find, get_latest_dependency, manifest_from_pkgid, update_registry_index, CrateName, Dependency,
+    LocalManifest, RegistryIndex, RegistryReq,
 };
 use failure::Fail;
 use std::collections::{HashMap, HashSet};
@@ -474,7 +474,7 @@ fn process(args: Args) -> Result<()> {
 
     if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
         // get the project's crates.io registry URL
-        let url = registry_url(&RegistryReq::project(None, &find(&manifest_path)?))?;
+        let url = RegistryReq::project(None, &find(&manifest_path)?).index_url()?;
         update_registry_index(&url)?;
     }
 
@@ -500,9 +500,8 @@ fn process(args: Args) -> Result<()> {
                 .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
                 .collect::<HashSet<_>>()
             {
-                update_registry_index(&Url::parse(registry_url).map_err(|_| {
-                    ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                })?)?;
+                let registry_url = RegistryIndex::parse(registry_url)?;
+                update_registry_index(&registry_url)?;
             }
         }
 

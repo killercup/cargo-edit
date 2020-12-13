@@ -35,4 +35,4 @@ pub use crate::fetch::{
 };
 pub use crate::manifest::{find, LocalManifest, Manifest};
 pub use crate::metadata::manifest_from_pkgid;
-pub use crate::registry::{registry_url, RegistryReq};
+pub use crate::registry::{RegistryIndex, RegistryReq};
