@@ -1534,7 +1534,7 @@ fn add_prints_message_for_features_deps() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-add",
+        utils::EXE_PATH_ADD,
         "add",
         "hello-world",
         "--vers",

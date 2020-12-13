@@ -3,6 +3,10 @@ use std::ffi::{OsStr, OsString};
 use std::io::prelude::*;
 use std::{env, fs, path::Path, path::PathBuf, process};
 
+pub const EXE_PATH_ADD: &'static str = env!("CARGO_BIN_EXE_cargo-add");
+pub const EXE_PATH_RM: &'static str = env!("CARGO_BIN_EXE_cargo-rm");
+pub const EXE_PATH_UPGRADE: &'static str = env!("CARGO_BIN_EXE_cargo-upgrade");
+
 /// Helper function that copies the workspace test into a temporary directory.
 pub fn copy_workspace_test() -> (tempfile::TempDir, String, Vec<String>) {
     // Create a temporary directory and copy in the root manifest, the dummy rust file, and
@@ -190,20 +194,11 @@ pub fn get_toml(manifest_path: &str) -> toml_edit::Document {
 }
 
 pub fn get_command_path(s: impl AsRef<OsStr>) -> String {
-    let target_dir: PathBuf = match env::var_os("CARGO_TARGET_DIR") {
-        Some(dir) => dir.into(),
-        None => env::current_dir()
-            .expect("Failed to get current dir")
-            .join("target"),
-    };
-
-    let mut binary_name = OsString::from("cargo-");
-    binary_name.push(s.as_ref());
-
-    target_dir
-        .join("debug")
-        .join(binary_name)
-        .to_str()
-        .unwrap()
-        .to_string()
+    // would probably be better to replace all calls to get_command_path, but this reduces the diff
+    match s.as_ref().to_string_lossy().as_ref() {
+        "add" => EXE_PATH_ADD.into(),
+        "rm" => EXE_PATH_RM.into(),
+        "upgrade" => EXE_PATH_UPGRADE.into(),
+        _ => panic!("unexpected command {}", s.as_ref().to_string_lossy()),
+    }
 }
