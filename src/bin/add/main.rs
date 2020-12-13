@@ -16,7 +16,7 @@ extern crate error_chain;
 
 use crate::args::{Args, Command};
 use cargo_edit::{
-    find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, Manifest,
+    find, manifest_from_pkgid, update_registry_index, Dependency, Manifest, RegistryReq,
 };
 use std::borrow::Cow;
 use std::io::Write;
@@ -124,10 +124,11 @@ fn handle_add(args: &Args) -> Result<()> {
     let deps = &args.parse_dependencies()?;
 
     if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(
-            &find(&manifest_path)?,
+        let url = RegistryReq::project(
             args.registry.as_ref().map(String::as_ref),
-        )?;
+            &find(&manifest_path)?,
+        )
+        .index_url()?;
         update_registry_index(&url)?;
     }
 
