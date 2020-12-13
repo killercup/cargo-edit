@@ -1,5 +1,5 @@
 use crate::errors::*;
-use crate::registry::{registry_path, registry_path_from_url};
+use crate::registry::{registry_path, registry_path_from_url, RegistryReq};
 use crate::{Dependency, Manifest};
 use regex::Regex;
 use std::env;
@@ -30,8 +30,7 @@ struct CrateVersion {
 pub fn get_latest_dependency(
     crate_name: &str,
     flag_allow_prerelease: bool,
-    manifest_path: &Path,
-    registry: &Option<Url>,
+    registry: RegistryReq,
 ) -> Result<Dependency> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
@@ -53,12 +52,9 @@ pub fn get_latest_dependency(
         return Err(ErrorKind::EmptyCrateName.into());
     }
 
-    let registry_path = match registry {
-        Some(url) => registry_path_from_url(url)?,
-        None => registry_path(manifest_path, None)?,
-    };
+    let registry_cache = registry_path(&registry)?;
 
-    let crate_versions = fuzzy_query_registry_index(crate_name, &registry_path)?;
+    let crate_versions = fuzzy_query_registry_index(crate_name, &registry_cache)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 

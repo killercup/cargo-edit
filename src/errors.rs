@@ -12,6 +12,11 @@ error_chain! {
         ReadHomeDirFailure {
             description("Failed to read home directory")
         }
+        /// Failed to absolutely resolve a relative directory
+        DirectoryResolutionFailure(dir: PathBuf) {
+            description("Failed to canonicalize a directory")
+            display("The path `{}` has failed to resolve to an absolute path", dir.display())
+        }
         /// Invalid JSON in registry index
         InvalidSummaryJson {
             description("Invalid JSON in registry index")

@@ -17,7 +17,7 @@ extern crate error_chain;
 use crate::errors::*;
 use cargo_edit::{
     find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
-    CrateName, Dependency, LocalManifest,
+    CrateName, Dependency, LocalManifest, RegistryReq,
 };
 use failure::Fail;
 use std::collections::{HashMap, HashSet};
@@ -393,44 +393,58 @@ impl DesiredUpgrades {
     fn get_upgraded(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
         self.0
             .into_iter()
-            .map(
-                |(
-                    dep,
-                    UpgradeMetadata {
-                        registry,
-                        version,
-                        is_prerelease,
-                    },
-                )| {
-                    if let Some(v) = version {
-                        Ok((dep, v))
-                    } else {
-                        let registry_url = match registry {
-                            Some(x) => Some(Url::parse(&x).map_err(|_| {
+            .map(|(dep, meta)| {
+                match meta.version {
+                    // use previous version
+                    Some(v) => Ok((dep, v)),
+
+                    // no version exists - get latest
+                    None => {
+                        // if a registry exists on a dependency, parse it as a URL
+                        let registry_url = meta
+                            .registry
+                            .as_ref()
+                            .map(|s| Url::parse(&s))
+                            .transpose()
+                            .map_err(|_| {
                                 ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                            })?),
-                            None => None,
+                            })?;
+
+                        let use_prerelease = allow_prerelease || meta.is_prerelease;
+
+                        let latest_dep = if let Some(url) = registry_url {
+                            // Configured registry URL
+                            get_latest_dependency(
+                                &dep.name,
+                                use_prerelease,
+                                RegistryReq::custom(url),
+                            )
+                        } else {
+                            // no configured registry - use crates.io
+                            get_latest_dependency(
+                                &dep.name,
+                                use_prerelease,
+                                // specifying registries by name must be qualified with a cargo.toml
+                                // specifying purely by URL may work, but will need to call this function differently for knowing URL vs knowing name
+                                RegistryReq::project(
+                                    (&meta.registry).as_ref().map(AsRef::as_ref),
+                                    manifest_path.parent().unwrap(),
+                                ),
+                            )
                         };
-                        let allow_prerelease = allow_prerelease || is_prerelease;
-                        get_latest_dependency(
-                            &dep.name,
-                            allow_prerelease,
-                            manifest_path,
-                            &registry_url,
-                        )
-                        .map(|new_dep| {
-                            (
-                                dep,
-                                new_dep
+
+                        latest_dep
+                            .map(|latest_dep| {
+                                latest_dep
                                     .version()
                                     .expect("Invalid dependency type")
-                                    .to_string(),
-                            )
-                        })
-                        .chain_err(|| "Failed to get new version")
+                                    .into()
+                            })
+                            .map(|new_version| (dep, new_version))
+                            .chain_err(|| "Failed to get new version")
                     }
-                },
-            )
+                }
+            })
             .collect::<Result<_>>()
             .map(ActualUpgrades)
     }
@@ -459,7 +473,8 @@ fn process(args: Args) -> Result<()> {
     let all = workspace || all;
 
     if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(&find(&manifest_path)?, None)?;
+        // get the project's crates.io registry URL
+        let url = registry_url(&RegistryReq::project(None, &find(&manifest_path)?))?;
         update_registry_index(&url)?;
     }
 

@@ -1,7 +1,7 @@
 //! Handle `cargo add` arguments
 
-use cargo_edit::{find, registry_url, Dependency};
-use cargo_edit::{get_latest_dependency, CrateName};
+use cargo_edit::{find, Dependency};
+use cargo_edit::{get_latest_dependency, CrateName, RegistryReq};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -201,18 +201,15 @@ impl Args {
             if let Some(version) = &self.vers {
                 dependency = dependency.set_version(parse_version_req(version)?);
             }
-            let registry_url = if let Some(registry) = &self.registry {
-                Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
-            } else {
-                None
-            };
 
             if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
                 let dep = get_latest_dependency(
                     crate_name.name(),
                     self.allow_prerelease,
-                    &find(&self.manifest_path)?,
-                    &registry_url,
+                    RegistryReq::project(
+                        self.registry.as_ref().map(String::as_ref),
+                        &find(&self.manifest_path)?,
+                    ),
                 )?;
                 let v = format!(
                     "{prefix}{version}",
