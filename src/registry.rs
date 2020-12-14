@@ -77,22 +77,24 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
         .expect("there must be a parent directory")
         .ancestors()
     {
-        let config_path = work_dir.join(".cargo").join("config");
+        let work_cargo_dir = work_dir.join(".cargo");
+        let config_path = work_cargo_dir.join("config");
         if config_path.is_file() {
             read_config(&mut registries, config_path)?;
         } else {
-            let config_path = work_dir.join(".cargo").join("config.toml");
+            let config_path = work_cargo_dir.join("config.toml");
             if config_path.is_file() {
                 read_config(&mut registries, config_path)?;
             }
         }
     }
 
-    let default_config_path = cargo_home()?.join("config");
+    let default_cargo_home = cargo_home()?;
+    let default_config_path = default_cargo_home.join("config");
     if default_config_path.is_file() {
         read_config(&mut registries, default_config_path)?;
     } else {
-        let default_config_path = cargo_home()?.join("config.toml");
+        let default_config_path = default_cargo_home.join("config.toml");
         if default_config_path.is_file() {
             read_config(&mut registries, default_config_path)?;
         }
