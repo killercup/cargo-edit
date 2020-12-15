@@ -39,7 +39,7 @@ struct CargoConfig {
 }
 
 fn cargo_home() -> Result<PathBuf> {
-    let default_cargo_home = dirs::home_dir()
+    let default_cargo_home = dirs_next::home_dir()
         .map(|x| x.join(".cargo"))
         .chain_err(|| ErrorKind::ReadHomeDirFailure)?;
     let cargo_home = std::env::var("CARGO_HOME")
