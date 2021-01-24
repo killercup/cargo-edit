@@ -117,6 +117,10 @@ struct Args {
     /// Upgrade all packages to the version in the lockfile.
     #[structopt(long = "to-lockfile", conflicts_with = "dependency")]
     pub to_lockfile: bool,
+
+    /// Crates to exclude and not upgrade.
+    #[structopt(long)]
+    exclude: Vec<String>,
 }
 
 /// A collection of manifests.
@@ -225,7 +229,7 @@ impl Manifests {
 
     /// Get the the combined set of dependencies to upgrade. If the user has specified
     /// per-dependency desired versions, extract those here.
-    fn get_dependencies(&self, only_update: Vec<String>) -> Result<DesiredUpgrades> {
+    fn get_dependencies(&self, only_update: Vec<String>, exclude: &Vec<String>) -> Result<DesiredUpgrades> {
         // Map the names of user-specified dependencies to the (optionally) requested version.
         let selected_dependencies = only_update
             .into_iter()
@@ -246,6 +250,7 @@ impl Manifests {
                 .iter()
                 .flat_map(|&(_, ref package)| package.dependencies.clone())
                 .filter(is_version_dep)
+                .filter(|dependency| !exclude.contains(&dependency.name))
                 .filter_map(|dependency| {
                     let is_prerelease = dependency.req.to_string().contains('-');
                     if selected_dependencies.is_empty() {
@@ -449,6 +454,7 @@ fn process(args: Args) -> Result<()> {
         skip_compatible,
         to_lockfile,
         workspace,
+        exclude,
         ..
     } = args;
 
@@ -474,7 +480,7 @@ fn process(args: Args) -> Result<()> {
     if to_lockfile {
         manifests.sync_to_lockfile(dry_run, skip_compatible)
     } else {
-        let existing_dependencies = manifests.get_dependencies(dependency)?;
+        let existing_dependencies = manifests.get_dependencies(dependency, &exclude)?;
 
         // Update indices for any alternative registries, unless
         // we're offline.
