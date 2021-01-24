@@ -229,7 +229,11 @@ impl Manifests {
 
     /// Get the the combined set of dependencies to upgrade. If the user has specified
     /// per-dependency desired versions, extract those here.
-    fn get_dependencies(&self, only_update: Vec<String>, exclude: &Vec<String>) -> Result<DesiredUpgrades> {
+    fn get_dependencies(
+        &self,
+        only_update: Vec<String>,
+        exclude: Vec<String>,
+    ) -> Result<DesiredUpgrades> {
         // Map the names of user-specified dependencies to the (optionally) requested version.
         let selected_dependencies = only_update
             .into_iter()
@@ -480,7 +484,7 @@ fn process(args: Args) -> Result<()> {
     if to_lockfile {
         manifests.sync_to_lockfile(dry_run, skip_compatible)
     } else {
-        let existing_dependencies = manifests.get_dependencies(dependency, &exclude)?;
+        let existing_dependencies = manifests.get_dependencies(dependency, exclude)?;
 
         // Update indices for any alternative registries, unless
         // we're offline.
