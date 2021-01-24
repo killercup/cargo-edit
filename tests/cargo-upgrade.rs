@@ -504,7 +504,7 @@ fn unknown_flags() {
         "error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
 USAGE:
-    cargo upgrade [FLAGS] [OPTIONS] [dependency]...
+    cargo upgrade [FLAGS] [OPTIONS] [--] [dependency]...
 
 For more information try --help ",
     )
