@@ -215,6 +215,20 @@ fn upgrade_with_exclude() {
 }
 
 #[test]
+fn upgrade_renamed_dependency_with_exclude() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.renamed_dep");
+
+    // Upgrade everything except `rx` aka `regex`
+    execute_command(&["upgrade", "--exclude", "rx"], &manifest);
+
+    // And verify that `rx` has not been updated.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["rx"]["version"].as_str(),
+        Some("0.2")
+    );
+}
+
+#[test]
 fn upgrade_renamed_dependency_all() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.renamed_dep");
 

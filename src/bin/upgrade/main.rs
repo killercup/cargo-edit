@@ -255,6 +255,13 @@ impl Manifests {
                 .flat_map(|&(_, ref package)| package.dependencies.clone())
                 .filter(is_version_dep)
                 .filter(|dependency| !exclude.contains(&dependency.name))
+                // Exclude renamed dependecies aswell
+                .filter(|dependency| {
+                    dependency
+                        .rename
+                        .as_ref()
+                        .map_or(true, |rename| !exclude.contains(rename))
+                })
                 .filter_map(|dependency| {
                     let is_prerelease = dependency.req.to_string().contains('-');
                     if selected_dependencies.is_empty() {
