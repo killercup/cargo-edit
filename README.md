@@ -180,6 +180,8 @@ $ cargo upgrade
 $ cargo upgrade docopt@~0.9 serde@>=0.9,<2.0
 # Upgrade regex (to the latest version) across all crates in the workspace
 $ cargo upgrade regex --workspace
+# Upgrade all dependencies except docopt and serde
+$ cargo upgrade --exclude docopt serde
 ```
 
 #### Usage
@@ -203,6 +205,7 @@ FLAGS:
     -V, --version             Prints version information
 
 OPTIONS:
+        --exclude <exclude>...    Crates to exclude and not upgrade
         --manifest-path <path>    Path to the manifest to upgrade
     -p, --package <package>       Specify the package in the workspace to add a dependency to (see `cargo help pkgid`)
 
