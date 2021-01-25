@@ -198,6 +198,37 @@ fn upgrade_optional_dependency() {
 }
 
 #[test]
+fn upgrade_with_exclude() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // Setup manifest with the dependency `docopt@0.8`
+    execute_command(&["add", "docopt", "--vers", "0.8"], &manifest);
+
+    // Then upgrade everything except `docopt`
+    execute_command(&["upgrade", "--exclude", "docopt"], &manifest);
+
+    // And finally verify that `docopt` has not been updated.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["docopt"].as_str(),
+        Some("0.8")
+    );
+}
+
+#[test]
+fn upgrade_renamed_dependency_with_exclude() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.renamed_dep");
+
+    // Upgrade everything except `rx` aka `regex`
+    execute_command(&["upgrade", "--exclude", "rx"], &manifest);
+
+    // And verify that `rx` has not been updated.
+    assert_eq!(
+        get_toml(&manifest)["dependencies"]["rx"]["version"].as_str(),
+        Some("0.2")
+    );
+}
+
+#[test]
 fn upgrade_renamed_dependency_all() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.renamed_dep");
 
@@ -487,7 +518,7 @@ fn unknown_flags() {
         "error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
 USAGE:
-    cargo upgrade [FLAGS] [OPTIONS] [dependency]...
+    cargo upgrade [FLAGS] [OPTIONS] [--] [dependency]...
 
 For more information try --help ",
     )

@@ -46,3 +46,4 @@ env:
 branches:
   except:
   - staging.tmp
+  - staging-squash-merge.tmp
