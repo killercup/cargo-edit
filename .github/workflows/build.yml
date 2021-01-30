@@ -28,6 +28,8 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Run tests (vendored-openssl)
+      run: cargo test --features vendored-openssl --verbose
   
   build-nightly:
     runs-on: ${{ matrix.os }}
@@ -55,6 +57,9 @@ jobs:
       continue-on-error: true
     - name: Run tests
       run: cargo test --verbose
+      continue-on-error: true
+    - name: Run tests (vendored-openssl)
+      run: cargo test --features vendored-openssl --verbose
       continue-on-error: true
 
   check:
