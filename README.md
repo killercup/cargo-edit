@@ -33,6 +33,14 @@ Ensure that you have a fairly recent version of rust/cargo installed. On Ubuntu 
 $ cargo install cargo-edit
 ```
 
+If you wish to use a bundled version of `openssl`:
+
+```sh
+$ cargo install cargo-edit --features vendored-openssl
+```
+
+*Compiler support: requires rustc 1.44+*
+
 (Please check [`cargo`'s documentation](http://doc.crates.io/) to learn how `cargo install` works and how to set up your system so it finds binaries installed by `cargo`.)
 
 Install a sub-set of the commands with `cargo install -f --no-default-features --features "<COMMANDS>"`, where `<COMMANDS>` is a space-separated list of commands; i.e. `add rm upgrade` for the full set.
@@ -176,6 +184,8 @@ $ cargo upgrade
 $ cargo upgrade docopt@~0.9 serde@>=0.9,<2.0
 # Upgrade regex (to the latest version) across all crates in the workspace
 $ cargo upgrade regex --workspace
+# Upgrade all dependencies except docopt and serde
+$ cargo upgrade --exclude docopt serde
 ```
 
 #### Usage
@@ -199,6 +209,7 @@ FLAGS:
     -V, --version             Prints version information
 
 OPTIONS:
+        --exclude <exclude>...    Crates to exclude and not upgrade
         --manifest-path <path>    Path to the manifest to upgrade
     -p, --package <package>       Specify the package in the workspace to add a dependency to (see `cargo help pkgid`)
 

@@ -25,7 +25,7 @@ license = "Apache-2.0/MIT"
 name = "cargo-edit"
 readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2018"
 
 [[bin]]
@@ -45,15 +45,14 @@ required-features = ["upgrade"]
 
 [dependencies]
 atty = { version = "0.2.14", optional = true }
-cargo_metadata = "0.11.3"
-dirs = "3.0.1"
+cargo_metadata = "0.12.0"
+dirs-next = "2.0.0"
 env_proxy = "0.4.1"
 error-chain = "0.12.4"
 failure = "0.1.8"
 git2 = "0.13.11"
 hex = "0.4.2"
 regex = "1.3.9"
-reqwest = { version = "0.10.8", features = ["blocking"] }
 serde = "1.0.116"
 serde_derive = "1.0.116"
 serde_json = "1.0.58"
@@ -63,6 +62,7 @@ termcolor = "1.1.0"
 toml = "0.5.6"
 toml_edit = "0.2.0"
 url = "2.1.1"
+ureq = { version = "1.5.1", default-features = false, features = ["tls", "json", "socks"] }
 
 [dependencies.semver]
 features = ["serde"]
@@ -84,3 +84,4 @@ rm = ["cli"]
 upgrade = ["cli"]
 cli = ["atty", "structopt"]
 test-external-apis = []
+vendored-openssl = ["git2/vendored-openssl"]

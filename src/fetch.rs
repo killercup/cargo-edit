@@ -3,7 +3,7 @@ use crate::registry::{registry_path, registry_path_from_url};
 use crate::{Dependency, Manifest};
 use regex::Regex;
 use std::env;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -260,16 +260,20 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
     assert!(read_latest_version(&versions, false).is_err());
 }
 
-/// Gets the checkedout branch name of .cargo/registry/index/github.com-*/.git/refs
+/// Gets the checkedout branch name of .cargo/registry/index/github.com-*/.git/refs or
+/// .cargo/registry/index/github.com-*/refs for bare git repository
 fn get_checkout_name(registry_path: impl AsRef<Path>) -> Result<String> {
     let checkout_dir = registry_path
         .as_ref()
         .join(".git")
         .join("refs/remotes/origin/");
+    let bare_checkout_dir = registry_path.as_ref().join("refs/remotes/origin/");
+
     Ok(checkout_dir
-        .read_dir()?
+        .read_dir() // .git repo
+        .or_else(|_| bare_checkout_dir.read_dir())? // there's no .git, it's bare one
         .next() //Is there always only one branch? (expecting either master og HEAD)
-        .ok_or_else(|| ErrorKind::MissingRegistraryCheckout(checkout_dir))??
+        .ok_or(ErrorKind::MissingRegistraryCheckout(checkout_dir))??
         .file_name()
         .into_string()
         .map_err(|_| ErrorKind::NonUnicodeGitPath)?)
@@ -288,7 +292,7 @@ fn fuzzy_query_registry_index(
             remotes
                 .join(get_checkout_name(&registry_path)?)
                 .to_str()
-                .ok_or_else(|| ErrorKind::NonUnicodeGitPath)?,
+                .ok_or(ErrorKind::NonUnicodeGitPath)?,
         )?
         .peel_to_tree()?;
 
@@ -393,31 +397,34 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
         .ok_or_else(|| ErrorKind::ParseCargoToml.into())
 }
 
+fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
+    let mut req = ureq::get(url);
+    req.timeout(get_default_timeout());
+    if let Some(proxy) = env_proxy::for_url_str(url)
+        .to_url()
+        .and_then(|url| ureq::Proxy::new(url).ok())
+    {
+        req.set_proxy(proxy);
+    }
+    let res = req.call();
+    if res.error() {
+        return Err(format!(
+            "HTTP request `{}` failed: {}",
+            url,
+            res.synthetic_error()
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| res.status().to_string())
+        )
+        .into());
+    }
+
+    res.into_string()
+        .chain_err(|| "Git response not a valid `String`")
+}
+
 const fn get_default_timeout() -> Duration {
     Duration::from_secs(10)
-}
-
-fn get_with_timeout(url: &str, timeout: Duration) -> reqwest::Result<reqwest::blocking::Response> {
-    let client = reqwest::blocking::ClientBuilder::new()
-        .timeout(timeout)
-        .proxy(reqwest::Proxy::custom(|url| {
-            env_proxy::for_url(url).to_url()
-        }))
-        .build()?;
-
-    client
-        .get(url)
-        .send()
-        .and_then(reqwest::blocking::Response::error_for_status)
-}
-
-fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
-    let mut res = get_with_timeout(url, get_default_timeout())
-        .chain_err(|| "Failed to fetch crate from git")?;
-    let mut body = String::new();
-    res.read_to_string(&mut body)
-        .chain_err(|| "Git response not a valid `String`")?;
-    Ok(body)
 }
 
 /// Generate all similar crate names

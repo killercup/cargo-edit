@@ -117,6 +117,10 @@ struct Args {
     /// Upgrade all packages to the version in the lockfile.
     #[structopt(long = "to-lockfile", conflicts_with = "dependency")]
     pub to_lockfile: bool,
+
+    /// Crates to exclude and not upgrade.
+    #[structopt(long)]
+    exclude: Vec<String>,
 }
 
 /// A collection of manifests.
@@ -225,7 +229,11 @@ impl Manifests {
 
     /// Get the the combined set of dependencies to upgrade. If the user has specified
     /// per-dependency desired versions, extract those here.
-    fn get_dependencies(&self, only_update: Vec<String>) -> Result<DesiredUpgrades> {
+    fn get_dependencies(
+        &self,
+        only_update: Vec<String>,
+        exclude: Vec<String>,
+    ) -> Result<DesiredUpgrades> {
         // Map the names of user-specified dependencies to the (optionally) requested version.
         let selected_dependencies = only_update
             .into_iter()
@@ -246,6 +254,14 @@ impl Manifests {
                 .iter()
                 .flat_map(|&(_, ref package)| package.dependencies.clone())
                 .filter(is_version_dep)
+                .filter(|dependency| !exclude.contains(&dependency.name))
+                // Exclude renamed dependecies aswell
+                .filter(|dependency| {
+                    dependency
+                        .rename
+                        .as_ref()
+                        .map_or(true, |rename| !exclude.contains(rename))
+                })
                 .filter_map(|dependency| {
                     let is_prerelease = dependency.req.to_string().contains('-');
                     if selected_dependencies.is_empty() {
@@ -315,12 +331,12 @@ impl Manifests {
         // Get locked dependencies. For workspaces with multiple Cargo.toml
         // files, there is only a single lockfile, so it suffices to get
         // metadata for any one of Cargo.toml files.
-        let (manifest, _package) = self
-            .0
-            .get(0)
-            .ok_or_else(|| ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig))?;
+        let (manifest, _package) = self.0.get(0).ok_or(ErrorKind::CargoEditLib(
+            ::cargo_edit::ErrorKind::InvalidCargoConfig,
+        ))?;
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.manifest_path(manifest.path.clone());
+        cmd.features(cargo_metadata::CargoOpt::AllFeatures);
         cmd.other_options(vec!["--locked".to_string()]);
 
         let result = cmd
@@ -449,6 +465,7 @@ fn process(args: Args) -> Result<()> {
         skip_compatible,
         to_lockfile,
         workspace,
+        exclude,
         ..
     } = args;
 
@@ -474,7 +491,7 @@ fn process(args: Args) -> Result<()> {
     if to_lockfile {
         manifests.sync_to_lockfile(dry_run, skip_compatible)
     } else {
-        let existing_dependencies = manifests.get_dependencies(dependency)?;
+        let existing_dependencies = manifests.get_dependencies(dependency, exclude)?;
 
         // Update indices for any alternative registries, unless
         // we're offline.

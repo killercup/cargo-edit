@@ -77,15 +77,15 @@ error_chain! {
             description("Failed to parse a version for a dependency")
             display("The version `{}` for the dependency `{}` couldn't be parsed", version, dep)
         }
-        /// Missing registrary checkout in the cargo registrary
+        /// Missing registry checkout in the cargo registry
         MissingRegistraryCheckout(path: PathBuf) {
-            description("Missing registrary checkout in the cargo registrary")
+            description("Missing registry checkout in the cargo registry")
             display("Looks like ({}) is empty", path.display())
         }
         /// Non Unicode git path
         NonUnicodeGitPath {
-            // this is because git2 function takes &str insted of something like AsRef<Path>
-            description("Path to cargos registrary contains non unicode characters")
+            // this is because git2 function takes &str instead of something like AsRef<Path>
+            description("Path to cargos registry contains non unicode characters")
         }
     }
 }
