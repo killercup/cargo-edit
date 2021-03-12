@@ -109,7 +109,8 @@ pub fn update_registry_index(registry: &Url) -> Result<()> {
         writeln!(output, " '{}' index", registry)?;
 
         let mut opts = git2::RepositoryInitOptions::new();
-        opts.bare(true);
+        let bare = !registry_path.as_path().ends_with(".git");
+        opts.bare(bare);
         git2::Repository::init_opts(&registry_path, &opts)?;
         return Ok(());
     }
