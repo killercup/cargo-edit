@@ -129,9 +129,10 @@ fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<
 fn print_upgrade_if_necessary(
     crate_name: &str,
     old_dep: &toml_edit::Item,
-    new_version: &toml_edit::Item,
+    new_dep: &toml_edit::Item,
 ) -> Result<()> {
     let old_version = get_version(old_dep)?;
+    let new_version = get_version(new_dep)?;
 
     if let (Some(old_version), Some(new_version)) = (old_version.as_str(), new_version.as_str()) {
         if old_version == new_version {
