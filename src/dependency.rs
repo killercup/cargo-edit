@@ -160,10 +160,7 @@ impl Dependency {
 
     /// Get the alias for the dependency (if any)
     pub fn rename(&self) -> Option<&str> {
-        match &self.rename {
-            Some(rename) => Some(&rename),
-            None => None,
-        }
+        self.rename.as_deref()
     }
 
     /// Convert dependency to TOML
