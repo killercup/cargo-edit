@@ -77,6 +77,8 @@ impl<'a> CrateName<'a> {
             let (name, version) = (xs[0], xs[1]);
             semver::VersionReq::parse(version).chain_err(|| "Invalid crate version requirement")?;
 
+            self.validate_name()?;
+            
             Ok(Some(Dependency::new(name).set_version(version)))
         } else {
             Ok(None)

@@ -49,9 +49,7 @@ pub fn get_latest_dependency(
         return Ok(Dependency::new(crate_name).set_version(&new_version));
     }
 
-    if crate_name.is_empty() {
-        return Err(ErrorKind::EmptyCrateName.into());
-    }
+    crate::CrateName::new(crate_name).validate_name()?;
 
     let registry_path = match registry {
         Some(url) => registry_path_from_url(url)?,
