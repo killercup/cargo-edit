@@ -51,19 +51,31 @@ impl<'a> CrateName<'a> {
         }
 
 
-        let mut invalid_char = 'a';
-        let contains_only_valid_characters = self.name().chars().all(|c| {
-            let is_valid = c.is_alphanumeric() || c == '-' || c == '_';
+        let contains_only_valid_characters: bool;
+        let mut invalid_char: char;
 
-            if !is_valid {
-                invalid_char = c;
-            }
-            is_valid
-        });
+        if self.name().chars().next().unwrap().is_alphabetic() {
+            invalid_char = 'a'; //placeholder value. Is always a valid character in a crate name.
+            contains_only_valid_characters = self.name().chars().all(|c| {
+                let is_valid = (c.is_alphanumeric() || c == '-' || c == '_') && c.is_ascii();
+
+                if !is_valid {
+                    invalid_char = c;
+                }
+                is_valid
+            });
+        } else {
+            invalid_char = self.name().chars().next().unwrap();
+            contains_only_valid_characters = false;
+        }
 
         if !contains_only_valid_characters {
-            assert_ne!(invalid_char, 'a');
-            return Err(ErrorKind::CrateNameContainsInvalidCharacter(self.name().to_string(), invalid_char).into());
+            assert_ne!(invalid_char, 'a'); //check if invalid_char still does not contains its initial placeholder value. That should never happen
+            return Err(ErrorKind::CrateNameContainsInvalidCharacter(
+                self.name().to_string(),
+                invalid_char,
+            )
+            .into());
         }
 
         Ok(())
@@ -78,7 +90,7 @@ impl<'a> CrateName<'a> {
             semver::VersionReq::parse(version).chain_err(|| "Invalid crate version requirement")?;
 
             self.validate_name()?;
-            
+
             Ok(Some(Dependency::new(name).set_version(version)))
         } else {
             Ok(None)
