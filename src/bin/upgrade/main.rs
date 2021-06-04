@@ -24,7 +24,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
-use structopt::StructOpt;
+use structopt::{clap::AppSettings, StructOpt};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use url::Url;
 
@@ -44,28 +44,28 @@ mod errors {
 enum Command {
     /// Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
     #[structopt(name = "upgrade")]
-    #[structopt(
-        after_help = "This command differs from `cargo update`, which updates the dependency versions recorded in the
+    #[structopt(after_help = "\
+This command differs from `cargo update`, which updates the dependency versions recorded in the \
 local lock file (Cargo.lock).
 
-If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to
-upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2.0`.
+If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version \
+to upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2.0`.
 
-Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
-supported. Git/path dependencies will be ignored.
+Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io \
+are supported. Git/path dependencies will be ignored.
 
-All packages in the workspace will be upgraded if the `--workspace` flag is supplied. The `--workspace` flag may
-be supplied in the presence of a virtual manifest.
+All packages in the workspace will be upgraded if the `--workspace` flag is supplied. The \
+`--workspace` flag may be supplied in the presence of a virtual manifest.
 
-If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
-version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is
-up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
-error. If the '--to-lockfile' flag is supplied then the network won't be accessed."
-    )]
+If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked \
+version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is \
+up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with \
+an error. If the '--to-lockfile' flag is supplied then the network won't be accessed.")]
     Upgrade(Args),
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(setting = AppSettings::ColoredHelp)]
 struct Args {
     /// Crates to be upgraded.
     dependency: Vec<String>,

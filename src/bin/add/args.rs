@@ -3,7 +3,7 @@
 use cargo_edit::{find, registry_url, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
 use std::path::PathBuf;
-use structopt::StructOpt;
+use structopt::{clap::AppSettings, StructOpt};
 
 use crate::errors::*;
 
@@ -12,27 +12,27 @@ use crate::errors::*;
 pub enum Command {
     /// Add dependency to a Cargo.toml manifest file.
     #[structopt(name = "add")]
-    #[structopt(
-        after_help = "This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
-or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name
-and set the appropriate `--git` or `--path` value.
+    #[structopt(after_help = "\
+This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github \
+or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate \
+name and set the appropriate `--git` or `--path` value.
 
-Please note that Cargo treats versions like '1.2.3' as '^1.2.3' (and that '^1.2.3' is specified
-as '>=1.2.3 and <2.0.0'). By default, `cargo add` will use this format, as it is the one that the
-crates.io registry suggests. One goal of `cargo add` is to prevent you from using wildcard
-dependencies (version set to '*')."
-    )]
+Please note that Cargo treats versions like '1.2.3' as '^1.2.3' (and that '^1.2.3' is specified \
+as '>=1.2.3 and <2.0.0'). By default, `cargo add` will use this format, as it is the one that the \
+crates.io registry suggests. One goal of `cargo add` is to prevent you from using wildcard \
+dependencies (version set to '*').")]
     Add(Args),
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(setting = AppSettings::ColoredHelp)]
 pub struct Args {
     /// Crates to be added.
     #[structopt(name = "crate", required = true)]
     pub crates: Vec<String>,
 
     /// Rename a dependency in Cargo.toml,
-    /// https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
+    /// https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml.
     /// Only works when specifying a single dependency.
     #[structopt(long = "rename", short = "r")]
     pub rename: Option<String>,
