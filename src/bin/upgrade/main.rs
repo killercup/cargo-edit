@@ -477,7 +477,7 @@ fn process(args: Args) -> Result<()> {
 
     if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(&find(&manifest_path)?, None)?;
-        update_registry_index(&url)?;
+        update_registry_index(&url, false)?;
     }
 
     let manifests = if all {
@@ -502,9 +502,12 @@ fn process(args: Args) -> Result<()> {
                 .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
                 .collect::<HashSet<_>>()
             {
-                update_registry_index(&Url::parse(registry_url).map_err(|_| {
-                    ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                })?)?;
+                update_registry_index(
+                    &Url::parse(registry_url).map_err(|_| {
+                        ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+                    })?,
+                    false,
+                )?;
             }
         }
 

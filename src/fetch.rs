@@ -92,7 +92,7 @@ fn read_latest_version(
 }
 
 /// update registry index for given project
-pub fn update_registry_index(registry: &Url) -> Result<()> {
+pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
     let registry_path = registry_path_from_url(registry)?;
 
     let colorchoice = if atty::is(atty::Stream::Stdout) {
@@ -115,10 +115,12 @@ pub fn update_registry_index(registry: &Url) -> Result<()> {
     }
 
     let repo = git2::Repository::open(&registry_path)?;
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
-    write!(output, "{:>12}", "Updating")?;
-    output.reset()?;
-    writeln!(output, " '{}' index", registry)?;
+    if !quiet {
+        output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+        write!(output, "{:>12}", "Updating")?;
+        output.reset()?;
+        writeln!(output, " '{}' index", registry)?;
+    }
 
     let refspec = format!(
         "refs/heads/{0}:refs/remotes/origin/{0}",

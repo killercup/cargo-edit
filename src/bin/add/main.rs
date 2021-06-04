@@ -128,7 +128,7 @@ fn handle_add(args: &Args) -> Result<()> {
             &find(&manifest_path)?,
             args.registry.as_ref().map(String::as_ref),
         )?;
-        update_registry_index(&url)?;
+        update_registry_index(&url, args.quiet)?;
     }
 
     let was_sorted = manifest
