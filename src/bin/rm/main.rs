@@ -19,7 +19,7 @@ use std::borrow::Cow;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
-use structopt::StructOpt;
+use structopt::{clap::AppSettings, StructOpt};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 mod errors {
@@ -43,6 +43,7 @@ enum Command {
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(setting = AppSettings::ColoredHelp)]
 struct Args {
     /// Crates to be removed.
     #[structopt(name = "crates", required = true)]
