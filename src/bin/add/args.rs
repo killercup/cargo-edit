@@ -116,11 +116,11 @@ pub struct Args {
 
     /// Space-separated list of features to add. For an alternative approach to
     /// enabling features, consider installing the `cargo-feature` utility.
-    #[structopt(long = "features", number_of_values = 1)]
+    #[structopt(long = "features", short = "f", number_of_values = 1)]
     pub features: Option<Vec<String>>,
 
     /// Set `default-features = false` for the added dependency.
-    #[structopt(long = "no-default-features")]
+    #[structopt(long = "no-default-features", short = "n")]
     pub no_default_features: bool,
 
     /// Do not print any output in case of success.
