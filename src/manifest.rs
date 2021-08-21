@@ -1,6 +1,6 @@
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::{env, str};
 
@@ -422,6 +422,11 @@ impl Manifest {
             })
             .map(|dep| (dep.0.into(), dep.1))
     }
+
+    /// Override the manifest's version
+    pub fn set_package_version(&mut self, version: &Version) {
+        self.data["package"]["version"] = toml_edit::value(version.to_string());
+    }
 }
 
 impl str::FromStr for Manifest {
@@ -432,6 +437,13 @@ impl str::FromStr for Manifest {
         let d: toml_edit::Document = input.parse().chain_err(|| "Manifest not valid TOML")?;
 
         Ok(Manifest { data: d })
+    }
+}
+
+impl std::fmt::Display for Manifest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = self.data.to_string_in_original_order();
+        s.fmt(f)
     }
 }
 
@@ -452,6 +464,12 @@ impl Deref for LocalManifest {
     }
 }
 
+impl DerefMut for LocalManifest {
+    fn deref_mut(&mut self) -> &mut Manifest {
+        &mut self.manifest
+    }
+}
+
 impl LocalManifest {
     /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
     /// the user means.
@@ -467,6 +485,13 @@ impl LocalManifest {
             manifest: Manifest::open(&Some(path.clone()))?,
             path,
         })
+    }
+
+    /// Write changes back to the file
+    pub fn write(&self) -> Result<()> {
+        let mut file = self.get_file()?;
+        self.write_to_file(&mut file)
+            .chain_err(|| "Failed to write new manifest contents")
     }
 
     /// Get the `File` corresponding to this manifest.
@@ -507,9 +532,7 @@ impl LocalManifest {
             }
         }
 
-        let mut file = self.get_file()?;
-        self.write_to_file(&mut file)
-            .chain_err(|| "Failed to write new manifest contents")
+        self.write()
     }
 }
 
@@ -590,6 +613,31 @@ mod tests {
         assert!(manifest
             .remove_from_table("dependencies", &dep.name)
             .is_err());
+    }
+
+    #[test]
+    fn set_package_version_overrides() {
+        let original = r#"
+[package]
+name = "simple"
+version = "0.1.0"
+edition = "2015"
+
+[dependencies]
+"#;
+        let expected = r#"
+[package]
+name = "simple"
+version = "2.0.0"
+edition = "2015"
+
+[dependencies]
+"#;
+        let mut manifest = original.parse::<Manifest>().unwrap();
+        manifest.set_package_version(&semver::Version::parse("2.0.0").unwrap());
+        let actual = manifest.to_string();
+
+        assert_eq!(expected, actual);
     }
 
     #[test]

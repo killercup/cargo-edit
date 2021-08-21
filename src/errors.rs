@@ -89,5 +89,13 @@ error_chain! {
             // this is because git2 function takes &str instead of something like AsRef<Path>
             description("Path to cargos registry contains non unicode characters")
         }
+        /// An unsupported pre-release version was used.
+        UnsupportedPrereleaseVersionScheme {
+            display("This version scheme is not supported. Use format like `pre`, `dev` or `alpha.1` for prerelease symbol")
+        }
+        /// Cannot increment the specified field of the version.
+        InvalidReleaseLevel(actual: &'static str, version: semver::Version) {
+            display("Cannot increment the {} field for {}", actual, version)
+        }
     }
 }
