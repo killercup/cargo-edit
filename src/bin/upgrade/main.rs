@@ -216,7 +216,7 @@ impl Manifests {
         let packages = result.packages;
         let package = packages
             .iter()
-            .find(|p| p.manifest_path.to_string_lossy() == resolved_manifest_path)
+            .find(|p| p.manifest_path == resolved_manifest_path)
             // If we have successfully got metadata, but our manifest path does not correspond to a
             // package, we must have been called against a virtual manifest.
             .chain_err(|| {
