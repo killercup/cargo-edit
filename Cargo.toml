@@ -21,7 +21,7 @@ keywords = [
     "dependencies",
     "crates",
 ]
-license = "Apache-2.0/MIT"
+license = "Apache-2.0 OR MIT"
 name = "cargo-edit"
 readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
@@ -42,12 +42,6 @@ required-features = ["rm"]
 name = "cargo-upgrade"
 path = "src/bin/upgrade/main.rs"
 required-features = ["upgrade"]
-
-[badges.appveyor]
-repository = "killercup/cargo-edit"
-
-[badges.travis-ci]
-repository = "killercup/cargo-edit"
 
 [dependencies]
 atty = { version = "0.2.14", optional = true }
