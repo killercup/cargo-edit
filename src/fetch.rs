@@ -1,5 +1,6 @@
 use crate::errors::*;
 use crate::registry::{registry_path, registry_path_from_url};
+use crate::VersionExt;
 use crate::{Dependency, Manifest};
 use regex::Regex;
 use std::env;

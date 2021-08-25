@@ -25,6 +25,7 @@ mod fetch;
 mod manifest;
 mod metadata;
 mod registry;
+mod version;
 
 pub use crate::crate_name::CrateName;
 pub use crate::dependency::Dependency;
@@ -36,3 +37,4 @@ pub use crate::fetch::{
 pub use crate::manifest::{find, LocalManifest, Manifest};
 pub use crate::metadata::manifest_from_pkgid;
 pub use crate::registry::registry_url;
+pub use crate::version::VersionExt;
