@@ -201,9 +201,9 @@ impl Manifests {
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
     /// provided.
     fn get_local_one(manifest_path: &Option<PathBuf>) -> Result<Self> {
-        let resolved_manifest_path: String = find(&manifest_path)?.to_string_lossy().into();
+        let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
 
-        let manifest = LocalManifest::find(&manifest_path)?;
+        let manifest = LocalManifest::find(manifest_path)?;
 
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.no_deps();
@@ -316,7 +316,7 @@ impl Manifests {
             for (dep, version) in &upgraded_deps.0 {
                 let mut new_dep = Dependency::new(&dep.name).set_version(version);
                 if let Some(rename) = dep.rename() {
-                    new_dep = new_dep.set_rename(&rename);
+                    new_dep = new_dep.set_rename(rename);
                 }
                 manifest.upgrade(&new_dep, dry_run, skip_compatible)?;
             }

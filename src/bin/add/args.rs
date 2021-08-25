@@ -1,5 +1,7 @@
 //! Handle `cargo add` arguments
 
+#![allow(clippy::bool_assert_comparison)]
+
 use cargo_edit::{find, registry_url, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
 use std::path::PathBuf;
