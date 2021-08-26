@@ -1,19 +1,18 @@
 use crate::errors::*;
-use crate::registry::{registry_path, registry_path_from_url};
+use crate::registry::registry_url;
 use crate::VersionExt;
 use crate::{Dependency, Manifest};
 use regex::Regex;
 use std::env;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use url::Url;
 
-#[derive(Deserialize)]
+#[derive(Debug)]
 struct CrateVersion {
     name: String,
-    #[serde(rename = "vers")]
     version: semver::Version,
     yanked: bool,
 }
@@ -54,12 +53,12 @@ pub fn get_latest_dependency(
         return Err(ErrorKind::EmptyCrateName.into());
     }
 
-    let registry_path = match registry {
-        Some(url) => registry_path_from_url(url)?,
-        None => registry_path(manifest_path, None)?,
+    let registry = match registry {
+        Some(url) => url.clone(),
+        None => registry_url(manifest_path, None)?,
     };
 
-    let crate_versions = fuzzy_query_registry_index(crate_name, &registry_path)?;
+    let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 
@@ -94,8 +93,6 @@ fn read_latest_version(
 
 /// update registry index for given project
 pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
-    let registry_path = registry_path_from_url(registry)?;
-
     let colorchoice = if atty::is(atty::Stream::Stdout) {
         ColorChoice::Auto
     } else {
@@ -103,19 +100,8 @@ pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
     };
     let mut output = StandardStream::stdout(colorchoice);
 
-    if !registry_path.as_path().exists() {
-        output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
-        write!(output, "{:>12}", "Initializing")?;
-        output.reset()?;
-        writeln!(output, " '{}' index", registry)?;
-
-        let mut opts = git2::RepositoryInitOptions::new();
-        opts.bare(true);
-        git2::Repository::init_opts(&registry_path, &opts)?;
-        return Ok(());
-    }
-
-    let repo = git2::Repository::open(&registry_path)?;
+    let index = crates_index::BareIndex::from_url(registry.as_str())?;
+    let mut index = index.open_or_clone()?;
     if !quiet {
         output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
         write!(output, "{:>12}", "Updating")?;
@@ -123,62 +109,55 @@ pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
         writeln!(output, " '{}' index", registry)?;
     }
 
-    let refspec = format!(
-        "refs/heads/{0}:refs/remotes/origin/{0}",
-        get_checkout_name(registry_path)?
-    );
-    fetch_with_cli(&repo, registry.as_str(), &refspec)?;
+    while need_retry(index.retrieve())? {
+        registry_blocked_message(&mut output)?;
+        std::thread::sleep(REGISTRY_BACKOFF);
+    }
 
     Ok(())
 }
 
-// https://github.com/rust-lang/cargo/blob/57986eac7157261c33f0123bade7ccd20f15200f/src/cargo/sources/git/utils.rs#L758
-fn fetch_with_cli(repo: &git2::Repository, url: &str, refspec: &str) -> Result<()> {
-    let cmd = subprocess::Exec::shell("git")
-        .arg("fetch")
-        .arg("--tags") // fetch all tags
-        .arg("--force") // handle force pushes
-        .arg("--update-head-ok") // see discussion in rust-lang/cargo#2078
-        .arg(url)
-        .arg(refspec)
-        // If cargo is run by git (for example, the `exec` command in `git
-        // rebase`), the GIT_DIR is set by git and will point to the wrong
-        // location (this takes precedence over the cwd). Make sure this is
-        // unset so git will look at cwd for the repo.
-        .env_remove("GIT_DIR")
-        // The reset of these may not be necessary, but I'm including them
-        // just to be extra paranoid and avoid any issues.
-        .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE")
-        .env_remove("GIT_OBJECT_DIRECTORY")
-        .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES")
-        .cwd(repo.path());
+/// Time between retries for retrieving the registry.
+const REGISTRY_BACKOFF: Duration = Duration::from_secs(1);
 
-    let _ = cmd.capture().map_err(|e| match e {
-        subprocess::PopenError::IoError(io) => ErrorKind::Io(io),
-        _ => unreachable!("expected only io error"),
-    })?;
+/// Check if we need to retry retrieving the Index.
+fn need_retry(res: std::result::Result<(), crates_index::Error>) -> Result<bool> {
+    match res {
+        Ok(()) => Ok(false),
+        Err(crates_index::Error::Git(err)) => {
+            if err.class() == git2::ErrorClass::Index && err.code() == git2::ErrorCode::Locked {
+                Ok(true)
+            } else {
+                Err(crates_index::Error::Git(err).into())
+            }
+        }
+        Err(err) => Err(err.into()),
+    }
+}
+
+/// Report to user that the Registry is locked
+fn registry_blocked_message(output: &mut StandardStream) -> Result<()> {
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+    write!(output, "{:>12}", "Blocking")?;
+    output.reset()?;
+    writeln!(output, " waiting for lock on registry index")?;
     Ok(())
 }
 
 #[test]
-fn get_latest_stable_version_from_json() {
-    let versions: Vec<CrateVersion> = serde_json::from_str(
-        r#"[
-        {
-          "name": "foo",
-          "vers": "0.6.0-alpha",
-          "yanked": false
+fn get_latest_stable_version() {
+    let versions = vec![
+        CrateVersion {
+            name: "foo".into(),
+            version: "0.6.0-alpha".parse().unwrap(),
+            yanked: false,
         },
-        {
-          "name": "foo",
-          "vers": "0.5.0",
-          "yanked": false
-        }
-      ]"#,
-    )
-    .expect("crate version is correctly parsed");
-
+        CrateVersion {
+            name: "foo".into(),
+            version: "0.5.0".parse().unwrap(),
+            yanked: false,
+        },
+    ];
     assert_eq!(
         read_latest_version(&versions, false)
             .unwrap()
@@ -189,23 +168,19 @@ fn get_latest_stable_version_from_json() {
 }
 
 #[test]
-fn get_latest_unstable_or_stable_version_from_json() {
-    let versions: Vec<CrateVersion> = serde_json::from_str(
-        r#"[
-        {
-          "name": "foo",
-          "vers": "0.6.0-alpha",
-          "yanked": false
+fn get_latest_unstable_or_stable_version() {
+    let versions = vec![
+        CrateVersion {
+            name: "foo".into(),
+            version: "0.6.0-alpha".parse().unwrap(),
+            yanked: false,
         },
-        {
-          "name": "foo",
-          "vers": "0.5.0",
-          "yanked": false
-        }
-      ]"#,
-    )
-    .expect("crate version is correctly parsed");
-
+        CrateVersion {
+            name: "foo".into(),
+            version: "0.5.0".parse().unwrap(),
+            yanked: false,
+        },
+    ];
     assert_eq!(
         read_latest_version(&versions, true)
             .unwrap()
@@ -216,23 +191,19 @@ fn get_latest_unstable_or_stable_version_from_json() {
 }
 
 #[test]
-fn get_latest_version_from_json_test() {
-    let versions: Vec<CrateVersion> = serde_json::from_str(
-        r#"[
-        {
-          "name": "treexml",
-          "vers": "0.3.1",
-          "yanked": true
+fn get_latest_version_with_yanked() {
+    let versions = vec![
+        CrateVersion {
+            name: "treexml".into(),
+            version: "0.3.1".parse().unwrap(),
+            yanked: true,
         },
-        {
-          "name": "treexml",
-          "vers": "0.3.0",
-          "yanked": false
-        }
-      ]"#,
-    )
-    .expect("crate version is correctly parsed");
-
+        CrateVersion {
+            name: "true".into(),
+            version: "0.3.0".parse().unwrap(),
+            yanked: false,
+        },
+    ];
     assert_eq!(
         read_latest_version(&versions, false)
             .unwrap()
@@ -244,61 +215,30 @@ fn get_latest_version_from_json_test() {
 
 #[test]
 fn get_no_latest_version_from_json_when_all_are_yanked() {
-    let versions: Vec<CrateVersion> = serde_json::from_str(
-        r#"[
-        {
-          "name": "treexml",
-          "vers": "0.3.1",
-          "yanked": true
+    let versions = vec![
+        CrateVersion {
+            name: "treexml".into(),
+            version: "0.3.1".parse().unwrap(),
+            yanked: true,
         },
-        {
-          "name": "treexml",
-          "vers": "0.3.0",
-          "yanked": true
-        }
-      ]"#,
-    )
-    .expect("crate version is correctly parsed");
-
+        CrateVersion {
+            name: "true".into(),
+            version: "0.3.0".parse().unwrap(),
+            yanked: true,
+        },
+    ];
     assert!(read_latest_version(&versions, false).is_err());
-}
-
-/// Gets the checkedout branch name of .cargo/registry/index/github.com-*/.git/refs or
-/// .cargo/registry/index/github.com-*/refs for bare git repository
-fn get_checkout_name(registry_path: impl AsRef<Path>) -> Result<String> {
-    let checkout_dir = registry_path
-        .as_ref()
-        .join(".git")
-        .join("refs/remotes/origin/");
-    let bare_checkout_dir = registry_path.as_ref().join("refs/remotes/origin/");
-
-    Ok(checkout_dir
-        .read_dir() // .git repo
-        .or_else(|_| bare_checkout_dir.read_dir())? // there's no .git, it's bare one
-        .next() //Is there always only one branch? (expecting either master og HEAD)
-        .ok_or(ErrorKind::MissingRegistraryCheckout(checkout_dir))??
-        .file_name()
-        .into_string()
-        .map_err(|_| ErrorKind::NonUnicodeGitPath)?)
 }
 
 /// Fuzzy query crate from registry index
 fn fuzzy_query_registry_index(
     crate_name: impl Into<String>,
-    registry_path: impl AsRef<Path>,
+    registry: &Url,
 ) -> Result<Vec<CrateVersion>> {
-    let crate_name = crate_name.into();
-    let remotes = PathBuf::from("refs/remotes/origin/");
-    let repo = git2::Repository::open(&registry_path)?;
-    let tree = repo
-        .find_reference(
-            remotes
-                .join(get_checkout_name(&registry_path)?)
-                .to_str()
-                .ok_or(ErrorKind::NonUnicodeGitPath)?,
-        )?
-        .peel_to_tree()?;
+    let index = crates_index::BareIndex::from_url(registry.as_str())?;
+    let index = index.open_or_clone()?;
 
+    let crate_name = crate_name.into();
     let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
     if let Some(index) = names.iter().position(|x| *x == crate_name) {
         // ref: https://github.com/killercup/cargo-edit/pull/317#discussion_r307365704
@@ -306,20 +246,21 @@ fn fuzzy_query_registry_index(
     }
 
     for the_name in names {
-        let file = match tree.get_path(&PathBuf::from(summary_raw_path(&the_name))) {
-            Ok(x) => x.to_object(&repo)?.peel_to_blob()?,
-            Err(_) => continue,
+        let crate_ = match index.crate_(&the_name) {
+            Some(crate_) => crate_,
+            None => continue,
         };
-        let content = String::from_utf8(file.content().to_vec())
-            .map_err(|_| ErrorKind::InvalidSummaryJson)?;
-
-        return content
-            .lines()
-            .map(|line: &str| {
-                serde_json::from_str::<CrateVersion>(line)
-                    .map_err(|_| ErrorKind::InvalidSummaryJson.into())
+        return crate_
+            .versions()
+            .iter()
+            .map(|v| {
+                Ok(CrateVersion {
+                    name: v.name().to_owned(),
+                    version: v.version().parse()?,
+                    yanked: v.is_yanked(),
+                })
             })
-            .collect::<Result<Vec<CrateVersion>>>();
+            .collect();
     }
     Err(ErrorKind::NoCrate(crate_name).into())
 }
@@ -489,25 +430,4 @@ fn test_gen_fuzzy_crate_names() {
         "DC-_janus",
         &["DC__janus", "DC_-janus", "DC-_janus", "DC--janus"],
     );
-}
-
-fn summary_raw_path(crate_name: &str) -> String {
-    let crate_name = crate_name.to_ascii_lowercase();
-    match crate_name.len() {
-        0 => unreachable!("we check that crate_name is not empty here"),
-        1 => format!("1/{}", crate_name),
-        2 => format!("2/{}", crate_name),
-        3 => format!("3/{}/{}", &crate_name[..1], crate_name),
-        _ => format!("{}/{}/{}", &crate_name[..2], &crate_name[2..4], crate_name),
-    }
-}
-
-#[test]
-fn test_summary_raw_path() {
-    assert_eq!(summary_raw_path("a"), "1/a");
-    assert_eq!(summary_raw_path("ab"), "2/ab");
-    assert_eq!(summary_raw_path("abc"), "3/a/abc");
-    assert_eq!(summary_raw_path("abcd"), "ab/cd/abcd");
-    assert_eq!(summary_raw_path("abcdefg"), "ab/cd/abcdefg");
-    assert_eq!(summary_raw_path("Inflector"), "in/fl/inflector");
 }
