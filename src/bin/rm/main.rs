@@ -115,7 +115,7 @@ fn handle_rm(args: &Args) -> Result<()> {
     deps.iter()
         .map(|dep| {
             if !args.quiet {
-                print_msg(&dep, args.get_section())?;
+                print_msg(dep, args.get_section())?;
             }
             manifest
                 .remove_from_table(args.get_section(), dep)

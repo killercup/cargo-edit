@@ -1,5 +1,3 @@
-use std::iter::FromIterator;
-
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 enum DependencySource {
     Version {
@@ -128,7 +126,7 @@ impl Dependency {
     /// that is, either the alias (rename field if Some),
     /// or the official package name (name field).
     pub fn name_in_manifest(&self) -> &str {
-        &self.rename().unwrap_or(&self.name)
+        self.rename().unwrap_or(&self.name)
     }
 
     /// Set the value of registry for the dependency
@@ -218,7 +216,7 @@ impl Dependency {
                     data.get_or_insert("optional", optional);
                 }
                 if let Some(features) = features {
-                    let features = toml_edit::Value::from_iter(features.iter().cloned());
+                    let features: toml_edit::Value = features.iter().cloned().collect();
                     data.get_or_insert("features", features);
                 }
                 if !self.default_features {

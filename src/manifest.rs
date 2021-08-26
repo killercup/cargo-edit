@@ -118,7 +118,7 @@ fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<
         None => return Ok(false),
     };
 
-    let current_version = Version::parse(&current_version).chain_err(|| {
+    let current_version = Version::parse(current_version).chain_err(|| {
         ErrorKind::ParseVersion(dependency.name.to_string(), current_version.into())
     })?;
 
@@ -499,7 +499,7 @@ impl LocalManifest {
                     }
                     self.manifest.update_table_named_entry(
                         &table_path,
-                        &name,
+                        name,
                         dependency,
                         dry_run,
                     )?;
