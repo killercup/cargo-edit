@@ -121,7 +121,6 @@ fn handle_add(args: &Args) -> Result<()> {
         Cow::Borrowed(&args.manifest_path)
     };
     let mut manifest = Manifest::open(&manifest_path)?;
-    let deps = &args.parse_dependencies()?;
 
     if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(
@@ -130,6 +129,7 @@ fn handle_add(args: &Args) -> Result<()> {
         )?;
         update_registry_index(&url, args.quiet)?;
     }
+    let deps = &args.parse_dependencies()?;
 
     let was_sorted = manifest
         .get_table(&args.get_section())
