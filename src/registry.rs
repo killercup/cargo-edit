@@ -1,4 +1,3 @@
-use self::code_from_cargo::Kind;
 use crate::errors::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -6,17 +5,6 @@ use url::Url;
 
 const CRATES_IO_INDEX: &str = "https://github.com/rust-lang/crates.io-index";
 const CRATES_IO_REGISTRY: &str = "crates-io";
-
-pub fn registry_path(manifest_path: &Path, registry: Option<&str>) -> Result<PathBuf> {
-    registry_path_from_url(&registry_url(manifest_path, registry)?)
-}
-
-pub fn registry_path_from_url(registry: &Url) -> Result<PathBuf> {
-    Ok(cargo_home()?
-        .join("registry")
-        .join("index")
-        .join(short_name(registry)))
-}
 
 #[derive(Debug, Deserialize)]
 struct Source {
@@ -128,33 +116,6 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
         .chain_err(|| ErrorKind::InvalidCargoConfig)?;
 
     Ok(registry_url)
-}
-
-fn short_name(registry: &Url) -> String {
-    // ref: https://github.com/rust-lang/cargo/blob/4c1fa54d10f58d69ac9ff55be68e1b1c25ecb816/src/cargo/sources/registry/mod.rs#L386-L390
-    #![allow(deprecated)]
-    use std::hash::{Hash, Hasher, SipHasher};
-
-    let mut hasher = SipHasher::new();
-    Kind::Registry.hash(&mut hasher);
-    registry.as_str().hash(&mut hasher);
-    let hash = hex::encode(hasher.finish().to_le_bytes());
-
-    let ident = registry.host_str().unwrap_or("").to_string();
-
-    format!("{}-{}", ident, hash)
-}
-
-#[cfg_attr(target_pointer_width = "64", test)]
-fn test_short_name() {
-    fn test_helper(url: &str, name: &str) {
-        let url = Url::parse(url).unwrap();
-        assert_eq!(short_name(&url), name);
-    }
-    test_helper(
-        "https://github.com/rust-lang/crates.io-index",
-        "github.com-1ecc6299db9ec823",
-    );
 }
 
 mod code_from_cargo {

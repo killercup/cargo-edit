@@ -46,6 +46,7 @@ required-features = ["upgrade"]
 [dependencies]
 atty = { version = "0.2.14", optional = true }
 cargo_metadata = "0.14.0"
+crates-index = "0.17.0"
 dirs-next = "2.0.0"
 env_proxy = "0.4.1"
 error-chain = "0.12.4"
