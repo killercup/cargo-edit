@@ -206,7 +206,7 @@ fn adds_dev_build_dependency() {
     );
 
     // cannot run with both --dev and --build at the same time
-    let call = process::Command::new(get_command_path("add").as_str())
+    let call = process::Command::new(get_command_path("add"))
         .args(&["add", BOGUS_CRATE_NAME, "--dev", "--build"])
         .arg(format!("--manifest-path={}", &manifest))
         .output()
@@ -279,7 +279,7 @@ fn adds_specified_version() {
     assert_eq!(val.as_str().expect("not string"), ">=0.1.1");
 
     // cannot run with both --dev and --build at the same time
-    let call = process::Command::new(get_command_path("add").as_str())
+    let call = process::Command::new(get_command_path("add"))
         .args(&["add", BOGUS_CRATE_NAME, "--vers", "invalid version string"])
         .arg(format!("--manifest-path={}", &manifest))
         .output()
@@ -674,7 +674,7 @@ fn adds_local_source_with_inline_version_notation() {
 fn git_and_version_flags_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add").as_str())
+    let call = process::Command::new(get_command_path("add"))
         .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--vers", "0.4.3"])
         .args(&["--git", "git://git.git"])
@@ -690,7 +690,7 @@ fn git_and_version_flags_are_mutually_exclusive() {
 fn git_flag_and_inline_version_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add").as_str())
+    let call = process::Command::new(get_command_path("add"))
         .args(&["add", &format!("{}@0.4.3", BOGUS_CRATE_NAME)])
         .args(&["--git", "git://git.git"])
         .arg(format!("--manifest-path={}", &manifest))
@@ -705,7 +705,7 @@ fn git_flag_and_inline_version_are_mutually_exclusive() {
 fn git_and_path_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add").as_str())
+    let call = process::Command::new(get_command_path("add"))
         .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--git", "git://git.git"])
         .args(&["--path", "/path/here"])
@@ -721,7 +721,7 @@ fn git_and_path_are_mutually_exclusive() {
 fn git_and_registry_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add").as_str())
+    let call = process::Command::new(get_command_path("add"))
         .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--git", "git://git.git"])
         .args(&["--registry", "alternative"])
@@ -737,7 +737,7 @@ fn git_and_registry_are_mutually_exclusive() {
 fn registry_and_path_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add").as_str())
+    let call = process::Command::new(get_command_path("add"))
         .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--registry", "alternative"])
         .args(&["--path", "/path/here"])
@@ -1039,7 +1039,7 @@ your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth", 
 #[test]
 fn forbids_multiple_crates_with_features_option() {
     assert_cli::Assert::command(&[
-        get_command_path("add").as_str(),
+        get_command_path("add"),
         "add",
         "your-face",
         "--features",
@@ -1079,7 +1079,7 @@ fn adds_dependency_normalized_name() {
     assert!(toml["dependencies"].is_none());
 
     assert_cli::Assert::command(&[
-        get_command_path("add").as_str(),
+        get_command_path("add"),
         "add",
         "linked_hash_map",
         "Inflector",
@@ -1309,7 +1309,7 @@ versioned-package = "versioned-package--CURRENT_VERSION_TEST"
 
 #[test]
 fn no_argument() {
-    assert_cli::Assert::command(&[get_command_path("add").as_str(), "add"])
+    assert_cli::Assert::command(&[get_command_path("add"), "add"])
         .fails_with(1)
         .and()
         .stderr()
@@ -1325,7 +1325,7 @@ For more information try --help")
 
 #[test]
 fn unknown_flags() {
-    assert_cli::Assert::command(&[get_command_path("add").as_str(), "add", "foo", "--flag"])
+    assert_cli::Assert::command(&[get_command_path("add"), "add", "foo", "--flag"])
         .fails_with(1)
         .and()
         .stderr()
@@ -1345,7 +1345,7 @@ fn add_prints_message() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        get_command_path("add").as_str(),
+        get_command_path("add"),
         "add",
         "docopt",
         "--vers=0.6.0",
@@ -1364,7 +1364,7 @@ fn add_prints_message_with_section() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        get_command_path("add").as_str(),
+        get_command_path("add"),
         "add",
         "clap",
         "--optional",
@@ -1385,7 +1385,7 @@ fn add_prints_message_for_dev_deps() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        get_command_path("add").as_str(),
+        get_command_path("add"),
         "add",
         "docopt",
         "--dev",
@@ -1406,7 +1406,7 @@ fn add_prints_message_for_build_deps() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        get_command_path("add").as_str(),
+        get_command_path("add"),
         "add",
         "hello-world",
         "--build",
@@ -1428,7 +1428,7 @@ fn add_typo() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        get_command_path("add").as_str(),
+        get_command_path("add"),
         "add",
         "lets_hope_nobody_ever_publishes_this_crate",
         &format!("--manifest-path={}", manifest),
@@ -1534,7 +1534,7 @@ fn add_prints_message_for_features_deps() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     assert_cli::Assert::command(&[
-        "target/debug/cargo-add",
+        env!("CARGO_BIN_EXE_cargo-add"),
         "add",
         "hello-world",
         "--vers",

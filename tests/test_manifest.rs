@@ -4,7 +4,7 @@ use crate::utils::get_command_path;
 #[test]
 fn invalid_manifest() {
     assert_cli::Assert::command(&[
-        get_command_path("add").as_str(),
+        get_command_path("add"),
         "add",
         "foo",
         "--manifest-path=tests/fixtures/manifest-invalid/Cargo.toml.sample",

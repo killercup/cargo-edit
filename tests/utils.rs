@@ -189,21 +189,11 @@ pub fn get_toml(manifest_path: &str) -> toml_edit::Document {
     s.parse().expect("toml parse error")
 }
 
-pub fn get_command_path(s: impl AsRef<OsStr>) -> String {
-    let target_dir: PathBuf = match env::var_os("CARGO_TARGET_DIR") {
-        Some(dir) => dir.into(),
-        None => env::current_dir()
-            .expect("Failed to get current dir")
-            .join("target"),
-    };
-
-    let mut binary_name = OsString::from("cargo-");
-    binary_name.push(s.as_ref());
-
-    target_dir
-        .join("debug")
-        .join(binary_name)
-        .to_str()
-        .unwrap()
-        .to_string()
+pub fn get_command_path(s: impl AsRef<OsStr>) -> &'static str {
+    match s.as_ref().to_str() {
+        Some("add") => env!("CARGO_BIN_EXE_cargo-add"),
+        Some("rm") => env!("CARGO_BIN_EXE_cargo-rm"),
+        Some("upgrade") => env!("CARGO_BIN_EXE_cargo-upgrade"),
+        _ => panic!("Unsupported subcommand"),
+    }
 }
