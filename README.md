@@ -7,6 +7,7 @@ Currently available subcommands:
 - [`cargo add`](#cargo-add)
 - [`cargo rm`](#cargo-rm)
 - [`cargo upgrade`](#cargo-upgrade)
+- [`cargo set-version`](#cargo-set-version)
 
 [![Build Status](https://github.com/killercup/cargo-edit/workflows/build/badge.svg)](https://github.com/killercup/cargo-edit/actions)
 [![Build Status](https://travis-ci.org/killercup/cargo-edit.svg?branch=master)](https://travis-ci.org/killercup/cargo-edit)
@@ -227,7 +228,7 @@ upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
 supported. Git/path dependencies will be ignored.
 
-All packages in the workspace will be upgraded if the `--workspace` flag is supplied. 
+All packages in the workspace will be upgraded if the `--workspace` flag is supplied.
 The `--workspace` flag may be supplied in the presence of a virtual manifest.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
@@ -235,6 +236,54 @@ version as recorded in the Cargo.lock file. This flag requires that the Cargo.lo
 up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
 error. If the '--to-lockfile' flag is supplied then the network won't be accessed.
 ```
+
+### `cargo set-version`
+
+Set the version in your `Cargo.toml`.
+
+#### Examples
+
+```sh
+# Set the version to the version 1.0.0
+$ cargo set-version 1.0.0
+# Bump the version to the next major
+$ cargo set-version --bump major
+# Bump version to the next minor
+$ cargo set-version --bump minor
+# Bump version to the next patch
+$ cargo set-version --bump patch
+```
+
+#### Usage
+
+```plain
+cargo-set-version 0.7.0
+Change a package's version in the local manifest file (i.e. Cargo.toml)
+
+USAGE:
+    cargo set-version [FLAGS] [OPTIONS] [--] [target]
+
+FLAGS:
+        --all          [deprecated in favor of `--workspace`]
+        --dry-run      Print changes to be made without making them
+    -h, --help         Prints help information
+    -V, --version      Prints version information
+        --workspace    Modify all packages in the workspace
+
+OPTIONS:
+        --bump <bump>             Increment manifest version [possible values: major, minor, patch,
+                                  release, rc, beta, alpha]
+        --exclude <exclude>...    Crates to exclude and not modify
+        --manifest-path <path>    Path to the manifest to upgrade
+    -m, --metadata <metadata>     Specify the version metadata field (e.g. a wrapped libraries version)
+    -p, --package <pkgid>         Package id of the crate to change the version of
+
+ARGS:
+    <target>    Version to change manifests to
+```
+
+For more on `metadata`, see the
+[semver crate's documentation](https://docs.rs/semver/1.0.4/semver/struct.BuildMetadata.html).
 
 ## License
 

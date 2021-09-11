@@ -43,6 +43,11 @@ name = "cargo-upgrade"
 path = "src/bin/upgrade/main.rs"
 required-features = ["upgrade"]
 
+[[bin]]
+name = "cargo-set-version"
+path = "src/bin/set-version/main.rs"
+required-features = ["set-version"]
+
 [dependencies]
 atty = { version = "0.2.14", optional = true }
 cargo_metadata = "0.14.0"
@@ -79,10 +84,12 @@ default = [
     "add",
     "rm",
     "upgrade",
+    "set-version",
 ]
 add = ["cli"]
 rm = ["cli"]
 upgrade = ["cli"]
+set-version = ["cli"]
 cli = ["atty", "structopt"]
 test-external-apis = []
 vendored-openssl = ["git2/vendored-openssl"]

@@ -194,6 +194,7 @@ pub fn get_command_path(s: impl AsRef<OsStr>) -> &'static str {
         Some("add") => env!("CARGO_BIN_EXE_cargo-add"),
         Some("rm") => env!("CARGO_BIN_EXE_cargo-rm"),
         Some("upgrade") => env!("CARGO_BIN_EXE_cargo-upgrade"),
+        Some("set-version") => env!("CARGO_BIN_EXE_cargo-set-version"),
         _ => panic!("Unsupported subcommand"),
     }
 }
