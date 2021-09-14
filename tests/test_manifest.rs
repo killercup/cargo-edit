@@ -21,15 +21,13 @@ Caused by: TOML parse error at line 6, column 7
 6 | key = invalid-value
   |       ^
 Unexpected `i`
-Expected `digit`, `-`, `+`, `0x`, `0o` or `0b`
-expected 4 more elements
-expected 2 more elements
-While parsing a Time
+Expected `-`, `+`, `inf`, `nan`, `0x`, `0o` or `0b`
+invalid digit found in string
+invalid digit found in string
 While parsing a hexadecimal Integer
 While parsing an octal Integer
 While parsing a binary Integer
 While parsing an Integer
-While parsing a Date-Time
 While parsing a Float"#,
     )
     .unwrap();

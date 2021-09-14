@@ -42,8 +42,8 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
     fn read_config(registries: &mut HashMap<String, Source>, path: impl AsRef<Path>) -> Result<()> {
         // TODO unit test for source replacement
         let content = std::fs::read(path)?;
-        let config =
-            toml::from_slice::<CargoConfig>(&content).map_err(|_| ErrorKind::InvalidCargoConfig)?;
+        let config = toml_edit::easy::from_slice::<CargoConfig>(&content)
+            .map_err(|_| ErrorKind::InvalidCargoConfig)?;
         for (key, value) in config.registries {
             registries.entry(key).or_insert(Source {
                 registry: value.index,
