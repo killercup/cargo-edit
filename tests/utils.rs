@@ -1,13 +1,14 @@
 #![allow(unused)]
+use assert_cmd::Command;
 use std::ffi::{OsStr, OsString};
 use std::io::prelude::*;
 use std::{env, fs, path::Path, path::PathBuf, process};
 
 /// Helper function that copies the workspace test into a temporary directory.
-pub fn copy_workspace_test() -> (tempfile::TempDir, String, Vec<String>) {
+pub fn copy_workspace_test() -> (assert_fs::TempDir, String, Vec<String>) {
     // Create a temporary directory and copy in the root manifest, the dummy rust file, and
     // workspace member manifests.
-    let tmpdir = tempfile::tempdir().expect("failed to construct temporary directory");
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
 
     let (root_manifest_path, workspace_manifest_paths) = {
         // Helper to copy in files to the temporary workspace. The standard library doesn't have a
@@ -52,8 +53,8 @@ pub fn copy_workspace_test() -> (tempfile::TempDir, String, Vec<String>) {
 }
 
 /// Create temporary working directory with Cargo.toml manifest
-pub fn clone_out_test(source: &str) -> (tempfile::TempDir, String) {
-    let tmpdir = tempfile::tempdir().expect("failed to construct temporary directory");
+pub fn clone_out_test(source: &str) -> (assert_fs::TempDir, String) {
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
     fs::copy(source, tmpdir.path().join("Cargo.toml"))
         .unwrap_or_else(|err| panic!("could not copy test manifest: {}", err));
     let path = tmpdir
@@ -82,24 +83,15 @@ pub fn execute_bad_command<S>(command: &[S], manifest: &str)
 where
     S: AsRef<OsStr>,
 {
-    let subcommand_name = &command[0].as_ref();
+    let subcommand_name = format!("cargo-{}", command[0].as_ref().to_str().unwrap());
 
-    let call = process::Command::new(&get_command_path(subcommand_name))
+    let call = Command::cargo_bin(&subcommand_name)
+        .expect("can find bin")
         .args(command)
         .arg(format!("--manifest-path={}", manifest))
         .env("CARGO_IS_TEST", "1")
-        .output()
-        .unwrap();
-
-    if call.status.success() {
-        println!("Status code: {:?}", call.status);
-        println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
-        println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
-        panic!(
-            "cargo-{} success to execute",
-            subcommand_name.to_string_lossy()
-        )
-    }
+        .assert()
+        .failure();
 }
 
 /// Execute local cargo command, includes `--package`
@@ -108,27 +100,18 @@ where
     S: AsRef<OsStr>,
     P: AsRef<Path>,
 {
-    let subcommand_name = &command[0].as_ref();
+    let subcommand_name = format!("cargo-{}", command[0].as_ref().to_str().unwrap());
     let cwd = cwd.as_ref();
 
-    let call = process::Command::new(&get_command_path(subcommand_name))
+    let call = Command::cargo_bin(&subcommand_name)
+        .expect("can find bin")
         .args(command)
         .arg("--package")
         .arg(pkgid)
         .current_dir(&cwd)
         .env("CARGO_IS_TEST", "1")
-        .output()
-        .expect("call to test command failed");
-
-    if !call.status.success() {
-        println!("Status code: {:?}", call.status);
-        println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
-        println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
-        panic!(
-            "cargo-{} failed to execute",
-            subcommand_name.to_string_lossy()
-        )
-    }
+        .assert()
+        .success();
 }
 
 /// Execute local cargo command, includes `--manifest-path`
@@ -136,24 +119,15 @@ pub fn execute_command<S>(command: &[S], manifest: &str)
 where
     S: AsRef<OsStr>,
 {
-    let subcommand_name = &command[0].as_ref();
+    let subcommand_name = format!("cargo-{}", command[0].as_ref().to_str().unwrap());
 
-    let call = process::Command::new(&get_command_path(subcommand_name))
+    let call = Command::cargo_bin(&subcommand_name)
+        .expect("can find bin")
         .args(command)
         .arg(format!("--manifest-path={}", manifest))
         .env("CARGO_IS_TEST", "1")
-        .output()
-        .expect("call to test build failed");
-
-    if !call.status.success() {
-        println!("Status code: {:?}", call.status);
-        println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
-        println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
-        panic!(
-            "cargo-{} failed to execute",
-            subcommand_name.to_string_lossy()
-        )
-    }
+        .assert()
+        .success();
 }
 
 /// Execute local cargo command in a given directory
@@ -161,24 +135,15 @@ pub fn execute_command_in_dir<S>(command: &[S], dir: &Path)
 where
     S: AsRef<OsStr>,
 {
-    let subcommand_name = &command[0].as_ref();
+    let subcommand_name = format!("cargo-{}", command[0].as_ref().to_str().unwrap());
 
-    let call = process::Command::new(&get_command_path(subcommand_name))
+    let call = Command::cargo_bin(&subcommand_name)
+        .expect("can find bin")
         .args(command)
         .env("CARGO_IS_TEST", "1")
         .current_dir(dir)
-        .output()
-        .expect("call to test build failed");
-
-    if !call.status.success() {
-        println!("Status code: {:?}", call.status);
-        println!("STDOUT: {}", String::from_utf8_lossy(&call.stdout));
-        println!("STDERR: {}", String::from_utf8_lossy(&call.stderr));
-        panic!(
-            "cargo-{} failed to execute",
-            subcommand_name.to_string_lossy()
-        )
-    }
+        .assert()
+        .success();
 }
 
 /// Parse a manifest file as TOML
@@ -187,14 +152,4 @@ pub fn get_toml(manifest_path: &str) -> toml_edit::Document {
     let mut s = String::new();
     f.read_to_string(&mut s).unwrap();
     s.parse().expect("toml parse error")
-}
-
-pub fn get_command_path(s: impl AsRef<OsStr>) -> &'static str {
-    match s.as_ref().to_str() {
-        Some("add") => env!("CARGO_BIN_EXE_cargo-add"),
-        Some("rm") => env!("CARGO_BIN_EXE_cargo-rm"),
-        Some("upgrade") => env!("CARGO_BIN_EXE_cargo-upgrade"),
-        Some("set-version") => env!("CARGO_BIN_EXE_cargo-set-version"),
-        _ => panic!("Unsupported subcommand"),
-    }
 }

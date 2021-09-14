@@ -1,12 +1,13 @@
 #[macro_use]
 extern crate pretty_assertions;
 
-use std::process;
 mod utils;
+
 use crate::utils::{
     clone_out_test, copy_workspace_test, execute_bad_command, execute_command,
-    execute_command_for_pkg, get_command_path, get_toml, setup_alt_registry_config,
+    execute_command_for_pkg, get_toml, setup_alt_registry_config,
 };
+use assert_cmd::Command;
 
 /// Some of the tests need to have a crate name that does not exist on crates.io. Hence this rather
 /// silly constant. Tests _will_ fail, though, if a crate is ever published with this name.
@@ -206,7 +207,8 @@ fn adds_dev_build_dependency() {
     );
 
     // cannot run with both --dev and --build at the same time
-    let call = process::Command::new(get_command_path("add"))
+    let call = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
         .args(&["add", BOGUS_CRATE_NAME, "--dev", "--build"])
         .arg(format!("--manifest-path={}", &manifest))
         .output()
@@ -279,7 +281,8 @@ fn adds_specified_version() {
     assert_eq!(val.as_str().expect("not string"), ">=0.1.1");
 
     // cannot run with both --dev and --build at the same time
-    let call = process::Command::new(get_command_path("add"))
+    let call = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
         .args(&["add", BOGUS_CRATE_NAME, "--vers", "invalid version string"])
         .arg(format!("--manifest-path={}", &manifest))
         .output()
@@ -518,7 +521,7 @@ fn adds_local_source_without_flag() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     let (tmpdir, _) = clone_out_test("tests/fixtures/add/local/Cargo.toml.sample");
-    let tmppath = tmpdir.into_path();
+    let tmppath = tmpdir.path();
     let tmpdirstr = tmppath.to_str().unwrap();
     // Note: all paths are normalised to "/"
     let expected_path = tmpdirstr.replace('\\', "/");
@@ -674,7 +677,8 @@ fn adds_local_source_with_inline_version_notation() {
 fn git_and_version_flags_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add"))
+    let call = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
         .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--vers", "0.4.3"])
         .args(&["--git", "git://git.git"])
@@ -690,7 +694,8 @@ fn git_and_version_flags_are_mutually_exclusive() {
 fn git_flag_and_inline_version_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add"))
+    let call = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
         .args(&["add", &format!("{}@0.4.3", BOGUS_CRATE_NAME)])
         .args(&["--git", "git://git.git"])
         .arg(format!("--manifest-path={}", &manifest))
@@ -705,7 +710,8 @@ fn git_flag_and_inline_version_are_mutually_exclusive() {
 fn git_and_path_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add"))
+    let call = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
         .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--git", "git://git.git"])
         .args(&["--path", "/path/here"])
@@ -721,7 +727,8 @@ fn git_and_path_are_mutually_exclusive() {
 fn git_and_registry_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add"))
+    let call = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
         .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--git", "git://git.git"])
         .args(&["--registry", "alternative"])
@@ -737,7 +744,8 @@ fn git_and_registry_are_mutually_exclusive() {
 fn registry_and_path_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    let call = process::Command::new(get_command_path("add"))
+    let call = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
         .args(&["add", BOGUS_CRATE_NAME])
         .args(&["--registry", "alternative"])
         .args(&["--path", "/path/here"])
@@ -1038,19 +1046,14 @@ your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth", 
 
 #[test]
 fn forbids_multiple_crates_with_features_option() {
-    assert_cli::Assert::command(&[
-        get_command_path("add"),
-        "add",
-        "your-face",
-        "--features",
-        "mouth",
-        "nose",
-    ])
-    .fails_with(1)
-    .and()
-    .stderr()
-    .contains("Cannot specify multiple crates with features")
-    .unwrap();
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", "your-face", "--features", "mouth", "nose"])
+        .assert()
+        .code(1)
+        .stderr(predicates::str::contains(
+            "Cannot specify multiple crates with features",
+        ));
 }
 
 #[test]
@@ -1078,18 +1081,18 @@ fn adds_dependency_normalized_name() {
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"].is_none());
 
-    assert_cli::Assert::command(&[
-        get_command_path("add"),
-        "add",
-        "linked_hash_map",
-        "Inflector",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .succeeds()
-    .and()
-    .stdout()
-    .contains("WARN: Added `linked-hash-map` instead of `linked_hash_map`")
-    .unwrap();
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "linked_hash_map",
+            "Inflector",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .success()
+        .stdout(predicates::str::contains(
+            "WARN: Added `linked-hash-map` instead of `linked_hash_map`",
+        ));
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
@@ -1309,117 +1312,125 @@ versioned-package = "versioned-package--CURRENT_VERSION_TEST"
 
 #[test]
 fn no_argument() {
-    assert_cli::Assert::command(&[get_command_path("add"), "add"])
-        .fails_with(1)
-        .and()
-        .stderr()
-        .is(r"error: The following required arguments were not provided:
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add"])
+        .assert()
+        .code(1)
+        .stderr(
+            r"error: The following required arguments were not provided:
     <crate>...
 
 USAGE:
     cargo add <crate>... --upgrade <method>
 
-For more information try --help")
-        .unwrap();
+For more information try --help
+",
+        );
 }
 
 #[test]
 fn unknown_flags() {
-    assert_cli::Assert::command(&[get_command_path("add"), "add", "foo", "--flag"])
-        .fails_with(1)
-        .and()
-        .stderr()
-        .is(
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", "foo", "--flag"])
+        .assert()
+        .code(1)
+        .stderr(
             r"error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
 USAGE:
     cargo add [FLAGS] [OPTIONS] <crate>...
 
-For more information try --help",
-        )
-        .unwrap();
+For more information try --help
+",
+        );
 }
 
 #[test]
 fn add_prints_message() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        get_command_path("add"),
-        "add",
-        "docopt",
-        "--vers=0.6.0",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .with_env(&[("CARGO_IS_TEST", "1")])
-    .succeeds()
-    .and()
-    .stdout()
-    .contains("Adding docopt v0.6.0 to dependencies")
-    .unwrap();
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "docopt",
+            "--vers=0.6.0",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains(
+            "Adding docopt v0.6.0 to dependencies",
+        ));
 }
 
 #[test]
 fn add_prints_message_with_section() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        get_command_path("add"),
-        "add",
-        "clap",
-        "--optional",
-        "--target=mytarget",
-        "--vers=0.1.0",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .with_env(&[("CARGO_IS_TEST", "1")])
-    .succeeds()
-    .and()
-    .stdout()
-    .contains("Adding clap v0.1.0 to optional dependencies for target `mytarget`")
-    .unwrap();
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "clap",
+            "--optional",
+            "--target=mytarget",
+            "--vers=0.1.0",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains(
+            "Adding clap v0.1.0 to optional dependencies for target `mytarget`",
+        ));
 }
 
 #[test]
 fn add_prints_message_for_dev_deps() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        get_command_path("add"),
-        "add",
-        "docopt",
-        "--dev",
-        "--vers",
-        "0.8.0",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .with_env(&[("CARGO_IS_TEST", "1")])
-    .succeeds()
-    .and()
-    .stdout()
-    .contains("Adding docopt v0.8.0 to dev-dependencies")
-    .unwrap();
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "docopt",
+            "--dev",
+            "--vers",
+            "0.8.0",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains(
+            "Adding docopt v0.8.0 to dev-dependencies",
+        ));
 }
 
 #[test]
 fn add_prints_message_for_build_deps() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        get_command_path("add"),
-        "add",
-        "hello-world",
-        "--build",
-        "--vers",
-        "0.1.0",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .with_env(&[("CARGO_IS_TEST", "1")])
-    .succeeds()
-    .and()
-    .stdout()
-    .contains("Adding hello-world v0.1.0 to build-dependencies")
-    .unwrap();
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "hello-world",
+            "--build",
+            "--vers",
+            "0.1.0",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains(
+            "Adding hello-world v0.1.0 to build-dependencies",
+        ));
 }
 
 #[test]
@@ -1427,14 +1438,15 @@ fn add_prints_message_for_build_deps() {
 fn add_typo() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        get_command_path("add"),
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
         "add",
         "lets_hope_nobody_ever_publishes_this_crate",
         &format!("--manifest-path={}", manifest),
     ])
-    .fails_with(1)
-    .and()
+        .assert()
+        .code(1)
     .stderr()
     .contains(
         "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found in registry index.",
@@ -1533,19 +1545,20 @@ fn add_dependency_to_workspace_member() {
 fn add_prints_message_for_features_deps() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        env!("CARGO_BIN_EXE_cargo-add"),
-        "add",
-        "hello-world",
-        "--vers",
-        "0.1.0",
-        "--features",
-        "jui",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .succeeds()
-    .and()
-    .stdout()
-    .contains(r#"Adding hello-world v0.1.0 to dependencies with features: ["jui"]"#)
-    .unwrap();
+    Command::cargo_bin("cargo-add")
+        .unwrap()
+        .args(&[
+            "add",
+            "hello-world",
+            "--vers",
+            "0.1.0",
+            "--features",
+            "jui",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains(
+            r#"Adding hello-world v0.1.0 to dependencies with features: ["jui"]"#,
+        ));
 }
