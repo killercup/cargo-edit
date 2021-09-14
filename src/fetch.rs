@@ -1,7 +1,7 @@
 use crate::errors::*;
 use crate::registry::registry_url;
 use crate::VersionExt;
-use crate::{Dependency, Manifest};
+use crate::{Dependency, LocalManifest, Manifest};
 use regex::Regex;
 use std::env;
 use std::io::Write;
@@ -327,7 +327,7 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
 /// Cargo.toml is not present in the root of the path.
 pub fn get_crate_name_from_path(path: &str) -> Result<String> {
     let cargo_file = Path::new(path).join("Cargo.toml");
-    Manifest::open(&Some(cargo_file))
+    LocalManifest::try_new(&cargo_file)
         .chain_err(|| "Unable to open local Cargo.toml")
         .and_then(|ref manifest| get_name_from_manifest(manifest))
 }

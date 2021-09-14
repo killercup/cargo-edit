@@ -14,7 +14,7 @@
 #[macro_use]
 extern crate error_chain;
 
-use cargo_edit::{manifest_from_pkgid, Manifest};
+use cargo_edit::{manifest_from_pkgid, LocalManifest};
 use std::borrow::Cow;
 use std::io::Write;
 use std::path::PathBuf;
@@ -109,7 +109,7 @@ fn handle_rm(args: &Args) -> Result<()> {
     } else {
         Cow::Borrowed(&args.manifest_path)
     };
-    let mut manifest = Manifest::open(&manifest_path)?;
+    let mut manifest = LocalManifest::find(&manifest_path)?;
     let deps = &args.crates;
 
     deps.iter()
@@ -127,8 +127,7 @@ fn handle_rm(args: &Args) -> Result<()> {
             err
         })?;
 
-    let mut file = Manifest::find_file(&manifest_path)?;
-    manifest.write_to_file(&mut file)?;
+    manifest.write()?;
 
     Ok(())
 }

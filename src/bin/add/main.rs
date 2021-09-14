@@ -16,7 +16,7 @@ extern crate error_chain;
 
 use crate::args::{Args, Command};
 use cargo_edit::{
-    find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, Manifest,
+    find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, LocalManifest,
 };
 use std::borrow::Cow;
 use std::io::Write;
@@ -120,7 +120,7 @@ fn handle_add(args: &Args) -> Result<()> {
     } else {
         Cow::Borrowed(&args.manifest_path)
     };
-    let mut manifest = Manifest::open(&manifest_path)?;
+    let mut manifest = LocalManifest::find(&manifest_path)?;
 
     if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(
@@ -164,8 +164,7 @@ fn handle_add(args: &Args) -> Result<()> {
             err
         })?;
 
-    let mut file = Manifest::find_file(&manifest_path)?;
-    manifest.write_to_file(&mut file)?;
+    manifest.write()?;
 
     Ok(())
 }
