@@ -460,7 +460,7 @@ Caused by: TOML parse error at line 1, column 6
 1 | This is clearly not a valid Cargo.toml.
   |      ^
 Unexpected `i`
-Expected `=`")
+Expected `.` or `=`")
     .unwrap();
 }
 

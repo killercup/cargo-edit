@@ -260,7 +260,7 @@ impl Manifest {
             }
         }
 
-        let s = self.data.to_string_in_original_order();
+        let s = self.data.to_string();
         let new_contents_bytes = s.as_bytes();
 
         // We need to truncate the file, otherwise the new contents
@@ -442,7 +442,7 @@ impl str::FromStr for Manifest {
 
 impl std::fmt::Display for Manifest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = self.data.to_string_in_original_order();
+        let s = self.data.to_string();
         s.fmt(f)
     }
 }
