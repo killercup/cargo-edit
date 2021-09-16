@@ -2,10 +2,12 @@
 extern crate pretty_assertions;
 
 mod utils;
+
 use crate::utils::{
     clone_out_test, copy_workspace_test, execute_command, execute_command_for_pkg,
-    execute_command_in_dir, get_command_path, get_toml, setup_alt_registry_config,
+    execute_command_in_dir, get_toml, setup_alt_registry_config,
 };
+use assert_cmd::Command;
 
 // Verify that an upgraded Cargo.toml matches what we expect.
 #[test]
@@ -352,18 +354,14 @@ fn upgrade_at() {
 fn all_flag_is_deprecated() {
     let (_tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
 
-    assert_cli::Assert::command(&[
-        get_command_path("upgrade"),
-        "upgrade",
-        "--all",
-        "--manifest-path",
-        &root_manifest,
-    ])
-    .succeeds()
-    .and()
-    .stderr()
-    .contains("The flag `--all` has been deprecated in favor of `--workspace`")
-    .unwrap();
+    Command::cargo_bin("cargo-upgrade")
+        .expect("can find bin")
+        .args(&["upgrade", "--all", "--manifest-path", &root_manifest])
+        .assert()
+        .success()
+        .stderr(predicates::str::contains(
+            "The flag `--all` has been deprecated in favor of `--workspace`",
+        ));
 }
 
 #[test]
@@ -421,37 +419,29 @@ fn upgrade_dependency_in_workspace_member() {
 fn detect_workspace() {
     let (_tmpdir, root_manifest, _workspace_manifests) = copy_workspace_test();
 
-    assert_cli::Assert::command(&[
-        get_command_path("upgrade").as_str(),
-        "upgrade",
-        "--manifest-path",
-        &root_manifest,
-    ])
-    .fails_with(1)
-    .and()
-    .stderr()
-    .is(
-        "Command failed due to unhandled error: Found virtual manifest, but this command \
+    Command::cargo_bin("cargo-upgrade")
+        .expect("can find bin")
+        .args(&["upgrade", "--manifest-path", &root_manifest])
+        .assert()
+        .code(1)
+        .stderr(
+            "Command failed due to unhandled error: Found virtual manifest, but this command \
          requires running against an actual package in this workspace. Try adding `--workspace`.",
-    )
-    .unwrap();
+        );
 }
 
 #[test]
 fn invalid_manifest() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
 
-    assert_cli::Assert::command(&[
-        get_command_path("upgrade"),
-        "upgrade",
-        "--manifest-path",
-        &manifest,
-    ])
-    .with_env(&[("CARGO_IS_TEST", "1")])
-    .fails_with(1)
-    .and()
-    .stderr()
-    .is("\
+    Command::cargo_bin("cargo-upgrade")
+        .expect("can find bin")
+        .args(&["upgrade", "--manifest-path", &manifest])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .code(1)
+        .stderr(
+            "\
 Command failed due to unhandled error: Unable to parse Cargo.toml
 
 Caused by: Manifest not valid TOML
@@ -460,64 +450,59 @@ Caused by: TOML parse error at line 1, column 6
 1 | This is clearly not a valid Cargo.toml.
   |      ^
 Unexpected `i`
-Expected `.` or `=`")
-    .unwrap();
+Expected `.` or `=`
+
+",
+        );
 }
 
 #[test]
 fn invalid_root_manifest_all() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
 
-    assert_cli::Assert::command(&[
-        get_command_path("upgrade"),
-        "upgrade",
-        "--workspace",
-        "--manifest-path",
-        &manifest,
-    ])
-    .with_env(&[("CARGO_IS_TEST", "1")])
-    .fails_with(1)
-    .and()
-    .stderr()
-    .contains("Command failed due to unhandled error: Failed to get workspace metadata")
-    .unwrap();
+    Command::cargo_bin("cargo-upgrade")
+        .expect("can find bin")
+        .args(&["upgrade", "--workspace", "--manifest-path", &manifest])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .code(1)
+        .stderr(predicates::str::contains(
+            "Command failed due to unhandled error: Failed to get workspace metadata",
+        ));
 }
 
 #[test]
 fn invalid_root_manifest_workspace() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.invalid");
 
-    assert_cli::Assert::command(&[
-        get_command_path("upgrade"),
-        "upgrade",
-        "--workspace",
-        "--manifest-path",
-        &manifest,
-    ])
-    .with_env(&[("CARGO_IS_TEST", "1")])
-    .fails_with(1)
-    .and()
-    .stderr()
-    .contains("Command failed due to unhandled error: Failed to get workspace metadata")
-    .unwrap();
+    Command::cargo_bin("cargo-upgrade")
+        .expect("can find bin")
+        .args(&["upgrade", "--workspace", "--manifest-path", &manifest])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .code(1)
+        .stderr(predicates::str::contains(
+            "Command failed due to unhandled error: Failed to get workspace metadata",
+        ));
 }
 
 #[test]
 fn unknown_flags() {
-    assert_cli::Assert::command(&[get_command_path("upgrade"), "upgrade", "foo", "--flag"])
-        .with_env(&[("CARGO_IS_TEST", "1")])
-        .fails_with(1)
-        .and()
-        .stderr()
-        .is(
+    Command::cargo_bin("cargo-upgrade")
+        .expect("can find bin")
+        .args(&["upgrade", "foo", "--flag"])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .code(1)
+        .stderr(
             "error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
 USAGE:
     cargo upgrade [FLAGS] [OPTIONS] [--] [dependency]...
 
-For more information try --help ",
-        )
-        .unwrap();
+For more information try --help
+",
+        );
 }
 
 // Verify that an upgraded Cargo.toml matches what we expect.
@@ -579,15 +564,14 @@ fn upgrade_workspace_to_lockfile_workspace() {
 fn upgrade_prints_messages() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/upgrade/Cargo.toml.source");
 
-    assert_cli::Assert::command(&[
-        get_command_path("upgrade"),
-        "upgrade",
-        "docopt",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .succeeds()
-    .and()
-    .stdout()
-    .contains("docopt v0.8 -> v")
-    .unwrap();
+    Command::cargo_bin("cargo-upgrade")
+        .expect("can find bin")
+        .args(&[
+            "upgrade",
+            "docopt",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("docopt v0.8 -> v"));
 }

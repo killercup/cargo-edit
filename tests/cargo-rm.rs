@@ -1,8 +1,9 @@
 mod utils;
+
 use crate::utils::{
-    clone_out_test, copy_workspace_test, execute_command, execute_command_for_pkg,
-    get_command_path, get_toml,
+    clone_out_test, copy_workspace_test, execute_command, execute_command_for_pkg, get_toml,
 };
+use assert_cmd::Command;
 
 #[test]
 fn remove_existing_dependency() {
@@ -101,20 +102,19 @@ fn issue_32() {
 fn invalid_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        get_command_path("rm"),
+    Command::cargo_bin("cargo-rm")
+        .expect("can find bin")
+        .args(&[
         "rm",
         "invalid_dependency_name",
         &format!("--manifest-path={}", manifest),
     ])
-    .fails_with(1)
-    .and()
-    .stderr()
-    .contains(
+    .assert()
+    .code(1)
+        .stderr(predicates::str::contains(
         "Command failed due to unhandled error: The dependency `invalid_dependency_name` could \
          not be found in `dependencies`.",
-    )
-    .unwrap();
+    ));
 }
 
 #[test]
@@ -122,111 +122,106 @@ fn invalid_section() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     execute_command(&["rm", "semver", "--build"], &manifest);
-    assert_cli::Assert::command(&[
-        get_command_path("rm"),
-        "rm",
-        "semver",
-        "--build",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .fails_with(1)
-    .and()
-    .stderr()
-    .contains(
-        "Command failed due to unhandled error: The table `build-dependencies` could not be \
-         found.",
-    )
-    .unwrap();
+    Command::cargo_bin("cargo-rm")
+        .expect("can find bin")
+        .args(&[
+            "rm",
+            "semver",
+            "--build",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .assert()
+        .code(1)
+        .stderr(predicates::str::contains(
+            "The table `build-dependencies` could not be found.",
+        ));
 }
 
 #[test]
 fn invalid_dependency_in_section() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        get_command_path("rm"),
-        "rm",
-        "semver",
-        "regex",
-        "--dev",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .fails_with(1)
-    .and()
-    .stderr()
-    .contains(
-        "Command failed due to unhandled error: The dependency `semver` could not be found in \
+    Command::cargo_bin("cargo-rm")
+        .expect("can find bin")
+        .args(&[
+            "rm",
+            "semver",
+            "regex",
+            "--dev",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .assert()
+        .code(1)
+        .stderr(predicates::str::contains(
+            "Command failed due to unhandled error: The dependency `semver` could not be found in \
          `dev-dependencies`.",
-    )
-    .unwrap();
+        ));
 }
 
 #[test]
 fn no_argument() {
-    assert_cli::Assert::command(&[get_command_path("rm"), "rm"])
-        .fails_with(1)
-        .and()
-        .stderr()
-        .is(r"error: The following required arguments were not provided:
+    Command::cargo_bin("cargo-rm")
+        .expect("can find bin")
+        .args(&["rm"])
+        .assert()
+        .code(1)
+        .stderr(
+            r"error: The following required arguments were not provided:
     <crates>...
 
 USAGE:
     cargo rm [FLAGS] [OPTIONS] <crates>...
 
-For more information try --help")
-        .unwrap();
+For more information try --help
+",
+        );
 }
 
 #[test]
 fn unknown_flags() {
-    assert_cli::Assert::command(&[get_command_path("rm"), "rm", "foo", "--flag"])
-        .fails_with(1)
-        .and()
-        .stderr()
-        .is(
+    Command::cargo_bin("cargo-rm")
+        .expect("can find bin")
+        .args(&["rm", "foo", "--flag"])
+        .assert()
+        .code(1)
+        .stderr(
             r"error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
 USAGE:
     cargo rm [FLAGS] [OPTIONS] <crates>...
 
-For more information try --help",
-        )
-        .unwrap();
+For more information try --help
+",
+        );
 }
 
 #[test]
 fn rm_prints_message() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        get_command_path("rm"),
-        "rm",
-        "semver",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .succeeds()
-    .and()
-    .stdout()
-    .is("Removing semver from dependencies")
-    .unwrap();
+    Command::cargo_bin("cargo-rm")
+        .expect("can find bin")
+        .args(&["rm", "semver", &format!("--manifest-path={}", manifest)])
+        .assert()
+        .success()
+        .stdout("    Removing semver from dependencies\n");
 }
 
 #[test]
 fn rm_prints_messages_for_multiple() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
-    assert_cli::Assert::command(&[
-        get_command_path("rm"),
-        "rm",
-        "semver",
-        "docopt",
-        &format!("--manifest-path={}", manifest),
-    ])
-    .succeeds()
-    .and()
-    .stdout()
-    .is("Removing semver from dependencies\n    Removing docopt from dependencies")
-    .unwrap();
+    Command::cargo_bin("cargo-rm")
+        .expect("can find bin")
+        .args(&[
+            "rm",
+            "semver",
+            "docopt",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .assert()
+        .success()
+        .stdout("    Removing semver from dependencies\n    Removing docopt from dependencies\n");
 }
 
 #[test]
