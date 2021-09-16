@@ -103,7 +103,7 @@ where
     let subcommand_name = format!("cargo-{}", command[0].as_ref().to_str().unwrap());
     let cwd = cwd.as_ref();
 
-    let call = Command::cargo_bin(&subcommand_name)
+    let assert = Command::cargo_bin(&subcommand_name)
         .expect("can find bin")
         .args(command)
         .arg("--package")
@@ -112,22 +112,26 @@ where
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success();
+    println!("Succeeded: {}", assert);
 }
 
 /// Execute local cargo command, includes `--manifest-path`
-pub fn execute_command<S>(command: &[S], manifest: &str)
+pub fn execute_command<S, P>(command: &[S], manifest: P)
 where
     S: AsRef<OsStr>,
+    P: AsRef<Path>,
 {
     let subcommand_name = format!("cargo-{}", command[0].as_ref().to_str().unwrap());
 
-    let call = Command::cargo_bin(&subcommand_name)
+    let assert = Command::cargo_bin(&subcommand_name)
         .expect("can find bin")
         .args(command)
-        .arg(format!("--manifest-path={}", manifest))
+        .arg("--manifest-path")
+        .arg(manifest.as_ref())
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success();
+    println!("Succeeded: {}", assert);
 }
 
 /// Execute local cargo command in a given directory

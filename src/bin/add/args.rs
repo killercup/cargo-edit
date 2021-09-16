@@ -180,7 +180,7 @@ impl Args {
             }
 
             if let Some(ref path) = self.path {
-                dependency = dependency.set_path(path.to_str().unwrap());
+                dependency = dependency.set_path(path.canonicalize()?);
             }
 
             Ok(dependency)
@@ -198,7 +198,7 @@ impl Args {
                 dependency = dependency.set_git(repo, self.branch.clone());
             }
             if let Some(path) = &self.path {
-                dependency = dependency.set_path(path.to_str().unwrap());
+                dependency = dependency.set_path(path.canonicalize()?);
             }
             if let Some(version) = &self.vers {
                 dependency = dependency.set_version(parse_version_req(version)?);
@@ -352,14 +352,15 @@ mod tests {
 
     #[test]
     fn test_path_as_arg_parsing() {
-        let self_path = ".";
+        let self_path = std::env::current_dir().unwrap().canonicalize().unwrap();
         let args_path = Args {
-            crates: vec![self_path.to_owned()],
+            // Hacky to `display` but should generally work
+            crates: vec![self_path.display().to_string()],
             ..Args::default()
         };
         assert_eq!(
             args_path.parse_dependencies().unwrap(),
-            vec![Dependency::new("cargo-edit").set_path(self_path)]
+            vec![Dependency::new("cargo-edit").set_path(std::path::PathBuf::from(self_path))]
         );
     }
 }

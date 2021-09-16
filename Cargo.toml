@@ -68,6 +68,7 @@ termcolor = "1.1.0"
 toml_edit = { version = "0.3.1", features = ["easy"] }
 url = "2.1.1"
 ureq = { version = "1.5.1", default-features = false, features = ["tls", "json", "socks"] }
+pathdiff = "0.2"
 
 [dependencies.semver]
 features = ["serde"]
