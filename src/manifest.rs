@@ -1,5 +1,5 @@
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write};
+use std::fs::{self};
+use std::io::Write;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::{env, str};
@@ -161,30 +161,6 @@ fn print_upgrade_if_necessary(
 }
 
 impl Manifest {
-    /// Look for a `Cargo.toml` file
-    ///
-    /// Starts at the given path an goes into its parent directories until the manifest file is
-    /// found. If no path is given, the process's working directory is used as a starting point.
-    pub fn find_file(path: &Option<PathBuf>) -> Result<File> {
-        find(path).and_then(|path| {
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(path)
-                .chain_err(|| "Failed to find Cargo.toml")
-        })
-    }
-
-    /// Open the `Cargo.toml` for a path (or the process' `cwd`)
-    pub fn open(path: &Option<PathBuf>) -> Result<Manifest> {
-        let mut file = Manifest::find_file(path)?;
-        let mut data = String::new();
-        file.read_to_string(&mut data)
-            .chain_err(|| "Failed to read manifest contents")?;
-
-        data.parse().chain_err(|| "Unable to parse Cargo.toml")
-    }
-
     /// Get the specified table from the manifest.
     pub fn get_table<'a>(&'a mut self, table_path: &[String]) -> Result<&'a mut toml_edit::Item> {
         /// Descend into a manifest until the required table is found.
@@ -248,27 +224,6 @@ impl Manifest {
         }
 
         sections
-    }
-
-    /// Overwrite a file with TOML data.
-    pub fn write_to_file(&self, file: &mut File) -> Result<()> {
-        if self.data["package"].is_none() && self.data["project"].is_none() {
-            if !self.data["workspace"].is_none() {
-                return Err(ErrorKind::UnexpectedRootManifest.into());
-            } else {
-                return Err(ErrorKind::InvalidManifest.into());
-            }
-        }
-
-        let s = self.data.to_string();
-        let new_contents_bytes = s.as_bytes();
-
-        // We need to truncate the file, otherwise the new contents
-        // will be mixed up with the old ones.
-        file.set_len(new_contents_bytes.len() as u64)
-            .chain_err(|| "Failed to truncate Cargo.toml")?;
-        file.write_all(new_contents_bytes)
-            .chain_err(|| "Failed to write updated Cargo.toml")
     }
 
     /// Add entry to a Cargo.toml.
@@ -481,22 +436,27 @@ impl LocalManifest {
     /// Construct the `LocalManifest` corresponding to the `Path` provided.
     pub fn try_new(path: &Path) -> Result<Self> {
         let path = path.to_path_buf();
-        Ok(LocalManifest {
-            manifest: Manifest::open(&Some(path.clone()))?,
-            path,
-        })
+        let data =
+            std::fs::read_to_string(&path).chain_err(|| "Failed to read manifest contents")?;
+        let manifest = data.parse().chain_err(|| "Unable to parse Cargo.toml")?;
+        Ok(LocalManifest { manifest, path })
     }
 
     /// Write changes back to the file
     pub fn write(&self) -> Result<()> {
-        let mut file = self.get_file()?;
-        self.write_to_file(&mut file)
-            .chain_err(|| "Failed to write new manifest contents")
-    }
+        if self.manifest.data["package"].is_none() && self.manifest.data["project"].is_none() {
+            if !self.manifest.data["workspace"].is_none() {
+                return Err(ErrorKind::UnexpectedRootManifest.into());
+            } else {
+                return Err(ErrorKind::InvalidManifest.into());
+            }
+        }
 
-    /// Get the `File` corresponding to this manifest.
-    fn get_file(&self) -> Result<File> {
-        Manifest::find_file(&Some(self.path.clone()))
+        let s = self.manifest.data.to_string();
+        let new_contents_bytes = s.as_bytes();
+
+        std::fs::write(&self.path, new_contents_bytes)
+            .chain_err(|| "Failed to write updated Cargo.toml")
     }
 
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
