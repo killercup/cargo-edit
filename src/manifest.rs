@@ -225,6 +225,113 @@ impl Manifest {
 
         sections
     }
+}
+
+impl str::FromStr for Manifest {
+    type Err = Error;
+
+    /// Read manifest data from string
+    fn from_str(input: &str) -> ::std::result::Result<Self, Self::Err> {
+        let d: toml_edit::Document = input.parse().chain_err(|| "Manifest not valid TOML")?;
+
+        Ok(Manifest { data: d })
+    }
+}
+
+impl std::fmt::Display for Manifest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = self.data.to_string();
+        s.fmt(f)
+    }
+}
+
+/// A Cargo manifest that is available locally.
+#[derive(Debug)]
+pub struct LocalManifest {
+    /// Path to the manifest
+    pub path: PathBuf,
+    /// Manifest contents
+    pub manifest: Manifest,
+}
+
+impl Deref for LocalManifest {
+    type Target = Manifest;
+
+    fn deref(&self) -> &Manifest {
+        &self.manifest
+    }
+}
+
+impl DerefMut for LocalManifest {
+    fn deref_mut(&mut self) -> &mut Manifest {
+        &mut self.manifest
+    }
+}
+
+impl LocalManifest {
+    /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
+    /// the user means.
+    pub fn find(path: &Option<PathBuf>) -> Result<Self> {
+        let path = find(path)?;
+        Self::try_new(&path)
+    }
+
+    /// Construct the `LocalManifest` corresponding to the `Path` provided.
+    pub fn try_new(path: &Path) -> Result<Self> {
+        let path = path.to_path_buf();
+        let data =
+            std::fs::read_to_string(&path).chain_err(|| "Failed to read manifest contents")?;
+        let manifest = data.parse().chain_err(|| "Unable to parse Cargo.toml")?;
+        Ok(LocalManifest { manifest, path })
+    }
+
+    /// Write changes back to the file
+    pub fn write(&self) -> Result<()> {
+        if self.manifest.data["package"].is_none() && self.manifest.data["project"].is_none() {
+            if !self.manifest.data["workspace"].is_none() {
+                return Err(ErrorKind::UnexpectedRootManifest.into());
+            } else {
+                return Err(ErrorKind::InvalidManifest.into());
+            }
+        }
+
+        let s = self.manifest.data.to_string();
+        let new_contents_bytes = s.as_bytes();
+
+        std::fs::write(&self.path, new_contents_bytes)
+            .chain_err(|| "Failed to write updated Cargo.toml")
+    }
+
+    /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
+    /// dependency, it does nothing.
+    pub fn upgrade(
+        &mut self,
+        dependency: &Dependency,
+        dry_run: bool,
+        skip_compatible: bool,
+    ) -> Result<()> {
+        for (table_path, table) in self.get_sections() {
+            let table_like = table.as_table_like().expect("Unexpected non-table");
+            for (name, toml_item) in table_like.iter() {
+                let dep_name = toml_item
+                    .as_table_like()
+                    .and_then(|t| t.get("package").and_then(|p| p.as_str()))
+                    .unwrap_or(name);
+                if dep_name == dependency.name {
+                    if skip_compatible {
+                        if let Some(old_version) = get_version(toml_item)?.as_str() {
+                            if old_version_compatible(dependency, old_version)? {
+                                continue;
+                            }
+                        }
+                    }
+                    self.update_table_named_entry(&table_path, name, dependency, dry_run)?;
+                }
+            }
+        }
+
+        self.write()
+    }
 
     /// Add entry to a Cargo.toml.
     pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
@@ -312,10 +419,11 @@ impl Manifest {
     /// # Examples
     ///
     /// ```
-    ///   use cargo_edit::{Dependency, Manifest};
+    ///   use cargo_edit::{Dependency, LocalManifest, Manifest};
     ///   use toml_edit;
     ///
-    ///   let mut manifest = Manifest { data: toml_edit::Document::new() };
+    ///   let path = std::path::PathBuf::from("/Cargo.toml");
+    ///   let mut manifest = LocalManifest { path, manifest: Manifest { data: toml_edit::Document::new() } };
     ///   let dep = Dependency::new("cargo-edit").set_version("0.1.0");
     ///   let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
     ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
@@ -384,118 +492,6 @@ impl Manifest {
     }
 }
 
-impl str::FromStr for Manifest {
-    type Err = Error;
-
-    /// Read manifest data from string
-    fn from_str(input: &str) -> ::std::result::Result<Self, Self::Err> {
-        let d: toml_edit::Document = input.parse().chain_err(|| "Manifest not valid TOML")?;
-
-        Ok(Manifest { data: d })
-    }
-}
-
-impl std::fmt::Display for Manifest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = self.data.to_string();
-        s.fmt(f)
-    }
-}
-
-/// A Cargo manifest that is available locally.
-#[derive(Debug)]
-pub struct LocalManifest {
-    /// Path to the manifest
-    pub path: PathBuf,
-    /// Manifest contents
-    manifest: Manifest,
-}
-
-impl Deref for LocalManifest {
-    type Target = Manifest;
-
-    fn deref(&self) -> &Manifest {
-        &self.manifest
-    }
-}
-
-impl DerefMut for LocalManifest {
-    fn deref_mut(&mut self) -> &mut Manifest {
-        &mut self.manifest
-    }
-}
-
-impl LocalManifest {
-    /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
-    /// the user means.
-    pub fn find(path: &Option<PathBuf>) -> Result<Self> {
-        let path = find(path)?;
-        Self::try_new(&path)
-    }
-
-    /// Construct the `LocalManifest` corresponding to the `Path` provided.
-    pub fn try_new(path: &Path) -> Result<Self> {
-        let path = path.to_path_buf();
-        let data =
-            std::fs::read_to_string(&path).chain_err(|| "Failed to read manifest contents")?;
-        let manifest = data.parse().chain_err(|| "Unable to parse Cargo.toml")?;
-        Ok(LocalManifest { manifest, path })
-    }
-
-    /// Write changes back to the file
-    pub fn write(&self) -> Result<()> {
-        if self.manifest.data["package"].is_none() && self.manifest.data["project"].is_none() {
-            if !self.manifest.data["workspace"].is_none() {
-                return Err(ErrorKind::UnexpectedRootManifest.into());
-            } else {
-                return Err(ErrorKind::InvalidManifest.into());
-            }
-        }
-
-        let s = self.manifest.data.to_string();
-        let new_contents_bytes = s.as_bytes();
-
-        std::fs::write(&self.path, new_contents_bytes)
-            .chain_err(|| "Failed to write updated Cargo.toml")
-    }
-
-    /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
-    /// dependency, it does nothing.
-    pub fn upgrade(
-        &mut self,
-        dependency: &Dependency,
-        dry_run: bool,
-        skip_compatible: bool,
-    ) -> Result<()> {
-        for (table_path, table) in self.get_sections() {
-            let table_like = table.as_table_like().expect("Unexpected non-table");
-            for (name, toml_item) in table_like.iter() {
-                let dep_name = toml_item
-                    .as_table_like()
-                    .and_then(|t| t.get("package").and_then(|p| p.as_str()))
-                    .unwrap_or(name);
-                if dep_name == dependency.name {
-                    if skip_compatible {
-                        if let Some(old_version) = get_version(toml_item)?.as_str() {
-                            if old_version_compatible(dependency, old_version)? {
-                                continue;
-                            }
-                        }
-                    }
-                    self.manifest.update_table_named_entry(
-                        &table_path,
-                        name,
-                        dependency,
-                        dry_run,
-                    )?;
-                }
-            }
-        }
-
-        self.write()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -504,8 +500,11 @@ mod tests {
 
     #[test]
     fn add_remove_dependency() {
-        let mut manifest = Manifest {
-            data: toml_edit::Document::new(),
+        let mut manifest = LocalManifest {
+            path: PathBuf::from("/Cargo.toml"),
+            manifest: Manifest {
+                data: toml_edit::Document::new(),
+            },
         };
         let clone = manifest.clone();
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
@@ -518,8 +517,11 @@ mod tests {
 
     #[test]
     fn update_dependency() {
-        let mut manifest = Manifest {
-            data: toml_edit::Document::new(),
+        let mut manifest = LocalManifest {
+            path: PathBuf::from("/Cargo.toml"),
+            manifest: Manifest {
+                data: toml_edit::Document::new(),
+            },
         };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         manifest
@@ -534,8 +536,11 @@ mod tests {
 
     #[test]
     fn update_wrong_dependency() {
-        let mut manifest = Manifest {
-            data: toml_edit::Document::new(),
+        let mut manifest = LocalManifest {
+            path: PathBuf::from("/Cargo.toml"),
+            manifest: Manifest {
+                data: toml_edit::Document::new(),
+            },
         };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         manifest
@@ -553,8 +558,11 @@ mod tests {
 
     #[test]
     fn remove_dependency_no_section() {
-        let mut manifest = Manifest {
-            data: toml_edit::Document::new(),
+        let mut manifest = LocalManifest {
+            path: PathBuf::from("/Cargo.toml"),
+            manifest: Manifest {
+                data: toml_edit::Document::new(),
+            },
         };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         assert!(manifest
@@ -564,8 +572,11 @@ mod tests {
 
     #[test]
     fn remove_dependency_non_existent() {
-        let mut manifest = Manifest {
-            data: toml_edit::Document::new(),
+        let mut manifest = LocalManifest {
+            path: PathBuf::from("/Cargo.toml"),
+            manifest: Manifest {
+                data: toml_edit::Document::new(),
+            },
         };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
@@ -593,7 +604,10 @@ edition = "2015"
 
 [dependencies]
 "#;
-        let mut manifest = original.parse::<Manifest>().unwrap();
+        let mut manifest = LocalManifest {
+            path: PathBuf::from("/Cargo.toml"),
+            manifest: original.parse::<Manifest>().unwrap(),
+        };
         manifest.set_package_version(&semver::Version::parse("2.0.0").unwrap());
         let actual = manifest.to_string();
 
