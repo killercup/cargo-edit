@@ -80,7 +80,7 @@ pub struct Args {
     pub target: Option<String>,
 
     /// Add as an optional dependency (for use in features).
-    #[structopt(long = "optional", conflicts_with = "dev", conflicts_with = "build")]
+    #[structopt(long = "optional", conflicts_with = "dev")]
     pub optional: bool,
 
     /// Path to the manifest to add a dependency to.
