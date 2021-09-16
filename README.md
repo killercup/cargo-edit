@@ -28,6 +28,10 @@ To help us help you get pull requests merged quickly and smoothly, open an issue
 
 `cargo-edit` uses [`rustfmt`](https://github.com/rust-lang-nursery/rustfmt) for formatting and [`clippy`](https://github.com/rust-lang-nursery/rust-clippy) for linting.
 
+## Related Cargo Commands
+
+- [`cargo feature`](https://github.com/Riey/cargo-feature)
+
 ## Installation
 
 Ensure that you have a fairly recent version of rust/cargo installed. On Ubuntu you would also need to install `libssl-dev` and `pkg-config` packages.
