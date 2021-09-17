@@ -357,6 +357,7 @@ fn all_flag_is_deprecated() {
     Command::cargo_bin("cargo-upgrade")
         .expect("can find bin")
         .args(&["upgrade", "--all", "--manifest-path", &root_manifest])
+        .env("CARGO_IS_TEST", "1")
         .assert()
         .success()
         .stderr(predicates::str::contains(

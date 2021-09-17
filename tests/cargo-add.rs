@@ -211,6 +211,7 @@ fn adds_dev_build_dependency() {
         .expect("can find bin")
         .args(&["add", BOGUS_CRATE_NAME, "--dev", "--build"])
         .arg(format!("--manifest-path={}", &manifest))
+        .env("CARGO_IS_TEST", "1")
         .output()
         .unwrap();
 
@@ -285,6 +286,7 @@ fn adds_specified_version() {
         .expect("can find bin")
         .args(&["add", BOGUS_CRATE_NAME, "--vers", "invalid version string"])
         .arg(format!("--manifest-path={}", &manifest))
+        .env("CARGO_IS_TEST", "1")
         .output()
         .unwrap();
 
@@ -683,6 +685,7 @@ fn git_and_version_flags_are_mutually_exclusive() {
         .args(&["--vers", "0.4.3"])
         .args(&["--git", "git://git.git"])
         .arg(format!("--manifest-path={}", &manifest))
+        .env("CARGO_IS_TEST", "1")
         .output()
         .unwrap();
 
@@ -699,6 +702,7 @@ fn git_flag_and_inline_version_are_mutually_exclusive() {
         .args(&["add", &format!("{}@0.4.3", BOGUS_CRATE_NAME)])
         .args(&["--git", "git://git.git"])
         .arg(format!("--manifest-path={}", &manifest))
+        .env("CARGO_IS_TEST", "1")
         .output()
         .unwrap();
 
@@ -716,6 +720,7 @@ fn git_and_path_are_mutually_exclusive() {
         .args(&["--git", "git://git.git"])
         .args(&["--path", "/path/here"])
         .arg(format!("--manifest-path={}", &manifest))
+        .env("CARGO_IS_TEST", "1")
         .output()
         .unwrap();
 
@@ -733,6 +738,7 @@ fn git_and_registry_are_mutually_exclusive() {
         .args(&["--git", "git://git.git"])
         .args(&["--registry", "alternative"])
         .arg(format!("--manifest-path={}", &manifest))
+        .env("CARGO_IS_TEST", "1")
         .output()
         .unwrap();
 
@@ -750,6 +756,7 @@ fn registry_and_path_are_mutually_exclusive() {
         .args(&["--registry", "alternative"])
         .args(&["--path", "/path/here"])
         .arg(format!("--manifest-path={}", &manifest))
+        .env("CARGO_IS_TEST", "1")
         .output()
         .unwrap();
 
@@ -1049,6 +1056,7 @@ fn forbids_multiple_crates_with_features_option() {
     Command::cargo_bin("cargo-add")
         .expect("can find bin")
         .args(&["add", "your-face", "--features", "mouth", "nose"])
+        .env("CARGO_IS_TEST", "1")
         .assert()
         .code(1)
         .stderr(predicates::str::contains(
@@ -1315,6 +1323,7 @@ fn no_argument() {
     Command::cargo_bin("cargo-add")
         .expect("can find bin")
         .args(&["add"])
+        .env("CARGO_IS_TEST", "1")
         .assert()
         .code(1)
         .stderr(
@@ -1334,6 +1343,7 @@ fn unknown_flags() {
     Command::cargo_bin("cargo-add")
         .expect("can find bin")
         .args(&["add", "foo", "--flag"])
+        .env("CARGO_IS_TEST", "1")
         .assert()
         .code(1)
         .stderr(
@@ -1441,10 +1451,11 @@ fn add_typo() {
     Command::cargo_bin("cargo-add")
         .expect("can find bin")
         .args(&[
-        "add",
-        "lets_hope_nobody_ever_publishes_this_crate",
-        &format!("--manifest-path={}", manifest),
-    ])
+            "add",
+            "lets_hope_nobody_ever_publishes_this_crate",
+            &format!("--manifest-path={}", manifest),
+        ])
+        .env("CARGO_IS_TEST", "1")
         .assert()
         .code(1)
     .stderr()
@@ -1556,6 +1567,7 @@ fn add_prints_message_for_features_deps() {
             "jui",
             &format!("--manifest-path={}", manifest),
         ])
+        .env("CARGO_IS_TEST", "1")
         .assert()
         .success()
         .stdout(predicates::str::contains(
