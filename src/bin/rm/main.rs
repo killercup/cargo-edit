@@ -172,10 +172,8 @@ fn remove_feature_activation(feature_activations: &mut toml_edit::Array, dep: &s
         .enumerate()
         .filter_map(|(idx, feature_activation)| {
             if let toml_edit::Value::String(feature_activation) = feature_activation {
-                feature_activation
-                    .value()
-                    .starts_with(dep_feature)
-                    .then(|| idx)
+                let activation = feature_activation.value();
+                (activation == dep || activation.starts_with(dep_feature)).then(|| idx)
             } else {
                 None
             }
