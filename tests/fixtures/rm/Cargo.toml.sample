@@ -20,3 +20,6 @@ clippy = {git = "https://github.com/Manishearth/rust-clippy.git", optional = tru
 [dev-dependencies]
 regex = "0.1.41"
 serde = "1.0.90"
+
+[features]
+std = ["serde/std", "semver/std"]

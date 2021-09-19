@@ -14,6 +14,9 @@ fn remove_existing_dependency() {
     execute_command(&["rm", "docopt"], &manifest);
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"]["docopt"].is_none());
+
+    // Activated features should not be changed:
+    assert_eq!(toml["features"]["std"].as_array().unwrap().len(), 2);
 }
 
 #[test]
@@ -27,6 +30,15 @@ fn remove_multiple_existing_dependencies() {
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"]["docopt"].is_none());
     assert!(toml["dependencies"]["semver"].is_none());
+
+    // "semver/std" activated feature should NOT have been dropped as
+    // there's still a build-dep on the crate:
+    assert_eq!(toml["features"]["std"].as_array().unwrap().len(), 2);
+
+    // Let's remove the last semver dependency and expect the associated feature to be dropped.
+    execute_command(&["rm", "--build", "semver"], &manifest);
+    let toml = get_toml(&manifest);
+    assert_eq!(toml["features"]["std"].as_array().unwrap().len(), 1);
 }
 
 #[test]
