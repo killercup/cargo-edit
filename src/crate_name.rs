@@ -42,6 +42,45 @@ impl<'a> CrateName<'a> {
         self.0.contains('.') || self.0.contains('/') || self.0.contains('\\')
     }
 
+    /// Checks is the specified crate name is a valid, non-empty name for a crates.io crate,
+    /// meaning it contains only a-zA-Z, dashes, and underscores.
+    /// expected to be usually called as validate_name()?;
+    pub fn validate_name(&self) -> Result<()> {
+        if self.name().is_empty() {
+            return Err(ErrorKind::EmptyCrateName.into());
+        }
+
+
+        let contains_only_valid_characters: bool;
+        let mut invalid_char: char;
+
+        if self.name().chars().next().unwrap().is_alphabetic() {
+            invalid_char = 'a'; //placeholder value. Is always a valid character in a crate name.
+            contains_only_valid_characters = self.name().chars().all(|c| {
+                let is_valid = (c.is_alphanumeric() || c == '-' || c == '_') && c.is_ascii();
+
+                if !is_valid {
+                    invalid_char = c;
+                }
+                is_valid
+            });
+        } else {
+            invalid_char = self.name().chars().next().unwrap();
+            contains_only_valid_characters = false;
+        }
+
+        if !contains_only_valid_characters {
+            assert_ne!(invalid_char, 'a'); //check if invalid_char still does not contains its initial placeholder value. That should never happen
+            return Err(ErrorKind::CrateNameContainsInvalidCharacter(
+                self.name().to_string(),
+                invalid_char,
+            )
+            .into());
+        }
+
+        Ok(())
+    }
+
     /// If this crate specifier includes a version (e.g. `docopt@0.8`), extract the name and
     /// version.
     pub fn parse_as_version(&self) -> Result<Option<Dependency>> {
@@ -49,6 +88,8 @@ impl<'a> CrateName<'a> {
             let xs: Vec<_> = self.0.splitn(2, '@').collect();
             let (name, version) = (xs[0], xs[1]);
             semver::VersionReq::parse(version).chain_err(|| "Invalid crate version requirement")?;
+
+            self.validate_name()?;
 
             Ok(Some(Dependency::new(name).set_version(version)))
         } else {

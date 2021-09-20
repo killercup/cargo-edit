@@ -30,6 +30,10 @@ mod args;
 mod errors {
     error_chain! {
         errors {
+            /// Running `cargo-add .` would create a create circular dependency, this error prevents it
+            AttemptedCreatingCircularDependency {
+                description("Attempting to create circular dependency by specifying crate name `.`")
+            }
             /// Specified a dependency with both a git URL and a version.
             GitUrlWithVersion(git: String, version: String) {
                 description("Specified git URL with version")

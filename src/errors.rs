@@ -10,6 +10,11 @@ error_chain! {
     }
 
     errors {
+        /// A crate contains invalid symbol
+        CrateNameContainsInvalidCharacter(crate_name: String, symbol: char) {
+            description("Specified crate name(s) contains invalid symbol(s)")
+            display("Crate name \"{}\" is invalid, contains symbol '{}' (byte values: {})", crate_name, &symbol, symbol.escape_unicode())
+        }
         /// Failed to read home directory
         ReadHomeDirFailure {
             description("Failed to read home directory")

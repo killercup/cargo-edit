@@ -169,6 +169,10 @@ impl Args {
     }
 
     fn parse_single_dependency(&self, crate_name: &str) -> Result<Dependency> {
+        if crate_name == "." {
+            return Err(ErrorKind::AttemptedCreatingCircularDependency.into());
+        }
+
         let crate_name = CrateName::new(crate_name);
 
         if let Some(mut dependency) = crate_name.parse_as_version()? {
@@ -185,6 +189,7 @@ impl Args {
 
             Ok(dependency)
         } else if crate_name.is_url_or_path() {
+            println!("hello");
             Ok(crate_name.parse_crate_name_from_uri()?)
         } else {
             assert_eq!(self.git.is_some() && self.vers.is_some(), false);
@@ -193,6 +198,7 @@ impl Args {
             assert_eq!(self.path.is_some() && self.registry.is_some(), false);
 
             let mut dependency = Dependency::new(crate_name.name());
+            dbg!(&dependency);
 
             if let Some(repo) = &self.git {
                 dependency = dependency.set_git(repo, self.branch.clone());
