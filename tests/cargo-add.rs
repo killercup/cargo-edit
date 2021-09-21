@@ -906,6 +906,24 @@ cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency"
 }
 
 #[test]
+fn local_path_is_self() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", BOGUS_CRATE_NAME])
+        .args(&["--path", "."])
+        .arg(format!("--manifest-path={}", &manifest))
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(tmpdir.path())
+        .assert()
+        .failure();
+    println!("Succeeded: {}", assert);
+
+    assert!(no_manifest_failures(&get_toml(&manifest).root));
+}
+
+#[test]
 fn git_and_version_flags_are_mutually_exclusive() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 

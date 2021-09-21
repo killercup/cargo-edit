@@ -20,6 +20,7 @@ use cargo_edit::{
 };
 use std::borrow::Cow;
 use std::io::Write;
+use std::path::Path;
 use std::process;
 use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -49,6 +50,10 @@ mod errors {
             MultipleCratesWithFeatures {
                 description("Specified multiple crates with features")
                 display("Cannot specify multiple crates with features")
+            }
+            AddingSelf(crate_: String) {
+                description("Adding crate to itself")
+                display("Cannot add `{}` as a dependency to itself", crate_)
             }
         }
         links {
@@ -141,6 +146,11 @@ fn handle_add(args: &Args) -> Result<()> {
         .map(|dep| {
             if !args.quiet {
                 print_msg(dep, &args.get_section(), args.optional)?;
+            }
+            if let Some(path) = dep.path() {
+                if path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
+                    return Err(ErrorKind::AddingSelf(manifest.package_name()?.to_owned()).into());
+                }
             }
             manifest
                 .insert_into_table(&args.get_section(), dep)

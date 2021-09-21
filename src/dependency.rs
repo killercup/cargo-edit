@@ -167,6 +167,19 @@ impl Dependency {
         }
     }
 
+    /// Get the path of the dependency
+    pub fn path(&self) -> Option<&Path> {
+        if let DependencySource::Version {
+            path: Some(ref path),
+            ..
+        } = self.source
+        {
+            Some(path.as_path())
+        } else {
+            None
+        }
+    }
+
     /// Get the alias for the dependency (if any)
     pub fn rename(&self) -> Option<&str> {
         self.rename.as_deref()
@@ -261,7 +274,7 @@ impl Dependency {
 #[cfg(test)]
 mod tests {
     use crate::dependency::Dependency;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     #[test]
     fn to_toml_simple_dep() {
