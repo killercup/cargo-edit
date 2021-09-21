@@ -20,7 +20,6 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use cargo_edit::{find, manifest_from_pkgid, LocalManifest};
-use failure::Fail;
 use structopt::StructOpt;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
@@ -117,9 +116,9 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd.exec().map_err(|e| {
-            Error::from(e.compat()).chain_err(|| "Failed to get workspace metadata")
-        })?;
+        let result = cmd
+            .exec()
+            .chain_err(|| "Failed to get workspace metadata")?;
         result
             .packages
             .into_iter()
@@ -151,9 +150,7 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd
-            .exec()
-            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
+        let result = cmd.exec().chain_err(|| "Invalid manifest")?;
         let packages = result.packages;
         let package = packages
             .iter()

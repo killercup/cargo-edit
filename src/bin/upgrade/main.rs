@@ -19,7 +19,6 @@ use cargo_edit::{
     find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
     CrateName, Dependency, LocalManifest,
 };
-use failure::Fail;
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -34,7 +33,7 @@ mod errors {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
         }
         foreign_links {
-            CargoMetadata(::failure::Compat<::cargo_metadata::Error>);
+            CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
         }
     }
 }
@@ -176,9 +175,9 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd.exec().map_err(|e| {
-            Error::from(e.compat()).chain_err(|| "Failed to get workspace metadata")
-        })?;
+        let result = cmd
+            .exec()
+            .chain_err(|| "Failed to get workspace metadata")?;
         result
             .packages
             .into_iter()
@@ -210,9 +209,7 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd
-            .exec()
-            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
+        let result = cmd.exec().chain_err(|| "Invalid manifest")?;
         let packages = result.packages;
         let package = packages
             .iter()
@@ -339,9 +336,7 @@ impl Manifests {
         cmd.features(cargo_metadata::CargoOpt::AllFeatures);
         cmd.other_options(vec!["--locked".to_string()]);
 
-        let result = cmd
-            .exec()
-            .map_err(|e| Error::from(e.compat()).chain_err(|| "Invalid manifest"))?;
+        let result = cmd.exec().chain_err(|| "Invalid manifest")?;
 
         let locked = result
             .packages
