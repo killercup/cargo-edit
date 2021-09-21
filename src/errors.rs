@@ -4,7 +4,7 @@ error_chain! {
     foreign_links {
         Io(::std::io::Error) #[doc = "An error from the std::io module"];
         Git(::git2::Error)#[doc = "An error from the git2 crate"];
-        CargoMetadata(::failure::Compat<::cargo_metadata::Error>)#[doc = "An error from the cargo_metadata crate"];
+        CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
         Semver(::semver::Error)#[doc = "An error from the semver crate"];
         CratesIndex(::crates_index::Error)#[doc = "An error from the crates-index crate"];
     }

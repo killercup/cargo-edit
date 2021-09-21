@@ -13,7 +13,7 @@ error_chain! {
         CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
     }
     foreign_links {
-        CargoMetadata(::failure::Compat<::cargo_metadata::Error>);
+        CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
         Version(::semver::Error)#[doc = "An error from the semver crate"];
     }
 }
