@@ -37,12 +37,12 @@ pub fn get_latest_dependency(
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
         let new_version = if flag_allow_prerelease {
-            format!("{}--PRERELEASE_VERSION_TEST", crate_name)
+            format!("99999.0.0-alpha.1+{}", crate_name)
         } else {
             match crate_name {
                 "test_breaking" => "0.2.0".to_string(),
                 "test_nonbreaking" => "0.1.1".to_string(),
-                other => format!("{}--CURRENT_VERSION_TEST", other),
+                other => format!("99999.0.0+{}", other),
             }
         };
 
