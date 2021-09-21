@@ -36,7 +36,7 @@ fn adds_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package"];
-    assert_eq!(val.as_str().unwrap(), "my-package--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn adds_prerelease_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package"];
-    assert_eq!(val.as_str().unwrap(), "my-package--PRERELEASE_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0-alpha.1");
 }
 
 fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
@@ -70,7 +70,7 @@ fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package"];
 
-    let expected_result = format!("{0}my-package--CURRENT_VERSION_TEST", expected_prefix);
+    let expected_result = format!("{}99999.0.0", expected_prefix);
     assert_eq!(val.as_str().unwrap(), expected_result);
 }
 
@@ -116,9 +116,9 @@ fn adds_multiple_dependencies() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package1"];
-    assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["dependencies"]["my-package2"];
-    assert_eq!(val.as_str().unwrap(), "my-package2--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -134,10 +134,7 @@ fn adds_renamed_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let renamed = &toml["dependencies"]["renamed"];
-    assert_eq!(
-        renamed["version"].as_str().unwrap(),
-        "my-package1--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(renamed["version"].as_str().unwrap(), "99999.0.0");
     assert_eq!(renamed["package"].as_str().unwrap(), "my-package1");
 }
 
@@ -198,15 +195,9 @@ fn adds_dev_build_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["my-dev-package"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-dev-package--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["build-dependencies"]["my-build-package"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-build-package--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 
     // cannot run with both --dev and --build at the same time
     let call = Command::cargo_bin("cargo-add")
@@ -244,25 +235,13 @@ fn adds_multiple_dev_build_dependencies() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["my-dev-package1"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-dev-package1--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["dev-dependencies"]["my-dev-package2"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-dev-package2--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["build-dependencies"]["my-build-package1"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-build-package1--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["build-dependencies"]["my-build-package2"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-build-package2--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -348,10 +327,7 @@ fn adds_multiple_dependencies_with_some_versions() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package1"];
-    assert_eq!(
-        val.as_str().expect("not string"),
-        "my-package1--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().expect("not string"), "99999.0.0");
     let val = &toml["dependencies"]["my-package2"];
     assert_eq!(val.as_str().expect("not string"), "0.2.3");
 }
@@ -1188,7 +1164,7 @@ fn adds_dependency_with_target_triple() {
     let toml = get_toml(&manifest);
 
     let val = &toml["target"]["i686-unknown-linux-gnu"]["dependencies"]["my-package1"];
-    assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -1205,7 +1181,7 @@ fn adds_dependency_with_target_cfg() {
     let toml = get_toml(&manifest);
     let val = &toml["target"]["cfg(unix)"]["dependencies"]["my-package1"];
 
-    assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -1239,7 +1215,7 @@ fn overrides_existing_features() {
         &["add", "your-face", "--features", "mouth"],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth"] }
+your-face = { version = "99999.0.0", features = ["mouth"] }
 "#,
     )
 }
@@ -1251,7 +1227,7 @@ fn keeps_existing_features_by_default() {
         &["add", "your-face"],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["nose"] }
+your-face = { version = "99999.0.0", features = ["nose"] }
 "#,
     )
 }
@@ -1270,7 +1246,7 @@ fn handles_specifying_features_option_multiple_times() {
         ],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["nose", "mouth"] }
+your-face = { version = "99999.0.0", features = ["nose", "mouth"] }
 "#,
     )
 }
@@ -1282,7 +1258,7 @@ fn can_be_forced_to_provide_an_empty_features_list() {
         &["add", "your-face", "--features", ""],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = [] }
+your-face = { version = "99999.0.0", features = [] }
 "#,
     )
 }
@@ -1294,7 +1270,7 @@ fn parses_space_separated_argument_to_features() {
         &["add", "your-face", "--features", "mouth ears"],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth", "ears"] }
+your-face = { version = "99999.0.0", features = ["mouth", "ears"] }
 "#,
     )
 }
@@ -1325,7 +1301,7 @@ fn adds_dependency_with_custom_target() {
     let toml = get_toml(&manifest);
     // Get package by hand because toml-rs does not currently handle escaping dots in get()
     let val = &toml["target"]["windows.json"]["dependencies"]["my-package1"];
-    assert_eq!(val.as_str(), Some("my-package1--CURRENT_VERSION_TEST"));
+    assert_eq!(val.as_str(), Some("99999.0.0"));
 }
 
 #[test]
@@ -1494,7 +1470,7 @@ fn overwrite_version_with_version() {
         &["add", "versioned-package"],
         r#"
 [dependencies]
-versioned-package = { version = "versioned-package--CURRENT_VERSION_TEST", optional = true }
+versioned-package = { version = "99999.0.0", optional = true }
 "#,
     )
 }
@@ -1530,7 +1506,7 @@ fn overwrite_renamed() {
         &["add", "versioned-package", "--rename", "renamed"],
         r#"
 [dependencies]
-renamed = { version = "versioned-package--CURRENT_VERSION_TEST", package = "versioned-package" }
+renamed = { version = "99999.0.0", package = "versioned-package" }
 "#,
     )
 }
@@ -1542,7 +1518,7 @@ fn overwrite_renamed_optional() {
         &["add", "versioned-package", "--rename", "renamed"],
         r#"
 [dependencies]
-renamed = { version = "versioned-package--CURRENT_VERSION_TEST", optional = true, package = "versioned-package" }
+renamed = { version = "99999.0.0", optional = true, package = "versioned-package" }
 "#,
     )
 }
@@ -1596,7 +1572,7 @@ fn overwrite_path_with_version() {
         &["add", "versioned-package"],
         r#"
 [dependencies]
-versioned-package = "versioned-package--CURRENT_VERSION_TEST"
+versioned-package = "99999.0.0"
 "#,
     )
 }
@@ -1765,7 +1741,7 @@ version = "0.0.0"
 
 [dependencies]
 atty = "0.2.13"
-toml = "toml--CURRENT_VERSION_TEST"
+toml = "99999.0.0"
 toml_edit = "0.1.5"
 "#
     );
@@ -1789,7 +1765,7 @@ version = "0.0.0"
 [dependencies]
 toml_edit = "0.1.5"
 atty = "0.2.13"
-toml = "toml--CURRENT_VERSION_TEST"
+toml = "99999.0.0"
 "#
     );
 }
@@ -1811,7 +1787,7 @@ version = "0.0.0"
 
 [dependencies]
 atty = "0.2.13"
-toml = "toml--CURRENT_VERSION_TEST"
+toml = "99999.0.0"
 toml_edit = "0.1.5"
 "#
     );
@@ -1832,7 +1808,7 @@ fn add_dependency_to_workspace_member() {
         one["dependencies"]["toml"]
             .as_str()
             .expect("toml dependency did not exist"),
-        "toml--CURRENT_VERSION_TEST",
+        "99999.0.0",
     );
 }
 #[test]
