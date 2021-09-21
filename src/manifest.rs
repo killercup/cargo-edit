@@ -159,6 +159,15 @@ fn print_upgrade_if_necessary(
 }
 
 impl Manifest {
+    /// Get the manifest's package name
+    pub fn package_name(&self) -> Result<&str> {
+        self.data
+            .as_table()
+            .get("package")
+            .and_then(|m| m["name"].as_str())
+            .ok_or_else(|| ErrorKind::ParseCargoToml.into())
+    }
+
     /// Get the specified table from the manifest.
     pub fn get_table<'a>(&'a mut self, table_path: &[String]) -> Result<&'a mut toml_edit::Item> {
         /// Descend into a manifest until the required table is found.

@@ -277,7 +277,11 @@ where
                 let url = url_template(user.as_str(), repo.as_str());
                 let data: Result<Manifest> = get_cargo_toml_from_git_url(&url)
                     .and_then(|m| m.parse().chain_err(|| ErrorKind::ParseCargoToml));
-                data.and_then(|ref manifest| get_name_from_manifest(manifest))
+                data.and_then(|ref manifest| {
+                    manifest
+                        .package_name()
+                        .map(std::string::ToString::to_string)
+                })
             }
             _ => Err("Git repo url seems incomplete".into()),
         })
@@ -329,16 +333,11 @@ pub fn get_crate_name_from_path(path: &str) -> Result<String> {
     let cargo_file = Path::new(path).join("Cargo.toml");
     LocalManifest::try_new(&cargo_file)
         .chain_err(|| "Unable to open local Cargo.toml")
-        .and_then(|ref manifest| get_name_from_manifest(manifest))
-}
-
-fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
-    manifest
-        .data
-        .as_table()
-        .get("package")
-        .and_then(|m| m["name"].as_str().map(std::string::ToString::to_string))
-        .ok_or_else(|| ErrorKind::ParseCargoToml.into())
+        .and_then(|ref manifest| {
+            manifest
+                .package_name()
+                .map(std::string::ToString::to_string)
+        })
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
