@@ -429,6 +429,14 @@ fn adds_git_branch_using_flag() {
 fn adds_local_source_using_flag() {
     let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
     let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
     manifest_path
         .write_str(
             r#"[package]
@@ -453,7 +461,7 @@ path = "dummy.rs"
         )
         .expect("Manifest is writeable");
 
-    Command::cargo_bin("cargo-add")
+    let assert = Command::cargo_bin("cargo-add")
         .expect("can find bin")
         .args(&[
             "add",
@@ -465,6 +473,7 @@ path = "dummy.rs"
         .current_dir(manifest_path.path().parent().expect("there is a parent"))
         .assert()
         .success();
+    println!("Succeeded: {}", assert);
     manifest_path.assert(
         r#"[package]
 name = "cargo-list-test-fixture"
@@ -479,7 +488,7 @@ cargo-list-test-fixture-dependency = { path = "../dependency" }
     );
 
     // check this works with other flags (e.g. --dev) as well
-    Command::cargo_bin("cargo-add")
+    let assert = Command::cargo_bin("cargo-add")
         .expect("can find bin")
         .args(&[
             "add",
@@ -492,6 +501,7 @@ cargo-list-test-fixture-dependency = { path = "../dependency" }
         .current_dir(manifest_path.path().parent().expect("there is a parent"))
         .assert()
         .success();
+    println!("Succeeded: {}", assert);
     manifest_path.assert(
         r#"[package]
 name = "cargo-list-test-fixture"
@@ -556,6 +566,14 @@ fn adds_git_source_without_flag() {
 fn adds_local_source_without_flag() {
     let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
     let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
     manifest_path
         .write_str(
             r#"[package]
@@ -580,13 +598,89 @@ path = "dummy.rs"
         )
         .expect("Manifest is writeable");
 
-    Command::cargo_bin("cargo-add")
+    let assert = Command::cargo_bin("cargo-add")
         .expect("can find bin")
         .args(&["add", "../dependency"])
         .env("CARGO_IS_TEST", "1")
         .current_dir(manifest_path.path().parent().expect("there is a parent"))
         .assert()
         .success();
+    println!("Succeeded: {}", assert);
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.0.0", path = "../dependency" }
+"#,
+    );
+
+    // check this works with other flags (e.g. --dev) as well
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", "../dependency", "--dev"])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.0.0", path = "../dependency" }
+
+[dev-dependencies]
+cargo-list-test-fixture-dependency = { path = "../dependency" }
+"#,
+    );
+}
+
+#[test]
+fn adds_local_source_without_flag_without_workspace() {
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
+    let manifest_path = tmpdir.child("primary/Cargo.toml");
+    manifest_path
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+    tmpdir
+        .child("dependency/Cargo.toml")
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture-dependency"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", "../dependency"])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
     manifest_path.assert(
         r#"[package]
 name = "cargo-list-test-fixture"
@@ -601,13 +695,14 @@ cargo-list-test-fixture-dependency = { path = "../dependency" }
     );
 
     // check this works with other flags (e.g. --dev) as well
-    Command::cargo_bin("cargo-add")
+    let assert = Command::cargo_bin("cargo-add")
         .expect("can find bin")
         .args(&["add", "../dependency", "--dev"])
         .env("CARGO_IS_TEST", "1")
         .current_dir(manifest_path.path().parent().expect("there is a parent"))
         .assert()
         .success();
+    println!("Succeeded: {}", assert);
     manifest_path.assert(
         r#"[package]
 name = "cargo-list-test-fixture"
@@ -629,6 +724,14 @@ cargo-list-test-fixture-dependency = { path = "../dependency" }
 fn adds_local_source_with_version_flag() {
     let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
     let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
     manifest_path
         .write_str(
             r#"[package]
@@ -715,6 +818,14 @@ cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency"
 fn adds_local_source_with_version_flag_and_semver_metadata() {
     let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
     let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
     manifest_path
         .write_str(
             r#"[package]
@@ -801,6 +912,14 @@ cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency"
 fn adds_local_source_with_inline_version_notation() {
     let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
     let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
     manifest_path
         .write_str(
             r#"[package]
@@ -1417,6 +1536,14 @@ path = "dummy.rs"
 
     let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
     let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
     manifest_path
         .write_str(orig_manifest)
         .expect("Manifest is writeable");

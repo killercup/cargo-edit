@@ -4,6 +4,8 @@
 
 use cargo_edit::{find, registry_url, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
+use cargo_metadata::Package;
+use std::convert::TryInto;
 use std::path::PathBuf;
 use structopt::{clap::AppSettings, StructOpt};
 
@@ -168,7 +170,11 @@ impl Args {
         }
     }
 
-    fn parse_single_dependency(&self, crate_name: &str) -> Result<Dependency> {
+    fn parse_single_dependency(
+        &self,
+        crate_name: &str,
+        workspace_members: &[Package],
+    ) -> Result<Dependency> {
         let crate_name = CrateName::new(crate_name);
 
         if let Some(mut dependency) = crate_name.parse_as_version()? {
@@ -185,7 +191,28 @@ impl Args {
 
             Ok(dependency)
         } else if crate_name.is_url_or_path() {
-            Ok(crate_name.parse_crate_name_from_uri()?)
+            let mut dependency = crate_name.parse_crate_name_from_uri()?;
+            // dev-dependencies do not need the version populated
+            if !self.dev {
+                let dep_path = dependency.path().map(ToOwned::to_owned);
+                if let Some(dep_path) = dep_path {
+                    if let Some(package) = workspace_members.iter().find(|p| {
+                        p.manifest_path.parent().map(|p| p.as_std_path())
+                            == Some(dep_path.as_path())
+                    }) {
+                        let v = format!(
+                            "{prefix}{version}",
+                            prefix = self.get_upgrade_prefix(),
+                            version = package.version
+                        );
+                        dependency = dependency.set_version(&v);
+                        if let Some(registry) = &self.registry {
+                            dependency = dependency.set_registry(registry);
+                        }
+                    }
+                }
+            }
+            Ok(dependency)
         } else {
             assert_eq!(self.git.is_some() && self.vers.is_some(), false);
             assert_eq!(self.git.is_some() && self.path.is_some(), false);
@@ -210,20 +237,45 @@ impl Args {
             };
 
             if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
-                let dep = get_latest_dependency(
-                    crate_name.name(),
-                    self.allow_prerelease,
-                    &find(&self.manifest_path)?,
-                    &registry_url,
-                )?;
-                let v = format!(
-                    "{prefix}{version}",
-                    prefix = self.get_upgrade_prefix(),
-                    // If version is unavailable `get_latest_dependency` must have
-                    // returned `Err(FetchVersionError::GetVersion)`
-                    version = dep.version().unwrap_or_else(|| unreachable!())
-                );
-                dependency = dep.set_version(&v);
+                // Only special-case workspaces when the user doesn't provide any extra
+                // information, otherwise, trust the user.
+                if let Some(package) = workspace_members
+                    .iter()
+                    .find(|p| p.name == crate_name.name())
+                {
+                    dependency = dependency.set_path(
+                        package
+                            .manifest_path
+                            .parent()
+                            .expect("at least parent dir")
+                            .as_std_path()
+                            .to_owned(),
+                    );
+                    // dev-dependencies do not need the version populated
+                    if !self.dev {
+                        let v = format!(
+                            "{prefix}{version}",
+                            prefix = self.get_upgrade_prefix(),
+                            version = package.version
+                        );
+                        dependency = dependency.set_version(&v);
+                    }
+                } else {
+                    dependency = get_latest_dependency(
+                        crate_name.name(),
+                        self.allow_prerelease,
+                        &find(&self.manifest_path)?,
+                        &registry_url,
+                    )?;
+                    let v = format!(
+                        "{prefix}{version}",
+                        prefix = self.get_upgrade_prefix(),
+                        // If version is unavailable `get_latest_dependency` must have
+                        // returned `Err(FetchVersionError::GetVersion)`
+                        version = dependency.version().unwrap_or_else(|| unreachable!())
+                    );
+                    dependency = dependency.set_version(&v);
+                }
             }
 
             // Set the registry after getting the latest version as
@@ -237,6 +289,25 @@ impl Args {
 
     /// Build dependencies from arguments
     pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
+        let mut cmd = cargo_metadata::MetadataCommand::new();
+        cmd.no_deps();
+        let result = cmd.exec().chain_err(|| "Invalid manifest")?;
+        let workspace_members: std::collections::HashSet<_> =
+            result.workspace_members.into_iter().collect();
+        let workspace_members: Vec<_> = result
+            .packages
+            .into_iter()
+            .filter(|p| workspace_members.contains(&p.id))
+            .map(|mut p| {
+                if let Ok(manifest_path) = p.manifest_path.canonicalize() {
+                    if let Ok(manifest_path) = manifest_path.try_into() {
+                        p.manifest_path = manifest_path;
+                    }
+                }
+                p
+            })
+            .collect();
+
         if self.crates.len() > 1
             && (self.git.is_some() || self.path.is_some() || self.vers.is_some())
         {
@@ -254,16 +325,17 @@ impl Args {
         self.crates
             .iter()
             .map(|crate_name| {
-                self.parse_single_dependency(crate_name).map(|x| {
-                    let mut x = x
-                        .set_optional(self.optional)
-                        .set_features(self.features.clone())
-                        .set_default_features(!self.no_default_features);
-                    if let Some(ref rename) = self.rename {
-                        x = x.set_rename(rename);
-                    }
-                    x
-                })
+                self.parse_single_dependency(crate_name, &workspace_members)
+                    .map(|x| {
+                        let mut x = x
+                            .set_optional(self.optional)
+                            .set_features(self.features.clone())
+                            .set_default_features(!self.no_default_features);
+                        if let Some(ref rename) = self.rename {
+                            x = x.set_rename(rename);
+                        }
+                        x
+                    })
             })
             .collect()
     }
@@ -359,8 +431,8 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_path.parse_dependencies().unwrap(),
-            vec![Dependency::new("cargo-edit").set_path(std::path::PathBuf::from(self_path))]
+            args_path.parse_dependencies().unwrap()[0].path().unwrap(),
+            self_path
         );
     }
 }

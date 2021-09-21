@@ -60,6 +60,7 @@ mod errors {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
         }
         foreign_links {
+            CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
             Io(::std::io::Error);
         }
     }
