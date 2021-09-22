@@ -121,7 +121,7 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
 
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
-        let pkg = manifest_from_pkgid(pkgid)?;
+        let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
         Cow::Owned(Some(pkg.manifest_path.into_std_path_buf()))
     } else {
         Cow::Borrowed(&args.manifest_path)

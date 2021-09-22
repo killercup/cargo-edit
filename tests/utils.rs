@@ -1,5 +1,6 @@
 #![allow(unused)]
 use assert_cmd::Command;
+use assert_fs::prelude::*;
 use std::ffi::{OsStr, OsString};
 use std::io::prelude::*;
 use std::{env, fs, path::Path, path::PathBuf, process};
@@ -55,15 +56,10 @@ pub fn copy_workspace_test() -> (assert_fs::TempDir, String, Vec<String>) {
 /// Create temporary working directory with Cargo.toml manifest
 pub fn clone_out_test(source: &str) -> (assert_fs::TempDir, String) {
     let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
-    fs::copy(source, tmpdir.path().join("Cargo.toml"))
-        .unwrap_or_else(|err| panic!("could not copy test manifest: {}", err));
-    let path = tmpdir
-        .path()
-        .join("Cargo.toml")
-        .to_str()
-        .unwrap()
-        .to_string()
-        .clone();
+    let manifest_path = tmpdir.child("Cargo.toml");
+    manifest_path.write_file(Path::new(source)).unwrap();
+    tmpdir.child("src/lib.rs").touch().unwrap();
+    let path = manifest_path.to_str().unwrap().to_string().clone();
 
     (tmpdir, path)
 }
