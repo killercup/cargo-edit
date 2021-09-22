@@ -50,7 +50,7 @@ pub fn workspace_members(manifest_path: Option<&Path>) -> Result<Vec<Package>> {
 fn canonicalize_path(
     path: cargo_metadata::camino::Utf8PathBuf,
 ) -> cargo_metadata::camino::Utf8PathBuf {
-    if let Ok(path) = path.canonicalize() {
+    if let Ok(path) = dunce::canonicalize(&path) {
         if let Ok(path) = path.try_into() {
             return path;
         }
