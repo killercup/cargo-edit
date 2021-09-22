@@ -11,6 +11,7 @@ use crate::dependency::Dependency;
 use crate::errors::*;
 
 const MANIFEST_FILENAME: &str = "Cargo.toml";
+const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
 
 /// A Cargo manifest
 #[derive(Debug, Clone)]
@@ -196,7 +197,7 @@ impl Manifest {
     pub fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
         let mut sections = Vec::new();
 
-        for dependency_type in &["dev-dependencies", "build-dependencies", "dependencies"] {
+        for dependency_type in DEP_TABLES {
             // Dependencies can be in the three standard sections...
             if self.data[dependency_type].is_table_like() {
                 sections.push((
@@ -494,6 +495,36 @@ impl LocalManifest {
                 _ => false,
             })
             .map(|dep| (dep.0.into(), dep.1))
+    }
+
+    /// Allow mutating depedencies, wherever they live
+    pub fn get_dependency_tables_mut<'r>(
+        &'r mut self,
+    ) -> impl Iterator<Item = &mut dyn toml_edit::TableLike> + 'r {
+        let root = self.data.as_table_mut();
+        root.iter_mut().flat_map(|(k, v)| {
+            if DEP_TABLES.contains(&k) {
+                v.as_table_like_mut().into_iter().collect::<Vec<_>>()
+            } else if k == "target" {
+                v.as_table_like_mut()
+                    .unwrap()
+                    .iter_mut()
+                    .flat_map(|(_, v)| {
+                        v.as_table_like_mut().into_iter().flat_map(|v| {
+                            v.iter_mut().filter_map(|(k, v)| {
+                                if DEP_TABLES.contains(&k) {
+                                    v.as_table_like_mut()
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        })
     }
 
     /// Override the manifest's version

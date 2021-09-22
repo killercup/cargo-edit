@@ -97,5 +97,9 @@ error_chain! {
         InvalidReleaseLevel(actual: &'static str, version: semver::Version) {
             display("Cannot increment the {} field for {}", actual, version)
         }
+        /// Modifying a version req with an unsupported comparator.
+        UnsupportedVersionReq(req: String) {
+            display("Support for modifying {} is currently unsupported", req)
+        }
     }
 }

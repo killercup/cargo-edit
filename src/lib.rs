@@ -37,4 +37,4 @@ pub use crate::fetch::{
 pub use crate::manifest::{find, LocalManifest, Manifest};
 pub use crate::metadata::{manifest_from_pkgid, workspace_members};
 pub use crate::registry::registry_url;
-pub use crate::version::VersionExt;
+pub use crate::version::{upgrade_requirement, VersionExt};
