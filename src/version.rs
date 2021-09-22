@@ -141,69 +141,274 @@ fn prerelease_id_version(version: &semver::Version) -> Result<Option<(String, Op
     }
 }
 
+/// Upgrade an existing requirement to a new version
+pub fn upgrade_requirement(req: &str, version: &semver::Version) -> Result<Option<String>> {
+    let req_text = req.to_string();
+    let raw_req = semver::VersionReq::parse(&req_text)
+        .expect("semver to generate valid version requirements");
+    if raw_req.comparators.is_empty() {
+        // Empty matches everything, no-change.
+        Ok(None)
+    } else {
+        let comparators: Result<Vec<_>> = raw_req
+            .comparators
+            .into_iter()
+            .map(|p| set_comparator(p, version))
+            .collect();
+        let comparators = comparators?;
+        let new_req = semver::VersionReq { comparators };
+        let mut new_req_text = new_req.to_string();
+        if new_req_text.starts_with('^') && !req.starts_with('^') {
+            new_req_text.remove(0);
+        }
+        // Validate contract
+        #[cfg(debug_assert)]
+        {
+            assert!(
+                new_req.matches(version),
+                "Invalid req created: {}",
+                new_req_text
+            )
+        }
+        if new_req_text == req_text {
+            Ok(None)
+        } else {
+            Ok(Some(new_req_text))
+        }
+    }
+}
+
+fn set_comparator(
+    mut pred: semver::Comparator,
+    version: &semver::Version,
+) -> Result<semver::Comparator> {
+    match pred.op {
+        semver::Op::Wildcard => {
+            pred.major = version.major;
+            if pred.minor.is_some() {
+                pred.minor = Some(version.minor);
+            }
+            if pred.patch.is_some() {
+                pred.patch = Some(version.patch);
+            }
+            Ok(pred)
+        }
+        semver::Op::Exact => Ok(assign_partial_req(version, pred)),
+        semver::Op::Greater | semver::Op::GreaterEq | semver::Op::Less | semver::Op::LessEq => {
+            let user_pred = pred.to_string();
+            Err(ErrorKind::UnsupportedVersionReq(user_pred).into())
+        }
+        semver::Op::Tilde => Ok(assign_partial_req(version, pred)),
+        semver::Op::Caret => Ok(assign_partial_req(version, pred)),
+        _ => {
+            let user_pred = pred.to_string();
+            Err(ErrorKind::UnsupportedVersionReq(user_pred).into())
+        }
+    }
+}
+
+fn assign_partial_req(
+    version: &semver::Version,
+    mut pred: semver::Comparator,
+) -> semver::Comparator {
+    pred.major = version.major;
+    if pred.minor.is_some() {
+        pred.minor = Some(version.minor);
+    }
+    if pred.patch.is_some() {
+        pred.patch = Some(version.patch);
+    }
+    pred.pre = version.pre.clone();
+    pred
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
-    #[test]
-    fn alpha() {
-        let mut v = semver::Version::parse("1.0.0").unwrap();
-        v.increment_alpha().unwrap();
-        assert_eq!(v, semver::Version::parse("1.0.1-alpha.1").unwrap());
+    mod increment {
+        use super::*;
 
-        let mut v2 = semver::Version::parse("1.0.1-dev").unwrap();
-        v2.increment_alpha().unwrap();
-        assert_eq!(v2, semver::Version::parse("1.0.1-alpha.1").unwrap());
+        #[test]
+        fn alpha() {
+            let mut v = semver::Version::parse("1.0.0").unwrap();
+            v.increment_alpha().unwrap();
+            assert_eq!(v, semver::Version::parse("1.0.1-alpha.1").unwrap());
 
-        let mut v3 = semver::Version::parse("1.0.1-alpha.1").unwrap();
-        v3.increment_alpha().unwrap();
-        assert_eq!(v3, semver::Version::parse("1.0.1-alpha.2").unwrap());
+            let mut v2 = semver::Version::parse("1.0.1-dev").unwrap();
+            v2.increment_alpha().unwrap();
+            assert_eq!(v2, semver::Version::parse("1.0.1-alpha.1").unwrap());
 
-        let mut v4 = semver::Version::parse("1.0.1-beta.1").unwrap();
-        assert!(v4.increment_alpha().is_err());
+            let mut v3 = semver::Version::parse("1.0.1-alpha.1").unwrap();
+            v3.increment_alpha().unwrap();
+            assert_eq!(v3, semver::Version::parse("1.0.1-alpha.2").unwrap());
+
+            let mut v4 = semver::Version::parse("1.0.1-beta.1").unwrap();
+            assert!(v4.increment_alpha().is_err());
+        }
+
+        #[test]
+        fn beta() {
+            let mut v = semver::Version::parse("1.0.0").unwrap();
+            v.increment_beta().unwrap();
+            assert_eq!(v, semver::Version::parse("1.0.1-beta.1").unwrap());
+
+            let mut v2 = semver::Version::parse("1.0.1-dev").unwrap();
+            v2.increment_beta().unwrap();
+            assert_eq!(v2, semver::Version::parse("1.0.1-beta.1").unwrap());
+
+            let mut v2 = semver::Version::parse("1.0.1-alpha.1").unwrap();
+            v2.increment_beta().unwrap();
+            assert_eq!(v2, semver::Version::parse("1.0.1-beta.1").unwrap());
+
+            let mut v3 = semver::Version::parse("1.0.1-beta.1").unwrap();
+            v3.increment_beta().unwrap();
+            assert_eq!(v3, semver::Version::parse("1.0.1-beta.2").unwrap());
+
+            let mut v4 = semver::Version::parse("1.0.1-rc.1").unwrap();
+            assert!(v4.increment_beta().is_err());
+        }
+
+        #[test]
+        fn rc() {
+            let mut v = semver::Version::parse("1.0.0").unwrap();
+            v.increment_rc().unwrap();
+            assert_eq!(v, semver::Version::parse("1.0.1-rc.1").unwrap());
+
+            let mut v2 = semver::Version::parse("1.0.1-dev").unwrap();
+            v2.increment_rc().unwrap();
+            assert_eq!(v2, semver::Version::parse("1.0.1-rc.1").unwrap());
+
+            let mut v3 = semver::Version::parse("1.0.1-rc.1").unwrap();
+            v3.increment_rc().unwrap();
+            assert_eq!(v3, semver::Version::parse("1.0.1-rc.2").unwrap());
+        }
+
+        #[test]
+        fn metadata() {
+            let mut v = semver::Version::parse("1.0.0").unwrap();
+            v.metadata("git.123456").unwrap();
+            assert_eq!(v, semver::Version::parse("1.0.0+git.123456").unwrap());
+        }
     }
 
-    #[test]
-    fn beta() {
-        let mut v = semver::Version::parse("1.0.0").unwrap();
-        v.increment_beta().unwrap();
-        assert_eq!(v, semver::Version::parse("1.0.1-beta.1").unwrap());
+    mod upgrade_requirement {
+        use super::*;
 
-        let mut v2 = semver::Version::parse("1.0.1-dev").unwrap();
-        v2.increment_beta().unwrap();
-        assert_eq!(v2, semver::Version::parse("1.0.1-beta.1").unwrap());
+        #[track_caller]
+        fn assert_req_bump<'a, O: Into<Option<&'a str>>>(version: &str, req: &str, expected: O) {
+            let version = semver::Version::parse(version).unwrap();
+            let actual = upgrade_requirement(&req, &version).unwrap();
+            let expected = expected.into();
+            assert_eq!(actual.as_deref(), expected);
+        }
 
-        let mut v2 = semver::Version::parse("1.0.1-alpha.1").unwrap();
-        v2.increment_beta().unwrap();
-        assert_eq!(v2, semver::Version::parse("1.0.1-beta.1").unwrap());
+        #[test]
+        fn wildcard_major() {
+            assert_req_bump("1.0.0", "*", None);
+        }
 
-        let mut v3 = semver::Version::parse("1.0.1-beta.1").unwrap();
-        v3.increment_beta().unwrap();
-        assert_eq!(v3, semver::Version::parse("1.0.1-beta.2").unwrap());
+        #[test]
+        fn wildcard_minor() {
+            assert_req_bump("1.0.0", "1.*", None);
+            assert_req_bump("1.1.0", "1.*", None);
+            assert_req_bump("2.0.0", "1.*", "2.*");
+        }
 
-        let mut v4 = semver::Version::parse("1.0.1-rc.1").unwrap();
-        assert!(v4.increment_beta().is_err());
-    }
+        #[test]
+        fn wildcard_patch() {
+            assert_req_bump("1.0.0", "1.0.*", None);
+            assert_req_bump("1.1.0", "1.0.*", "1.1.*");
+            assert_req_bump("1.1.1", "1.0.*", "1.1.*");
+            assert_req_bump("2.0.0", "1.0.*", "2.0.*");
+        }
 
-    #[test]
-    fn rc() {
-        let mut v = semver::Version::parse("1.0.0").unwrap();
-        v.increment_rc().unwrap();
-        assert_eq!(v, semver::Version::parse("1.0.1-rc.1").unwrap());
+        #[test]
+        fn caret_major() {
+            assert_req_bump("1.0.0", "1", None);
+            assert_req_bump("1.0.0", "^1", None);
 
-        let mut v2 = semver::Version::parse("1.0.1-dev").unwrap();
-        v2.increment_rc().unwrap();
-        assert_eq!(v2, semver::Version::parse("1.0.1-rc.1").unwrap());
+            assert_req_bump("1.1.0", "1", None);
+            assert_req_bump("1.1.0", "^1", None);
 
-        let mut v3 = semver::Version::parse("1.0.1-rc.1").unwrap();
-        v3.increment_rc().unwrap();
-        assert_eq!(v3, semver::Version::parse("1.0.1-rc.2").unwrap());
-    }
+            assert_req_bump("2.0.0", "1", "2");
+            assert_req_bump("2.0.0", "^1", "^2");
+        }
 
-    #[test]
-    fn metadata() {
-        let mut v = semver::Version::parse("1.0.0").unwrap();
-        v.metadata("git.123456").unwrap();
-        assert_eq!(v, semver::Version::parse("1.0.0+git.123456").unwrap());
+        #[test]
+        fn caret_minor() {
+            assert_req_bump("1.0.0", "1.0", None);
+            assert_req_bump("1.0.0", "^1.0", None);
+
+            assert_req_bump("1.1.0", "1.0", "1.1");
+            assert_req_bump("1.1.0", "^1.0", "^1.1");
+
+            assert_req_bump("1.1.1", "1.0", "1.1");
+            assert_req_bump("1.1.1", "^1.0", "^1.1");
+
+            assert_req_bump("2.0.0", "1.0", "2.0");
+            assert_req_bump("2.0.0", "^1.0", "^2.0");
+        }
+
+        #[test]
+        fn caret_patch() {
+            assert_req_bump("1.0.0", "1.0.0", None);
+            assert_req_bump("1.0.0", "^1.0.0", None);
+
+            assert_req_bump("1.1.0", "1.0.0", "1.1.0");
+            assert_req_bump("1.1.0", "^1.0.0", "^1.1.0");
+
+            assert_req_bump("1.1.1", "1.0.0", "1.1.1");
+            assert_req_bump("1.1.1", "^1.0.0", "^1.1.1");
+
+            assert_req_bump("2.0.0", "1.0.0", "2.0.0");
+            assert_req_bump("2.0.0", "^1.0.0", "^2.0.0");
+        }
+
+        #[test]
+        fn tilde_major() {
+            assert_req_bump("1.0.0", "~1", None);
+            assert_req_bump("1.1.0", "~1", None);
+            assert_req_bump("2.0.0", "~1", "~2");
+        }
+
+        #[test]
+        fn tilde_minor() {
+            assert_req_bump("1.0.0", "~1.0", None);
+            assert_req_bump("1.1.0", "~1.0", "~1.1");
+            assert_req_bump("1.1.1", "~1.0", "~1.1");
+            assert_req_bump("2.0.0", "~1.0", "~2.0");
+        }
+
+        #[test]
+        fn tilde_patch() {
+            assert_req_bump("1.0.0", "~1.0.0", None);
+            assert_req_bump("1.1.0", "~1.0.0", "~1.1.0");
+            assert_req_bump("1.1.1", "~1.0.0", "~1.1.1");
+            assert_req_bump("2.0.0", "~1.0.0", "~2.0.0");
+        }
+
+        #[test]
+        fn equal_major() {
+            assert_req_bump("1.0.0", "=1", None);
+            assert_req_bump("1.1.0", "=1", None);
+            assert_req_bump("2.0.0", "=1", "=2");
+        }
+
+        #[test]
+        fn equal_minor() {
+            assert_req_bump("1.0.0", "=1.0", None);
+            assert_req_bump("1.1.0", "=1.0", "=1.1");
+            assert_req_bump("1.1.1", "=1.0", "=1.1");
+            assert_req_bump("2.0.0", "=1.0", "=2.0");
+        }
+
+        #[test]
+        fn equal_patch() {
+            assert_req_bump("1.0.0", "=1.0.0", None);
+            assert_req_bump("1.1.0", "=1.0.0", "=1.1.0");
+            assert_req_bump("1.1.1", "=1.0.0", "=1.1.1");
+            assert_req_bump("2.0.0", "=1.0.0", "=2.0.0");
+        }
     }
 }

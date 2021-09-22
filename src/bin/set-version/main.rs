@@ -19,7 +19,9 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
 
-use cargo_edit::{find, manifest_from_pkgid, LocalManifest};
+use cargo_edit::{
+    find, manifest_from_pkgid, upgrade_requirement, workspace_members, LocalManifest,
+};
 use structopt::StructOpt;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
@@ -86,6 +88,8 @@ fn process(args: Args) -> Result<()> {
         dry_run_message()?;
     }
 
+    let workspace_members = workspace_members(manifest_path.as_deref())?;
+
     for (mut manifest, package) in manifests.0 {
         if exclude.contains(&package.name) {
             continue;
@@ -98,6 +102,44 @@ fn process(args: Args) -> Result<()> {
             upgrade_message(package.name.as_str(), current, &next)?;
             if !dry_run {
                 manifest.write()?;
+            }
+
+            let crate_root = manifest.path.parent().expect("at least a parent");
+            for member in workspace_members.iter() {
+                let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
+                let dep_crate_root = dep_manifest
+                    .path
+                    .parent()
+                    .expect("at least a parent")
+                    .to_owned();
+                for dep in dep_manifest
+                    .get_dependency_tables_mut()
+                    .flat_map(|t| t.iter_mut().filter_map(|(_, d)| d.as_table_like_mut()))
+                    .filter(|d| {
+                        if !d.contains_key("version") {
+                            return false;
+                        }
+                        match d.get("path").and_then(|i| i.as_str()).and_then(|relpath| {
+                            dunce::canonicalize(dep_crate_root.join(relpath)).ok()
+                        }) {
+                            Some(dep_path) => dep_path == crate_root,
+                            None => false,
+                        }
+                    })
+                {
+                    let old_req = dep
+                        .get("version")
+                        .expect("filter ensures this")
+                        .as_str()
+                        .unwrap_or("*");
+                    if let Some(new_req) = upgrade_requirement(old_req, &next)? {
+                        upgrade_dependent_message(member.name.as_str(), old_req, &new_req)?;
+                        dep.insert("version", toml_edit::value(new_req));
+                    }
+                }
+                if !dry_run {
+                    dep_manifest.write()?;
+                }
             }
         }
     }
@@ -209,6 +251,24 @@ fn upgrade_message(name: &str, from: &semver::Version, to: &semver::Version) -> 
         .reset()
         .chain_err(|| "Failed to print dry run message")?;
     writeln!(&mut buffer, " {} from {} to {}", name, from, to)
+        .chain_err(|| "Failed to print dry run message")?;
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print dry run message")
+}
+
+fn upgrade_dependent_message(name: &str, old_req: &str, new_req: &str) -> Result<()> {
+    let bufwtr = BufferWriter::stdout(ColorChoice::Always);
+    let mut buffer = bufwtr.buffer();
+    buffer
+        .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
+        .chain_err(|| "Failed to print dry run message")?;
+    write!(&mut buffer, "{:>16}", "Updated dependency")
+        .chain_err(|| "Failed to print dry run message")?;
+    buffer
+        .reset()
+        .chain_err(|| "Failed to print dry run message")?;
+    writeln!(&mut buffer, " {} from {} to {}", name, old_req, new_req)
         .chain_err(|| "Failed to print dry run message")?;
     bufwtr
         .print(&buffer)
