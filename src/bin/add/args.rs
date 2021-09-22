@@ -2,10 +2,9 @@
 
 #![allow(clippy::bool_assert_comparison)]
 
-use cargo_edit::{find, registry_url, Dependency};
+use cargo_edit::{find, registry_url, workspace_members, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
 use cargo_metadata::Package;
-use std::convert::TryInto;
 use std::path::PathBuf;
 use structopt::{clap::AppSettings, StructOpt};
 
@@ -289,24 +288,7 @@ impl Args {
 
     /// Build dependencies from arguments
     pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
-        let mut cmd = cargo_metadata::MetadataCommand::new();
-        cmd.no_deps();
-        let result = cmd.exec().chain_err(|| "Invalid manifest")?;
-        let workspace_members: std::collections::HashSet<_> =
-            result.workspace_members.into_iter().collect();
-        let workspace_members: Vec<_> = result
-            .packages
-            .into_iter()
-            .filter(|p| workspace_members.contains(&p.id))
-            .map(|mut p| {
-                if let Ok(manifest_path) = p.manifest_path.canonicalize() {
-                    if let Ok(manifest_path) = manifest_path.try_into() {
-                        p.manifest_path = manifest_path;
-                    }
-                }
-                p
-            })
-            .collect();
+        let workspace_members = workspace_members(self.manifest_path.as_deref())?;
 
         if self.crates.len() > 1
             && (self.git.is_some() || self.path.is_some() || self.vers.is_some())

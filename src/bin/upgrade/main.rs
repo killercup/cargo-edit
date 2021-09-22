@@ -191,8 +191,8 @@ impl Manifests {
             .map(Manifests)
     }
 
-    fn get_pkgid(pkgid: &str) -> Result<Self> {
-        let package = manifest_from_pkgid(pkgid)?;
+    fn get_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> Result<Self> {
+        let package = manifest_from_pkgid(manifest_path, pkgid)?;
         let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
         Ok(Manifests(vec![(manifest, package)]))
     }
@@ -478,7 +478,7 @@ fn process(args: Args) -> Result<()> {
     let manifests = if all {
         Manifests::get_all(&manifest_path)
     } else if let Some(ref pkgid) = pkgid {
-        Manifests::get_pkgid(pkgid)
+        Manifests::get_pkgid(manifest_path.as_deref(), pkgid)
     } else {
         Manifests::get_local_one(&manifest_path)
     }?;
