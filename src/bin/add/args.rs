@@ -185,7 +185,7 @@ impl Args {
             }
 
             if let Some(ref path) = self.path {
-                dependency = dependency.set_path(path.canonicalize()?);
+                dependency = dependency.set_path(dunce::canonicalize(path)?);
             }
 
             Ok(dependency)
@@ -224,7 +224,7 @@ impl Args {
                 dependency = dependency.set_git(repo, self.branch.clone());
             }
             if let Some(path) = &self.path {
-                dependency = dependency.set_path(path.canonicalize()?);
+                dependency = dependency.set_path(dunce::canonicalize(path)?);
             }
             if let Some(version) = &self.vers {
                 dependency = dependency.set_version(parse_version_req(version)?);
@@ -406,7 +406,7 @@ mod tests {
 
     #[test]
     fn test_path_as_arg_parsing() {
-        let self_path = std::env::current_dir().unwrap().canonicalize().unwrap();
+        let self_path = dunce::canonicalize(std::env::current_dir().unwrap()).unwrap();
         let args_path = Args {
             // Hacky to `display` but should generally work
             crates: vec![self_path.display().to_string()],

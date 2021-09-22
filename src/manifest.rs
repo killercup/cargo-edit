@@ -279,7 +279,7 @@ impl LocalManifest {
     /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
     /// the user means.
     pub fn find(path: &Option<PathBuf>) -> Result<Self> {
-        let path = find(path)?.canonicalize()?;
+        let path = dunce::canonicalize(find(path)?)?;
         Self::try_new(&path)
     }
 
@@ -510,7 +510,7 @@ mod tests {
 
     #[test]
     fn add_remove_dependency() {
-        let root = Path::new("/").canonicalize().expect("root exists");
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
             path: root.join("Cargo.toml"),
             manifest: Manifest {
@@ -528,7 +528,7 @@ mod tests {
 
     #[test]
     fn update_dependency() {
-        let root = Path::new("/").canonicalize().expect("root exists");
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
             path: root.join("Cargo.toml"),
             manifest: Manifest {
@@ -548,7 +548,7 @@ mod tests {
 
     #[test]
     fn update_wrong_dependency() {
-        let root = Path::new("/").canonicalize().expect("root exists");
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
             path: root.join("Cargo.toml"),
             manifest: Manifest {
@@ -571,7 +571,7 @@ mod tests {
 
     #[test]
     fn remove_dependency_no_section() {
-        let root = Path::new("/").canonicalize().expect("root exists");
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
             path: root.join("Cargo.toml"),
             manifest: Manifest {
@@ -586,7 +586,7 @@ mod tests {
 
     #[test]
     fn remove_dependency_non_existent() {
-        let root = Path::new("/").canonicalize().expect("root exists");
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
             path: root.join("Cargo.toml"),
             manifest: Manifest {
@@ -619,7 +619,7 @@ edition = "2015"
 
 [dependencies]
 "#;
-        let root = Path::new("/").canonicalize().expect("root exists");
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
             path: root.join("Cargo.toml"),
             manifest: original.parse::<Manifest>().unwrap(),

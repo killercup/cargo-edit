@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn to_toml_simple_dep() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep").to_toml(&crate_root);
 
         assert_eq!(toml.0, "dep".to_owned());
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn to_toml_simple_dep_with_version() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep")
             .set_version("1.0")
             .to_toml(&crate_root);
@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn to_toml_optional_dep() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep")
             .set_optional(true)
             .to_toml(&crate_root);
@@ -311,7 +311,7 @@ mod tests {
 
     #[test]
     fn to_toml_dep_without_default_features() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep")
             .set_default_features(false)
             .to_toml(&crate_root);
@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn to_toml_dep_with_path_source() {
-        let root = Path::new("/").canonicalize().expect("root exists");
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let crate_root = root.join("foo");
         let toml = Dependency::new("dep")
             .set_path(root.join("bar"))
@@ -340,7 +340,7 @@ mod tests {
 
     #[test]
     fn to_toml_dep_with_git_source() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep")
             .set_git("https://foor/bar.git", None)
             .to_toml(&crate_root);
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn to_toml_renamed_dep() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep").set_rename("d").to_toml(&crate_root);
 
         assert_eq!(toml.0, "d".to_owned());
@@ -369,7 +369,7 @@ mod tests {
 
     #[test]
     fn to_toml_dep_from_alt_registry() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep")
             .set_registry("alternative")
             .to_toml(&crate_root);
@@ -383,7 +383,7 @@ mod tests {
 
     #[test]
     fn to_toml_complex_dep() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep")
             .set_version("1.0")
             .set_default_features(false)
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn paths_with_forward_slashes_are_left_as_is() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let path = crate_root.join("sibling/crate");
         let relpath = "sibling/crate";
         let dep = Dependency::new("dep").set_path(path);
@@ -416,7 +416,7 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn normalise_windows_style_paths() {
-        let crate_root = Path::new("/").canonicalize().expect("root exists");
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let original = crate_root.join(r"sibling\crate");
         let should_be = "sibling/crate";
         let dep = Dependency::new("dep").set_path(original);
