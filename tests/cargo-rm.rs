@@ -26,7 +26,7 @@ fn remove_existing_dependency_does_not_create_empty_tables() {
     let toml = get_toml(&manifest);
     assert!(toml["features"].is_none());
     assert!(toml["build-dependencies"].is_none());
-    execute_command(&["rm", "docopt"], &manifest);
+    execute_command(&["rm", "clippy"], &manifest);
     let toml = get_toml(&manifest);
     assert!(toml["features"].is_none());
     assert!(toml["build-dependencies"].is_none());
