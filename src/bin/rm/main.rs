@@ -125,7 +125,8 @@ fn handle_rm(args: &Args) -> Result<()> {
             // then we need to drop any explicitly activated features on that crate.
             if !dep_used(&manifest, dep) {
                 if let toml_edit::Item::Table(feature_table) =
-                    &mut manifest.data.root["features".to_string()] {
+                    &mut manifest.data.root["features".to_string()]
+                {
                     for (_feature, mut activated_crates) in feature_table.iter_mut() {
                         if let toml_edit::Item::Value(toml_edit::Value::Array(
                             feature_activations,
