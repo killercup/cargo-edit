@@ -20,6 +20,19 @@ fn remove_existing_dependency() {
 }
 
 #[test]
+fn remove_existing_dependency_does_not_create_empty_tables() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.no_features.sample");
+
+    let toml = get_toml(&manifest);
+    assert!(toml["features"].is_none());
+    assert!(toml["build-dependencies"].is_none());
+    execute_command(&["rm", "docopt"], &manifest);
+    let toml = get_toml(&manifest);
+    assert!(toml["features"].is_none());
+    assert!(toml["build-dependencies"].is_none());
+}
+
+#[test]
 fn remove_existing_optional_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
