@@ -1,3 +1,5 @@
+use assert_fs::prelude::*;
+
 #[macro_use]
 extern crate pretty_assertions;
 
@@ -34,7 +36,7 @@ fn adds_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package"];
-    assert_eq!(val.as_str().unwrap(), "my-package--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -50,7 +52,7 @@ fn adds_prerelease_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package"];
-    assert_eq!(val.as_str().unwrap(), "my-package--PRERELEASE_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0-alpha.1");
 }
 
 fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
@@ -68,7 +70,7 @@ fn upgrade_test_helper(upgrade_method: &str, expected_prefix: &str) {
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package"];
 
-    let expected_result = format!("{0}my-package--CURRENT_VERSION_TEST", expected_prefix);
+    let expected_result = format!("{}99999.0.0", expected_prefix);
     assert_eq!(val.as_str().unwrap(), expected_result);
 }
 
@@ -114,9 +116,9 @@ fn adds_multiple_dependencies() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package1"];
-    assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["dependencies"]["my-package2"];
-    assert_eq!(val.as_str().unwrap(), "my-package2--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -132,10 +134,7 @@ fn adds_renamed_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let renamed = &toml["dependencies"]["renamed"];
-    assert_eq!(
-        renamed["version"].as_str().unwrap(),
-        "my-package1--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(renamed["version"].as_str().unwrap(), "99999.0.0");
     assert_eq!(renamed["package"].as_str().unwrap(), "my-package1");
 }
 
@@ -196,15 +195,9 @@ fn adds_dev_build_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["my-dev-package"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-dev-package--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["build-dependencies"]["my-build-package"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-build-package--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 
     // cannot run with both --dev and --build at the same time
     let call = Command::cargo_bin("cargo-add")
@@ -242,25 +235,13 @@ fn adds_multiple_dev_build_dependencies() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dev-dependencies"]["my-dev-package1"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-dev-package1--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["dev-dependencies"]["my-dev-package2"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-dev-package2--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["build-dependencies"]["my-build-package1"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-build-package1--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
     let val = &toml["build-dependencies"]["my-build-package2"];
-    assert_eq!(
-        val.as_str().unwrap(),
-        "my-build-package2--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -346,10 +327,7 @@ fn adds_multiple_dependencies_with_some_versions() {
     // dependencies present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["my-package1"];
-    assert_eq!(
-        val.as_str().expect("not string"),
-        "my-package1--CURRENT_VERSION_TEST"
-    );
+    assert_eq!(val.as_str().expect("not string"), "99999.0.0");
     let val = &toml["dependencies"]["my-package2"];
     assert_eq!(val.as_str().expect("not string"), "0.2.3");
 }
@@ -449,30 +427,96 @@ fn adds_git_branch_using_flag() {
 
 #[test]
 fn adds_local_source_using_flag() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
+    let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
+    manifest_path
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    // dependency not present beforehand
-    let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].is_none());
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+    tmpdir
+        .child("dependency/Cargo.toml")
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture-dependency"
+version = "0.0.0"
 
-    execute_command(&["add", "local", "--path", "/path/to/pkg"], &manifest);
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
 
-    let toml = get_toml(&manifest);
-    let val = &toml["dependencies"]["local"];
-    assert_eq!(val["path"].as_str(), Some("/path/to/pkg"));
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    // check this works with other flags (e.g. --dev) as well
-    let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"].is_none());
+[lib]
+path = "dummy.rs"
 
-    execute_command(
-        &["add", "local-dev", "--path", "/path/to/pkg-dev", "--dev"],
-        &manifest,
+[dependencies]
+cargo-list-test-fixture-dependency = { path = "../dependency" }
+"#,
     );
 
-    let toml = get_toml(&manifest);
-    let val = &toml["dev-dependencies"]["local-dev"];
-    assert_eq!(val["path"].as_str(), Some("/path/to/pkg-dev"));
+    // check this works with other flags (e.g. --dev) as well
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+            "--dev",
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { path = "../dependency" }
+
+[dev-dependencies]
+cargo-list-test-fixture-dependency = { path = "../dependency" }
+"#,
+    );
 }
 
 #[test]
@@ -520,159 +564,458 @@ fn adds_git_source_without_flag() {
 
 #[test]
 fn adds_local_source_without_flag() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
+    let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
+    manifest_path
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    let (tmpdir, _) = clone_out_test("tests/fixtures/add/local/Cargo.toml.sample");
-    let tmppath = tmpdir.path();
-    let tmpdirstr = tmppath.to_str().unwrap();
-    // Note: all paths are normalised to "/"
-    let expected_path = tmpdirstr.replace('\\', "/");
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+    tmpdir
+        .child("dependency/Cargo.toml")
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture-dependency"
+version = "0.0.0"
 
-    // dependency not present beforehand
-    let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].is_none());
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
 
-    execute_command(&["add", tmpdirstr], &manifest);
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", "../dependency"])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    let toml = get_toml(&manifest);
-    let val = &toml["dependencies"]["foo-crate"];
-    assert_eq!(val["path"].as_str(), Some(expected_path.as_str()));
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.0.0", path = "../dependency" }
+"#,
+    );
 
     // check this works with other flags (e.g. --dev) as well
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
-    let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"].is_none());
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", "../dependency", "--dev"])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    execute_command(&["add", tmpdirstr, "--dev"], &manifest);
+[lib]
+path = "dummy.rs"
 
-    let toml = get_toml(&manifest);
-    let val = &toml["dev-dependencies"]["foo-crate"];
-    assert_eq!(val["path"].as_str(), Some(expected_path.as_str()));
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.0.0", path = "../dependency" }
+
+[dev-dependencies]
+cargo-list-test-fixture-dependency = { path = "../dependency" }
+"#,
+    );
+}
+
+#[test]
+fn adds_local_source_without_flag_without_workspace() {
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
+    let manifest_path = tmpdir.child("primary/Cargo.toml");
+    manifest_path
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+    tmpdir
+        .child("dependency/Cargo.toml")
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture-dependency"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", "../dependency"])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { path = "../dependency" }
+"#,
+    );
+
+    // check this works with other flags (e.g. --dev) as well
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", "../dependency", "--dev"])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { path = "../dependency" }
+
+[dev-dependencies]
+cargo-list-test-fixture-dependency = { path = "../dependency" }
+"#,
+    );
 }
 
 #[test]
 fn adds_local_source_with_version_flag() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
+    let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
+    manifest_path
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    // dependency not present beforehand
-    let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].is_none());
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+    tmpdir
+        .child("dependency/Cargo.toml")
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture-dependency"
+version = "0.4.3"
 
-    execute_command(
-        &["add", "local", "--vers", "0.4.3", "--path", "/path/to/pkg"],
-        &manifest,
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "cargo-list-test-fixture-dependency",
+            "--vers=0.4.3",
+            "--path",
+            "../dependency",
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency" }
+"#,
     );
-
-    let toml = get_toml(&manifest);
-    let val = &toml["dependencies"]["local"];
-    assert_eq!(val["path"].as_str(), Some("/path/to/pkg"));
-    assert_eq!(val["version"].as_str(), Some("0.4.3"));
 
     // check this works with other flags (e.g. --dev) as well
-    let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"].is_none());
-
-    execute_command(
-        &[
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
             "add",
-            "local-dev",
-            "--vers",
-            "0.4.3",
+            "cargo-list-test-fixture-dependency",
+            "--vers=0.4.3",
             "--path",
-            "/path/to/pkg-dev",
+            "../dependency",
             "--dev",
-        ],
-        &manifest,
-    );
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    let toml = get_toml(&manifest);
-    let val = &toml["dev-dependencies"]["local-dev"];
-    assert_eq!(val["path"].as_str(), Some("/path/to/pkg-dev"));
-    assert_eq!(val["version"].as_str(), Some("0.4.3"));
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency" }
+
+[dev-dependencies]
+cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency" }
+"#,
+    );
 }
 
 #[test]
 fn adds_local_source_with_version_flag_and_semver_metadata() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
+    let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
+    manifest_path
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    // dependency not present beforehand
-    let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].is_none());
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+    tmpdir
+        .child("dependency/Cargo.toml")
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture-dependency"
+version = "0.4.3+useless-metadata.1.0.0"
 
-    execute_command(
-        &[
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
             "add",
-            "local",
-            "--vers",
-            "0.4.3+useless-metadata.1.0.0",
+            "cargo-list-test-fixture-dependency",
+            "--vers=0.4.3+useless-metadata.1.0.0",
             "--path",
-            "/path/to/pkg",
-        ],
-        &manifest,
-    );
+            "../dependency",
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    let toml = get_toml(&manifest);
-    let val = &toml["dependencies"]["local"];
-    assert_eq!(val["path"].as_str(), Some("/path/to/pkg"));
-    assert_eq!(val["version"].as_str(), Some("0.4.3"));
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency" }
+"#,
+    );
 
     // check this works with other flags (e.g. --dev) as well
-    let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"].is_none());
-
-    execute_command(
-        &[
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
             "add",
-            "local-dev",
-            "--vers",
-            "0.4.3",
+            "cargo-list-test-fixture-dependency",
+            "--vers=0.4.3+useless-metadata.1.0.0",
             "--path",
-            "/path/to/pkg-dev",
+            "../dependency",
             "--dev",
-        ],
-        &manifest,
-    );
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    let toml = get_toml(&manifest);
-    let val = &toml["dev-dependencies"]["local-dev"];
-    assert_eq!(val["path"].as_str(), Some("/path/to/pkg-dev"));
-    assert_eq!(val["version"].as_str(), Some("0.4.3"));
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency" }
+
+[dev-dependencies]
+cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency" }
+"#,
+    );
 }
 
 #[test]
 fn adds_local_source_with_inline_version_notation() {
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
+    let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
+    manifest_path
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
 
-    // dependency not present beforehand
-    let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].is_none());
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+    tmpdir
+        .child("dependency/Cargo.toml")
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture-dependency"
+version = "0.4.3"
 
-    execute_command(&["add", "local@0.4.3", "--path", "/path/to/pkg"], &manifest);
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
 
-    let toml = get_toml(&manifest);
-    let val = &toml["dependencies"]["local"];
-    assert_eq!(val["path"].as_str(), Some("/path/to/pkg"));
-    assert_eq!(val["version"].as_str(), Some("0.4.3"));
-
-    // check this works with other flags (e.g. --dev) as well
-    let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"].is_none());
-
-    execute_command(
-        &[
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
             "add",
-            "local-dev@0.4.3",
+            "cargo-list-test-fixture-dependency@0.4.3",
             "--path",
-            "/path/to/pkg-dev",
-            "--dev",
-        ],
-        &manifest,
+            "../dependency",
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency" }
+"#,
     );
 
-    let toml = get_toml(&manifest);
-    let val = &toml["dev-dependencies"]["local-dev"];
-    assert_eq!(val["path"].as_str(), Some("/path/to/pkg-dev"));
-    assert_eq!(val["version"].as_str(), Some("0.4.3"));
+    // check this works with other flags (e.g. --dev) as well
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "cargo-list-test-fixture-dependency@0.4.3",
+            "--path",
+            "../dependency",
+            "--dev",
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    manifest_path.assert(
+        r#"[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency" }
+
+[dev-dependencies]
+cargo-list-test-fixture-dependency = { version = "0.4.3", path = "../dependency" }
+"#,
+    );
+}
+
+#[test]
+fn local_path_is_self() {
+    let (tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", BOGUS_CRATE_NAME])
+        .args(&["--path", "."])
+        .arg(format!("--manifest-path={}", &manifest))
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(tmpdir.path())
+        .assert()
+        .failure();
+    println!("Succeeded: {}", assert);
+
+    assert!(no_manifest_failures(&get_toml(&manifest).root));
 }
 
 #[test]
@@ -940,7 +1283,7 @@ fn adds_dependency_with_target_triple() {
     let toml = get_toml(&manifest);
 
     let val = &toml["target"]["i686-unknown-linux-gnu"]["dependencies"]["my-package1"];
-    assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -957,7 +1300,7 @@ fn adds_dependency_with_target_cfg() {
     let toml = get_toml(&manifest);
     let val = &toml["target"]["cfg(unix)"]["dependencies"]["my-package1"];
 
-    assert_eq!(val.as_str().unwrap(), "my-package1--CURRENT_VERSION_TEST");
+    assert_eq!(val.as_str().unwrap(), "99999.0.0");
 }
 
 #[test]
@@ -991,7 +1334,7 @@ fn overrides_existing_features() {
         &["add", "your-face", "--features", "mouth"],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth"] }
+your-face = { version = "99999.0.0", features = ["mouth"] }
 "#,
     )
 }
@@ -1003,7 +1346,7 @@ fn keeps_existing_features_by_default() {
         &["add", "your-face"],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["nose"] }
+your-face = { version = "99999.0.0", features = ["nose"] }
 "#,
     )
 }
@@ -1022,7 +1365,7 @@ fn handles_specifying_features_option_multiple_times() {
         ],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["nose", "mouth"] }
+your-face = { version = "99999.0.0", features = ["nose", "mouth"] }
 "#,
     )
 }
@@ -1034,7 +1377,7 @@ fn can_be_forced_to_provide_an_empty_features_list() {
         &["add", "your-face", "--features", ""],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = [] }
+your-face = { version = "99999.0.0", features = [] }
 "#,
     )
 }
@@ -1046,7 +1389,7 @@ fn parses_space_separated_argument_to_features() {
         &["add", "your-face", "--features", "mouth ears"],
         r#"
 [dependencies]
-your-face = { version = "your-face--CURRENT_VERSION_TEST", features = ["mouth", "ears"] }
+your-face = { version = "99999.0.0", features = ["mouth", "ears"] }
 "#,
     )
 }
@@ -1077,7 +1420,7 @@ fn adds_dependency_with_custom_target() {
     let toml = get_toml(&manifest);
     // Get package by hand because toml-rs does not currently handle escaping dots in get()
     let val = &toml["target"]["windows.json"]["dependencies"]["my-package1"];
-    assert_eq!(val.as_str(), Some("my-package1--CURRENT_VERSION_TEST"));
+    assert_eq!(val.as_str(), Some("99999.0.0"));
 }
 
 #[test]
@@ -1179,29 +1522,72 @@ fn fails_to_add_inexistent_local_source_without_flag() {
 }
 
 fn overwrite_dependency_test(first_command: &[&str], second_command: &[&str], expected: &str) {
-    // First, add a dependency.
-    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
-    execute_command(first_command, &manifest);
-
-    // Then, overwite with the latest version
-    execute_command(second_command, &manifest);
-
-    // Verify that the dependency is as expected.
-    let toml = get_toml(&manifest);
-    let expected = r#"[package]
+    let orig_manifest = r#"[package]
 name = "cargo-list-test-fixture"
 version = "0.0.0"
 
 [lib]
 path = "dummy.rs"
-"#
-    .to_string()
-        + expected;
-    let expected_dep: toml_edit::Document = expected.parse().expect("toml parse error");
-    assert_eq!(
-        expected_dep.to_string(),
-        toml.to_string().replace("\r\n", "\n"),
-    );
+"#;
+    let expected = orig_manifest.to_owned() + expected;
+    expected
+        .parse::<toml_edit::Document>()
+        .expect("expected is valid toml");
+
+    let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
+    let manifest_path = tmpdir.child("primary/Cargo.toml");
+    tmpdir
+        .child("Cargo.toml")
+        .write_str(
+            r#"[workspace]
+members = ["primary", "dependency"]
+"#,
+        )
+        .expect("Manifest is writeable");
+    manifest_path
+        .write_str(orig_manifest)
+        .expect("Manifest is writeable");
+    tmpdir
+        .child("dependency/Cargo.toml")
+        .write_str(
+            r#"[package]
+name = "cargo-list-test-fixture-dependency"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+"#,
+        )
+        .expect("Manifest is writeable");
+
+    // First, add a dependency.
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(first_command)
+        .arg("--manifest-path")
+        .arg(manifest_path.path())
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
+
+    // Then, overwrite with the latest version
+    let assert = Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(second_command)
+        .arg("--manifest-path")
+        .arg(manifest_path.path())
+        .env("CARGO_IS_TEST", "1")
+        .current_dir(manifest_path.path().parent().expect("there is a parent"))
+        .assert()
+        .success();
+    println!("Succeeded: {}", assert);
+
+    // Verify that the dependency is as expected.
+    manifest_path.assert(&expected);
+
+    tmpdir.close().expect("No stray file handles");
 }
 
 #[test]
@@ -1211,7 +1597,7 @@ fn overwrite_version_with_version() {
         &["add", "versioned-package"],
         r#"
 [dependencies]
-versioned-package = { version = "versioned-package--CURRENT_VERSION_TEST", optional = true }
+versioned-package = { version = "99999.0.0", optional = true }
 "#,
     )
 }
@@ -1232,10 +1618,10 @@ versioned-package = { optional = true, git = "git://git.git" }
 fn overwrite_version_with_path() {
     overwrite_dependency_test(
         &["add", "versioned-package", "--vers", "0.1.1", "--optional"],
-        &["add", "versioned-package", "--path", "../foo"],
+        &["add", "versioned-package", "--path", "../dependency"],
         r#"
 [dependencies]
-versioned-package = { optional = true, path = "../foo" }
+versioned-package = { optional = true, path = "../dependency" }
 "#,
     )
 }
@@ -1247,7 +1633,7 @@ fn overwrite_renamed() {
         &["add", "versioned-package", "--rename", "renamed"],
         r#"
 [dependencies]
-renamed = { version = "versioned-package--CURRENT_VERSION_TEST", package = "versioned-package" }
+renamed = { version = "99999.0.0", package = "versioned-package" }
 "#,
     )
 }
@@ -1259,7 +1645,7 @@ fn overwrite_renamed_optional() {
         &["add", "versioned-package", "--rename", "renamed"],
         r#"
 [dependencies]
-renamed = { version = "versioned-package--CURRENT_VERSION_TEST", optional = true, package = "versioned-package" }
+renamed = { version = "99999.0.0", optional = true, package = "versioned-package" }
 "#,
     )
 }
@@ -1298,10 +1684,10 @@ fn overwrite_git_with_path() {
             "git://git.git",
             "--optional",
         ],
-        &["add", "versioned-package", "--path", "../foo"],
+        &["add", "versioned-package", "--path", "../dependency"],
         r#"
 [dependencies]
-versioned-package = { optional = true, path = "../foo" }
+versioned-package = { optional = true, path = "../dependency" }
 "#,
     )
 }
@@ -1309,11 +1695,11 @@ versioned-package = { optional = true, path = "../foo" }
 #[test]
 fn overwrite_path_with_version() {
     overwrite_dependency_test(
-        &["add", "versioned-package", "--path", "../foo"],
+        &["add", "versioned-package", "--path", "../dependency"],
         &["add", "versioned-package"],
         r#"
 [dependencies]
-versioned-package = "versioned-package--CURRENT_VERSION_TEST"
+versioned-package = "99999.0.0"
 "#,
     )
 }
@@ -1482,7 +1868,7 @@ version = "0.0.0"
 
 [dependencies]
 atty = "0.2.13"
-toml = "toml--CURRENT_VERSION_TEST"
+toml = "99999.0.0"
 toml_edit = "0.1.5"
 "#
     );
@@ -1506,7 +1892,7 @@ version = "0.0.0"
 [dependencies]
 toml_edit = "0.1.5"
 atty = "0.2.13"
-toml = "toml--CURRENT_VERSION_TEST"
+toml = "99999.0.0"
 "#
     );
 }
@@ -1528,7 +1914,7 @@ version = "0.0.0"
 
 [dependencies]
 atty = "0.2.13"
-toml = "toml--CURRENT_VERSION_TEST"
+toml = "99999.0.0"
 toml_edit = "0.1.5"
 "#
     );
@@ -1549,7 +1935,7 @@ fn add_dependency_to_workspace_member() {
         one["dependencies"]["toml"]
             .as_str()
             .expect("toml dependency did not exist"),
-        "toml--CURRENT_VERSION_TEST",
+        "99999.0.0",
     );
 }
 #[test]

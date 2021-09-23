@@ -37,12 +37,12 @@ pub fn get_latest_dependency(
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
         let new_version = if flag_allow_prerelease {
-            format!("{}--PRERELEASE_VERSION_TEST", crate_name)
+            format!("99999.0.0-alpha.1+{}", crate_name)
         } else {
             match crate_name {
                 "test_breaking" => "0.2.0".to_string(),
                 "test_nonbreaking" => "0.1.1".to_string(),
-                other => format!("{}--CURRENT_VERSION_TEST", other),
+                other => format!("99999.0.0+{}", other),
             }
         };
 
@@ -277,7 +277,11 @@ where
                 let url = url_template(user.as_str(), repo.as_str());
                 let data: Result<Manifest> = get_cargo_toml_from_git_url(&url)
                     .and_then(|m| m.parse().chain_err(|| ErrorKind::ParseCargoToml));
-                data.and_then(|ref manifest| get_name_from_manifest(manifest))
+                data.and_then(|ref manifest| {
+                    manifest
+                        .package_name()
+                        .map(std::string::ToString::to_string)
+                })
             }
             _ => Err("Git repo url seems incomplete".into()),
         })
@@ -329,16 +333,11 @@ pub fn get_crate_name_from_path(path: &str) -> Result<String> {
     let cargo_file = Path::new(path).join("Cargo.toml");
     LocalManifest::try_new(&cargo_file)
         .chain_err(|| "Unable to open local Cargo.toml")
-        .and_then(|ref manifest| get_name_from_manifest(manifest))
-}
-
-fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
-    manifest
-        .data
-        .as_table()
-        .get("package")
-        .and_then(|m| m["name"].as_str().map(std::string::ToString::to_string))
-        .ok_or_else(|| ErrorKind::ParseCargoToml.into())
+        .and_then(|ref manifest| {
+            manifest
+                .package_name()
+                .map(std::string::ToString::to_string)
+        })
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {

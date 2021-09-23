@@ -1,5 +1,6 @@
 #![allow(unused)]
 use assert_cmd::Command;
+use assert_fs::prelude::*;
 use std::ffi::{OsStr, OsString};
 use std::io::prelude::*;
 use std::{env, fs, path::Path, path::PathBuf, process};
@@ -55,15 +56,10 @@ pub fn copy_workspace_test() -> (assert_fs::TempDir, String, Vec<String>) {
 /// Create temporary working directory with Cargo.toml manifest
 pub fn clone_out_test(source: &str) -> (assert_fs::TempDir, String) {
     let tmpdir = assert_fs::TempDir::new().expect("failed to construct temporary directory");
-    fs::copy(source, tmpdir.path().join("Cargo.toml"))
-        .unwrap_or_else(|err| panic!("could not copy test manifest: {}", err));
-    let path = tmpdir
-        .path()
-        .join("Cargo.toml")
-        .to_str()
-        .unwrap()
-        .to_string()
-        .clone();
+    let manifest_path = tmpdir.child("Cargo.toml");
+    manifest_path.write_file(Path::new(source)).unwrap();
+    tmpdir.child("src/lib.rs").touch().unwrap();
+    let path = manifest_path.to_str().unwrap().to_string().clone();
 
     (tmpdir, path)
 }
@@ -103,7 +99,7 @@ where
     let subcommand_name = format!("cargo-{}", command[0].as_ref().to_str().unwrap());
     let cwd = cwd.as_ref();
 
-    let call = Command::cargo_bin(&subcommand_name)
+    let assert = Command::cargo_bin(&subcommand_name)
         .expect("can find bin")
         .args(command)
         .arg("--package")
@@ -112,22 +108,26 @@ where
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success();
+    println!("Succeeded: {}", assert);
 }
 
 /// Execute local cargo command, includes `--manifest-path`
-pub fn execute_command<S>(command: &[S], manifest: &str)
+pub fn execute_command<S, P>(command: &[S], manifest: P)
 where
     S: AsRef<OsStr>,
+    P: AsRef<Path>,
 {
     let subcommand_name = format!("cargo-{}", command[0].as_ref().to_str().unwrap());
 
-    let call = Command::cargo_bin(&subcommand_name)
+    let assert = Command::cargo_bin(&subcommand_name)
         .expect("can find bin")
         .args(command)
-        .arg(format!("--manifest-path={}", manifest))
+        .arg("--manifest-path")
+        .arg(manifest.as_ref())
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success();
+    println!("Succeeded: {}", assert);
 }
 
 /// Execute local cargo command in a given directory

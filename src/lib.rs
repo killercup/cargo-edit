@@ -1,5 +1,5 @@
 //! Show and Edit Cargo's Manifest Files
-#![recursion_limit = "128"]
+#![recursion_limit = "256"]
 #![cfg_attr(test, allow(dead_code))]
 #![warn(
     missing_docs,
@@ -35,6 +35,6 @@ pub use crate::fetch::{
     get_latest_dependency, update_registry_index,
 };
 pub use crate::manifest::{find, LocalManifest, Manifest};
-pub use crate::metadata::manifest_from_pkgid;
+pub use crate::metadata::{manifest_from_pkgid, workspace_members};
 pub use crate::registry::registry_url;
-pub use crate::version::VersionExt;
+pub use crate::version::{upgrade_requirement, VersionExt};

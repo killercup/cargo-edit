@@ -25,7 +25,7 @@ license = "Apache-2.0 OR MIT"
 name = "cargo-edit"
 readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2018"
 
 [[bin]]
@@ -52,10 +52,10 @@ required-features = ["set-version"]
 atty = { version = "0.2.14", optional = true }
 cargo_metadata = "0.14.0"
 crates-index = "0.17.0"
+dunce = "1.0"
 dirs-next = "2.0.0"
 env_proxy = "0.4.1"
 error-chain = "0.12.4"
-failure = "0.1.8"
 git2 = "0.13.22"
 hex = "0.4.2"
 regex = "1.3.9"
@@ -68,6 +68,7 @@ termcolor = "1.1.0"
 toml_edit = { version = "0.3.1", features = ["easy"] }
 url = "2.1.1"
 ureq = { version = "1.5.1", default-features = false, features = ["tls", "json", "socks"] }
+pathdiff = "0.2"
 
 [dependencies.semver]
 features = ["serde"]

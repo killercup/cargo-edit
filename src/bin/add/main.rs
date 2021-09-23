@@ -20,6 +20,7 @@ use cargo_edit::{
 };
 use std::borrow::Cow;
 use std::io::Write;
+use std::path::Path;
 use std::process;
 use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -50,11 +51,16 @@ mod errors {
                 description("Specified multiple crates with features")
                 display("Cannot specify multiple crates with features")
             }
+            AddingSelf(crate_: String) {
+                description("Adding crate to itself")
+                display("Cannot add `{}` as a dependency to itself", crate_)
+            }
         }
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
         }
         foreign_links {
+            CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
             Io(::std::io::Error);
         }
     }
@@ -115,7 +121,7 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
 
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
-        let pkg = manifest_from_pkgid(pkgid)?;
+        let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
         Cow::Owned(Some(pkg.manifest_path.into_std_path_buf()))
     } else {
         Cow::Borrowed(&args.manifest_path)
@@ -141,6 +147,11 @@ fn handle_add(args: &Args) -> Result<()> {
         .map(|dep| {
             if !args.quiet {
                 print_msg(dep, &args.get_section(), args.optional)?;
+            }
+            if let Some(path) = dep.path() {
+                if path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
+                    return Err(ErrorKind::AddingSelf(manifest.package_name()?.to_owned()).into());
+                }
             }
             manifest
                 .insert_into_table(&args.get_section(), dep)

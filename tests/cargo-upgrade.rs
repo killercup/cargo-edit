@@ -35,7 +35,7 @@ fn upgrade_all() {
     // Verify that `docopt` has been updated successfully.
     assert_eq!(
         get_toml(&manifest)["dependencies"]["docopt"].as_str(),
-        Some("docopt--CURRENT_VERSION_TEST")
+        Some("99999.0.0")
     );
 }
 
@@ -52,7 +52,7 @@ fn upgrade_all_allow_prerelease() {
     // Verify that `docopt` has been updated successfully.
     assert_eq!(
         get_toml(&manifest)["dependencies"]["docopt"].as_str(),
-        Some("docopt--PRERELEASE_VERSION_TEST")
+        Some("99999.0.0-alpha.1")
     );
 }
 
@@ -69,7 +69,7 @@ fn upgrade_prereleased_without_the_flag() {
     // Verify that `b` has been updated successfully to a prerelease version.
     assert_eq!(
         get_toml(&manifest)["dependencies"]["b"].as_str(),
-        Some("b--PRERELEASE_VERSION_TEST")
+        Some("99999.0.0-alpha.1")
     );
 }
 
@@ -87,12 +87,12 @@ fn upgrade_prerelease_already_prereleased() {
     // Verify that `a` has been updated successfully to a stable version.
     assert_eq!(
         get_toml(&manifest)["dependencies"]["a"].as_str(),
-        Some("a--CURRENT_VERSION_TEST")
+        Some("99999.0.0")
     );
     // Verify that `b` has been updated successfully to a prerelease version.
     assert_eq!(
         get_toml(&manifest)["dependencies"]["b"].as_str(),
-        Some("b--PRERELEASE_VERSION_TEST")
+        Some("99999.0.0-alpha.1")
     );
 }
 
@@ -143,10 +143,7 @@ fn upgrade_specified_only() {
 
     // Verify that `docopt` was upgraded, but not `env_proxy`
     let dependencies = &get_toml(&manifest)["dependencies"];
-    assert_eq!(
-        dependencies["docopt"].as_str(),
-        Some("docopt--CURRENT_VERSION_TEST")
-    );
+    assert_eq!(dependencies["docopt"].as_str(), Some("99999.0.0"));
     assert_eq!(dependencies["env_proxy"].as_str(), Some("0.1.1"));
 }
 
@@ -192,10 +189,7 @@ fn upgrade_optional_dependency() {
     // Dependency present afterwards - correct version, and still optional.
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["docopt"];
-    assert_eq!(
-        val["version"].as_str(),
-        Some("docopt--CURRENT_VERSION_TEST")
-    );
+    assert_eq!(val["version"].as_str(), Some("99999.0.0"));
     assert_eq!(val["optional"].as_bool(), Some(true));
 }
 
@@ -239,16 +233,10 @@ fn upgrade_renamed_dependency_all() {
     let toml = get_toml(&manifest);
 
     let dep1 = &toml["dependencies"]["te"];
-    assert_eq!(
-        dep1["version"].as_str(),
-        Some("toml_edit--CURRENT_VERSION_TEST")
-    );
+    assert_eq!(dep1["version"].as_str(), Some("99999.0.0"));
 
     let dep2 = &toml["dependencies"]["rx"];
-    assert_eq!(
-        dep2["version"].as_str(),
-        Some("regex--CURRENT_VERSION_TEST")
-    );
+    assert_eq!(dep2["version"].as_str(), Some("99999.0.0"));
 }
 
 #[test]
@@ -259,10 +247,7 @@ fn upgrade_renamed_dependency_inline_specified_only() {
 
     let toml = get_toml(&manifest);
     let dep = &toml["dependencies"]["te"];
-    assert_eq!(
-        dep["version"].as_str(),
-        Some("toml_edit--CURRENT_VERSION_TEST")
-    );
+    assert_eq!(dep["version"].as_str(), Some("99999.0.0"));
 }
 
 #[test]
@@ -273,7 +258,7 @@ fn upgrade_renamed_dependency_table_specified_only() {
 
     let toml = get_toml(&manifest);
     let dep = &toml["dependencies"]["rx"];
-    assert_eq!(dep["version"].as_str(), Some("regex--CURRENT_VERSION_TEST"));
+    assert_eq!(dep["version"].as_str(), Some("99999.0.0"));
 }
 
 #[test]
@@ -290,17 +275,11 @@ fn upgrade_alt_registry_dependency_all() {
     let toml = get_toml(&manifest);
 
     let dep1 = &toml["dependencies"]["toml_edit"];
-    assert_eq!(
-        dep1["version"].as_str(),
-        Some("toml_edit--CURRENT_VERSION_TEST")
-    );
+    assert_eq!(dep1["version"].as_str(), Some("99999.0.0"));
     assert_eq!(dep1["registry"].as_str(), Some("alternative"));
 
     let dep2 = &toml["dependencies"]["regex"];
-    assert_eq!(
-        dep2["version"].as_str(),
-        Some("regex--CURRENT_VERSION_TEST")
-    );
+    assert_eq!(dep2["version"].as_str(), Some("99999.0.0"));
     assert_eq!(dep2["registry"].as_str(), Some("alternative"));
 }
 
@@ -313,10 +292,7 @@ fn upgrade_alt_registry_dependency_inline_specified_only() {
 
     let toml = get_toml(&manifest);
     let dep = &toml["dependencies"]["toml_edit"];
-    assert_eq!(
-        dep["version"].as_str(),
-        Some("toml_edit--CURRENT_VERSION_TEST")
-    );
+    assert_eq!(dep["version"].as_str(), Some("99999.0.0"));
     assert_eq!(dep["registry"].as_str(), Some("alternative"));
 }
 
@@ -329,7 +305,7 @@ fn upgrade_alt_registry_dependency_table_specified_only() {
 
     let toml = get_toml(&manifest);
     let dep = &toml["dependencies"]["regex"];
-    assert_eq!(dep["version"].as_str(), Some("regex--CURRENT_VERSION_TEST"));
+    assert_eq!(dep["version"].as_str(), Some("99999.0.0"));
     assert_eq!(dep["registry"].as_str(), Some("alternative"));
 }
 
@@ -375,7 +351,7 @@ fn upgrade_workspace_all() {
     for workspace_member in workspace_manifests {
         assert_eq!(
             get_toml(&workspace_member)["dependencies"]["libc"].as_str(),
-            Some("libc--CURRENT_VERSION_TEST")
+            Some("99999.0.0")
         );
     }
 }
@@ -390,7 +366,7 @@ fn upgrade_workspace_workspace() {
     for workspace_member in workspace_manifests {
         assert_eq!(
             get_toml(&workspace_member)["dependencies"]["libc"].as_str(),
-            Some("libc--CURRENT_VERSION_TEST")
+            Some("99999.0.0")
         );
     }
 }
@@ -410,7 +386,7 @@ fn upgrade_dependency_in_workspace_member() {
         one["dependencies"]["libc"]
             .as_str()
             .expect("libc dependency did not exist"),
-        "libc--CURRENT_VERSION_TEST",
+        "99999.0.0",
     );
 }
 

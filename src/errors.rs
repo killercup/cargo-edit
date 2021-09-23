@@ -4,7 +4,7 @@ error_chain! {
     foreign_links {
         Io(::std::io::Error) #[doc = "An error from the std::io module"];
         Git(::git2::Error)#[doc = "An error from the git2 crate"];
-        CargoMetadata(::failure::Compat<::cargo_metadata::Error>)#[doc = "An error from the cargo_metadata crate"];
+        CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
         Semver(::semver::Error)#[doc = "An error from the semver crate"];
         CratesIndex(::crates_index::Error)#[doc = "An error from the crates-index crate"];
     }
@@ -96,6 +96,10 @@ error_chain! {
         /// Cannot increment the specified field of the version.
         InvalidReleaseLevel(actual: &'static str, version: semver::Version) {
             display("Cannot increment the {} field for {}", actual, version)
+        }
+        /// Modifying a version req with an unsupported comparator.
+        UnsupportedVersionReq(req: String) {
+            display("Support for modifying {} is currently unsupported", req)
         }
     }
 }

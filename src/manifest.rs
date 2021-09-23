@@ -11,6 +11,7 @@ use crate::dependency::Dependency;
 use crate::errors::*;
 
 const MANIFEST_FILENAME: &str = "Cargo.toml";
+const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
 
 /// A Cargo manifest
 #[derive(Debug, Clone)]
@@ -66,10 +67,8 @@ fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
 }
 /// Merge a new dependency into an old entry. See `Dependency::to_toml` for what the format of the
 /// new dependency will be.
-fn merge_dependencies(old_dep: &mut toml_edit::Item, new: &Dependency) {
+fn merge_dependencies(old_dep: &mut toml_edit::Item, new_toml: toml_edit::Item) {
     assert!(!old_dep.is_none());
-
-    let new_toml = new.to_toml().1;
 
     if str_or_1_len_table(old_dep) {
         // The old dependency is just a version/git/path. We are safe to overwrite.
@@ -161,6 +160,15 @@ fn print_upgrade_if_necessary(
 }
 
 impl Manifest {
+    /// Get the manifest's package name
+    pub fn package_name(&self) -> Result<&str> {
+        self.data
+            .as_table()
+            .get("package")
+            .and_then(|m| m["name"].as_str())
+            .ok_or_else(|| ErrorKind::ParseCargoToml.into())
+    }
+
     /// Get the specified table from the manifest.
     pub fn get_table<'a>(&'a mut self, table_path: &[String]) -> Result<&'a mut toml_edit::Item> {
         /// Descend into a manifest until the required table is found.
@@ -189,7 +197,7 @@ impl Manifest {
     pub fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
         let mut sections = Vec::new();
 
-        for dependency_type in &["dev-dependencies", "build-dependencies", "dependencies"] {
+        for dependency_type in DEP_TABLES {
             // Dependencies can be in the three standard sections...
             if self.data[dependency_type].is_table_like() {
                 sections.push((
@@ -272,7 +280,7 @@ impl LocalManifest {
     /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
     /// the user means.
     pub fn find(path: &Option<PathBuf>) -> Result<Self> {
-        let path = find(path)?;
+        let path = dunce::canonicalize(find(path)?)?;
         Self::try_new(&path)
     }
 
@@ -335,10 +343,12 @@ impl LocalManifest {
 
     /// Add entry to a Cargo.toml.
     pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
-        let table = self.get_table(table_path)?;
+        let (dep_key, new_dependency) =
+            dep.to_toml(self.path.parent().expect("manifest path is absolute"));
 
+        let table = self.get_table(table_path)?;
         let existing_dep = Self::find_dep(table, &dep.name);
-        if let Some((mut dep_name, dep_item)) = existing_dep {
+        if let Some((old_dep_key, dep_item)) = existing_dep {
             // update an existing entry
 
             // if the `dep` is renamed in the `add` command,
@@ -350,9 +360,8 @@ impl LocalManifest {
             // alias = { version = "0.2", package = "a" }
             if let Some(renamed) = dep.rename() {
                 table[renamed] = dep_item.clone();
-                table[&dep_name] = toml_edit::Item::None;
-                dep_name = renamed.to_owned();
-            } else if dep.name != dep_name {
+                table[&old_dep_key] = toml_edit::Item::None;
+            } else if dep_key != old_dep_key {
                 // if `dep` had been renamed in the manifest,
                 // and is not rename in the `add` command,
                 // we need to remove the old entry and insert a new one
@@ -360,20 +369,18 @@ impl LocalManifest {
                 // alias = { version = "0.1", package = "a" }
                 // to
                 // a = "0.2"
-                table[&dep_name] = toml_edit::Item::None;
-                let (ref name, ref mut new_dependency) = dep.to_toml();
-                table[name] = new_dependency.clone();
-                dep_name = dep.name.to_owned();
+                table[&old_dep_key] = toml_edit::Item::None;
+                table[&dep_key] = new_dependency.clone();
             }
-            merge_dependencies(&mut table[dep_name], dep);
+            merge_dependencies(&mut table[&dep_key], new_dependency);
             if let Some(t) = table.as_inline_table_mut() {
                 t.fmt()
             }
         } else {
             // insert a new entry
-            let (ref name, ref mut new_dependency) = dep.to_toml();
-            table[name] = new_dependency.clone();
+            table[dep_key] = new_dependency;
         }
+
         Ok(())
     }
 
@@ -391,20 +398,23 @@ impl LocalManifest {
     pub fn update_table_named_entry(
         &mut self,
         table_path: &[String],
-        item_name: &str,
+        dep_key: &str,
         dep: &Dependency,
         dry_run: bool,
     ) -> Result<()> {
+        let (_dep_key, new_dependency) =
+            dep.to_toml(self.path.parent().expect("manifest path is absolute"));
+
         let table = self.get_table(table_path)?;
-        let new_dep = dep.to_toml().1;
 
         // If (and only if) there is an old entry, merge the new one in.
-        if !table[item_name].is_none() {
-            if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[item_name], &new_dep) {
+        if !table[dep_key].is_none() {
+            if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[dep_key], &new_dependency)
+            {
                 eprintln!("Error while displaying upgrade message, {}", e);
             }
             if !dry_run {
-                merge_dependencies(&mut table[item_name], dep);
+                merge_dependencies(&mut table[dep_key], new_dependency);
                 if let Some(t) = table.as_inline_table_mut() {
                     t.fmt()
                 }
@@ -422,7 +432,8 @@ impl LocalManifest {
     ///   use cargo_edit::{Dependency, LocalManifest, Manifest};
     ///   use toml_edit;
     ///
-    ///   let path = std::path::PathBuf::from("/Cargo.toml");
+    ///   let root = std::path::PathBuf::from("/").canonicalize().unwrap();
+    ///   let path = root.join("Cargo.toml");
     ///   let mut manifest = LocalManifest { path, manifest: Manifest { data: toml_edit::Document::new() } };
     ///   let dep = Dependency::new("cargo-edit").set_version("0.1.0");
     ///   let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
@@ -486,6 +497,36 @@ impl LocalManifest {
             .map(|dep| (dep.0.into(), dep.1))
     }
 
+    /// Allow mutating depedencies, wherever they live
+    pub fn get_dependency_tables_mut<'r>(
+        &'r mut self,
+    ) -> impl Iterator<Item = &mut dyn toml_edit::TableLike> + 'r {
+        let root = self.data.as_table_mut();
+        root.iter_mut().flat_map(|(k, v)| {
+            if DEP_TABLES.contains(&k) {
+                v.as_table_like_mut().into_iter().collect::<Vec<_>>()
+            } else if k == "target" {
+                v.as_table_like_mut()
+                    .unwrap()
+                    .iter_mut()
+                    .flat_map(|(_, v)| {
+                        v.as_table_like_mut().into_iter().flat_map(|v| {
+                            v.iter_mut().filter_map(|(k, v)| {
+                                if DEP_TABLES.contains(&k) {
+                                    v.as_table_like_mut()
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        })
+    }
+
     /// Override the manifest's version
     pub fn set_package_version(&mut self, version: &Version) {
         self.data["package"]["version"] = toml_edit::value(version.to_string());
@@ -500,8 +541,9 @@ mod tests {
 
     #[test]
     fn add_remove_dependency() {
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
-            path: PathBuf::from("/Cargo.toml"),
+            path: root.join("Cargo.toml"),
             manifest: Manifest {
                 data: toml_edit::Document::new(),
             },
@@ -517,8 +559,9 @@ mod tests {
 
     #[test]
     fn update_dependency() {
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
-            path: PathBuf::from("/Cargo.toml"),
+            path: root.join("Cargo.toml"),
             manifest: Manifest {
                 data: toml_edit::Document::new(),
             },
@@ -536,8 +579,9 @@ mod tests {
 
     #[test]
     fn update_wrong_dependency() {
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
-            path: PathBuf::from("/Cargo.toml"),
+            path: root.join("Cargo.toml"),
             manifest: Manifest {
                 data: toml_edit::Document::new(),
             },
@@ -558,8 +602,9 @@ mod tests {
 
     #[test]
     fn remove_dependency_no_section() {
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
-            path: PathBuf::from("/Cargo.toml"),
+            path: root.join("Cargo.toml"),
             manifest: Manifest {
                 data: toml_edit::Document::new(),
             },
@@ -572,8 +617,9 @@ mod tests {
 
     #[test]
     fn remove_dependency_non_existent() {
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
-            path: PathBuf::from("/Cargo.toml"),
+            path: root.join("Cargo.toml"),
             manifest: Manifest {
                 data: toml_edit::Document::new(),
             },
@@ -604,8 +650,9 @@ edition = "2015"
 
 [dependencies]
 "#;
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let mut manifest = LocalManifest {
-            path: PathBuf::from("/Cargo.toml"),
+            path: root.join("Cargo.toml"),
             manifest: original.parse::<Manifest>().unwrap(),
         };
         manifest.set_package_version(&semver::Version::parse("2.0.0").unwrap());

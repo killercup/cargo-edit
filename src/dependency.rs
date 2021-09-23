@@ -1,8 +1,10 @@
+use std::path::{Path, PathBuf};
+
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 enum DependencySource {
     Version {
         version: Option<String>,
-        path: Option<String>,
+        path: Option<PathBuf>,
         registry: Option<String>,
     },
     Git {
@@ -80,14 +82,23 @@ impl Dependency {
     }
 
     /// Set dependency to a given path
-    pub fn set_path(mut self, path: &str) -> Dependency {
+    ///
+    /// # Panic
+    ///
+    /// Panics if the path is relative
+    pub fn set_path(mut self, path: PathBuf) -> Dependency {
+        assert!(
+            path.is_absolute(),
+            "Absolute path needed, got: {}",
+            path.display()
+        );
         let old_version = match self.source {
             DependencySource::Version { version, .. } => version,
             _ => None,
         };
         self.source = DependencySource::Version {
             version: old_version,
-            path: Some(path.replace('\\', "/")),
+            path: Some(path),
             registry: None,
         };
         self
@@ -156,6 +167,19 @@ impl Dependency {
         }
     }
 
+    /// Get the path of the dependency
+    pub fn path(&self) -> Option<&Path> {
+        if let DependencySource::Version {
+            path: Some(ref path),
+            ..
+        } = self.source
+        {
+            Some(path.as_path())
+        } else {
+            None
+        }
+    }
+
     /// Get the alias for the dependency (if any)
     pub fn rename(&self) -> Option<&str> {
         self.rename.as_deref()
@@ -167,7 +191,16 @@ impl Dependency {
     /// or the path/git repository as an `InlineTable`.
     /// (If the dependency is set as `optional` or `default-features` is set to `false`,
     /// an `InlineTable` is returned in any case.)
-    pub fn to_toml(&self) -> (String, toml_edit::Item) {
+    ///
+    /// # Panic
+    ///
+    /// Panics if the path is relative
+    pub fn to_toml(&self, crate_root: &Path) -> (String, toml_edit::Item) {
+        assert!(
+            crate_root.is_absolute(),
+            "Absolute path needed, got: {}",
+            crate_root.display()
+        );
         let data: toml_edit::Item = match (
             self.optional,
             self.features.as_ref(),
@@ -201,7 +234,10 @@ impl Dependency {
                             data.get_or_insert("version", v);
                         }
                         if let Some(p) = path {
-                            data.get_or_insert("path", p);
+                            let relpath = pathdiff::diff_paths(p, crate_root)
+                                .expect("both paths are absolute");
+                            let relpath = relpath.to_str().unwrap().replace('\\', "/");
+                            data.get_or_insert("path", relpath);
                         }
                         if let Some(r) = registry {
                             data.get_or_insert("registry", r);
@@ -238,17 +274,22 @@ impl Dependency {
 #[cfg(test)]
 mod tests {
     use crate::dependency::Dependency;
+    use std::path::Path;
 
     #[test]
     fn to_toml_simple_dep() {
-        let toml = Dependency::new("dep").to_toml();
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let toml = Dependency::new("dep").to_toml(&crate_root);
 
         assert_eq!(toml.0, "dep".to_owned());
     }
 
     #[test]
     fn to_toml_simple_dep_with_version() {
-        let toml = Dependency::new("dep").set_version("1.0").to_toml();
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let toml = Dependency::new("dep")
+            .set_version("1.0")
+            .to_toml(&crate_root);
 
         assert_eq!(toml.0, "dep".to_owned());
         assert_eq!(toml.1.as_str(), Some("1.0"));
@@ -256,7 +297,10 @@ mod tests {
 
     #[test]
     fn to_toml_optional_dep() {
-        let toml = Dependency::new("dep").set_optional(true).to_toml();
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let toml = Dependency::new("dep")
+            .set_optional(true)
+            .to_toml(&crate_root);
 
         assert_eq!(toml.0, "dep".to_owned());
         assert!(toml.1.is_inline_table());
@@ -267,7 +311,10 @@ mod tests {
 
     #[test]
     fn to_toml_dep_without_default_features() {
-        let toml = Dependency::new("dep").set_default_features(false).to_toml();
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let toml = Dependency::new("dep")
+            .set_default_features(false)
+            .to_toml(&crate_root);
 
         assert_eq!(toml.0, "dep".to_owned());
         assert!(toml.1.is_inline_table());
@@ -278,20 +325,25 @@ mod tests {
 
     #[test]
     fn to_toml_dep_with_path_source() {
-        let toml = Dependency::new("dep").set_path("~/foo/bar").to_toml();
+        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let crate_root = root.join("foo");
+        let toml = Dependency::new("dep")
+            .set_path(root.join("bar"))
+            .to_toml(&crate_root);
 
         assert_eq!(toml.0, "dep".to_owned());
         assert!(toml.1.is_inline_table());
 
         let dep = toml.1.as_inline_table().unwrap();
-        assert_eq!(dep.get("path").unwrap().as_str(), Some("~/foo/bar"));
+        assert_eq!(dep.get("path").unwrap().as_str(), Some("../bar"));
     }
 
     #[test]
     fn to_toml_dep_with_git_source() {
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep")
             .set_git("https://foor/bar.git", None)
-            .to_toml();
+            .to_toml(&crate_root);
 
         assert_eq!(toml.0, "dep".to_owned());
         assert!(toml.1.is_inline_table());
@@ -305,7 +357,8 @@ mod tests {
 
     #[test]
     fn to_toml_renamed_dep() {
-        let toml = Dependency::new("dep").set_rename("d").to_toml();
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let toml = Dependency::new("dep").set_rename("d").to_toml(&crate_root);
 
         assert_eq!(toml.0, "d".to_owned());
         assert!(toml.1.is_inline_table());
@@ -316,7 +369,10 @@ mod tests {
 
     #[test]
     fn to_toml_dep_from_alt_registry() {
-        let toml = Dependency::new("dep").set_registry("alternative").to_toml();
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let toml = Dependency::new("dep")
+            .set_registry("alternative")
+            .to_toml(&crate_root);
 
         assert_eq!(toml.0, "dep".to_owned());
         assert!(toml.1.is_inline_table());
@@ -327,11 +383,12 @@ mod tests {
 
     #[test]
     fn to_toml_complex_dep() {
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep")
             .set_version("1.0")
             .set_default_features(false)
             .set_rename("d")
-            .to_toml();
+            .to_toml(&crate_root);
 
         assert_eq!(toml.0, "d".to_owned());
         assert!(toml.1.is_inline_table());
@@ -344,23 +401,27 @@ mod tests {
 
     #[test]
     fn paths_with_forward_slashes_are_left_as_is() {
-        let path = "../sibling/crate";
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let path = crate_root.join("sibling/crate");
+        let relpath = "sibling/crate";
         let dep = Dependency::new("dep").set_path(path);
 
-        let (_, toml) = dep.to_toml();
+        let (_, toml) = dep.to_toml(&crate_root);
 
         let table = toml.as_inline_table().unwrap();
         let got = table.get("path").unwrap().as_str().unwrap();
-        assert_eq!(got, path);
+        assert_eq!(got, relpath);
     }
 
     #[test]
+    #[cfg(windows)]
     fn normalise_windows_style_paths() {
-        let original = r"..\sibling\crate";
-        let should_be = "../sibling/crate";
+        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let original = crate_root.join(r"sibling\crate");
+        let should_be = "sibling/crate";
         let dep = Dependency::new("dep").set_path(original);
 
-        let (_, toml) = dep.to_toml();
+        let (_, toml) = dep.to_toml(&crate_root);
 
         let table = toml.as_inline_table().unwrap();
         let got = table.get("path").unwrap().as_str().unwrap();
