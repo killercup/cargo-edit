@@ -86,6 +86,7 @@ default = [
     "rm",
     "upgrade",
     "set-version",
+    "vendored-libgit2",
 ]
 add = ["cli"]
 rm = ["cli"]
