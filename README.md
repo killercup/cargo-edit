@@ -34,6 +34,8 @@ To help us help you get pull requests merged quickly and smoothly, open an issue
 
 ## Installation
 
+<a href="https://repology.org/project/cargo-edit/versions"><img align="right" src="https://repology.org/badge/vertical-allrepos/cargo-edit.svg" alt="Packaging status"></a>
+
 Ensure that you have a fairly recent version of rust/cargo installed. On Ubuntu you would also need to install `libssl-dev` and `pkg-config` packages.
 
 ```sh
