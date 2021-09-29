@@ -21,12 +21,14 @@ Caused by: TOML parse error at line 6, column 7
   |       ^
 Unexpected `i`
 Expected `-`, `+`, `inf`, `nan`, `0x`, `0o` or `0b`
-invalid digit found in string
-invalid digit found in string
+expected 4 more elements
+expected 2 more elements
+While parsing a Time
 While parsing a hexadecimal Integer
-While parsing an octal Integer
+While parsing a octal Integer
 While parsing a binary Integer
 While parsing an Integer
+While parsing a Date-Time
 While parsing a Float
 
 "#,
