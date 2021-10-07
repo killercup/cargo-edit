@@ -75,9 +75,9 @@ features = ["serde"]
 version = "1.0.0"
 
 [dev-dependencies]
-predicates = "2.0"
-assert_cmd = "2.0.1"
-assert_fs = "1.0.5"
+predicates = { version = "2.0.3", features = ["color-auto"] }
+assert_cmd = { version = "2.0.2", features = ["color-auto"] }
+assert_fs = { version = "1.0.6", features = ["color-auto"] }
 pretty_assertions = "0.6.1"
 
 [features]
