@@ -15,6 +15,7 @@ impl TargetVersion {
         &self,
         current: &semver::Version,
         metadata: Option<&str>,
+        err_if_equal: bool
     ) -> Result<Option<semver::Version>, Error> {
         match self {
             TargetVersion::Relative(bump_level) => {
@@ -31,7 +32,11 @@ impl TargetVersion {
                 if current < version {
                     Ok(Some(version.clone()))
                 } else if current == version {
-                    Ok(None)
+                    if err_if_equal {
+                        Err(ErrorKind::VersionDoesNotIncreaes(current.clone())
+                    } else {
+                        Ok(None)
+                    }
                 } else {
                     Err(ErrorKind::VersionDowngreade(current.clone(), version.clone()).into())
                 }

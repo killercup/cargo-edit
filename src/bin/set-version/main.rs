@@ -56,6 +56,7 @@ fn process(args: Args) -> Result<()> {
     let Args {
         target,
         bump,
+        raw,
         metadata,
         manifest_path,
         pkgid,
@@ -63,13 +64,22 @@ fn process(args: Args) -> Result<()> {
         dry_run,
         workspace,
         exclude,
+        panic_if_equal,
+        output_new_version
     } = args;
 
-    let target = match (target, bump) {
-        (None, None) => version::TargetVersion::Relative(version::BumpLevel::Release),
-        (None, Some(level)) => version::TargetVersion::Relative(level),
-        (Some(version), None) => version::TargetVersion::Absolute(version),
-        (Some(_), Some(_)) => unreachable!("clap groups should prevent this"),
+    let target = if let Some(raw) = raw {
+        match raw {
+            crate::RawUpdateMessage::Semver(version) => version::TargetVersion::Absolute(version),
+            crate::RawUpdateMessage::BumpLevel(level) => version::TargetVersion::Relative(level),
+        }
+    } else {
+        match (target, bump) {
+            (None, None) => version::TargetVersion::Relative(version::BumpLevel::Release),
+            (None, Some(level)) => version::TargetVersion::Relative(level),
+            (Some(version), None) => version::TargetVersion::Absolute(version),
+            (Some(_), Some(_)) => unreachable!("clap groups should prevent this"),
+        }
     };
 
     if all {
@@ -95,11 +105,11 @@ fn process(args: Args) -> Result<()> {
             continue;
         }
         let current = &package.version;
-        let next = target.bump(current, metadata.as_deref())?;
+        let next = target.bump(current, metadata.as_deref(), panic_if_equal)?;
         if let Some(next) = next {
             manifest.set_package_version(&next);
 
-            upgrade_message(package.name.as_str(), current, &next)?;
+            upgrade_message(package.name.as_str(), current, &next, !output_new_version)?;
             if !dry_run {
                 manifest.write()?;
             }
@@ -240,21 +250,25 @@ fn deprecated_message(message: &str) -> Result<()> {
         .chain_err(|| "Failed to print dry run message")
 }
 
-fn upgrade_message(name: &str, from: &semver::Version, to: &semver::Version) -> Result<()> {
+fn upgrade_message(name: &str, from: &semver::Version, to: &semver::Version, verbose: bool) -> Result<()> {
     let bufwtr = BufferWriter::stdout(ColorChoice::Always);
     let mut buffer = bufwtr.buffer();
-    buffer
-        .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-        .chain_err(|| "Failed to print dry run message")?;
-    write!(&mut buffer, "{:>12}", "Upgraded").chain_err(|| "Failed to print dry run message")?;
-    buffer
-        .reset()
-        .chain_err(|| "Failed to print dry run message")?;
-    writeln!(&mut buffer, " {} from {} to {}", name, from, to)
-        .chain_err(|| "Failed to print dry run message")?;
-    bufwtr
-        .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
+    if verbose {
+        buffer
+            .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
+            .chain_err(|| "Failed to print dry run message")?;
+        write!(&mut buffer, "{:>12}", "Upgraded").chain_err(|| "Failed to print dry run message")?;
+        buffer
+            .reset()
+            .chain_err(|| "Failed to print dry run message")?;
+        writeln!(&mut buffer, " {} from {} to {}", name, from, to)
+            .chain_err(|| "Failed to print dry run message")?;
+        bufwtr
+            .print(&buffer)
+            .chain_err(|| "Failed to print dry run message")
+    } else {
+        write!(&mut buffer, "{}", to)
+    }
 }
 
 fn upgrade_dependent_message(name: &str, old_req: &str, new_req: &str) -> Result<()> {

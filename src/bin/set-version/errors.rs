@@ -8,6 +8,10 @@ error_chain! {
         VersionDowngreade(current: semver::Version, requested: semver::Version) {
             display("Cannot downgrade from {} to {}", current, requested)
         }
+        /// User sets version to current
+        VersionDoesNotIncreaes(current: semver::Version) {
+            display("Version is already {}", current)
+        }
     }
     links {
         CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
