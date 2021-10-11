@@ -550,5 +550,5 @@ fn upgrade_prints_messages() {
         ])
         .assert()
         .success()
-        .stdout(predicates::str::contains("docopt v0.8 -> v"));
+        .stderr(predicates::str::contains("docopt v0.8 -> v"));
 }

@@ -1441,7 +1441,7 @@ fn adds_dependency_normalized_name() {
             &format!("--manifest-path={}", manifest),
         ])
         .success()
-        .stdout(predicates::str::contains(
+        .stderr(predicates::str::contains(
             "WARN: Added `linked-hash-map` instead of `linked_hash_map`",
         ));
 
@@ -1758,7 +1758,7 @@ fn add_prints_message() {
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success()
-        .stdout(predicates::str::contains(
+        .stderr(predicates::str::contains(
             "Adding docopt v0.6.0 to dependencies",
         ));
 }
@@ -1780,7 +1780,7 @@ fn add_prints_message_with_section() {
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success()
-        .stdout(predicates::str::contains(
+        .stderr(predicates::str::contains(
             "Adding clap v0.1.0 to optional dependencies for target `mytarget`",
         ));
 }
@@ -1802,7 +1802,7 @@ fn add_prints_message_for_dev_deps() {
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success()
-        .stdout(predicates::str::contains(
+        .stderr(predicates::str::contains(
             "Adding docopt v0.8.0 to dev-dependencies",
         ));
 }
@@ -1824,7 +1824,7 @@ fn add_prints_message_for_build_deps() {
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success()
-        .stdout(predicates::str::contains(
+        .stderr(predicates::str::contains(
             "Adding hello-world v0.1.0 to build-dependencies",
         ));
 }
@@ -1956,7 +1956,7 @@ fn add_prints_message_for_features_deps() {
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success()
-        .stdout(predicates::str::contains(
+        .stderr(predicates::str::contains(
             r#"Adding hello-world v0.1.0 to dependencies with features: ["jui"]"#,
         ));
 }

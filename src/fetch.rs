@@ -98,7 +98,7 @@ pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
     } else {
         ColorChoice::Never
     };
-    let mut output = StandardStream::stdout(colorchoice);
+    let mut output = StandardStream::stderr(colorchoice);
 
     let index = crates_index::BareIndex::from_url(registry.as_str())?;
     let mut index = index.open_or_clone()?;
