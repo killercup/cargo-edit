@@ -244,7 +244,7 @@ fn rm_prints_message() {
         .args(&["rm", "semver", &format!("--manifest-path={}", manifest)])
         .assert()
         .success()
-        .stdout("    Removing semver from dependencies\n");
+        .stderr("    Removing semver from dependencies\n");
 }
 
 #[test]
@@ -261,7 +261,7 @@ fn rm_prints_messages_for_multiple() {
         ])
         .assert()
         .success()
-        .stdout("    Removing semver from dependencies\n    Removing docopt from dependencies\n");
+        .stderr("    Removing semver from dependencies\n    Removing docopt from dependencies\n");
 }
 
 #[test]

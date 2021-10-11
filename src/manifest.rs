@@ -137,7 +137,7 @@ fn print_upgrade_if_necessary(
         if old_version == new_version {
             return Ok(());
         }
-        let bufwtr = BufferWriter::stdout(ColorChoice::Always);
+        let bufwtr = BufferWriter::stderr(ColorChoice::Always);
         let mut buffer = bufwtr.buffer();
         buffer
             .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))

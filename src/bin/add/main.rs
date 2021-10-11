@@ -74,7 +74,7 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
     } else {
         ColorChoice::Never
     };
-    let mut output = StandardStream::stdout(colorchoice);
+    let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Adding")?;
     output.reset()?;

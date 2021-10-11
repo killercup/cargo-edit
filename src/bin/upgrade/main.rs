@@ -151,7 +151,7 @@ fn deprecated_message(message: &str) -> Result<()> {
 }
 
 fn dry_run_message() -> Result<()> {
-    let bufwtr = BufferWriter::stdout(ColorChoice::Always);
+    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))

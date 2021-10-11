@@ -94,7 +94,7 @@ fn print_msg(name: &str, section: &str) -> Result<()> {
     } else {
         ColorChoice::Never
     };
-    let mut output = StandardStream::stdout(colorchoice);
+    let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Removing")?;
     output.reset()?;
