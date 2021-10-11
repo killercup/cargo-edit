@@ -263,12 +263,13 @@ fn upgrade_message(name: &str, from: &semver::Version, to: &semver::Version, ver
             .chain_err(|| "Failed to print dry run message")?;
         writeln!(&mut buffer, " {} from {} to {}", name, from, to)
             .chain_err(|| "Failed to print dry run message")?;
-        bufwtr
-            .print(&buffer)
-            .chain_err(|| "Failed to print dry run message")
+        
     } else {
-        write!(&mut buffer, "{}", to)
+        write!(&mut buffer, "{}", to).chain_err(|| "Failed to print dry run message")?;
     }
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print dry run message")
 }
 
 fn upgrade_dependent_message(name: &str, old_req: &str, new_req: &str) -> Result<()> {

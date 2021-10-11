@@ -33,12 +33,12 @@ impl TargetVersion {
                     Ok(Some(version.clone()))
                 } else if current == version {
                     if err_if_equal {
-                        Err(ErrorKind::VersionDoesNotIncreaes(current.clone())
+                        Err(ErrorKind::VersionDoesNotIncrease(current.clone()).into())
                     } else {
                         Ok(None)
                     }
                 } else {
-                    Err(ErrorKind::VersionDowngreade(current.clone(), version.clone()).into())
+                    Err(ErrorKind::VersionDowngrade(current.clone(), version.clone()).into())
                 }
             }
         }

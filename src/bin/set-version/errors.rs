@@ -5,11 +5,11 @@ error_chain! {
             display("Support for modifying {} is currently unsupported", req)
         }
         /// User requested to downgrade a crate
-        VersionDowngreade(current: semver::Version, requested: semver::Version) {
+        VersionDowngrade(current: semver::Version, requested: semver::Version) {
             display("Cannot downgrade from {} to {}", current, requested)
         }
         /// User sets version to current
-        VersionDoesNotIncreaes(current: semver::Version) {
+        VersionDoesNotIncrease(current: semver::Version) {
             display("Version is already {}", current)
         }
     }

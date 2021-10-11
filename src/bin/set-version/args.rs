@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use structopt::{clap::AppSettings, StructOpt};
 
@@ -10,6 +10,7 @@ pub(crate) enum Command {
     Version(Args),
 }
 
+#[derive(Debug)]
 pub(crate) enum RawUpdateMessage {
     Semver(semver::Version),
     BumpLevel(crate::version::BumpLevel)
@@ -80,10 +81,10 @@ pub(crate) struct Args {
     pub(crate) exclude: Vec<String>,
 
     /// Command panics if set version does not increase version
-    #[structopt(long = "panic-if-equal", default_value)]
+    #[structopt(long = "panic-if-equal")]
     pub(crate) panic_if_equal: bool,
 
     /// Outputs only the new version
-    #[structopt(long = "output-new-version", default_value)]
+    #[structopt(long = "output-new-version")]
     pub(crate) output_new_version: bool,
 }
