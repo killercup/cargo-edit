@@ -173,6 +173,7 @@ impl Args {
         &self,
         crate_name: &str,
         workspace_members: &[Package],
+        features: Option<Vec<String>>,
     ) -> Result<Dependency> {
         let crate_name = CrateName::new(crate_name);
 
@@ -265,6 +266,7 @@ impl Args {
                         self.allow_prerelease,
                         &find(&self.manifest_path)?,
                         &registry_url,
+                        features,
                     )?;
                     let v = format!(
                         "{prefix}{version}",
@@ -307,7 +309,7 @@ impl Args {
         self.crates
             .iter()
             .map(|crate_name| {
-                self.parse_single_dependency(crate_name, &workspace_members)
+                self.parse_single_dependency(crate_name, &workspace_members, self.features.clone())
                     .map(|x| {
                         let mut x = x
                             .set_optional(self.optional)

@@ -34,6 +34,12 @@ error_chain! {
                          --allow-prerelease flag might solve the issue."
             )
         }
+        /// No versions available with requested feature
+        NoVersionsWithFeaturesAvailable {
+            description("Versions of the crates do exist, but not with the requested features. \
+                         Check that the features you requested are indeed available."
+            )
+        }
         /// Unable to parse external Cargo.toml
         ParseCargoToml {
             description("Unable to parse external Cargo.toml")

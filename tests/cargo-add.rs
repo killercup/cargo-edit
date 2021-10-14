@@ -1328,6 +1328,24 @@ fn adds_features_dependency() {
 }
 
 #[test]
+fn fails_adding_dependency_with_non_existant_features() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    execute_bad_command(
+        &["add", "cargo-edit", "--features", "non-existant-feature"],
+        &manifest,
+    );
+
+    // dependency present afterwards
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+}
+
+#[test]
 fn overrides_existing_features() {
     overwrite_dependency_test(
         &["add", "your-face", "--features", "nose"],

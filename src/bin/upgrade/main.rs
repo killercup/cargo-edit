@@ -428,6 +428,7 @@ impl DesiredUpgrades {
                             allow_prerelease,
                             manifest_path,
                             &registry_url,
+                            None
                         )
                         .map(|new_dep| {
                             (

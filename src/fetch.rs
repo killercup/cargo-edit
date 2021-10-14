@@ -15,6 +15,7 @@ struct CrateVersion {
     name: String,
     version: semver::Version,
     yanked: bool,
+    features: Vec<String>,
 }
 
 /// Query latest version from a registry index
@@ -32,6 +33,7 @@ pub fn get_latest_dependency(
     flag_allow_prerelease: bool,
     manifest_path: &Path,
     registry: &Option<Url>,
+    features: Option<Vec<String>>,
 ) -> Result<Dependency> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
@@ -46,7 +48,13 @@ pub fn get_latest_dependency(
             }
         };
 
-        return Ok(Dependency::new(crate_name).set_version(&new_version));
+        if features == Some(vec!["non-existant-feature".into()]) {
+            return Err(ErrorKind::NoVersionsWithFeaturesAvailable.into());
+        }
+
+        return Ok(Dependency::new(crate_name)
+            .set_version(&new_version)
+            .set_features(features));
     }
 
     if crate_name.is_empty() {
@@ -58,9 +66,23 @@ pub fn get_latest_dependency(
         None => registry_url(manifest_path, None)?,
     };
 
-    let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
+    let query = fuzzy_query_registry_index(crate_name, &registry)?;
 
-    let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
+    let base_possible = !&query.is_empty();
+
+    let crate_versions: Vec<CrateVersion> = query
+        .into_iter()
+        .filter(|v| match &features {
+            None => true,
+            Some(feats) => feats.iter().all(|f| v.features.contains(f)) && !v.yanked,
+        })
+        .collect();
+
+    if base_possible && crate_versions.is_empty() {
+        return Err(ErrorKind::NoVersionsWithFeaturesAvailable.into());
+    }
+
+    let dep = read_latest_version(crate_versions, flag_allow_prerelease)?;
 
     if dep.name != crate_name {
         println!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
@@ -76,7 +98,7 @@ fn version_is_stable(version: &CrateVersion) -> bool {
 
 /// Read latest version from Versions structure
 fn read_latest_version(
-    versions: &[CrateVersion],
+    versions: Vec<CrateVersion>,
     flag_allow_prerelease: bool,
 ) -> Result<Dependency> {
     let latest = versions
@@ -151,15 +173,17 @@ fn get_latest_stable_version() {
             name: "foo".into(),
             version: "0.6.0-alpha".parse().unwrap(),
             yanked: false,
+            features: vec![],
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
             yanked: false,
+            features: vec![],
         },
     ];
     assert_eq!(
-        read_latest_version(&versions, false)
+        read_latest_version(versions, false)
             .unwrap()
             .version()
             .unwrap(),
@@ -174,15 +198,17 @@ fn get_latest_unstable_or_stable_version() {
             name: "foo".into(),
             version: "0.6.0-alpha".parse().unwrap(),
             yanked: false,
+            features: vec![],
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
             yanked: false,
+            features: vec![],
         },
     ];
     assert_eq!(
-        read_latest_version(&versions, true)
+        read_latest_version(versions, true)
             .unwrap()
             .version()
             .unwrap(),
@@ -197,15 +223,17 @@ fn get_latest_version_with_yanked() {
             name: "treexml".into(),
             version: "0.3.1".parse().unwrap(),
             yanked: true,
+            features: vec![],
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
             yanked: false,
+            features: vec![],
         },
     ];
     assert_eq!(
-        read_latest_version(&versions, false)
+        read_latest_version(versions, false)
             .unwrap()
             .version()
             .unwrap(),
@@ -220,14 +248,16 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
             name: "treexml".into(),
             version: "0.3.1".parse().unwrap(),
             yanked: true,
+            features: vec![],
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
             yanked: true,
+            features: vec![],
         },
     ];
-    assert!(read_latest_version(&versions, false).is_err());
+    assert!(read_latest_version(versions, false).is_err());
 }
 
 /// Fuzzy query crate from registry index
@@ -258,6 +288,7 @@ fn fuzzy_query_registry_index(
                     name: v.name().to_owned(),
                     version: v.version().parse()?,
                     yanked: v.is_yanked(),
+                    features: v.features().keys().cloned().collect::<_>(),
                 })
             })
             .collect();
