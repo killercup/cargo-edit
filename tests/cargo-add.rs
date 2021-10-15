@@ -99,7 +99,7 @@ fn adds_dependency_with_upgrade_bad() {
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"].is_none());
 
-    let upgrade_arg = format!("--upgrade=an_invalid_string",);
+    let upgrade_arg = "--upgrade=an_invalid_string".to_string();
     execute_bad_command(&["add", "my-package", upgrade_arg.as_str()], &manifest);
 }
 
@@ -1129,7 +1129,7 @@ fn adds_optional_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["versioned-package"]["optional"];
-    assert_eq!(val.as_bool().expect("optional not a bool"), true);
+    assert!(val.as_bool().expect("optional not a bool"));
 }
 
 #[test]
@@ -1177,7 +1177,7 @@ fn adds_no_default_features_dependency() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     let val = &toml["dependencies"]["versioned-package"]["default-features"];
-    assert_eq!(val.as_bool().expect("default-features not a bool"), false);
+    assert!(!val.as_bool().expect("default-features not a bool"));
 }
 
 #[test]
@@ -1440,6 +1440,7 @@ fn adds_dependency_normalized_name() {
             "Inflector",
             &format!("--manifest-path={}", manifest),
         ])
+        .assert()
         .success()
         .stderr(predicates::str::contains(
             "WARN: Added `linked-hash-map` instead of `linked_hash_map`",
@@ -1844,11 +1845,10 @@ fn add_typo() {
         .env("CARGO_IS_TEST", "1")
         .assert()
         .code(1)
-    .stderr()
-    .contains(
+    .stderr(predicates::str::contains(
         "The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found in registry index.",
-    )
-    .unwrap();
+    ))
+    ;
 }
 
 #[test]

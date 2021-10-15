@@ -156,9 +156,8 @@ impl Args {
         } else if self.build {
             vec!["build-dependencies".to_owned()]
         } else if let Some(ref target) = self.target {
-            if target.is_empty() {
-                panic!("Target specification may not be empty");
-            }
+            assert!(!target.is_empty(), "Target specification may not be empty");
+
             vec![
                 "target".to_owned(),
                 target.clone(),
