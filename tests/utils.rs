@@ -46,11 +46,7 @@ pub fn copy_workspace_test() -> (assert_fs::TempDir, String, Vec<String>) {
         (root_manifest_path, workspace_manifest_paths)
     };
 
-    (
-        tmpdir,
-        root_manifest_path,
-        workspace_manifest_paths.to_owned(),
-    )
+    (tmpdir, root_manifest_path, workspace_manifest_paths)
 }
 
 /// Create temporary working directory with Cargo.toml manifest
@@ -59,7 +55,7 @@ pub fn clone_out_test(source: &str) -> (assert_fs::TempDir, String) {
     let manifest_path = tmpdir.child("Cargo.toml");
     manifest_path.write_file(Path::new(source)).unwrap();
     tmpdir.child("src/lib.rs").touch().unwrap();
-    let path = manifest_path.to_str().unwrap().to_string().clone();
+    let path = manifest_path.to_str().unwrap().to_string();
 
     (tmpdir, path)
 }

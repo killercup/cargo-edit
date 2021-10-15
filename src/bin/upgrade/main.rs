@@ -130,7 +130,7 @@ fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
     match dependency.source {
         // This is the criterion cargo uses (in `SourceId::from_url`) to decide whether a
         // dependency has the 'registry' kind.
-        Some(ref s) => s.splitn(2, '+').next() == Some("registry"),
+        Some(ref s) => s.split_once('+').map(|(x, _)| x) == Some("registry"),
         _ => false,
     }
 }

@@ -298,7 +298,7 @@ mod test {
         #[track_caller]
         fn assert_req_bump<'a, O: Into<Option<&'a str>>>(version: &str, req: &str, expected: O) {
             let version = semver::Version::parse(version).unwrap();
-            let actual = upgrade_requirement(&req, &version).unwrap();
+            let actual = upgrade_requirement(req, &version).unwrap();
             let expected = expected.into();
             assert_eq!(actual.as_deref(), expected);
         }

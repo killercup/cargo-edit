@@ -48,7 +48,7 @@ fn search(dir: &Path) -> Result<PathBuf> {
     } else {
         dir.parent()
             .ok_or_else(|| ErrorKind::MissingManifest.into())
-            .and_then(|dir| search(dir))
+            .and_then(search)
     }
 }
 
@@ -537,7 +537,6 @@ impl LocalManifest {
 mod tests {
     use super::*;
     use crate::dependency::Dependency;
-    use toml_edit;
 
     #[test]
     fn add_remove_dependency() {
