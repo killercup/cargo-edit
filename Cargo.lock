@@ -267,12 +267,11 @@ checksum = "ad159cc964ac8f9d407cbc0aa44b02436c054b541f2b4b5f06972e1efdc54bc7"
 
 [[package]]
 name = "crates-index"
-version = "0.17.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ad4af5c8dd9940a497ef4473e6e558b660a4a1b6e5ce2cb9d85454e2aaaf947"
+checksum = "87c1041763543466e437ad3212f1dbfd73c0ae4f7323e44ff584c5273d1b39c8"
 dependencies = [
  "git2",
- "glob",
  "hex",
  "home",
  "memchr",
@@ -418,9 +417,9 @@ checksum = "f6503fe142514ca4799d4c26297c4248239fe8838d827db6bd6065c6ed29a6ce"
 
 [[package]]
 name = "git2"
-version = "0.13.22"
+version = "0.13.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c1cbbfc9a1996c6af82c2b4caf828d2c653af4fcdbb0e5674cc966eee5a4197"
+checksum = "2a8057932925d3a9d9e4434ea016570d37420ddb1ceed45a174d577f24ed6700"
 dependencies = [
  "bitflags",
  "libc",
@@ -430,12 +429,6 @@ dependencies = [
  "openssl-sys",
  "url",
 ]
-
-[[package]]
-name = "glob"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "globset"
@@ -598,9 +591,9 @@ checksum = "1cca32fa0182e8c0989459524dc356b8f2b5c10f1b9eb521b7d182c03cf8c5ff"
 
 [[package]]
 name = "libgit2-sys"
-version = "0.12.23+1.2.0"
+version = "0.12.24+1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29730a445bae719db3107078b46808cc45a5b7a6bae3f31272923af969453356"
+checksum = "ddbd6021eef06fb289a8f54b3c2acfdd85ff2a585dfbb24b8576325373d2152c"
 dependencies = [
  "cc",
  "libc",
@@ -1013,18 +1006,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.129"
+version = "1.0.130"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1f72836d2aa753853178eda473a3b9d8e4eefdaf20523b919677e6de489f8f1"
+checksum = "f12d06de37cf59146fbdecab66aa99f9fe4f78722e3607577a5375d66bd0c913"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.129"
+version = "1.0.130"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e57ae87ad533d9a56427558b516d0adac283614e347abf85b0dc0cbbf0a249f3"
+checksum = "d7bc1a1ab1961464eae040d96713baa5a724a8152c1222492465b54322ec508b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1033,9 +1026,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.66"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "336b10da19a12ad094b59d870ebde26a45402e5b470add4b5fd03c5048a32127"
+checksum = "e466864e431129c7e0d3476b92f20458e5879919a0596c6472738d9fa2d342f8"
 dependencies = [
  "itoa",
  "ryu",
