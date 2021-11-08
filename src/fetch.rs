@@ -234,8 +234,7 @@ fn fuzzy_query_registry_index(
     crate_name: impl Into<String>,
     registry: &Url,
 ) -> Result<Vec<CrateVersion>> {
-    let mut index = crates_index::Index::from_url(registry.as_str())?;
-    index.update()?;
+    let index = crates_index::Index::from_url(registry.as_str())?;
 
     let crate_name = crate_name.into();
     let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
