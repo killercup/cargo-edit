@@ -100,8 +100,7 @@ pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
     };
     let mut output = StandardStream::stderr(colorchoice);
 
-    let index = crates_index::BareIndex::from_url(registry.as_str())?;
-    let mut index = index.open_or_clone()?;
+    let mut index = crates_index::Index::from_url(registry.as_str())?;
     if !quiet {
         output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
         write!(output, "{:>12}", "Updating")?;
@@ -109,7 +108,7 @@ pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
         writeln!(output, " '{}' index", registry)?;
     }
 
-    while need_retry(index.retrieve())? {
+    while need_retry(index.update())? {
         registry_blocked_message(&mut output)?;
         std::thread::sleep(REGISTRY_BACKOFF);
     }
@@ -235,8 +234,8 @@ fn fuzzy_query_registry_index(
     crate_name: impl Into<String>,
     registry: &Url,
 ) -> Result<Vec<CrateVersion>> {
-    let index = crates_index::BareIndex::from_url(registry.as_str())?;
-    let index = index.open_or_clone()?;
+    let mut index = crates_index::Index::from_url(registry.as_str())?;
+    index.update()?;
 
     let crate_name = crate_name.into();
     let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
