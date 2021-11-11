@@ -293,10 +293,15 @@ impl LocalManifest {
         Ok(LocalManifest { manifest, path })
     }
 
+    /// Check if local manifest is virtual, i. e. corresponds to workspace root
+    pub fn is_virtual(&self) -> bool {
+        !self.data["workspace"].is_none()
+    }
+
     /// Write changes back to the file
     pub fn write(&self) -> Result<()> {
         if self.manifest.data["package"].is_none() && self.manifest.data["project"].is_none() {
-            if !self.manifest.data["workspace"].is_none() {
+            if self.is_virtual() {
                 return Err(ErrorKind::UnexpectedRootManifest.into());
             } else {
                 return Err(ErrorKind::InvalidManifest.into());

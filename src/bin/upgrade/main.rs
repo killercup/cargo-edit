@@ -94,6 +94,7 @@ struct Args {
     all: bool,
 
     /// Upgrade all packages in the workspace.
+    /// Implied by default when running in a directory with virtual manifest.
     #[structopt(long = "workspace", conflicts_with = "all", conflicts_with = "pkgid")]
     workspace: bool,
 
@@ -468,7 +469,8 @@ fn process(args: Args) -> Result<()> {
         deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
 
-    let all = workspace || all;
+    // Running in workspace root automatically implies `--workspace`
+    let all = workspace || all || LocalManifest::find(&None)?.is_virtual();
 
     if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(&find(&manifest_path)?, None)?;

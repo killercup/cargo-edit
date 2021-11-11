@@ -236,6 +236,7 @@ supported. Git/path dependencies will be ignored.
 
 All packages in the workspace will be upgraded if the `--workspace` flag is supplied.
 The `--workspace` flag may be supplied in the presence of a virtual manifest.
+Running in workspace root automatically implies `--workspace`
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
 version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is

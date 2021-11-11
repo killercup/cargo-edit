@@ -75,7 +75,8 @@ fn process(args: Args) -> Result<()> {
     if all {
         deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
-    let all = workspace || all;
+    let all = workspace || all || LocalManifest::find(&None)?.is_virtual();
+
     let manifests = if all {
         Manifests::get_all(&manifest_path)
     } else if let Some(ref pkgid) = pkgid {
