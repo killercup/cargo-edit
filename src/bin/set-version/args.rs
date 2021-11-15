@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use structopt::{clap::AppSettings, StructOpt};
 
 #[derive(Debug, StructOpt)]
@@ -27,38 +25,13 @@ pub(crate) struct Args {
     pub metadata: Option<String>,
 
     /// Path to the manifest to upgrade
-    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
-    pub(crate) manifest_path: Option<PathBuf>,
+    #[structopt(flatten)]
+    pub(crate) manifest: clap_cargo::Manifest,
 
-    /// Package id of the crate to change the version of.
-    #[structopt(
-        long = "package",
-        short = "p",
-        value_name = "pkgid",
-        conflicts_with = "path",
-        conflicts_with = "all",
-        conflicts_with = "workspace"
-    )]
-    pub(crate) pkgid: Option<String>,
-
-    /// Modify all packages in the workspace.
-    #[structopt(
-        long = "all",
-        help = "[deprecated in favor of `--workspace`]",
-        conflicts_with = "workspace",
-        conflicts_with = "pkgid"
-    )]
-    pub(crate) all: bool,
-
-    /// Modify all packages in the workspace.
-    #[structopt(long = "workspace", conflicts_with = "all", conflicts_with = "pkgid")]
-    pub(crate) workspace: bool,
+    #[structopt(flatten)]
+    pub(crate) workspace: clap_cargo::Workspace,
 
     /// Print changes to be made without making them.
     #[structopt(long = "dry-run")]
     pub(crate) dry_run: bool,
-
-    /// Crates to exclude and not modify.
-    #[structopt(long)]
-    pub(crate) exclude: Vec<String>,
 }

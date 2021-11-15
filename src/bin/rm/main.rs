@@ -17,7 +17,7 @@ extern crate error_chain;
 use cargo_edit::{manifest_from_pkgid, LocalManifest};
 use std::borrow::Cow;
 use std::io::Write;
-use std::path::PathBuf;
+
 use std::process;
 use structopt::{clap::AppSettings, StructOpt};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -58,17 +58,11 @@ struct Args {
     build: bool,
 
     /// Path to the manifest to remove a dependency from.
-    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
-    manifest_path: Option<PathBuf>,
+    #[structopt(flatten)]
+    manifest: clap_cargo::Manifest,
 
-    /// Package id of the crate to remove this dependency from.
-    #[structopt(
-        long = "package",
-        short = "p",
-        value_name = "pkgid",
-        conflicts_with = "path"
-    )]
-    pkgid: Option<String>,
+    #[structopt(flatten)]
+    workspace: clap_cargo::Workspace,
 
     /// Do not print any output in case of success.
     #[structopt(long = "quiet", short = "q")]
@@ -103,11 +97,11 @@ fn print_msg(name: &str, section: &str) -> Result<()> {
 }
 
 fn handle_rm(args: &Args) -> Result<()> {
-    let manifest_path = if let Some(ref pkgid) = args.pkgid {
-        let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
+    let manifest_path = if !args.workspace.package.is_empty() {
+        let pkg = manifest_from_pkgid(args.manifest.manifest_path.as_deref(), &args.workspace.package[0])?;
         Cow::Owned(Some(pkg.manifest_path.into_std_path_buf()))
     } else {
-        Cow::Borrowed(&args.manifest_path)
+        Cow::Borrowed(&args.manifest.manifest_path)
     };
     let mut manifest = LocalManifest::find(&manifest_path)?;
     let deps = &args.crates;

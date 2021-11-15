@@ -35,7 +35,7 @@ pub struct Args {
     pub crates: Vec<String>,
 
     /// Rename a dependency in Cargo.toml,
-    /// https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml.
+    /// <https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml>.
     /// Only works when specifying a single dependency.
     #[structopt(long = "rename", short = "r")]
     pub rename: Option<String>,
@@ -85,17 +85,11 @@ pub struct Args {
     pub optional: bool,
 
     /// Path to the manifest to add a dependency to.
-    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
-    pub manifest_path: Option<PathBuf>,
+    #[structopt(flatten)]
+    pub manifest: clap_cargo::Manifest,
 
-    /// Package id of the crate to add this dependency to.
-    #[structopt(
-        long = "package",
-        short = "p",
-        value_name = "pkgid",
-        conflicts_with = "path"
-    )]
-    pub pkgid: Option<String>,
+    #[structopt(flatten)]
+    pub workspace: clap_cargo::Workspace,
 
     /// Choose method of semantic version upgrade.  Must be one of "none" (exact version, `=`
     /// modifier), "patch" (`~` modifier), "minor" (`^` modifier), "all" (`>=`), or "default" (no
@@ -117,14 +111,9 @@ pub struct Args {
     #[structopt(long = "allow-prerelease")]
     pub allow_prerelease: bool,
 
-    /// Space-separated list of features to add. For an alternative approach to
-    /// enabling features, consider installing the `cargo-feature` utility.
-    #[structopt(long = "features", number_of_values = 1)]
-    pub features: Option<Vec<String>>,
-
-    /// Set `default-features = false` for the added dependency.
-    #[structopt(long = "no-default-features")]
-    pub no_default_features: bool,
+    /// For an alternative approach to enabling features, consider installing `cargo-feature`.
+    #[structopt(flatten)]
+    pub features: clap_cargo::Features,
 
     /// Do not print any output in case of success.
     #[structopt(long = "quiet", short = "q")]
@@ -229,7 +218,10 @@ impl Args {
                 dependency = dependency.set_version(parse_version_req(version)?);
             }
             let registry_url = if let Some(registry) = &self.registry {
-                Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
+                Some(registry_url(
+                    &find(&self.manifest.manifest_path)?,
+                    Some(registry),
+                )?)
             } else {
                 None
             };
@@ -262,7 +254,7 @@ impl Args {
                     dependency = get_latest_dependency(
                         crate_name.name(),
                         self.allow_prerelease,
-                        &find(&self.manifest_path)?,
+                        &find(&self.manifest.manifest_path)?,
                         &registry_url,
                     )?;
                     let v = format!(
@@ -287,7 +279,7 @@ impl Args {
 
     /// Build dependencies from arguments
     pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
-        let workspace_members = workspace_members(self.manifest_path.as_deref())?;
+        let workspace_members = workspace_members(self.manifest.manifest_path.as_deref())?;
 
         if self.crates.len() > 1
             && (self.git.is_some() || self.path.is_some() || self.vers.is_some())
@@ -299,7 +291,7 @@ impl Args {
             return Err(ErrorKind::MultipleCratesWithRename.into());
         }
 
-        if self.crates.len() > 1 && self.features.is_some() {
+        if self.crates.len() > 1 && !self.features.features.is_empty() {
             return Err(ErrorKind::MultipleCratesWithFeatures.into());
         }
 
@@ -310,8 +302,12 @@ impl Args {
                     .map(|x| {
                         let mut x = x
                             .set_optional(self.optional)
-                            .set_features(self.features.clone())
-                            .set_default_features(!self.no_default_features);
+                            .set_features(if self.features.features.is_empty() {
+                                None
+                            } else {
+                                Some(self.features.features.clone())
+                            })
+                            .set_default_features(!self.features.no_default_features);
                         if let Some(ref rename) = self.rename {
                             x = x.set_rename(rename);
                         }
@@ -347,16 +343,15 @@ impl Default for Args {
             path: None,
             target: None,
             optional: false,
-            manifest_path: None,
-            pkgid: None,
             upgrade: "minor".to_string(),
             allow_prerelease: false,
-            features: None,
-            no_default_features: false,
             quiet: false,
             offline: true,
             sort: false,
             registry: None,
+            manifest: Default::default(),
+            workspace: Default::default(),
+            features: Default::default(),
         }
     }
 }

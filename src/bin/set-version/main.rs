@@ -57,12 +57,16 @@ fn process(args: Args) -> Result<()> {
         target,
         bump,
         metadata,
-        manifest_path,
-        pkgid,
-        all,
+        manifest: clap_cargo::Manifest { manifest_path, .. },
+        workspace:
+            clap_cargo::Workspace {
+                package: pkgid,
+                workspace,
+                all,
+                exclude,
+                ..
+            },
         dry_run,
-        workspace,
-        exclude,
     } = args;
 
     let target = match (target, bump) {
@@ -75,11 +79,12 @@ fn process(args: Args) -> Result<()> {
     if all {
         deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
-    let all = workspace || all;
+    let all = workspace || all || LocalManifest::find(&None)?.is_virtual();
+
     let manifests = if all {
         Manifests::get_all(&manifest_path)
-    } else if let Some(ref pkgid) = pkgid {
-        Manifests::get_pkgid(manifest_path.as_deref(), pkgid)
+    } else if let Some(id) = pkgid.get(0) {
+        Manifests::get_pkgid(manifest_path.as_deref(), id)
     } else {
         Manifests::get_local_one(&manifest_path)
     }?;
