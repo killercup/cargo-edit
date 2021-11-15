@@ -69,6 +69,7 @@ toml_edit = { version = "0.4.0", features = ["easy"] }
 url = "2.1.1"
 ureq = { version = "1.5.1", default-features = false, features = ["tls", "json", "socks"] }
 pathdiff = "0.2"
+clap-cargo = "0.6.1"
 
 [dependencies.semver]
 features = ["serde"]

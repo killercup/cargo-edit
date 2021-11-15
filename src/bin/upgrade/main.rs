@@ -70,33 +70,13 @@ struct Args {
     dependency: Vec<String>,
 
     /// Path to the manifest to upgrade
-    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
-    manifest_path: Option<PathBuf>,
-
-    /// Package id of the crate to add this dependency to.
-    #[structopt(
-        long = "package",
-        short = "p",
-        value_name = "pkgid",
-        conflicts_with = "path",
-        conflicts_with = "all",
-        conflicts_with = "workspace"
-    )]
-    pkgid: Option<String>,
-
-    /// Upgrade all packages in the workspace.
-    #[structopt(
-        long = "all",
-        help = "[deprecated in favor of `--workspace`]",
-        conflicts_with = "workspace",
-        conflicts_with = "pkgid"
-    )]
-    all: bool,
+    #[structopt(flatten)]
+    manifest: clap_cargo::Manifest,
 
     /// Upgrade all packages in the workspace.
     /// Implied by default when running in a directory with virtual manifest.
-    #[structopt(long = "workspace", conflicts_with = "all", conflicts_with = "pkgid")]
-    workspace: bool,
+    #[structopt(flatten)]
+    workspace: clap_cargo::Workspace,
 
     /// Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha').
     #[structopt(long = "allow-prerelease")]
@@ -117,10 +97,6 @@ struct Args {
     /// Upgrade all packages to the version in the lockfile.
     #[structopt(long = "to-lockfile", conflicts_with = "dependency")]
     pub to_lockfile: bool,
-
-    /// Crates to exclude and not upgrade.
-    #[structopt(long)]
-    exclude: Vec<String>,
 }
 
 /// A collection of manifests.
@@ -453,15 +429,19 @@ impl DesiredUpgrades {
 fn process(args: Args) -> Result<()> {
     let Args {
         dependency,
-        manifest_path,
-        pkgid,
-        all,
+        manifest: clap_cargo::Manifest { manifest_path, .. },
+        workspace:
+            clap_cargo::Workspace {
+                package: pkgid,
+                workspace,
+                all,
+                exclude,
+                ..
+            },
         allow_prerelease,
         dry_run,
         skip_compatible,
         to_lockfile,
-        workspace,
-        exclude,
         ..
     } = args;
 
@@ -479,8 +459,8 @@ fn process(args: Args) -> Result<()> {
 
     let manifests = if all {
         Manifests::get_all(&manifest_path)
-    } else if let Some(ref pkgid) = pkgid {
-        Manifests::get_pkgid(manifest_path.as_deref(), pkgid)
+    } else if !pkgid.is_empty() {
+        Manifests::get_pkgid(manifest_path.as_deref(), &pkgid[0])
     } else {
         Manifests::get_local_one(&manifest_path)
     }?;

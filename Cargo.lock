@@ -156,6 +156,7 @@ dependencies = [
  "assert_fs",
  "atty",
  "cargo_metadata",
+ "clap-cargo",
  "crates-index",
  "dirs-next",
  "dunce",
@@ -236,6 +237,16 @@ dependencies = [
  "textwrap",
  "unicode-width",
  "vec_map",
+]
+
+[[package]]
+name = "clap-cargo"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c577d31f9cb28e3d7a1a8ed7df1e45e58c5446f80e446fcdebe0a18261d68135"
+dependencies = [
+ "doc-comment",
+ "structopt",
 ]
 
 [[package]]
