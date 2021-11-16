@@ -13,6 +13,9 @@ pub struct Dependency {
     /// If the dependency is renamed, this is the new name for the dependency
     /// as a string.  None if it is not renamed.
     rename: Option<String>,
+
+    /// Features that are exposed by the dependency
+    pub available_features: Vec<String>,
 }
 
 impl Dependency {
@@ -39,6 +42,12 @@ impl Dependency {
             path: old_path,
             registry: old_registry,
         };
+        self
+    }
+
+    /// Set the available features of the dependency to a given vec
+    pub fn set_available_features(mut self, available_features: Vec<String>) -> Dependency {
+        self.available_features = available_features;
         self
     }
 
@@ -254,6 +263,7 @@ impl Default for Dependency {
                 path: None,
                 registry: None,
             },
+            available_features: vec![],
         }
     }
 }

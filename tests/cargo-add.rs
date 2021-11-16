@@ -1304,7 +1304,7 @@ fn adds_dependency_with_target_cfg() {
 }
 
 #[test]
-fn adds_features_dependency() {
+fn lists_features_github_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -1325,6 +1325,67 @@ fn adds_features_dependency() {
     let toml = get_toml(&manifest);
     let val = toml["dependencies"]["cargo-edit"]["features"][0].as_str();
     assert_eq!(val, Some("jui"));
+}
+
+#[test]
+fn lists_features_dependency_with_path() {
+    let (_crate_tmpdir, crate_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (dep_tmpdir, _dep_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.features");
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "your-face",
+            "--path",
+            &format!("{}", dep_tmpdir.path().display()),
+            &format!("--manifest-path={}", crate_manifest),
+            "--inline",
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .stderr(predicates::str::contains("Optional features:"))
+        .stderr(predicates::str::contains("nose"))
+        .stderr(predicates::str::contains("mouth"))
+        .stderr(predicates::str::contains("eyes"));
+}
+
+#[test]
+fn lists_features_path_dependency() {
+    let (_crate_tmpdir, crate_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (dep_tmpdir, _dep_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.features");
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            &format!("{}", dep_tmpdir.path().display()),
+            &format!("--manifest-path={}", crate_manifest),
+            "--inline",
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .stderr(predicates::str::contains("Optional features:"))
+        .stderr(predicates::str::contains("nose"))
+        .stderr(predicates::str::contains("mouth"))
+        .stderr(predicates::str::contains("eyes"));
+}
+
+#[test]
+fn lists_features_plain_dependency() {
+    let (_tmpdir, crate_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&[
+            "add",
+            "your-face",
+            &format!("--manifest-path={}", crate_manifest),
+            "--inline",
+        ])
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .stderr(predicates::str::contains("Optional features:"))
+        .stderr(predicates::str::contains("nose"))
+        .stderr(predicates::str::contains("mouth"))
+        .stderr(predicates::str::contains("eyes"));
 }
 
 #[test]

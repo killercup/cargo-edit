@@ -39,7 +39,15 @@ pub fn get_latest_dependency(
             }
         };
 
-        return Ok(Dependency::new(crate_name).set_version(&new_version));
+        let features = if crate_name == "your-face" {
+            vec!["nose".to_string(), "mouth".to_string(), "eyes".to_string()]
+        } else {
+            vec![]
+        };
+
+        return Ok(Dependency::new(crate_name)
+            .set_version(&new_version)
+            .set_available_features(features));
     }
 
     if crate_name.is_empty() {
@@ -161,7 +169,12 @@ fn read_latest_version(
 
     let name = &latest.name;
     let version = latest.version.to_string();
-    Ok(Dependency::new(name).set_version(&version))
+    let mut available_features = latest.features.clone();
+    available_features.sort();
+    available_features.dedup();
+    Ok(Dependency::new(name)
+        .set_version(&version)
+        .set_available_features(available_features))
 }
 
 /// update registry index for given project
@@ -219,7 +232,7 @@ fn registry_blocked_message(output: &mut StandardStream) -> Result<()> {
 /// Load Cargo.toml in a local path
 ///
 /// This will fail, when Cargo.toml is not present in the root of the path.
-pub fn get_manifest_from_path(path: &Path) -> Result<LocalManifest> {
+pub fn ifest_from_path(path: &Path) -> Result<LocalManifest> {
     let cargo_file = path.join("Cargo.toml");
     LocalManifest::try_new(&cargo_file).chain_err(|| "Unable to open local Cargo.toml")
 }
@@ -230,11 +243,11 @@ pub fn get_manifest_from_path(path: &Path) -> Result<LocalManifest> {
 /// - there is no Internet connection,
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from the server is an error or in an incorrect format.
-pub fn get_manifest_from_url(url: &str) -> Result<Option<Manifest>> {
+pub fn ifest_from_url(url: &str) -> Result<Option<Manifest>> {
     let manifest = if is_github_url(url) {
-        Some(get_manifest_from_github(url)?)
+        Some(ifest_from_github(url)?)
     } else if is_gitlab_url(url) {
-        Some(get_manifest_from_gitlab(url)?)
+        Some(ifest_from_gitlab(url)?)
     } else {
         None
     };
@@ -249,10 +262,10 @@ fn is_gitlab_url(url: &str) -> bool {
     url.contains("https://gitlab.com")
 }
 
-fn get_manifest_from_github(repo: &str) -> Result<Manifest> {
+fn ifest_from_github(repo: &str) -> Result<Manifest> {
     let re =
         Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
-    get_manifest_from_repository(repo, &re, |user, repo| {
+    ifest_from_repository(repo, &re, |user, repo| {
         format!(
             "https://raw.githubusercontent.com/{user}/{repo}/master/Cargo.toml",
             user = user,
@@ -261,10 +274,10 @@ fn get_manifest_from_github(repo: &str) -> Result<Manifest> {
     })
 }
 
-fn get_manifest_from_gitlab(repo: &str) -> Result<Manifest> {
+fn ifest_from_gitlab(repo: &str) -> Result<Manifest> {
     let re =
         Regex::new(r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
-    get_manifest_from_repository(repo, &re, |user, repo| {
+    ifest_from_repository(repo, &re, |user, repo| {
         format!(
             "https://gitlab.com/{user}/{repo}/raw/master/Cargo.toml",
             user = user,
@@ -273,7 +286,7 @@ fn get_manifest_from_gitlab(repo: &str) -> Result<Manifest> {
     })
 }
 
-fn get_manifest_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<Manifest>
+fn ifest_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<Manifest>
 where
     T: Fn(&str, &str) -> String,
 {
