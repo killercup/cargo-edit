@@ -75,6 +75,7 @@ struct CrateVersion {
     name: String,
     version: semver::Version,
     yanked: bool,
+    available_features: Vec<String>,
 }
 
 /// Fuzzy query crate from registry index
@@ -104,6 +105,7 @@ fn fuzzy_query_registry_index(
                     name: v.name().to_owned(),
                     version: v.version().parse()?,
                     yanked: v.is_yanked(),
+                    available_features: v.features().keys().cloned().collect(),
                 })
             })
             .collect();
@@ -169,7 +171,9 @@ fn read_latest_version(
 
     let name = &latest.name;
     let version = latest.version.to_string();
-    Ok(Dependency::new(name).set_version(&version))
+    Ok(Dependency::new(name)
+        .set_version(&version)
+        .set_available_features(latest.available_features.clone()))
 }
 
 /// update registry index for given project
@@ -357,11 +361,13 @@ fn get_latest_stable_version() {
             name: "foo".into(),
             version: "0.6.0-alpha".parse().unwrap(),
             yanked: false,
+            available_features: vec![],
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
             yanked: false,
+            available_features: vec![],
         },
     ];
     assert_eq!(
@@ -380,11 +386,13 @@ fn get_latest_unstable_or_stable_version() {
             name: "foo".into(),
             version: "0.6.0-alpha".parse().unwrap(),
             yanked: false,
+            available_features: vec![],
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
             yanked: false,
+            available_features: vec![],
         },
     ];
     assert_eq!(
@@ -403,11 +411,13 @@ fn get_latest_version_with_yanked() {
             name: "treexml".into(),
             version: "0.3.1".parse().unwrap(),
             yanked: true,
+            available_features: vec![],
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
             yanked: false,
+            available_features: vec![],
         },
     ];
     assert_eq!(
@@ -426,11 +436,13 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
             name: "treexml".into(),
             version: "0.3.1".parse().unwrap(),
             yanked: true,
+            available_features: vec![],
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
             yanked: true,
+            available_features: vec![],
         },
     ];
     assert!(read_latest_version(&versions, false).is_err());
