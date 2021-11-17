@@ -177,8 +177,13 @@ impl Args {
         workspace_members: &[Package],
     ) -> Result<Dependency> {
         let crate_name = CrateName::new(crate_name);
+        let registry_url = if let Some(registry) = &self.registry {
+            Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
+        } else {
+            None
+        };
 
-        if let Some(mut dependency) = crate_name.parse_as_version()? {
+        let mut dependency = if let Some(mut dependency) = crate_name.parse_as_version()? {
             // crate specifier includes a version (e.g. `docopt@0.8`)
             if let Some(ref url) = self.git {
                 let url = url.clone();
@@ -194,7 +199,7 @@ impl Args {
                 dependency = dependency.set_path(dep_path);
             }
 
-            Ok(dependency)
+            dependency
         } else if let Some(mut dependency) = crate_name.parse_crate_name_from_uri()? {
             // dev-dependencies do not need the version populated
             if !self.dev {
@@ -211,14 +216,10 @@ impl Args {
                         );
 
                         dependency = dependency.set_version(&v);
-
-                        if let Some(registry) = &self.registry {
-                            dependency = dependency.set_registry(registry);
-                        }
                     }
                 }
             }
-            Ok(dependency)
+            dependency
         } else {
             let mut dependency = Dependency::new(crate_name.name());
 
@@ -245,11 +246,6 @@ impl Args {
                 if let Some(version) = &self.vers {
                     dependency = dependency.set_version(parse_version_req(version)?);
                 }
-                let registry_url = if let Some(registry) = &self.registry {
-                    Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
-                } else {
-                    None
-                };
 
                 if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
                     // Only special-case workspaces when the user doesn't provide any extra
@@ -292,16 +288,16 @@ impl Args {
                         dependency = dependency.set_version(&v);
                     }
                 }
-
-                // Set the registry after getting the latest version as
-                // get_latest_dependency returns a registry-less Dependency
-                if let Some(registry) = &self.registry {
-                    dependency = dependency.set_registry(registry);
-                }
             }
 
-            Ok(dependency)
+            dependency
+        };
+
+        if let Some(registry) = &self.registry {
+            dependency = dependency.set_registry(registry);
         }
+
+        Ok(dependency)
     }
 
     /// Build dependencies from arguments
