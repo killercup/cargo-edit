@@ -220,15 +220,17 @@ fn registry_blocked_message(output: &mut StandardStream) -> Result<()> {
 ///
 /// The name will be returned as a string. This will fail, when
 /// Cargo.toml is not present in the root of the path.
-pub fn get_crate_name_from_path(path: &str) -> Result<String> {
-    let cargo_file = Path::new(path).join("Cargo.toml");
-    LocalManifest::try_new(&cargo_file)
-        .chain_err(|| "Unable to open local Cargo.toml")
-        .and_then(|ref manifest| {
-            manifest
-                .package_name()
-                .map(std::string::ToString::to_string)
-        })
+pub fn get_crate_name_from_path(path: &Path) -> Result<String> {
+    get_manifest_from_path(path).and_then(|ref manifest| {
+        manifest
+            .package_name()
+            .map(std::string::ToString::to_string)
+    })
+}
+
+fn get_manifest_from_path(path: &Path) -> Result<LocalManifest> {
+    let cargo_file = path.join("Cargo.toml");
+    LocalManifest::try_new(&cargo_file).chain_err(|| "Unable to open local Cargo.toml")
 }
 
 /// Query crate name by accessing a github repo Cargo.toml
@@ -239,9 +241,17 @@ pub fn get_crate_name_from_path(path: &str) -> Result<String> {
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from github is an error or in an incorrect format.
 pub fn get_crate_name_from_github(repo: &str) -> Result<String> {
+    get_manifest_from_github(repo).and_then(|ref manifest| {
+        manifest
+            .package_name()
+            .map(std::string::ToString::to_string)
+    })
+}
+
+fn get_manifest_from_github(repo: &str) -> Result<Manifest> {
     let re =
         Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
-    get_crate_name_from_repository(repo, &re, |user, repo| {
+    get_manifest_from_repository(repo, &re, |user, repo| {
         format!(
             "https://raw.githubusercontent.com/{user}/{repo}/master/Cargo.toml",
             user = user,
@@ -258,9 +268,17 @@ pub fn get_crate_name_from_github(repo: &str) -> Result<String> {
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from gitlab is an error or in an incorrect format.
 pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
+    get_manifest_from_gitlab(repo).and_then(|ref manifest| {
+        manifest
+            .package_name()
+            .map(std::string::ToString::to_string)
+    })
+}
+
+fn get_manifest_from_gitlab(repo: &str) -> Result<Manifest> {
     let re =
         Regex::new(r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
-    get_crate_name_from_repository(repo, &re, |user, repo| {
+    get_manifest_from_repository(repo, &re, |user, repo| {
         format!(
             "https://gitlab.com/{user}/{repo}/raw/master/Cargo.toml",
             user = user,
@@ -269,7 +287,7 @@ pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
     })
 }
 
-fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
+fn get_manifest_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<Manifest>
 where
     T: Fn(&str, &str) -> String,
 {
@@ -279,13 +297,8 @@ where
         .and_then(|cap| match (cap.get(1), cap.get(2)) {
             (Some(user), Some(repo)) => {
                 let url = url_template(user.as_str(), repo.as_str());
-                let data: Result<Manifest> = get_cargo_toml_from_git_url(&url)
-                    .and_then(|m| m.parse().chain_err(|| ErrorKind::ParseCargoToml));
-                data.and_then(|ref manifest| {
-                    manifest
-                        .package_name()
-                        .map(std::string::ToString::to_string)
-                })
+                get_cargo_toml_from_git_url(&url)
+                    .and_then(|m| m.parse().chain_err(|| ErrorKind::ParseCargoToml))
             }
             _ => Err("Git repo url seems incomplete".into()),
         })
