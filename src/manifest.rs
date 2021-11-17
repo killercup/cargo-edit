@@ -94,6 +94,23 @@ impl Manifest {
 
         sections
     }
+
+    /// returns features exposed by this manifest
+    pub fn features(&self) -> Result<Vec<String>> {
+        match self.data.as_table().get("features") {
+            None => Ok(vec![]),
+            Some(item) => match item {
+                toml_edit::Item::None => Ok(vec![]),
+                toml_edit::Item::Table(t) => Ok(t
+                    .get_values()
+                    .iter()
+                    .map(|(keys, _val)| keys.iter().map(|k| k.to_string()))
+                    .flatten()
+                    .collect()),
+                _ => Err(ErrorKind::InvalidCargoConfig.into()),
+            },
+        }
+    }
 }
 
 impl str::FromStr for Manifest {

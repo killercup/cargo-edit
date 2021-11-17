@@ -39,7 +39,15 @@ pub fn get_latest_dependency(
             }
         };
 
-        return Ok(Dependency::new(crate_name).set_version(&new_version));
+        let features = if crate_name == "your-face" {
+            vec!["nose".to_string(), "mouth".to_string(), "eyes".to_string()]
+        } else {
+            vec![]
+        };
+
+        return Ok(Dependency::new(crate_name)
+            .set_version(&new_version)
+            .set_available_features(features));
     }
 
     if crate_name.is_empty() {
