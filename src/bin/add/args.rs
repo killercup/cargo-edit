@@ -2,10 +2,10 @@
 
 #![allow(clippy::bool_assert_comparison)]
 
-use cargo_edit::{find, registry_url, workspace_members, Dependency};
+use cargo_edit::{find, get_manifest_from_path, registry_url, workspace_members, Dependency};
 use cargo_edit::{get_latest_dependency, CrateName};
-use cargo_metadata::{MetadataCommand, Package};
-use std::path::{Path, PathBuf};
+use cargo_metadata::Package;
+use std::path::PathBuf;
 use structopt::{clap::AppSettings, StructOpt};
 
 use crate::errors::*;
@@ -141,40 +141,11 @@ pub struct Args {
     /// Registry to use
     #[structopt(long = "registry", conflicts_with = "git", conflicts_with = "path")]
     pub registry: Option<String>,
-
-    /// print available features inline. Useful for testing
-    #[structopt(long = "inline")]
-    pub inline: bool,
 }
 
 fn parse_version_req(s: &str) -> Result<&str> {
     semver::VersionReq::parse(s).chain_err(|| "Invalid dependency version requirement")?;
     Ok(s)
-}
-
-pub fn get_featues_from_manifest_path(manifest: &Path) -> Vec<String> {
-    let cargo_path = if manifest.ends_with("Cargo.toml") {
-        manifest.into()
-    } else {
-        manifest.join("Cargo.toml")
-    };
-    //TODO: be better about error handling
-    let dep_package = MetadataCommand::new()
-        .no_deps()
-        .manifest_path(&cargo_path)
-        .exec()
-        .ok()
-        .and_then(|m| m.packages.get(0).cloned());
-
-    match dep_package {
-        Some(pkg) => {
-            let mut tmp = pkg.features.keys().cloned().collect::<Vec<String>>();
-            tmp.sort();
-            tmp.dedup();
-            tmp
-        }
-        None => vec![],
-    }
 }
 
 impl Args {
@@ -213,7 +184,11 @@ impl Args {
             }
 
             if let Some(ref path) = self.path {
-                dependency = dependency.set_path(dunce::canonicalize(path)?);
+                let dep_path = dunce::canonicalize(path)?;
+                let manifest = get_manifest_from_path(&dep_path)?;
+
+                dependency = dependency.set_available_features(manifest.features());
+                dependency = dependency.set_path(dep_path);
             }
 
             Ok(dependency)
@@ -234,9 +209,9 @@ impl Args {
 
                         dependency = dependency.set_version(&v);
                     }
-                    let available_features = get_featues_from_manifest_path(&dep_path);
+                    let manifest = get_manifest_from_path(&dep_path)?;
 
-                    dependency = dependency.set_available_features(available_features);
+                    dependency = dependency.set_available_features(manifest.features());
 
                     if let Some(registry) = &self.registry {
                         dependency = dependency.set_registry(registry);
@@ -252,11 +227,14 @@ impl Args {
                 assert!(self.path.is_none());
                 assert!(self.registry.is_none());
                 dependency = dependency.set_git(repo, self.branch.clone());
-<<<<<<< HEAD
             } else {
                 if let Some(path) = &self.path {
                     assert!(self.registry.is_none());
-                    dependency = dependency.set_path(dunce::canonicalize(path)?);
+                    let dep_path = dunce::canonicalize(path)?;
+                    let manifest = get_manifest_from_path(&dep_path)?;
+
+                    dependency = dependency.set_available_features(manifest.features());
+                    dependency = dependency.set_path(dep_path);
                 }
                 if let Some(version) = &self.vers {
                     dependency = dependency.set_version(parse_version_req(version)?);
@@ -298,46 +276,6 @@ impl Args {
                             &find(&self.manifest_path)?,
                             &registry_url,
                         )?;
-=======
-            }
-            if let Some(path) = &self.path {
-                dependency = dependency.set_path(dunce::canonicalize(path)?);
-                dependency =
-                    dependency.set_available_features(get_featues_from_manifest_path(path));
-            }
-            if let Some(version) = &self.vers {
-                dependency = dependency.set_version(parse_version_req(version)?);
-            }
-            let registry_url = if let Some(registry) = &self.registry {
-                Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
-            } else {
-                None
-            };
-
-            if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
-                // Only special-case workspaces when the user doesn't provide any extra
-                // information, otherwise, trust the user.
-                if let Some(package) = workspace_members
-                    .iter()
-                    .find(|p| p.name == crate_name.name())
-                {
-                    dependency = dependency.set_path(
-                        package
-                            .manifest_path
-                            .parent()
-                            .expect("at least parent dir")
-                            .as_std_path()
-                            .to_owned(),
-                    );
-
-                    let available_features =
-                        get_featues_from_manifest_path(dependency.path().unwrap());
-
-                    dependency = dependency.set_available_features(available_features);
-
-                    // dev-dependencies do not need the version populated
-                    if !self.dev {
->>>>>>> de411630 (list available features when adding a dependency through cargo-add)
                         let v = format!(
                             "{prefix}{version}",
                             prefix = self.get_upgrade_prefix(),
@@ -432,7 +370,6 @@ impl Default for Args {
             offline: true,
             sort: false,
             registry: None,
-            inline: false,
         }
     }
 }

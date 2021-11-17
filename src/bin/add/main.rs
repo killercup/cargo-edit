@@ -68,7 +68,7 @@ mod errors {
 
 use crate::errors::*;
 
-fn print_msg(dep: &Dependency, section: &[String], optional: bool, inline: bool) -> Result<()> {
+fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
     let colorchoice = if atty::is(atty::Stream::Stdout) {
         ColorChoice::Auto
     } else {
@@ -95,28 +95,14 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool, inline: bool)
     };
     write!(output, " {}", section)?;
     if let Some(f) = &dep.features {
-        if inline {
-            write!(output, " with features: {:?}", f)?;
-        } else {
-            writeln!(output, " with features: {:?}", f)?;
-        };
+        writeln!(output, " with features: {:?}", f)?;
     }
-    if !inline {
-        writeln!(output, ". ")?;
-    } else {
-        write!(output, ". ")?;
-    };
+    writeln!(output, ". ")?;
 
     if !&dep.available_features.is_empty() {
-        if inline {
-            write!(output, " Optional features: [")?;
-            write!(output, "{}", &dep.available_features.join(", "))?;
-            write!(output, "]")?
-        } else {
-            writeln!(output, "{:>13}Optional features: ", " ")?;
-            for feat in dep.available_features.iter() {
-                writeln!(output, "{:>13}- {}", " ", feat)?;
-            }
+        writeln!(output, "{:>13}Available features: ", " ")?;
+        for feat in dep.available_features.iter() {
+            writeln!(output, "{:>13}- {}", " ", feat)?;
         }
     }
     Ok(())
@@ -166,7 +152,7 @@ fn handle_add(args: &Args) -> Result<()> {
     deps.iter()
         .map(|dep| {
             if !args.quiet {
-                print_msg(dep, &args.get_section(), args.optional, args.inline)?;
+                print_msg(dep, &args.get_section(), args.optional)?;
             }
             if let Some(path) = dep.path() {
                 if path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
