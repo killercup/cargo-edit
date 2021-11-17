@@ -20,145 +20,6 @@ pub struct Manifest {
     pub data: toml_edit::Document,
 }
 
-/// If a manifest is specified, return that one, otherise perform a manifest search starting from
-/// the current directory.
-/// If a manifest is specified, return that one. If a path is specified, perform a manifest search
-/// starting from there. If nothing is specified, start searching from the current directory
-/// (`cwd`).
-pub fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
-    match *specified {
-        Some(ref path)
-            if fs::metadata(&path)
-                .chain_err(|| "Failed to get cargo file metadata")?
-                .is_file() =>
-        {
-            Ok(path.to_owned())
-        }
-        Some(ref path) => search(path),
-        None => search(&env::current_dir().chain_err(|| "Failed to get current directory")?),
-    }
-}
-
-/// Search for Cargo.toml in this directory and recursively up the tree until one is found.
-fn search(dir: &Path) -> Result<PathBuf> {
-    let manifest = dir.join(MANIFEST_FILENAME);
-
-    if fs::metadata(&manifest).is_ok() {
-        Ok(manifest)
-    } else {
-        dir.parent()
-            .ok_or_else(|| ErrorKind::MissingManifest.into())
-            .and_then(search)
-    }
-}
-
-fn merge_inline_table(old_dep: &mut toml_edit::Item, new: &toml_edit::Item) {
-    for (k, v) in new
-        .as_inline_table()
-        .expect("expected an inline table")
-        .iter()
-    {
-        old_dep[k] = toml_edit::value(v.clone());
-    }
-}
-
-fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
-    item.is_str() || item.as_table_like().map(|t| t.len() == 1).unwrap_or(false)
-}
-/// Merge a new dependency into an old entry. See `Dependency::to_toml` for what the format of the
-/// new dependency will be.
-fn merge_dependencies(old_dep: &mut toml_edit::Item, new_toml: toml_edit::Item) {
-    assert!(!old_dep.is_none());
-
-    if str_or_1_len_table(old_dep) {
-        // The old dependency is just a version/git/path. We are safe to overwrite.
-        *old_dep = new_toml;
-    } else if old_dep.is_table_like() {
-        for key in &["version", "path", "git"] {
-            // remove this key/value pairs
-            old_dep[key] = toml_edit::Item::None;
-        }
-        if let Some(name) = new_toml.as_str() {
-            old_dep["version"] = toml_edit::value(name);
-        } else {
-            merge_inline_table(old_dep, &new_toml);
-        }
-    } else {
-        unreachable!("Invalid old dependency type");
-    }
-
-    if let Some(t) = old_dep.as_inline_table_mut() {
-        t.fmt()
-    }
-}
-
-fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
-    if str_or_1_len_table(old_dep) {
-        Ok(old_dep.clone())
-    } else if old_dep.is_table_like() {
-        let version = old_dep["version"].clone();
-        if version.is_none() {
-            Err("Missing version field".into())
-        } else {
-            Ok(version)
-        }
-    } else {
-        unreachable!("Invalid old dependency type")
-    }
-}
-
-fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<bool> {
-    let old_version = VersionReq::parse(old_version).chain_err(|| {
-        ErrorKind::ParseVersion(dependency.name.to_string(), old_version.to_string())
-    })?;
-
-    let current_version = match dependency.version() {
-        Some(current_version) => current_version,
-        None => return Ok(false),
-    };
-
-    let current_version = Version::parse(current_version).chain_err(|| {
-        ErrorKind::ParseVersion(dependency.name.to_string(), current_version.into())
-    })?;
-
-    Ok(old_version.matches(&current_version))
-}
-
-/// Print a message if the new dependency version is different from the old one.
-fn print_upgrade_if_necessary(
-    crate_name: &str,
-    old_dep: &toml_edit::Item,
-    new_dep: &toml_edit::Item,
-) -> Result<()> {
-    let old_version = get_version(old_dep)?;
-    let new_version = get_version(new_dep)?;
-
-    if let (Some(old_version), Some(new_version)) = (old_version.as_str(), new_version.as_str()) {
-        if old_version == new_version {
-            return Ok(());
-        }
-        let bufwtr = BufferWriter::stderr(ColorChoice::Always);
-        let mut buffer = bufwtr.buffer();
-        buffer
-            .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-            .chain_err(|| "Failed to set output colour")?;
-        write!(&mut buffer, "    Upgrading ").chain_err(|| "Failed to write upgrade message")?;
-        buffer
-            .set_color(&ColorSpec::new())
-            .chain_err(|| "Failed to clear output colour")?;
-        writeln!(
-            &mut buffer,
-            "{} v{} -> v{}",
-            crate_name, old_version, new_version,
-        )
-        .chain_err(|| "Failed to write upgrade versions")?;
-        bufwtr
-            .print(&buffer)
-            .chain_err(|| "Failed to print upgrade message")?;
-    }
-    Ok(())
-}
-
 impl Manifest {
     /// Get the manifest's package name
     pub fn package_name(&self) -> Result<&str> {
@@ -531,6 +392,146 @@ impl LocalManifest {
     pub fn set_package_version(&mut self, version: &Version) {
         self.data["package"]["version"] = toml_edit::value(version.to_string());
     }
+}
+
+/// If a manifest is specified, return that one, otherise perform a manifest search starting from
+/// the current directory.
+/// If a manifest is specified, return that one. If a path is specified, perform a manifest search
+/// starting from there. If nothing is specified, start searching from the current directory
+/// (`cwd`).
+pub fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
+    match *specified {
+        Some(ref path)
+            if fs::metadata(&path)
+                .chain_err(|| "Failed to get cargo file metadata")?
+                .is_file() =>
+        {
+            Ok(path.to_owned())
+        }
+        Some(ref path) => search(path),
+        None => search(&env::current_dir().chain_err(|| "Failed to get current directory")?),
+    }
+}
+
+/// Search for Cargo.toml in this directory and recursively up the tree until one is found.
+fn search(dir: &Path) -> Result<PathBuf> {
+    let manifest = dir.join(MANIFEST_FILENAME);
+
+    if fs::metadata(&manifest).is_ok() {
+        Ok(manifest)
+    } else {
+        dir.parent()
+            .ok_or_else(|| ErrorKind::MissingManifest.into())
+            .and_then(search)
+    }
+}
+
+/// Merge a new dependency into an old entry. See `Dependency::to_toml` for what the format of the
+/// new dependency will be.
+fn merge_dependencies(old_dep: &mut toml_edit::Item, new_toml: toml_edit::Item) {
+    assert!(!old_dep.is_none());
+
+    if str_or_1_len_table(old_dep) {
+        // The old dependency is just a version/git/path. We are safe to overwrite.
+        *old_dep = new_toml;
+    } else if old_dep.is_table_like() {
+        for key in &["version", "path", "git"] {
+            // remove this key/value pairs
+            old_dep[key] = toml_edit::Item::None;
+        }
+        if let Some(name) = new_toml.as_str() {
+            old_dep["version"] = toml_edit::value(name);
+        } else {
+            merge_inline_table(old_dep, &new_toml);
+        }
+    } else {
+        unreachable!("Invalid old dependency type");
+    }
+
+    if let Some(t) = old_dep.as_inline_table_mut() {
+        t.fmt()
+    }
+}
+
+fn merge_inline_table(old_dep: &mut toml_edit::Item, new: &toml_edit::Item) {
+    for (k, v) in new
+        .as_inline_table()
+        .expect("expected an inline table")
+        .iter()
+    {
+        old_dep[k] = toml_edit::value(v.clone());
+    }
+}
+
+fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
+    if str_or_1_len_table(old_dep) {
+        Ok(old_dep.clone())
+    } else if old_dep.is_table_like() {
+        let version = old_dep["version"].clone();
+        if version.is_none() {
+            Err("Missing version field".into())
+        } else {
+            Ok(version)
+        }
+    } else {
+        unreachable!("Invalid old dependency type")
+    }
+}
+
+fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<bool> {
+    let old_version = VersionReq::parse(old_version).chain_err(|| {
+        ErrorKind::ParseVersion(dependency.name.to_string(), old_version.to_string())
+    })?;
+
+    let current_version = match dependency.version() {
+        Some(current_version) => current_version,
+        None => return Ok(false),
+    };
+
+    let current_version = Version::parse(current_version).chain_err(|| {
+        ErrorKind::ParseVersion(dependency.name.to_string(), current_version.into())
+    })?;
+
+    Ok(old_version.matches(&current_version))
+}
+
+fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
+    item.is_str() || item.as_table_like().map(|t| t.len() == 1).unwrap_or(false)
+}
+
+/// Print a message if the new dependency version is different from the old one.
+fn print_upgrade_if_necessary(
+    crate_name: &str,
+    old_dep: &toml_edit::Item,
+    new_dep: &toml_edit::Item,
+) -> Result<()> {
+    let old_version = get_version(old_dep)?;
+    let new_version = get_version(new_dep)?;
+
+    if let (Some(old_version), Some(new_version)) = (old_version.as_str(), new_version.as_str()) {
+        if old_version == new_version {
+            return Ok(());
+        }
+        let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+        let mut buffer = bufwtr.buffer();
+        buffer
+            .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
+            .chain_err(|| "Failed to set output colour")?;
+        write!(&mut buffer, "    Upgrading ").chain_err(|| "Failed to write upgrade message")?;
+        buffer
+            .set_color(&ColorSpec::new())
+            .chain_err(|| "Failed to clear output colour")?;
+        writeln!(
+            &mut buffer,
+            "{} v{} -> v{}",
+            crate_name, old_version, new_version,
+        )
+        .chain_err(|| "Failed to write upgrade versions")?;
+        bufwtr
+            .print(&buffer)
+            .chain_err(|| "Failed to print upgrade message")?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

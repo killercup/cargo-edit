@@ -6,36 +6,6 @@ use url::Url;
 const CRATES_IO_INDEX: &str = "https://github.com/rust-lang/crates.io-index";
 const CRATES_IO_REGISTRY: &str = "crates-io";
 
-#[derive(Debug, Deserialize)]
-struct Source {
-    #[serde(rename = "replace-with")]
-    replace_with: Option<String>,
-    registry: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Registry {
-    index: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct CargoConfig {
-    #[serde(default)]
-    registries: HashMap<String, Registry>,
-    #[serde(default)]
-    source: HashMap<String, Source>,
-}
-
-fn cargo_home() -> Result<PathBuf> {
-    let default_cargo_home = dirs_next::home_dir()
-        .map(|x| x.join(".cargo"))
-        .chain_err(|| ErrorKind::ReadHomeDirFailure)?;
-    let cargo_home = std::env::var("CARGO_HOME")
-        .map(PathBuf::from)
-        .unwrap_or(default_cargo_home);
-    Ok(cargo_home)
-}
-
 /// Find the URL of a registry
 pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url> {
     // TODO support local registry sources, directory sources, git sources: https://doc.rust-lang.org/cargo/reference/source-replacement.html?highlight=replace-with#source-replacement
@@ -116,6 +86,36 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
         .chain_err(|| ErrorKind::InvalidCargoConfig)?;
 
     Ok(registry_url)
+}
+
+#[derive(Debug, Deserialize)]
+struct CargoConfig {
+    #[serde(default)]
+    registries: HashMap<String, Registry>,
+    #[serde(default)]
+    source: HashMap<String, Source>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Source {
+    #[serde(rename = "replace-with")]
+    replace_with: Option<String>,
+    registry: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Registry {
+    index: Option<String>,
+}
+
+fn cargo_home() -> Result<PathBuf> {
+    let default_cargo_home = dirs_next::home_dir()
+        .map(|x| x.join(".cargo"))
+        .chain_err(|| ErrorKind::ReadHomeDirFailure)?;
+    let cargo_home = std::env::var("CARGO_HOME")
+        .map(PathBuf::from)
+        .unwrap_or(default_cargo_home);
+    Ok(cargo_home)
 }
 
 mod code_from_cargo {

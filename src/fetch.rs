@@ -10,13 +10,6 @@ use std::time::Duration;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use url::Url;
 
-#[derive(Debug)]
-struct CrateVersion {
-    name: String,
-    version: semver::Version,
-    yanked: bool,
-}
-
 /// Query latest version from a registry index
 ///
 /// The registry argument must be specified for crates
@@ -67,6 +60,86 @@ pub fn get_latest_dependency(
     }
 
     Ok(dep)
+}
+
+#[derive(Debug)]
+struct CrateVersion {
+    name: String,
+    version: semver::Version,
+    yanked: bool,
+}
+
+/// Fuzzy query crate from registry index
+fn fuzzy_query_registry_index(
+    crate_name: impl Into<String>,
+    registry: &Url,
+) -> Result<Vec<CrateVersion>> {
+    let index = crates_index::Index::from_url(registry.as_str())?;
+
+    let crate_name = crate_name.into();
+    let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
+    if let Some(index) = names.iter().position(|x| *x == crate_name) {
+        // ref: https://github.com/killercup/cargo-edit/pull/317#discussion_r307365704
+        names.swap(index, 0);
+    }
+
+    for the_name in names {
+        let crate_ = match index.crate_(&the_name) {
+            Some(crate_) => crate_,
+            None => continue,
+        };
+        return crate_
+            .versions()
+            .iter()
+            .map(|v| {
+                Ok(CrateVersion {
+                    name: v.name().to_owned(),
+                    version: v.version().parse()?,
+                    yanked: v.is_yanked(),
+                })
+            })
+            .collect();
+    }
+    Err(ErrorKind::NoCrate(crate_name).into())
+}
+
+/// Generate all similar crate names
+///
+/// Examples:
+///
+/// | input | output |
+/// | ----- | ------ |
+/// | cargo | cargo  |
+/// | cargo-edit | cargo-edit, cargo_edit |
+/// | parking_lot_core | parking_lot_core, parking_lot-core, parking-lot_core, parking-lot-core |
+fn gen_fuzzy_crate_names(crate_name: String) -> Result<Vec<String>> {
+    const PATTERN: [u8; 2] = [b'-', b'_'];
+
+    let wildcard_indexs = crate_name
+        .bytes()
+        .enumerate()
+        .filter(|(_, item)| PATTERN.contains(item))
+        .map(|(index, _)| index)
+        .take(10)
+        .collect::<Vec<usize>>();
+    if wildcard_indexs.is_empty() {
+        return Ok(vec![crate_name]);
+    }
+
+    let mut result = vec![];
+    let mut bytes = crate_name.into_bytes();
+    for mask in 0..2u128.pow(wildcard_indexs.len() as u32) {
+        for (mask_index, wildcard_index) in wildcard_indexs.iter().enumerate() {
+            let mask_value = (mask >> mask_index) & 1 == 1;
+            if mask_value {
+                bytes[*wildcard_index] = b'-';
+            } else {
+                bytes[*wildcard_index] = b'_';
+            }
+        }
+        result.push(String::from_utf8(bytes.clone()).unwrap());
+    }
+    Ok(result)
 }
 
 // Checks whether a version object is a stable release
@@ -141,6 +214,133 @@ fn registry_blocked_message(output: &mut StandardStream) -> Result<()> {
     output.reset()?;
     writeln!(output, " waiting for lock on registry index")?;
     Ok(())
+}
+
+/// Query crate name by accessing Cargo.toml in a local path
+///
+/// The name will be returned as a string. This will fail, when
+/// Cargo.toml is not present in the root of the path.
+pub fn get_crate_name_from_path(path: &str) -> Result<String> {
+    let cargo_file = Path::new(path).join("Cargo.toml");
+    LocalManifest::try_new(&cargo_file)
+        .chain_err(|| "Unable to open local Cargo.toml")
+        .and_then(|ref manifest| {
+            manifest
+                .package_name()
+                .map(std::string::ToString::to_string)
+        })
+}
+
+/// Query crate name by accessing a github repo Cargo.toml
+///
+/// The name will be returned as a string. This will fail, when
+///
+/// - there is no Internet connection,
+/// - Cargo.toml is not present in the root of the master branch,
+/// - the response from github is an error or in an incorrect format.
+pub fn get_crate_name_from_github(repo: &str) -> Result<String> {
+    let re =
+        Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
+    get_crate_name_from_repository(repo, &re, |user, repo| {
+        format!(
+            "https://raw.githubusercontent.com/{user}/{repo}/master/Cargo.toml",
+            user = user,
+            repo = repo
+        )
+    })
+}
+
+/// Query crate name by accessing a gitlab repo Cargo.toml
+///
+/// The name will be returned as a string. This will fail, when
+///
+/// - there is no Internet connection,
+/// - Cargo.toml is not present in the root of the master branch,
+/// - the response from gitlab is an error or in an incorrect format.
+pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
+    let re =
+        Regex::new(r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
+    get_crate_name_from_repository(repo, &re, |user, repo| {
+        format!(
+            "https://gitlab.com/{user}/{repo}/raw/master/Cargo.toml",
+            user = user,
+            repo = repo
+        )
+    })
+}
+
+fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
+where
+    T: Fn(&str, &str) -> String,
+{
+    matcher
+        .captures(repo)
+        .ok_or_else(|| "Unable to parse git repo URL".into())
+        .and_then(|cap| match (cap.get(1), cap.get(2)) {
+            (Some(user), Some(repo)) => {
+                let url = url_template(user.as_str(), repo.as_str());
+                let data: Result<Manifest> = get_cargo_toml_from_git_url(&url)
+                    .and_then(|m| m.parse().chain_err(|| ErrorKind::ParseCargoToml));
+                data.and_then(|ref manifest| {
+                    manifest
+                        .package_name()
+                        .map(std::string::ToString::to_string)
+                })
+            }
+            _ => Err("Git repo url seems incomplete".into()),
+        })
+}
+
+fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
+    let mut req = ureq::get(url);
+    req.timeout(get_default_timeout());
+    if let Some(proxy) = env_proxy::for_url_str(url)
+        .to_url()
+        .and_then(|url| ureq::Proxy::new(url).ok())
+    {
+        req.set_proxy(proxy);
+    }
+    let res = req.call();
+    if res.error() {
+        return Err(format!(
+            "HTTP request `{}` failed: {}",
+            url,
+            res.synthetic_error()
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| res.status().to_string())
+        )
+        .into());
+    }
+
+    res.into_string()
+        .chain_err(|| "Git response not a valid `String`")
+}
+
+const fn get_default_timeout() -> Duration {
+    Duration::from_secs(10)
+}
+
+#[test]
+fn test_gen_fuzzy_crate_names() {
+    fn test_helper(input: &str, expect: &[&str]) {
+        let mut actual = gen_fuzzy_crate_names(input.to_string()).unwrap();
+        actual.sort();
+
+        let mut expect = expect.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        expect.sort();
+
+        assert_eq!(actual, expect);
+    }
+
+    test_helper("", &[""]);
+    test_helper("-", &["_", "-"]);
+    test_helper("DCjanus", &["DCjanus"]);
+    test_helper("DC-janus", &["DC-janus", "DC_janus"]);
+    test_helper(
+        "DC-_janus",
+        &["DC__janus", "DC_-janus", "DC-_janus", "DC--janus"],
+    );
 }
 
 #[test]
@@ -227,204 +427,4 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
         },
     ];
     assert!(read_latest_version(&versions, false).is_err());
-}
-
-/// Fuzzy query crate from registry index
-fn fuzzy_query_registry_index(
-    crate_name: impl Into<String>,
-    registry: &Url,
-) -> Result<Vec<CrateVersion>> {
-    let index = crates_index::Index::from_url(registry.as_str())?;
-
-    let crate_name = crate_name.into();
-    let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
-    if let Some(index) = names.iter().position(|x| *x == crate_name) {
-        // ref: https://github.com/killercup/cargo-edit/pull/317#discussion_r307365704
-        names.swap(index, 0);
-    }
-
-    for the_name in names {
-        let crate_ = match index.crate_(&the_name) {
-            Some(crate_) => crate_,
-            None => continue,
-        };
-        return crate_
-            .versions()
-            .iter()
-            .map(|v| {
-                Ok(CrateVersion {
-                    name: v.name().to_owned(),
-                    version: v.version().parse()?,
-                    yanked: v.is_yanked(),
-                })
-            })
-            .collect();
-    }
-    Err(ErrorKind::NoCrate(crate_name).into())
-}
-
-fn get_crate_name_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<String>
-where
-    T: Fn(&str, &str) -> String,
-{
-    matcher
-        .captures(repo)
-        .ok_or_else(|| "Unable to parse git repo URL".into())
-        .and_then(|cap| match (cap.get(1), cap.get(2)) {
-            (Some(user), Some(repo)) => {
-                let url = url_template(user.as_str(), repo.as_str());
-                let data: Result<Manifest> = get_cargo_toml_from_git_url(&url)
-                    .and_then(|m| m.parse().chain_err(|| ErrorKind::ParseCargoToml));
-                data.and_then(|ref manifest| {
-                    manifest
-                        .package_name()
-                        .map(std::string::ToString::to_string)
-                })
-            }
-            _ => Err("Git repo url seems incomplete".into()),
-        })
-}
-
-/// Query crate name by accessing a github repo Cargo.toml
-///
-/// The name will be returned as a string. This will fail, when
-///
-/// - there is no Internet connection,
-/// - Cargo.toml is not present in the root of the master branch,
-/// - the response from github is an error or in an incorrect format.
-pub fn get_crate_name_from_github(repo: &str) -> Result<String> {
-    let re =
-        Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
-    get_crate_name_from_repository(repo, &re, |user, repo| {
-        format!(
-            "https://raw.githubusercontent.com/{user}/{repo}/master/Cargo.toml",
-            user = user,
-            repo = repo
-        )
-    })
-}
-
-/// Query crate name by accessing a gitlab repo Cargo.toml
-///
-/// The name will be returned as a string. This will fail, when
-///
-/// - there is no Internet connection,
-/// - Cargo.toml is not present in the root of the master branch,
-/// - the response from gitlab is an error or in an incorrect format.
-pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
-    let re =
-        Regex::new(r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
-    get_crate_name_from_repository(repo, &re, |user, repo| {
-        format!(
-            "https://gitlab.com/{user}/{repo}/raw/master/Cargo.toml",
-            user = user,
-            repo = repo
-        )
-    })
-}
-
-/// Query crate name by accessing Cargo.toml in a local path
-///
-/// The name will be returned as a string. This will fail, when
-/// Cargo.toml is not present in the root of the path.
-pub fn get_crate_name_from_path(path: &str) -> Result<String> {
-    let cargo_file = Path::new(path).join("Cargo.toml");
-    LocalManifest::try_new(&cargo_file)
-        .chain_err(|| "Unable to open local Cargo.toml")
-        .and_then(|ref manifest| {
-            manifest
-                .package_name()
-                .map(std::string::ToString::to_string)
-        })
-}
-
-fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
-    let mut req = ureq::get(url);
-    req.timeout(get_default_timeout());
-    if let Some(proxy) = env_proxy::for_url_str(url)
-        .to_url()
-        .and_then(|url| ureq::Proxy::new(url).ok())
-    {
-        req.set_proxy(proxy);
-    }
-    let res = req.call();
-    if res.error() {
-        return Err(format!(
-            "HTTP request `{}` failed: {}",
-            url,
-            res.synthetic_error()
-                .as_ref()
-                .map(|x| x.to_string())
-                .unwrap_or_else(|| res.status().to_string())
-        )
-        .into());
-    }
-
-    res.into_string()
-        .chain_err(|| "Git response not a valid `String`")
-}
-
-const fn get_default_timeout() -> Duration {
-    Duration::from_secs(10)
-}
-
-/// Generate all similar crate names
-///
-/// Examples:
-///
-/// | input | output |
-/// | ----- | ------ |
-/// | cargo | cargo  |
-/// | cargo-edit | cargo-edit, cargo_edit |
-/// | parking_lot_core | parking_lot_core, parking_lot-core, parking-lot_core, parking-lot-core |
-fn gen_fuzzy_crate_names(crate_name: String) -> Result<Vec<String>> {
-    const PATTERN: [u8; 2] = [b'-', b'_'];
-
-    let wildcard_indexs = crate_name
-        .bytes()
-        .enumerate()
-        .filter(|(_, item)| PATTERN.contains(item))
-        .map(|(index, _)| index)
-        .take(10)
-        .collect::<Vec<usize>>();
-    if wildcard_indexs.is_empty() {
-        return Ok(vec![crate_name]);
-    }
-
-    let mut result = vec![];
-    let mut bytes = crate_name.into_bytes();
-    for mask in 0..2u128.pow(wildcard_indexs.len() as u32) {
-        for (mask_index, wildcard_index) in wildcard_indexs.iter().enumerate() {
-            let mask_value = (mask >> mask_index) & 1 == 1;
-            if mask_value {
-                bytes[*wildcard_index] = b'-';
-            } else {
-                bytes[*wildcard_index] = b'_';
-            }
-        }
-        result.push(String::from_utf8(bytes.clone()).unwrap());
-    }
-    Ok(result)
-}
-
-#[test]
-fn test_gen_fuzzy_crate_names() {
-    fn test_helper(input: &str, expect: &[&str]) {
-        let mut actual = gen_fuzzy_crate_names(input.to_string()).unwrap();
-        actual.sort();
-
-        let mut expect = expect.iter().map(|x| x.to_string()).collect::<Vec<_>>();
-        expect.sort();
-
-        assert_eq!(actual, expect);
-    }
-
-    test_helper("", &[""]);
-    test_helper("-", &["_", "-"]);
-    test_helper("DCjanus", &["DCjanus"]);
-    test_helper("DC-janus", &["DC-janus", "DC_janus"]);
-    test_helper(
-        "DC-_janus",
-        &["DC__janus", "DC_-janus", "DC-_janus", "DC--janus"],
-    );
 }

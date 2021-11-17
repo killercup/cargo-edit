@@ -1,18 +1,5 @@
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
-enum DependencySource {
-    Version {
-        version: Option<String>,
-        path: Option<PathBuf>,
-        registry: Option<String>,
-    },
-    Git {
-        repo: String,
-        branch: Option<String>,
-    },
-}
-
 /// A dependency handled by Cargo
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct Dependency {
@@ -26,23 +13,6 @@ pub struct Dependency {
     /// If the dependency is renamed, this is the new name for the dependency
     /// as a string.  None if it is not renamed.
     rename: Option<String>,
-}
-
-impl Default for Dependency {
-    fn default() -> Dependency {
-        Dependency {
-            name: "".into(),
-            rename: None,
-            optional: false,
-            features: None,
-            default_features: true,
-            source: DependencySource::Version {
-                version: None,
-                path: None,
-                registry: None,
-            },
-        }
-    }
 }
 
 impl Dependency {
@@ -269,6 +239,36 @@ impl Dependency {
 
         (self.name_in_manifest().to_string(), data)
     }
+}
+
+impl Default for Dependency {
+    fn default() -> Dependency {
+        Dependency {
+            name: "".into(),
+            rename: None,
+            optional: false,
+            features: None,
+            default_features: true,
+            source: DependencySource::Version {
+                version: None,
+                path: None,
+                registry: None,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+enum DependencySource {
+    Version {
+        version: Option<String>,
+        path: Option<PathBuf>,
+        registry: Option<String>,
+    },
+    Git {
+        repo: String,
+        branch: Option<String>,
+    },
 }
 
 #[cfg(test)]
