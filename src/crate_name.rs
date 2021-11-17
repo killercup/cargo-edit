@@ -67,8 +67,9 @@ impl<'a> CrateName<'a> {
                 return Ok(Dependency::new(crate_name).set_git(self.0, None));
             }
         } else if self.is_path() {
-            if let Ok(ref crate_name) = get_crate_name_from_path(self.0) {
-                let path = dunce::canonicalize(std::path::Path::new(self.0))?;
+            let path = std::path::Path::new(self.0);
+            if let Ok(ref crate_name) = get_crate_name_from_path(path) {
+                let path = dunce::canonicalize(path)?;
                 return Ok(Dependency::new(crate_name).set_path(path));
             }
         }
