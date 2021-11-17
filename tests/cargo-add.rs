@@ -1358,6 +1358,7 @@ fn lists_features_path_dependency() {
             &format!("{}", dep_tmpdir.path().display()),
             &format!("--manifest-path={}", crate_manifest),
         ])
+        .env("CARGO_IS_TEST", "1")
         .assert()
         .stderr(predicates::str::contains("Available features:"))
         .stderr(predicates::str::contains("nose"))
@@ -1396,6 +1397,7 @@ fn lists_features_versioned_dependency_with_path() {
             &format!("{}", dep_tmpdir.path().display()),
             &format!("--manifest-path={}", crate_manifest),
         ])
+        .env("CARGO_IS_TEST", "1")
         .assert()
         .stderr(predicates::str::contains("Available features:"))
         .stderr(predicates::str::contains("nose"))
