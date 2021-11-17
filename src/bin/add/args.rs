@@ -227,7 +227,8 @@ impl Args {
                 assert!(self.path.is_none());
                 assert!(self.registry.is_none());
                 let features = get_manifest_from_url(repo)?
-                    .map(|m| m.features().unwrap())
+                    .map(|m| m.features())
+                    .transpose()?
                     .unwrap_or_else(Vec::new);
 
                 dependency = dependency
