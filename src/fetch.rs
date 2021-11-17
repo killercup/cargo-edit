@@ -216,36 +216,37 @@ fn registry_blocked_message(output: &mut StandardStream) -> Result<()> {
     Ok(())
 }
 
-/// Query crate name by accessing Cargo.toml in a local path
+/// Load Cargo.toml in a local path
 ///
-/// The name will be returned as a string. This will fail, when
-/// Cargo.toml is not present in the root of the path.
-pub fn get_crate_name_from_path(path: &Path) -> Result<String> {
-    get_manifest_from_path(path).and_then(|ref manifest| {
-        manifest
-            .package_name()
-            .map(std::string::ToString::to_string)
-    })
-}
-
-fn get_manifest_from_path(path: &Path) -> Result<LocalManifest> {
+/// This will fail, when Cargo.toml is not present in the root of the path.
+pub fn get_manifest_from_path(path: &Path) -> Result<LocalManifest> {
     let cargo_file = path.join("Cargo.toml");
     LocalManifest::try_new(&cargo_file).chain_err(|| "Unable to open local Cargo.toml")
 }
 
-/// Query crate name by accessing a github repo Cargo.toml
+/// Load Cargo.toml from  github repo Cargo.toml
 ///
-/// The name will be returned as a string. This will fail, when
-///
+/// This will fail when:
 /// - there is no Internet connection,
 /// - Cargo.toml is not present in the root of the master branch,
-/// - the response from github is an error or in an incorrect format.
-pub fn get_crate_name_from_github(repo: &str) -> Result<String> {
-    get_manifest_from_github(repo).and_then(|ref manifest| {
-        manifest
-            .package_name()
-            .map(std::string::ToString::to_string)
-    })
+/// - the response from the server is an error or in an incorrect format.
+pub fn get_manifest_from_url(url: &str) -> Result<Option<Manifest>> {
+    let manifest = if is_github_url(url) {
+        Some(get_manifest_from_github(url)?)
+    } else if is_gitlab_url(url) {
+        Some(get_manifest_from_gitlab(url)?)
+    } else {
+        None
+    };
+    Ok(manifest)
+}
+
+fn is_github_url(url: &str) -> bool {
+    url.contains("https://github.com")
+}
+
+fn is_gitlab_url(url: &str) -> bool {
+    url.contains("https://gitlab.com")
 }
 
 fn get_manifest_from_github(repo: &str) -> Result<Manifest> {
@@ -257,21 +258,6 @@ fn get_manifest_from_github(repo: &str) -> Result<Manifest> {
             user = user,
             repo = repo
         )
-    })
-}
-
-/// Query crate name by accessing a gitlab repo Cargo.toml
-///
-/// The name will be returned as a string. This will fail, when
-///
-/// - there is no Internet connection,
-/// - Cargo.toml is not present in the root of the master branch,
-/// - the response from gitlab is an error or in an incorrect format.
-pub fn get_crate_name_from_gitlab(repo: &str) -> Result<String> {
-    get_manifest_from_gitlab(repo).and_then(|ref manifest| {
-        manifest
-            .package_name()
-            .map(std::string::ToString::to_string)
     })
 }
 

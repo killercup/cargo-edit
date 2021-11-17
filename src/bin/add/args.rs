@@ -188,8 +188,7 @@ impl Args {
             }
 
             Ok(dependency)
-        } else if crate_name.is_url_or_path() {
-            let mut dependency = crate_name.parse_crate_name_from_uri()?;
+        } else if let Some(mut dependency) = crate_name.parse_crate_name_from_uri()? {
             // dev-dependencies do not need the version populated
             if !self.dev {
                 let dep_path = dependency.path().map(ToOwned::to_owned);
@@ -212,75 +211,76 @@ impl Args {
             }
             Ok(dependency)
         } else {
-            assert_eq!(self.git.is_some() && self.vers.is_some(), false);
-            assert_eq!(self.git.is_some() && self.path.is_some(), false);
-            assert_eq!(self.git.is_some() && self.registry.is_some(), false);
-            assert_eq!(self.path.is_some() && self.registry.is_some(), false);
-
             let mut dependency = Dependency::new(crate_name.name());
 
             if let Some(repo) = &self.git {
+                assert!(self.vers.is_none());
+                assert!(self.path.is_none());
+                assert!(self.registry.is_none());
                 dependency = dependency.set_git(repo, self.branch.clone());
-            }
-            if let Some(path) = &self.path {
-                dependency = dependency.set_path(dunce::canonicalize(path)?);
-            }
-            if let Some(version) = &self.vers {
-                dependency = dependency.set_version(parse_version_req(version)?);
-            }
-            let registry_url = if let Some(registry) = &self.registry {
-                Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
             } else {
-                None
-            };
+                if let Some(path) = &self.path {
+                    assert!(self.registry.is_none());
+                    dependency = dependency.set_path(dunce::canonicalize(path)?);
+                }
+                if let Some(version) = &self.vers {
+                    dependency = dependency.set_version(parse_version_req(version)?);
+                }
+                let registry_url = if let Some(registry) = &self.registry {
+                    Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
+                } else {
+                    None
+                };
 
-            if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
-                // Only special-case workspaces when the user doesn't provide any extra
-                // information, otherwise, trust the user.
-                if let Some(package) = workspace_members
-                    .iter()
-                    .find(|p| p.name == crate_name.name())
-                {
-                    dependency = dependency.set_path(
-                        package
-                            .manifest_path
-                            .parent()
-                            .expect("at least parent dir")
-                            .as_std_path()
-                            .to_owned(),
-                    );
-                    // dev-dependencies do not need the version populated
-                    if !self.dev {
+                if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
+                    // Only special-case workspaces when the user doesn't provide any extra
+                    // information, otherwise, trust the user.
+                    if let Some(package) = workspace_members
+                        .iter()
+                        .find(|p| p.name == crate_name.name())
+                    {
+                        dependency = dependency.set_path(
+                            package
+                                .manifest_path
+                                .parent()
+                                .expect("at least parent dir")
+                                .as_std_path()
+                                .to_owned(),
+                        );
+                        // dev-dependencies do not need the version populated
+                        if !self.dev {
+                            let v = format!(
+                                "{prefix}{version}",
+                                prefix = self.get_upgrade_prefix(),
+                                version = package.version
+                            );
+                            dependency = dependency.set_version(&v);
+                        }
+                    } else {
+                        dependency = get_latest_dependency(
+                            crate_name.name(),
+                            self.allow_prerelease,
+                            &find(&self.manifest_path)?,
+                            &registry_url,
+                        )?;
                         let v = format!(
                             "{prefix}{version}",
                             prefix = self.get_upgrade_prefix(),
-                            version = package.version
+                            // If version is unavailable `get_latest_dependency` must have
+                            // returned `Err(FetchVersionError::GetVersion)`
+                            version = dependency.version().unwrap_or_else(|| unreachable!())
                         );
                         dependency = dependency.set_version(&v);
                     }
-                } else {
-                    dependency = get_latest_dependency(
-                        crate_name.name(),
-                        self.allow_prerelease,
-                        &find(&self.manifest_path)?,
-                        &registry_url,
-                    )?;
-                    let v = format!(
-                        "{prefix}{version}",
-                        prefix = self.get_upgrade_prefix(),
-                        // If version is unavailable `get_latest_dependency` must have
-                        // returned `Err(FetchVersionError::GetVersion)`
-                        version = dependency.version().unwrap_or_else(|| unreachable!())
-                    );
-                    dependency = dependency.set_version(&v);
+                }
+
+                // Set the registry after getting the latest version as
+                // get_latest_dependency returns a registry-less Dependency
+                if let Some(registry) = &self.registry {
+                    dependency = dependency.set_registry(registry);
                 }
             }
 
-            // Set the registry after getting the latest version as
-            // get_latest_dependency returns a registry-less Dependency
-            if let Some(registry) = &self.registry {
-                dependency = dependency.set_registry(registry);
-            }
             Ok(dependency)
         }
     }
