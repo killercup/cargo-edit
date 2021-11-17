@@ -190,7 +190,7 @@ impl Args {
                 let manifest = get_manifest_from_path(path)?;
                 let dep_path = dunce::canonicalize(path)?;
 
-                dependency = dependency.set_available_features(manifest.features());
+                dependency = dependency.set_available_features(manifest.features()?);
                 dependency = dependency.set_path(dep_path);
             }
 
@@ -211,10 +211,10 @@ impl Args {
                         );
 
                         dependency = dependency.set_version(&v);
-                    }
 
-                    if let Some(registry) = &self.registry {
-                        dependency = dependency.set_registry(registry);
+                        if let Some(registry) = &self.registry {
+                            dependency = dependency.set_registry(registry);
+                        }
                     }
                 }
             }
@@ -227,7 +227,7 @@ impl Args {
                 assert!(self.path.is_none());
                 assert!(self.registry.is_none());
                 let features = get_manifest_from_url(repo)?
-                    .map(|m| m.features())
+                    .map(|m| m.features().unwrap())
                     .unwrap_or_else(Vec::new);
 
                 dependency = dependency
@@ -238,7 +238,7 @@ impl Args {
                     assert!(self.registry.is_none());
                     let manifest = get_manifest_from_path(path)?;
 
-                    dependency = dependency.set_available_features(manifest.features());
+                    dependency = dependency.set_available_features(manifest.features()?);
                     dependency = dependency.set_path(dunce::canonicalize(path)?);
                 }
                 if let Some(version) = &self.vers {

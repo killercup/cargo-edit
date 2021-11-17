@@ -42,7 +42,7 @@ impl<'a> CrateName<'a> {
     pub fn parse_crate_name_from_uri(&self) -> Result<Option<Dependency>> {
         if let Some(manifest) = get_manifest_from_url(self.0)? {
             let crate_name = manifest.package_name()?;
-            let available_features = manifest.features();
+            let available_features = manifest.features()?;
             Ok(Some(
                 Dependency::new(crate_name)
                     .set_git(self.0, None)
@@ -53,7 +53,7 @@ impl<'a> CrateName<'a> {
             let manifest = get_manifest_from_path(path)?;
             let crate_name = manifest.package_name()?;
             let path = dunce::canonicalize(path)?;
-            let available_features = manifest.features();
+            let available_features = manifest.features()?;
             Ok(Some(
                 Dependency::new(crate_name)
                     .set_path(path)
