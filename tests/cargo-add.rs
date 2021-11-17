@@ -1304,7 +1304,7 @@ fn adds_dependency_with_target_cfg() {
 }
 
 #[test]
-fn lists_features_github_dependency() {
+fn adds_features_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -1333,13 +1333,10 @@ fn lists_features_dependency_with_path() {
     let (dep_tmpdir, _dep_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.features");
     Command::cargo_bin("cargo-add")
         .expect("can find bin")
-        .args(&[
-            "add",
-            "your-face",
-            "--path",
-            &format!("{}", dep_tmpdir.path().display()),
-            &format!("--manifest-path={}", crate_manifest),
-        ])
+        .args(&["add", "your-face", "--path"])
+        .arg(&dep_tmpdir.path())
+        .arg("--manifest-path")
+        .arg(crate_manifest)
         .assert()
         .stderr(predicates::str::contains("Available features:"))
         .stderr(predicates::str::contains("nose"))
@@ -1353,11 +1350,10 @@ fn lists_features_path_dependency() {
     let (dep_tmpdir, _dep_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.features");
     Command::cargo_bin("cargo-add")
         .expect("can find bin")
-        .args(&[
-            "add",
-            &format!("{}", dep_tmpdir.path().display()),
-            &format!("--manifest-path={}", crate_manifest),
-        ])
+        .args(&["add"])
+        .arg(&dep_tmpdir.path())
+        .arg("--manifest-path")
+        .arg(crate_manifest)
         .env("CARGO_IS_TEST", "1")
         .assert()
         .stderr(predicates::str::contains("Available features:"))
@@ -1371,11 +1367,9 @@ fn lists_features_plain_dependency() {
     let (_tmpdir, crate_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
     Command::cargo_bin("cargo-add")
         .expect("can find bin")
-        .args(&[
-            "add",
-            "your-face",
-            &format!("--manifest-path={}", crate_manifest),
-        ])
+        .args(&["add", "your-face"])
+        .arg("--manifest-path")
+        .arg(crate_manifest)
         .env("CARGO_IS_TEST", "1")
         .assert()
         .stderr(predicates::str::contains("Available features:"))
@@ -1390,13 +1384,10 @@ fn lists_features_versioned_dependency_with_path() {
     let (dep_tmpdir, _dep_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.features");
     Command::cargo_bin("cargo-add")
         .expect("can find bin")
-        .args(&[
-            "add",
-            "your-face@0.1.3",
-            "--path",
-            &format!("{}", dep_tmpdir.path().display()),
-            &format!("--manifest-path={}", crate_manifest),
-        ])
+        .args(&["add", "your-face@0.1.3", "--path"])
+        .arg(&dep_tmpdir.path())
+        .arg("--manifest-path")
+        .arg(crate_manifest)
         .env("CARGO_IS_TEST", "1")
         .assert()
         .stderr(predicates::str::contains("Available features:"))

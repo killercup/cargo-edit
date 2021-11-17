@@ -2,7 +2,10 @@
 
 #![allow(clippy::bool_assert_comparison)]
 
-use cargo_edit::{find, get_manifest_from_path, registry_url, workspace_members, Dependency};
+use cargo_edit::{
+    find, get_manifest_from_path, get_manifest_from_url, registry_url, workspace_members,
+    Dependency,
+};
 use cargo_edit::{get_latest_dependency, CrateName};
 use cargo_metadata::Package;
 use std::path::PathBuf;
@@ -184,8 +187,8 @@ impl Args {
             }
 
             if let Some(ref path) = self.path {
+                let manifest = get_manifest_from_path(path)?;
                 let dep_path = dunce::canonicalize(path)?;
-                let manifest = get_manifest_from_path(&dep_path)?;
 
                 dependency = dependency.set_available_features(manifest.features());
                 dependency = dependency.set_path(dep_path);
@@ -209,9 +212,6 @@ impl Args {
 
                         dependency = dependency.set_version(&v);
                     }
-                    let manifest = get_manifest_from_path(&dep_path)?;
-
-                    dependency = dependency.set_available_features(manifest.features());
 
                     if let Some(registry) = &self.registry {
                         dependency = dependency.set_registry(registry);
@@ -226,15 +226,20 @@ impl Args {
                 assert!(self.vers.is_none());
                 assert!(self.path.is_none());
                 assert!(self.registry.is_none());
-                dependency = dependency.set_git(repo, self.branch.clone());
+                let features = get_manifest_from_url(repo)?
+                    .map(|m| m.features())
+                    .unwrap_or_else(Vec::new);
+
+                dependency = dependency
+                    .set_git(repo, self.branch.clone())
+                    .set_available_features(features);
             } else {
                 if let Some(path) = &self.path {
                     assert!(self.registry.is_none());
-                    let dep_path = dunce::canonicalize(path)?;
-                    let manifest = get_manifest_from_path(&dep_path)?;
+                    let manifest = get_manifest_from_path(path)?;
 
                     dependency = dependency.set_available_features(manifest.features());
-                    dependency = dependency.set_path(dep_path);
+                    dependency = dependency.set_path(dunce::canonicalize(path)?);
                 }
                 if let Some(version) = &self.vers {
                     dependency = dependency.set_version(parse_version_req(version)?);

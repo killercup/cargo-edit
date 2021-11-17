@@ -101,23 +101,13 @@ impl Manifest {
             None => vec![],
             Some(item) => match item {
                 toml_edit::Item::None => vec![],
-                toml_edit::Item::Value(v) => vec![v.to_string()],
                 toml_edit::Item::Table(t) => t
                     .get_values()
                     .iter()
                     .map(|(keys, _val)| keys.iter().map(|k| k.to_string()))
                     .flatten()
                     .collect(),
-                toml_edit::Item::ArrayOfTables(a) => a
-                    .iter()
-                    .map(|t| {
-                        t.get_values()
-                            .iter()
-                            .map(|(keys, _val)| keys.iter().map(|k| k.to_string()))
-                            .flatten()
-                            .collect()
-                    })
-                    .collect(),
+                _ => unreachable!(),
             },
         }
     }

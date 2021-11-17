@@ -242,7 +242,7 @@ pub fn get_manifest_from_url(url: &str) -> Result<Option<Manifest>> {
     let manifest = if is_github_url(url) {
         Some(get_manifest_from_github(url)?)
     } else if is_gitlab_url(url) {
-        Some(get_manget_manifest_from_gitlab(url)?)
+        Some(get_manifest_from_gitlab(url)?)
     } else {
         None
     };
@@ -269,7 +269,7 @@ fn get_manifest_from_github(repo: &str) -> Result<Manifest> {
     })
 }
 
-fn get_manget_manifest_from_gitlab(repo: &str) -> Result<Manifest> {
+fn get_manifest_from_gitlab(repo: &str) -> Result<Manifest> {
     let re =
         Regex::new(r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
     get_manifest_from_repository(repo, &re, |user, repo| {

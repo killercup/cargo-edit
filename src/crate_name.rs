@@ -42,13 +42,23 @@ impl<'a> CrateName<'a> {
     pub fn parse_crate_name_from_uri(&self) -> Result<Option<Dependency>> {
         if let Some(manifest) = get_manifest_from_url(self.0)? {
             let crate_name = manifest.package_name()?;
-            Ok(Some(Dependency::new(crate_name).set_git(self.0, None)))
+            let available_features = manifest.features();
+            Ok(Some(
+                Dependency::new(crate_name)
+                    .set_git(self.0, None)
+                    .set_available_features(available_features),
+            ))
         } else if self.is_path() {
             let path = std::path::Path::new(self.0);
             let manifest = get_manifest_from_path(path)?;
             let crate_name = manifest.package_name()?;
             let path = dunce::canonicalize(path)?;
-            Ok(Some(Dependency::new(crate_name).set_path(path)))
+            let available_features = manifest.features();
+            Ok(Some(
+                Dependency::new(crate_name)
+                    .set_path(path)
+                    .set_available_features(available_features),
+            ))
         } else {
             Ok(None)
         }
