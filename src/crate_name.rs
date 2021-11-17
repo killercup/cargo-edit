@@ -1,7 +1,7 @@
 //! Crate name parsing.
 use crate::errors::*;
 use crate::Dependency;
-use crate::{get_crate_name_from_github, get_crate_name_from_gitlab, get_crate_name_from_path};
+use crate::{get_manifest_from_path, get_manifest_from_url};
 
 /// A crate specifier. This can be a plain name (e.g. `docopt`), a name and a versionreq (e.g.
 /// `docopt@^0.8`), a URL, or a path.
@@ -24,24 +24,6 @@ impl<'a> CrateName<'a> {
         self.0.contains('@')
     }
 
-    /// Is this a URI?
-    pub fn is_url_or_path(&self) -> bool {
-        self.is_github_url() || self.is_gitlab_url() || self.is_path()
-    }
-
-    fn is_github_url(&self) -> bool {
-        self.0.contains("https://github.com")
-    }
-
-    fn is_gitlab_url(&self) -> bool {
-        self.0.contains("https://gitlab.com")
-    }
-
-    fn is_path(&self) -> bool {
-        // FIXME: how else can we check if the name is a (possibly invalid) path?
-        self.0.contains('.') || self.0.contains('/') || self.0.contains('\\')
-    }
-
     /// If this crate specifier includes a version (e.g. `docopt@0.8`), extract the name and
     /// version.
     pub fn parse_as_version(&self) -> Result<Option<Dependency>> {
@@ -57,23 +39,23 @@ impl<'a> CrateName<'a> {
     }
 
     /// Will parse this crate name on the assumption that it is a URI.
-    pub fn parse_crate_name_from_uri(&self) -> Result<Dependency> {
-        if self.is_github_url() {
-            if let Ok(ref crate_name) = get_crate_name_from_github(self.0) {
-                return Ok(Dependency::new(crate_name).set_git(self.0, None));
-            }
-        } else if self.is_gitlab_url() {
-            if let Ok(ref crate_name) = get_crate_name_from_gitlab(self.0) {
-                return Ok(Dependency::new(crate_name).set_git(self.0, None));
-            }
+    pub fn parse_crate_name_from_uri(&self) -> Result<Option<Dependency>> {
+        if let Some(manifest) = get_manifest_from_url(self.0)? {
+            let crate_name = manifest.package_name()?;
+            Ok(Some(Dependency::new(crate_name).set_git(self.0, None)))
         } else if self.is_path() {
             let path = std::path::Path::new(self.0);
-            if let Ok(ref crate_name) = get_crate_name_from_path(path) {
-                let path = dunce::canonicalize(path)?;
-                return Ok(Dependency::new(crate_name).set_path(path));
-            }
+            let manifest = get_manifest_from_path(path)?;
+            let crate_name = manifest.package_name()?;
+            let path = dunce::canonicalize(path)?;
+            Ok(Some(Dependency::new(crate_name).set_path(path)))
+        } else {
+            Ok(None)
         }
+    }
 
-        bail!("Unable to obtain crate informations from `{}`.\n", self.0)
+    fn is_path(&self) -> bool {
+        // FIXME: how else can we check if the name is a (possibly invalid) path?
+        self.0.contains('.') || self.0.contains('/') || self.0.contains('\\')
     }
 }
