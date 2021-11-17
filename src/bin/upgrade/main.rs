@@ -427,7 +427,7 @@ impl DesiredUpgrades {
                             &dep.name,
                             allow_prerelease,
                             manifest_path,
-                            &registry_url,
+                            registry_url.as_ref(),
                         )
                         .map(|new_dep| {
                             (

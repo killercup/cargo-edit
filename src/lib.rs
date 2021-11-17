@@ -31,7 +31,8 @@ pub use crate::crate_name::CrateName;
 pub use crate::dependency::Dependency;
 pub use crate::errors::*;
 pub use crate::fetch::{
-    get_latest_dependency, get_manifest_from_path, get_manifest_from_url, update_registry_index,
+    get_features_from_registry, get_latest_dependency, get_manifest_from_path,
+    get_manifest_from_url, update_registry_index,
 };
 pub use crate::manifest::{find, LocalManifest, Manifest};
 pub use crate::metadata::{manifest_from_pkgid, workspace_members};
