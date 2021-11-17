@@ -3,8 +3,8 @@
 #![allow(clippy::bool_assert_comparison)]
 
 use cargo_edit::{
-    find, get_manifest_from_path, get_manifest_from_url, registry_url, workspace_members,
-    Dependency,
+    find, get_features_from_registry, get_manifest_from_path, get_manifest_from_url, registry_url,
+    workspace_members, Dependency,
 };
 use cargo_edit::{get_latest_dependency, CrateName};
 use cargo_metadata::Package;
@@ -177,11 +177,8 @@ impl Args {
         workspace_members: &[Package],
     ) -> Result<Dependency> {
         let crate_name = CrateName::new(crate_name);
-        let registry_url = if let Some(registry) = &self.registry {
-            Some(registry_url(&find(&self.manifest_path)?, Some(registry))?)
-        } else {
-            None
-        };
+        let manifest_path = find(&self.manifest_path)?;
+        let registry_url = registry_url(&manifest_path, self.registry.as_deref())?;
 
         let mut dependency = if let Some(mut dependency) = crate_name.parse_as_version()? {
             // crate specifier includes a version (e.g. `docopt@0.8`)
@@ -197,6 +194,15 @@ impl Args {
 
                 dependency = dependency.set_available_features(manifest.features()?);
                 dependency = dependency.set_path(dep_path);
+            } else {
+                let features = get_features_from_registry(
+                    &dependency.name,
+                    dependency
+                        .version()
+                        .expect("version populated by `parse_as_version`"),
+                    &registry_url,
+                )?;
+                dependency = dependency.set_available_features(features);
             }
 
             dependency
@@ -275,8 +281,8 @@ impl Args {
                         dependency = get_latest_dependency(
                             crate_name.name(),
                             self.allow_prerelease,
-                            &find(&self.manifest_path)?,
-                            &registry_url,
+                            &manifest_path,
+                            Some(&registry_url),
                         )?;
                         let v = format!(
                             "{prefix}{version}",

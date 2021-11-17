@@ -24,7 +24,7 @@ pub fn get_latest_dependency(
     crate_name: &str,
     flag_allow_prerelease: bool,
     manifest_path: &Path,
-    registry: &Option<Url>,
+    registry: Option<&Url>,
 ) -> Result<Dependency> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
@@ -174,6 +174,40 @@ fn read_latest_version(
     Ok(Dependency::new(name)
         .set_version(&version)
         .set_available_features(latest.available_features.clone()))
+}
+
+/// Get crate features from registry
+pub fn get_features_from_registry(
+    crate_name: &str,
+    version: &str,
+    registry: &Url,
+) -> Result<Vec<String>> {
+    if env::var("CARGO_IS_TEST").is_ok() {
+        return Ok(Vec::new());
+    }
+
+    let index = crates_index::Index::from_url(registry.as_str())?;
+    let version = semver::VersionReq::parse(version)
+        .map_err(|_| ErrorKind::ParseVersion(version.to_owned(), crate_name.to_owned()))?;
+
+    let crate_ = index
+        .crate_(crate_name)
+        .ok_or_else(|| ErrorKind::NoCrate(crate_name.into()))?;
+    for crate_instance in crate_.versions().iter().rev() {
+        let instance_version = match semver::Version::parse(crate_instance.version()) {
+            Ok(version) => version,
+            Err(_) => continue,
+        };
+        if version.matches(&instance_version) {
+            return Ok(crate_instance.features().keys().cloned().collect());
+        }
+    }
+    Ok(crate_
+        .highest_version()
+        .features()
+        .keys()
+        .cloned()
+        .collect())
 }
 
 /// update registry index for given project
