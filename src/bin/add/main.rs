@@ -18,12 +18,12 @@ use crate::args::{Args, Command};
 use cargo_edit::{
     find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, LocalManifest,
 };
-use std::borrow::Cow;
 use std::io::Write;
 use std::path::Path;
 use std::process;
+use std::{borrow::Cow, collections::BTreeSet};
 use structopt::StructOpt;
-use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
 
 mod args;
@@ -125,6 +125,22 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
     true
 }
 
+fn unrecognized_features_message(message: &str) -> Result<()> {
+    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let mut buffer = bufwtr.buffer();
+    buffer
+        .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))
+        .chain_err(|| "Failed to set output colour")?;
+    writeln!(&mut buffer, "{}", message)
+        .chain_err(|| "Failed to write unrecognized features message")?;
+    buffer
+        .set_color(&ColorSpec::new())
+        .chain_err(|| "Failed to clear output colour")?;
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print unrecognized features message")
+}
+
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
         let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
@@ -141,7 +157,37 @@ fn handle_add(args: &Args) -> Result<()> {
         )?;
         update_registry_index(&url, args.quiet)?;
     }
-    let deps = &args.parse_dependencies()?;
+    let requested_features: Option<BTreeSet<&str>> = args.features.as_ref().map(|v| {
+        v.iter()
+            .map(|s| s.split(' '))
+            .flatten()
+            .filter(|s| !s.is_empty())
+            .collect()
+    });
+
+    let deps = &args.parse_dependencies(
+        requested_features
+            .as_ref()
+            .map(|s| s.iter().map(|s| s.to_string()).collect()),
+    )?;
+
+    if let Some(req_feats) = requested_features {
+        assert!(deps.len() == 1);
+        let available_features = deps[0]
+            .available_features
+            .iter()
+            .map(|s| s.as_ref())
+            .collect::<BTreeSet<&str>>();
+
+        let unknown_features: Vec<&&str> = req_feats.difference(&available_features).collect();
+
+        if !unknown_features.is_empty() {
+            unrecognized_features_message(&format!(
+                "Unrecognized features: {:?}",
+                unknown_features
+            ))?;
+        };
+    };
 
     let was_sorted = manifest
         .get_table(&args.get_section())

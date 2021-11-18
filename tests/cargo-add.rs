@@ -1311,20 +1311,42 @@ fn adds_features_dependency() {
     let toml = get_toml(&manifest);
     assert!(toml["dependencies"].is_none());
 
-    execute_command(
-        &[
-            "add",
-            "https://github.com/killercup/cargo-edit.git",
-            "--features",
-            "jui",
-        ],
-        &manifest,
-    );
+    execute_command(&["add", "your-face", "--features", "eyes"], &manifest);
 
     // dependency present afterwards
     let toml = get_toml(&manifest);
-    let val = toml["dependencies"]["cargo-edit"]["features"][0].as_str();
-    assert_eq!(val, Some("jui"));
+    let val = toml["dependencies"]["your-face"]["features"][0].as_str();
+    assert_eq!(val, Some("eyes"));
+}
+
+#[test]
+fn warns_on_unknown_features_dependency() {
+    let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+
+    // dependency not present beforehand
+    let toml = get_toml(&manifest);
+    assert!(toml["dependencies"].is_none());
+
+    Command::cargo_bin("cargo-add")
+        .expect("can find bin")
+        .args(&["add", "your-face", "--features", "noze"])
+        .arg("--manifest-path")
+        .arg(&manifest)
+        .env("CARGO_IS_TEST", "1")
+        .assert()
+        .success()
+        .stderr(predicates::str::contains(
+            "Unrecognized features: [\"noze\"]",
+        ))
+        .stderr(predicates::str::contains("eyes"))
+        .stderr(predicates::str::contains("nose"))
+        .stderr(predicates::str::contains("mouth"))
+        .stderr(predicates::str::contains("ears"));
+
+    // dependency is present afterwards
+    let toml = get_toml(&manifest);
+    let val = toml["dependencies"]["your-face"]["features"][0].as_str();
+    assert!(val.is_some());
 }
 
 #[test]
@@ -1421,6 +1443,18 @@ your-face = { version = "99999.0.0", features = ["nose"] }
 }
 
 #[test]
+fn can_be_forced_to_provide_an_empty_features_list() {
+    overwrite_dependency_test(
+        &["add", "your-face"],
+        &["add", "your-face", "--features", ""],
+        r#"
+[dependencies]
+your-face = { version = "99999.0.0", features = [] }
+"#,
+    )
+}
+
+#[test]
 fn handles_specifying_features_option_multiple_times() {
     overwrite_dependency_test(
         &["add", "your-face"],
@@ -1434,19 +1468,7 @@ fn handles_specifying_features_option_multiple_times() {
         ],
         r#"
 [dependencies]
-your-face = { version = "99999.0.0", features = ["nose", "mouth"] }
-"#,
-    )
-}
-
-#[test]
-fn can_be_forced_to_provide_an_empty_features_list() {
-    overwrite_dependency_test(
-        &["add", "your-face"],
-        &["add", "your-face", "--features", ""],
-        r#"
-[dependencies]
-your-face = { version = "99999.0.0", features = [] }
+your-face = { version = "99999.0.0", features = ["mouth", "nose"] }
 "#,
     )
 }
@@ -1458,7 +1480,7 @@ fn parses_space_separated_argument_to_features() {
         &["add", "your-face", "--features", "mouth ears"],
         r#"
 [dependencies]
-your-face = { version = "99999.0.0", features = ["mouth", "ears"] }
+your-face = { version = "99999.0.0", features = ["ears", "mouth"] }
 "#,
     )
 }
@@ -2010,22 +2032,25 @@ fn add_dependency_to_workspace_member() {
 #[test]
 fn add_prints_message_for_features_deps() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
+    let (dep_tmpdir, _dep_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.features");
 
     Command::cargo_bin("cargo-add")
         .unwrap()
         .args(&[
             "add",
-            "hello-world",
+            "your-face",
             "--vers",
             "0.1.0",
             "--features",
-            "jui",
+            "eyes",
             &format!("--manifest-path={}", manifest),
         ])
+        .arg("--path")
+        .arg(&dep_tmpdir.path())
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success()
         .stderr(predicates::str::contains(
-            r#"Adding hello-world v0.1.0 to dependencies with features: ["jui"]"#,
+            r#"Adding your-face v0.1.0 to dependencies with features: ["eyes"]"#,
         ));
 }

@@ -307,7 +307,10 @@ impl Args {
     }
 
     /// Build dependencies from arguments
-    pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
+    pub fn parse_dependencies(
+        &self,
+        requested_features: Option<Vec<String>>,
+    ) -> Result<Vec<Dependency>> {
         let workspace_members = workspace_members(self.manifest_path.as_deref())?;
 
         if self.crates.len() > 1
@@ -331,7 +334,7 @@ impl Args {
                     .map(|x| {
                         let mut x = x
                             .set_optional(self.optional)
-                            .set_features(self.features.clone())
+                            .set_features(requested_features.to_owned())
                             .set_default_features(!self.no_default_features);
                         if let Some(ref rename) = self.rename {
                             x = x.set_rename(rename);
@@ -395,7 +398,7 @@ mod tests {
         };
 
         assert_eq!(
-            args.parse_dependencies().unwrap(),
+            args.parse_dependencies(None).unwrap(),
             vec![Dependency::new("demo").set_version("0.4.2")]
         );
     }
@@ -409,7 +412,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_github.parse_dependencies().unwrap(),
+            args_github.parse_dependencies(None).unwrap(),
             vec![Dependency::new("cargo-edit").set_git(github_url, None)]
         );
 
@@ -419,7 +422,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_gitlab.parse_dependencies().unwrap(),
+            args_gitlab.parse_dependencies(None).unwrap(),
             vec![Dependency::new("polly").set_git(gitlab_url, None)]
         );
     }
@@ -433,7 +436,9 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_path.parse_dependencies().unwrap()[0].path().unwrap(),
+            args_path.parse_dependencies(None).unwrap()[0]
+                .path()
+                .unwrap(),
             self_path
         );
     }

@@ -90,13 +90,7 @@ impl Dependency {
     }
     /// Set features as an array of string (does some basic parsing)
     pub fn set_features(mut self, features: Option<Vec<String>>) -> Dependency {
-        self.features = features.map(|f| {
-            f.iter()
-                .map(|x| x.split(' ').map(String::from))
-                .flatten()
-                .filter(|s| !s.is_empty())
-                .collect::<Vec<String>>()
-        });
+        self.features = features;
         self
     }
 
