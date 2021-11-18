@@ -18,10 +18,10 @@ use crate::args::{Args, Command};
 use cargo_edit::{
     find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, LocalManifest,
 };
-use std::borrow::Cow;
 use std::io::Write;
 use std::path::Path;
 use std::process;
+use std::{borrow::Cow, collections::BTreeSet};
 use structopt::StructOpt;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
@@ -145,35 +145,31 @@ fn handle_add(args: &Args) -> Result<()> {
         )?;
         update_registry_index(&url, args.quiet)?;
     }
-    let deps = &args.parse_dependencies()?;
+    let requested_features: Option<BTreeSet<&str>> = args
+        .features
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.split(' ')).flatten().filter(|s| !s.is_empty()).collect());
 
-    if let Some(ref requested_features) = args.features {
-        let available_features = deps
+    let deps = &args.parse_dependencies(
+        requested_features
+            .as_ref()
+            .map(|s| s.iter().map(|s| s.to_string()).collect()),
+    )?;
+
+    if let Some(req_feats) = requested_features {
+        assert!(deps.len() == 1);
+        let available_features = deps[0]
+            .available_features
             .iter()
-            .map(|d| d.available_features.clone())
-            .flatten()
-            .collect::<Vec<String>>();
-        let flattened_features: Vec<String> = requested_features
-            .iter()
-            .map(|feat| {
-                feat.split(' ')
-                    .map(|s| s.trim().to_string())
-                    .collect::<Vec<String>>()
-            })
-            .flatten()
-            .collect();
-        let unknown_features: Vec<String> = flattened_features
-            .iter()
-            .filter(|req_feat| !available_features.contains(req_feat) && !req_feat.is_empty())
-            .cloned()
-            .collect();
+            .map(|s| s.trim())
+            .collect::<BTreeSet<&str>>();
+
+        let unknown_features: Vec<&&str> = req_feats.difference(&available_features).collect();
 
         if !unknown_features.is_empty() {
-            return Err(
-                ErrorKind::NoSuchFeaturesFound(unknown_features, available_features).into(),
-            );
-        }
-    }
+            println!("WARN: The features {:?} were requested but are not exposed by the crate. Available features are: {:?}", unknown_features, available_features);
+        };
+    };
 
     let was_sorted = manifest
         .get_table(&args.get_section())

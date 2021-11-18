@@ -1320,7 +1320,7 @@ fn adds_features_dependency() {
 }
 
 #[test]
-fn doesnt_add_unknown_features_dependency() {
+fn warns_on_unknown_features_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
 
     // dependency not present beforehand
@@ -1334,12 +1334,17 @@ fn doesnt_add_unknown_features_dependency() {
         .arg(&manifest)
         .env("CARGO_IS_TEST", "1")
         .assert()
-        .failure()
-        .stderr(predicates::str::contains("noze"));
+        .success()
+        .stdout(predicates::str::contains("WARN: The features [\"noze\"] were requested but are not exposed by the crate. Available features are: "))
+        .stdout(predicates::str::contains("eyes"))
+        .stdout(predicates::str::contains("nose"))
+        .stdout(predicates::str::contains("mouth"))
+        .stdout(predicates::str::contains("ears"));
 
-    // dependency still not present afterwards
+    // dependency is present afterwards
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"].is_none());
+    let val = toml["dependencies"]["your-face"]["features"][0].as_str();
+    assert!(val.is_some());
 }
 
 #[test]
@@ -1461,7 +1466,7 @@ fn handles_specifying_features_option_multiple_times() {
         ],
         r#"
 [dependencies]
-your-face = { version = "99999.0.0", features = ["nose", "mouth"] }
+your-face = { version = "99999.0.0", features = ["mouth", "nose"] }
 "#,
     )
 }
@@ -1473,7 +1478,7 @@ fn parses_space_separated_argument_to_features() {
         &["add", "your-face", "--features", "mouth ears"],
         r#"
 [dependencies]
-your-face = { version = "99999.0.0", features = ["mouth", "ears"] }
+your-face = { version = "99999.0.0", features = ["ears", "mouth"] }
 "#,
     )
 }
@@ -1533,21 +1538,6 @@ fn adds_dependency_normalized_name() {
     // dependency present afterwards
     let toml = get_toml(&manifest);
     assert!(!toml["dependencies"]["linked-hash-map"].is_none());
-}
-
-#[test]
-fn fails_to_add_dependency_with_unknown_feature() {
-    let (_crate_tmpdir, crate_manifest) = clone_out_test("tests/fixtures/add/Cargo.toml.sample");
-    Command::cargo_bin("cargo-add")
-        .expect("can find bin")
-        .args(&["add", "your-face", "--features", "noze mouth hair"])
-        .arg("--manifest-path")
-        .arg(crate_manifest)
-        .env("CARGO_IS_TEST", "1")
-        .assert()
-        .failure()
-        .stderr(predicates::str::contains("noze"))
-        .stderr(predicates::str::contains("hair"));
 }
 
 #[test]
