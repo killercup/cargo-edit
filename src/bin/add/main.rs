@@ -23,7 +23,7 @@ use std::path::Path;
 use std::process;
 use std::{borrow::Cow, collections::BTreeSet};
 use structopt::StructOpt;
-use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
 
 mod args;
@@ -54,10 +54,6 @@ mod errors {
             AddingSelf(crate_: String) {
                 description("Adding crate to itself")
                 display("Cannot add `{}` as a dependency to itself", crate_)
-            }
-            /// Unable to find the specified features
-            NoSuchFeaturesFound(unknown_features: Vec<String>, available_features: Vec<String>) {
-                display("The features '{:?}' were requested but are not exposed by the crate. Available features are: {:?}", unknown_features, available_features)
             }
         }
         links {
@@ -129,6 +125,22 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
     true
 }
 
+fn unrecognized_features_message(message: &str) -> Result<()> {
+    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let mut buffer = bufwtr.buffer();
+    buffer
+        .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))
+        .chain_err(|| "Failed to set output colour")?;
+    writeln!(&mut buffer, "{}", message)
+        .chain_err(|| "Failed to write unrecognized features message")?;
+    buffer
+        .set_color(&ColorSpec::new())
+        .chain_err(|| "Failed to clear output colour")?;
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print unrecognized features message")
+}
+
 fn handle_add(args: &Args) -> Result<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
         let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
@@ -164,13 +176,16 @@ fn handle_add(args: &Args) -> Result<()> {
         let available_features = deps[0]
             .available_features
             .iter()
-            .map(|s| s.trim())
+            .map(|s| s.as_ref())
             .collect::<BTreeSet<&str>>();
 
         let unknown_features: Vec<&&str> = req_feats.difference(&available_features).collect();
 
         if !unknown_features.is_empty() {
-            println!("WARN: The features {:?} were requested but are not exposed by the crate. Available features are: {:?}", unknown_features, available_features);
+            unrecognized_features_message(&format!(
+                "Unrecognized features: {:?}",
+                unknown_features
+            ))?;
         };
     };
 

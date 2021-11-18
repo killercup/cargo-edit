@@ -1335,11 +1335,13 @@ fn warns_on_unknown_features_dependency() {
         .env("CARGO_IS_TEST", "1")
         .assert()
         .success()
-        .stdout(predicates::str::contains("WARN: The features [\"noze\"] were requested but are not exposed by the crate. Available features are: "))
-        .stdout(predicates::str::contains("eyes"))
-        .stdout(predicates::str::contains("nose"))
-        .stdout(predicates::str::contains("mouth"))
-        .stdout(predicates::str::contains("ears"));
+        .stderr(predicates::str::contains(
+            "Unrecognized features: [\"noze\"]",
+        ))
+        .stderr(predicates::str::contains("eyes"))
+        .stderr(predicates::str::contains("nose"))
+        .stderr(predicates::str::contains("mouth"))
+        .stderr(predicates::str::contains("ears"));
 
     // dependency is present afterwards
     let toml = get_toml(&manifest);

@@ -141,13 +141,13 @@ fn deprecated_message(message: &str) -> Result<()> {
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
         .chain_err(|| "Failed to set output colour")?;
-    writeln!(&mut buffer, "{}", message).chain_err(|| "Failed to write dry run message")?;
+    writeln!(&mut buffer, "{}", message).chain_err(|| "Failed to write deprecated message")?;
     buffer
         .set_color(&ColorSpec::new())
         .chain_err(|| "Failed to clear output colour")?;
     bufwtr
         .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
+        .chain_err(|| "Failed to print deprecated message")
 }
 
 fn dry_run_message() -> Result<()> {
