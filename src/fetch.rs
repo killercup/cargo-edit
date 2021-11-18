@@ -40,7 +40,12 @@ pub fn get_latest_dependency(
         };
 
         let features = if crate_name == "your-face" {
-            vec!["nose".to_string(), "mouth".to_string(), "eyes".to_string()]
+            vec![
+                "nose".to_string(),
+                "mouth".to_string(),
+                "eyes".to_string(),
+                "ears".to_string(),
+            ]
         } else {
             vec![]
         };

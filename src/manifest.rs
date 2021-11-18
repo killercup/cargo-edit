@@ -104,8 +104,9 @@ impl Manifest {
                 toml_edit::Item::Table(t) => Ok(t
                     .get_values()
                     .iter()
-                    .map(|(keys, _val)| keys.iter().map(|k| k.to_string()))
+                    .map(|(keys, _val)| keys.iter().map(|&k| k.to_string()))
                     .flatten()
+                    .map(|s| s.trim().to_string())
                     .collect()),
                 _ => Err(ErrorKind::InvalidCargoConfig.into()),
             },

@@ -55,6 +55,10 @@ mod errors {
                 description("Adding crate to itself")
                 display("Cannot add `{}` as a dependency to itself", crate_)
             }
+            /// Unable to find the specified features
+            NoSuchFeaturesFound(unknown_features: Vec<String>, available_features: Vec<String>) {
+                display("The features '{:?}' were requested but are not exposed by the crate. Available features are: {:?}", unknown_features, available_features)
+            }
         }
         links {
             CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
@@ -142,6 +146,34 @@ fn handle_add(args: &Args) -> Result<()> {
         update_registry_index(&url, args.quiet)?;
     }
     let deps = &args.parse_dependencies()?;
+
+    if let Some(ref requested_features) = args.features {
+        let available_features = deps
+            .iter()
+            .map(|d| d.available_features.clone())
+            .flatten()
+            .collect::<Vec<String>>();
+        let flattened_features: Vec<String> = requested_features
+            .iter()
+            .map(|feat| {
+                feat.split(' ')
+                    .map(|s| s.trim().to_string())
+                    .collect::<Vec<String>>()
+            })
+            .flatten()
+            .collect();
+        let unknown_features: Vec<String> = flattened_features
+            .iter()
+            .filter(|req_feat| !available_features.contains(req_feat) && !req_feat.is_empty())
+            .cloned()
+            .collect();
+
+        if !unknown_features.is_empty() {
+            return Err(
+                ErrorKind::NoSuchFeaturesFound(unknown_features, available_features).into(),
+            );
+        }
+    }
 
     let was_sorted = manifest
         .get_table(&args.get_section())
