@@ -145,10 +145,13 @@ fn handle_add(args: &Args) -> Result<()> {
         )?;
         update_registry_index(&url, args.quiet)?;
     }
-    let requested_features: Option<BTreeSet<&str>> = args
-        .features
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.split(' ')).flatten().filter(|s| !s.is_empty()).collect());
+    let requested_features: Option<BTreeSet<&str>> = args.features.as_ref().map(|v| {
+        v.iter()
+            .map(|s| s.split(' '))
+            .flatten()
+            .filter(|s| !s.is_empty())
+            .collect()
+    });
 
     let deps = &args.parse_dependencies(
         requested_features
