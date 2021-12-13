@@ -69,7 +69,7 @@ pub fn get_latest_dependency(
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 
     if dep.name != crate_name {
-        println!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
+        eprintln!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
     }
 
     Ok(dep)
