@@ -18,11 +18,11 @@ use crate::args::{Args, Command};
 use cargo_edit::{
     find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, LocalManifest,
 };
+use clap::Parser;
 use std::io::Write;
 use std::path::Path;
 use std::process;
 use std::{borrow::Cow, collections::BTreeSet};
-use structopt::StructOpt;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
 
@@ -233,7 +233,7 @@ fn handle_add(args: &Args) -> Result<()> {
 }
 
 fn main() {
-    let args: Command = Command::from_args();
+    let args: Command = Command::parse();
     let Command::Add(args) = args;
 
     if let Err(err) = handle_add(&args) {

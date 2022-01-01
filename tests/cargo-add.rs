@@ -1803,13 +1803,13 @@ fn no_argument() {
         .args(&["add"])
         .env("CARGO_IS_TEST", "1")
         .assert()
-        .code(1)
+        .code(2)
         .stderr(
             r"error: The following required arguments were not provided:
-    <crate>...
+    <CRATE>...
 
 USAGE:
-    cargo add <crate>... --upgrade <method>
+    cargo add [OPTIONS] <CRATE>...
 
 For more information try --help
 ",
@@ -1823,12 +1823,14 @@ fn unknown_flags() {
         .args(&["add", "foo", "--flag"])
         .env("CARGO_IS_TEST", "1")
         .assert()
-        .code(1)
+        .code(2)
         .stderr(
             r"error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
+	If you tried to supply `--flag` as a value rather than a flag, use `-- --flag`
+
 USAGE:
-    cargo add [FLAGS] [OPTIONS] <crate>...
+    cargo add [OPTIONS] <CRATE>...
 
 For more information try --help
 ",

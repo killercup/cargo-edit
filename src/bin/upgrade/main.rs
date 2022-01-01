@@ -19,11 +19,11 @@ use cargo_edit::{
     find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
     CrateName, Dependency, LocalManifest,
 };
+use clap::Parser;
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
-use structopt::{clap::AppSettings, StructOpt};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use url::Url;
 
@@ -38,12 +38,12 @@ mod errors {
     }
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(bin_name = "cargo")]
+#[derive(Debug, Parser)]
+#[clap(bin_name = "cargo")]
 enum Command {
     /// Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
-    #[structopt(name = "upgrade")]
-    #[structopt(after_help = "\
+    #[clap(name = "upgrade")]
+    #[clap(after_help = "\
 This command differs from `cargo update`, which updates the dependency versions recorded in the \
 local lock file (Cargo.lock).
 
@@ -63,30 +63,35 @@ an error. If the '--to-lockfile' flag is supplied then the network won't be acce
     Upgrade(Args),
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp)]
+#[derive(Debug, Parser)]
+#[clap(about, version)]
 struct Args {
     /// Crates to be upgraded.
     dependency: Vec<String>,
 
     /// Path to the manifest to upgrade
-    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
+    #[clap(
+        long,
+        value_name = "PATH",
+        parse(from_os_str),
+        conflicts_with = "pkgid"
+    )]
     manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to add this dependency to.
-    #[structopt(
+    #[clap(
         long = "package",
-        short = "p",
-        value_name = "pkgid",
-        conflicts_with = "path",
+        short = 'p',
+        value_name = "PKGID",
+        conflicts_with = "manifest-path",
         conflicts_with = "all",
         conflicts_with = "workspace"
     )]
     pkgid: Option<String>,
 
     /// Upgrade all packages in the workspace.
-    #[structopt(
-        long = "all",
+    #[clap(
+        long,
         help = "[deprecated in favor of `--workspace`]",
         conflicts_with = "workspace",
         conflicts_with = "pkgid"
@@ -94,31 +99,31 @@ struct Args {
     all: bool,
 
     /// Upgrade all packages in the workspace.
-    #[structopt(long = "workspace", conflicts_with = "all", conflicts_with = "pkgid")]
+    #[clap(long, conflicts_with = "all", conflicts_with = "pkgid")]
     workspace: bool,
 
     /// Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha').
-    #[structopt(long = "allow-prerelease")]
+    #[clap(long)]
     allow_prerelease: bool,
 
     /// Print changes to be made without making them.
-    #[structopt(long = "dry-run")]
+    #[clap(long)]
     dry_run: bool,
 
     /// Only update a dependency if the new version is semver incompatible.
-    #[structopt(long = "skip-compatible", conflicts_with = "to_lockfile")]
+    #[clap(long, conflicts_with = "to-lockfile")]
     skip_compatible: bool,
 
     /// Run without accessing the network
-    #[structopt(long = "offline")]
+    #[clap(long)]
     pub offline: bool,
 
     /// Upgrade all packages to the version in the lockfile.
-    #[structopt(long = "to-lockfile", conflicts_with = "dependency")]
+    #[clap(long, conflicts_with = "dependency")]
     pub to_lockfile: bool,
 
     /// Crates to exclude and not upgrade.
-    #[structopt(long)]
+    #[clap(long)]
     exclude: Vec<String>,
 }
 
@@ -514,7 +519,7 @@ fn process(args: Args) -> Result<()> {
 }
 
 fn main() {
-    let args: Command = Command::from_args();
+    let args: Command = Command::parse();
     let Command::Upgrade(args) = args;
 
     if let Err(err) = process(args) {
@@ -530,4 +535,10 @@ fn main() {
 
         process::exit(1);
     }
+}
+
+#[test]
+fn verify_app() {
+    use clap::IntoApp;
+    Command::into_app().debug_assert()
 }
