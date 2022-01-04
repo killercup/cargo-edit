@@ -22,7 +22,7 @@ use std::process;
 use cargo_edit::{
     find, manifest_from_pkgid, upgrade_requirement, workspace_members, LocalManifest,
 };
-use structopt::StructOpt;
+use clap::Parser;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 mod args;
@@ -32,7 +32,7 @@ use crate::args::*;
 use crate::errors::*;
 
 fn main() {
-    let args = Command::from_args();
+    let args = Command::parse();
     let Command::Version(args) = args;
 
     if let Err(err) = process(args) {

@@ -204,13 +204,13 @@ fn no_argument() {
         .expect("can find bin")
         .args(&["rm"])
         .assert()
-        .code(1)
+        .code(2)
         .stderr(
             r"error: The following required arguments were not provided:
-    <crates>...
+    <CRATE>...
 
 USAGE:
-    cargo rm [FLAGS] [OPTIONS] <crates>...
+    cargo rm [OPTIONS] <CRATE>...
 
 For more information try --help
 ",
@@ -223,12 +223,14 @@ fn unknown_flags() {
         .expect("can find bin")
         .args(&["rm", "foo", "--flag"])
         .assert()
-        .code(1)
+        .code(2)
         .stderr(
             r"error: Found argument '--flag' which wasn't expected, or isn't valid in this context
 
+	If you tried to supply `--flag` as a value rather than a flag, use `-- --flag`
+
 USAGE:
-    cargo rm [FLAGS] [OPTIONS] <crates>...
+    cargo rm [OPTIONS] <CRATE>...
 
 For more information try --help
 ",

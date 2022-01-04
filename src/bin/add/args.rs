@@ -8,17 +8,17 @@ use cargo_edit::{
 };
 use cargo_edit::{get_latest_dependency, CrateName};
 use cargo_metadata::Package;
+use clap::Parser;
 use std::path::PathBuf;
-use structopt::{clap::AppSettings, StructOpt};
 
 use crate::errors::*;
 
-#[derive(Debug, StructOpt)]
-#[structopt(bin_name = "cargo")]
+#[derive(Debug, Parser)]
+#[clap(bin_name = "cargo")]
 pub enum Command {
     /// Add dependency to a Cargo.toml manifest file.
-    #[structopt(name = "add")]
-    #[structopt(after_help = "\
+    #[clap(name = "add")]
+    #[clap(after_help = "\
 This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github \
 or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate \
 name and set the appropriate `--git` or `--path` value.
@@ -30,82 +30,87 @@ dependencies (version set to '*').")]
     Add(Args),
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp)]
+#[derive(Debug, Parser)]
+#[clap(about, version)]
 pub struct Args {
     /// Crates to be added.
-    #[structopt(name = "crate", required = true)]
+    #[clap(value_name = "CRATE", required = true)]
     pub crates: Vec<String>,
 
     /// Rename a dependency in Cargo.toml,
     /// https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml.
     /// Only works when specifying a single dependency.
-    #[structopt(long = "rename", short = "r")]
+    #[clap(long, short)]
     pub rename: Option<String>,
 
     /// Add crate as development dependency.
-    #[structopt(long = "dev", short = "D", conflicts_with = "build")]
+    #[clap(long, short = 'D', conflicts_with = "build")]
     pub dev: bool,
 
     /// Add crate as build dependency.
-    #[structopt(long = "build", short = "B", conflicts_with = "dev")]
+    #[clap(long, short = 'B', conflicts_with = "dev")]
     pub build: bool,
 
     /// Specify the version to grab from the registry(crates.io).
     /// You can also specify version as part of name, e.g
     /// `cargo add bitflags@0.3.2`.
-    #[structopt(long = "vers", value_name = "uri", conflicts_with = "git")]
+    #[clap(long, value_name = "URI", conflicts_with = "git")]
     pub vers: Option<String>,
 
     /// Specify a git repository to download the crate from.
-    #[structopt(
-        long = "git",
-        value_name = "uri",
+    #[clap(
+        long,
+        value_name = "URI",
         conflicts_with = "vers",
         conflicts_with = "path"
     )]
     pub git: Option<String>,
 
     /// Specify a git branch to download the crate from.
-    #[structopt(
-        long = "branch",
-        value_name = "branch",
+    #[clap(
+        long,
+        value_name = "BRANCH",
         conflicts_with = "vers",
         conflicts_with = "path"
     )]
     pub branch: Option<String>,
 
     /// Specify the path the crate should be loaded from.
-    #[structopt(long = "path", conflicts_with = "git")]
+    #[clap(long, parse(from_os_str), conflicts_with = "git")]
     pub path: Option<PathBuf>,
 
     /// Add as dependency to the given target platform.
-    #[structopt(long = "target", conflicts_with = "dev", conflicts_with = "build")]
+    #[clap(long, conflicts_with = "dev", conflicts_with = "build")]
     pub target: Option<String>,
 
     /// Add as an optional dependency (for use in features).
-    #[structopt(long = "optional", conflicts_with = "dev")]
+    #[clap(long, conflicts_with = "dev")]
     pub optional: bool,
 
     /// Path to the manifest to add a dependency to.
-    #[structopt(long = "manifest-path", value_name = "path", conflicts_with = "pkgid")]
+    #[clap(
+        long,
+        value_name = "PATH",
+        parse(from_os_str),
+        conflicts_with = "pkgid"
+    )]
     pub manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to add this dependency to.
-    #[structopt(
+    #[clap(
         long = "package",
-        short = "p",
-        value_name = "pkgid",
-        conflicts_with = "path"
+        short = 'p',
+        value_name = "PKGID",
+        conflicts_with = "manifest-path"
     )]
     pub pkgid: Option<String>,
 
     /// Choose method of semantic version upgrade.  Must be one of "none" (exact version, `=`
     /// modifier), "patch" (`~` modifier), "minor" (`^` modifier), "all" (`>=`), or "default" (no
     /// modifier).
-    #[structopt(
-        long = "upgrade",
-        value_name = "method",
+    #[clap(
+        long,
+        value_name = "METHOD",
         possible_value = "none",
         possible_value = "patch",
         possible_value = "minor",
@@ -117,32 +122,32 @@ pub struct Args {
 
     /// Include prerelease versions when fetching from crates.io (e.g.
     /// '0.6.0-alpha').
-    #[structopt(long = "allow-prerelease")]
+    #[clap(long)]
     pub allow_prerelease: bool,
 
     /// Space-separated list of features to add. For an alternative approach to
     /// enabling features, consider installing the `cargo-feature` utility.
-    #[structopt(long = "features", number_of_values = 1)]
+    #[clap(long)]
     pub features: Option<Vec<String>>,
 
     /// Set `default-features = false` for the added dependency.
-    #[structopt(long = "no-default-features")]
+    #[clap(long)]
     pub no_default_features: bool,
 
     /// Do not print any output in case of success.
-    #[structopt(long = "quiet", short = "q")]
+    #[clap(long)]
     pub quiet: bool,
 
     /// Run without accessing the network
-    #[structopt(long = "offline")]
+    #[clap(long)]
     pub offline: bool,
 
     /// Sort dependencies even if currently unsorted
-    #[structopt(long = "sort", short = "s")]
+    #[clap(long, short)]
     pub sort: bool,
 
     /// Registry to use
-    #[structopt(long = "registry", conflicts_with = "git", conflicts_with = "path")]
+    #[clap(long, conflicts_with = "git", conflicts_with = "path")]
     pub registry: Option<String>,
 }
 
@@ -441,5 +446,11 @@ mod tests {
                 .unwrap(),
             self_path
         );
+    }
+
+    #[test]
+    fn verify_app() {
+        use clap::IntoApp;
+        Command::into_app().debug_assert()
     }
 }
