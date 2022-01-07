@@ -29,7 +29,14 @@ impl TargetVersion {
             }
             TargetVersion::Absolute(version) => {
                 if current < version {
-                    Ok(Some(version.clone()))
+                    let mut version = version.clone();
+                    if version.build.is_empty() {
+                        if let Some(metadata) = metadata {
+                            version.build = semver::BuildMetadata::new(metadata)?;
+                        }
+                    }
+
+                    Ok(Some(version))
                 } else if current == version {
                     Ok(None)
                 } else {
