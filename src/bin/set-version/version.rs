@@ -33,6 +33,8 @@ impl TargetVersion {
                     if version.build.is_empty() {
                         if let Some(metadata) = metadata {
                             version.build = semver::BuildMetadata::new(metadata)?;
+                        } else {
+                            version.build = current.build.clone();
                         }
                     }
 
