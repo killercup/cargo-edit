@@ -16,14 +16,15 @@ extern crate error_chain;
 
 use crate::args::{Args, Command};
 use cargo_edit::{
-    find, manifest_from_pkgid, registry_url, update_registry_index, Dependency, LocalManifest,
+    colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, Dependency,
+    LocalManifest,
 };
 use clap::Parser;
 use std::io::Write;
 use std::path::Path;
 use std::process;
 use std::{borrow::Cow, collections::BTreeSet};
-use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use termcolor::{BufferWriter, Color, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
 
 mod args;
@@ -69,11 +70,7 @@ mod errors {
 use crate::errors::*;
 
 fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
-    let colorchoice = if atty::is(atty::Stream::Stdout) {
-        ColorChoice::Auto
-    } else {
-        ColorChoice::Never
-    };
+    let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Adding")?;
@@ -126,7 +123,8 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
 }
 
 fn unrecognized_features_message(message: &str) -> Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let colorchoice = colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))

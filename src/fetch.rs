@@ -7,7 +7,7 @@ use std::env;
 use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
-use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use url::Url;
 
 /// Query latest version from a registry index
@@ -217,11 +217,7 @@ pub fn get_features_from_registry(
 
 /// update registry index for given project
 pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
-    let colorchoice = if atty::is(atty::Stream::Stdout) {
-        ColorChoice::Auto
-    } else {
-        ColorChoice::Never
-    };
+    let colorchoice = crate::colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
 
     let mut index = crates_index::Index::from_url(registry.as_str())?;

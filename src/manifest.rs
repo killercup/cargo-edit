@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::{env, str};
 
 use semver::{Version, VersionReq};
-use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
+use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
 
 use crate::dependency::Dependency;
 use crate::errors::*;
@@ -529,7 +529,8 @@ fn print_upgrade_if_necessary(
         if old_version == new_version {
             return Ok(());
         }
-        let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+        let colorchoice = crate::colorize_stderr();
+        let bufwtr = BufferWriter::stderr(colorchoice);
         let mut buffer = bufwtr.buffer();
         buffer
             .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))

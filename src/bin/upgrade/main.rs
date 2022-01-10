@@ -16,15 +16,15 @@ extern crate error_chain;
 
 use crate::errors::*;
 use cargo_edit::{
-    find, get_latest_dependency, manifest_from_pkgid, registry_url, update_registry_index,
-    CrateName, Dependency, LocalManifest,
+    colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url,
+    update_registry_index, CrateName, Dependency, LocalManifest,
 };
 use clap::Parser;
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
-use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
+use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
 use url::Url;
 
 mod errors {
@@ -141,7 +141,8 @@ fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
 }
 
 fn deprecated_message(message: &str) -> Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let colorchoice = colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
@@ -156,7 +157,8 @@ fn deprecated_message(message: &str) -> Result<()> {
 }
 
 fn dry_run_message() -> Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let colorchoice = colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))

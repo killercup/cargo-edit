@@ -49,7 +49,7 @@ path = "src/bin/set-version/main.rs"
 required-features = ["set-version"]
 
 [dependencies]
-atty = { version = "0.2.14", optional = true }
+concolor-control = { version = "0.0.7", default-features = false }
 cargo_metadata = "0.14.0"
 crates-index = "0.18.1"
 dunce = "1.0"
@@ -92,7 +92,8 @@ add = ["cli"]
 rm = ["cli"]
 upgrade = ["cli"]
 set-version = ["cli"]
-cli = ["atty", "clap"]
+cli = ["color", "clap"]
+color = ["concolor-control/auto"]
 test-external-apis = []
 vendored-openssl = ["git2/vendored-openssl"]
 vendored-libgit2 = ["git2/vendored-libgit2"]

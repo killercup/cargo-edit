@@ -14,13 +14,13 @@
 #[macro_use]
 extern crate error_chain;
 
-use cargo_edit::{manifest_from_pkgid, LocalManifest};
+use cargo_edit::{colorize_stderr, manifest_from_pkgid, LocalManifest};
 use clap::Parser;
 use std::borrow::Cow;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
-use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 
 mod errors {
     error_chain! {
@@ -94,11 +94,7 @@ impl Args {
 }
 
 fn print_msg(name: &str, section: &str) -> Result<()> {
-    let colorchoice = if atty::is(atty::Stream::Stdout) {
-        ColorChoice::Auto
-    } else {
-        ColorChoice::Never
-    };
+    let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Removing")?;

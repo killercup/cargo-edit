@@ -20,10 +20,11 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use cargo_edit::{
-    find, manifest_from_pkgid, upgrade_requirement, workspace_members, LocalManifest,
+    colorize_stderr, find, manifest_from_pkgid, upgrade_requirement, workspace_members,
+    LocalManifest,
 };
 use clap::Parser;
-use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
+use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
 
 mod args;
 mod errors;
@@ -209,7 +210,8 @@ impl Manifests {
 }
 
 fn dry_run_message() -> Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let colorchoice = colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
@@ -226,7 +228,8 @@ fn dry_run_message() -> Result<()> {
 }
 
 fn deprecated_message(message: &str) -> Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let colorchoice = colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
@@ -241,7 +244,8 @@ fn deprecated_message(message: &str) -> Result<()> {
 }
 
 fn upgrade_message(name: &str, from: &semver::Version, to: &semver::Version) -> Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let colorchoice = colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
@@ -258,7 +262,8 @@ fn upgrade_message(name: &str, from: &semver::Version, to: &semver::Version) -> 
 }
 
 fn upgrade_dependent_message(name: &str, old_req: &str, new_req: &str) -> Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let colorchoice = colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))

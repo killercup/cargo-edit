@@ -25,6 +25,7 @@ mod fetch;
 mod manifest;
 mod metadata;
 mod registry;
+mod util;
 mod version;
 
 pub use crate::crate_name::CrateName;
@@ -37,4 +38,5 @@ pub use crate::fetch::{
 pub use crate::manifest::{find, LocalManifest, Manifest};
 pub use crate::metadata::{manifest_from_pkgid, workspace_members};
 pub use crate::registry::registry_url;
+pub use crate::util::{colorize_stderr, ColorChoice};
 pub use crate::version::{upgrade_requirement, VersionExt};
