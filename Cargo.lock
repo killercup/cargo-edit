@@ -154,9 +154,9 @@ version = "0.8.0"
 dependencies = [
  "assert_cmd",
  "assert_fs",
- "atty",
  "cargo_metadata",
  "clap",
+ "concolor-control",
  "crates-index",
  "dirs-next",
  "dunce",
