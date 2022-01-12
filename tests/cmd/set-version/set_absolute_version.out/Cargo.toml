@@ -1,0 +1,11 @@
+[workspace]
+
+[package]
+name = "sample"
+version = "2.0.0"
+edition = "2015"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]

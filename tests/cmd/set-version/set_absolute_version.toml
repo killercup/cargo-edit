@@ -1,0 +1,7 @@
+bin.name = "cargo-set-version"
+args = ["set-version", "2.0.0"]
+status = "success"
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
