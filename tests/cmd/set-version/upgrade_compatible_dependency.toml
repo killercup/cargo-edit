@@ -1,0 +1,7 @@
+bin.name = "cargo-set-version"
+args = ["set-version", "0.4.5", "-p", "cargo-list-test-fixture-dependency"]
+status = "success"
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

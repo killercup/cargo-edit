@@ -1,0 +1,7 @@
+bin.name = "cargo-set-version"
+args = ["set-version", "1.0.0", "--bump", "major"]
+status.code = 2
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
