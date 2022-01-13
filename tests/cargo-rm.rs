@@ -10,10 +10,10 @@ fn remove_existing_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(!toml["dependencies"]["docopt"].is_none());
+    assert!(toml["dependencies"].get("docopt").is_some());
     execute_command(&["rm", "docopt"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"]["docopt"].is_none());
+    assert!(toml["dependencies"].get("docopt").is_none());
 
     // Activated features should not be changed:
     assert_eq!(toml["features"]["std"].as_array().unwrap().len(), 2);
@@ -24,12 +24,12 @@ fn remove_existing_dependency_does_not_create_empty_tables() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.no_features.sample");
 
     let toml = get_toml(&manifest);
-    assert!(toml["features"].is_none());
-    assert!(toml["build-dependencies"].is_none());
+    assert!(toml.get("features").is_none());
+    assert!(toml.get("build-dependencies").is_none());
     execute_command(&["rm", "clippy"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml["features"].is_none());
-    assert!(toml["build-dependencies"].is_none());
+    assert!(toml.get("features").is_none());
+    assert!(toml.get("build-dependencies").is_none());
 }
 
 #[test]
@@ -37,12 +37,12 @@ fn remove_existing_optional_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(!toml["dependencies"]["clippy"].is_none());
+    assert!(toml["dependencies"].get("clippy").is_some());
     assert_eq!(toml["features"]["annoy"].as_array().unwrap().len(), 1);
 
     execute_command(&["rm", "clippy"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"]["clippy"].is_none());
+    assert!(toml["dependencies"].get("clippy").is_none());
     // Also check that exact match feature activations are removed:
     assert_eq!(toml["features"]["annoy"].as_array().unwrap().len(), 0);
 }
@@ -52,12 +52,12 @@ fn remove_multiple_existing_dependencies() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(!toml["dependencies"]["docopt"].is_none());
-    assert!(!toml["dependencies"]["semver"].is_none());
+    assert!(toml["dependencies"].get("docopt").is_some());
+    assert!(toml["dependencies"].get("semver").is_some());
     execute_command(&["rm", "docopt", "semver"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"]["docopt"].is_none());
-    assert!(toml["dependencies"]["semver"].is_none());
+    assert!(toml["dependencies"].get("docopt").is_none());
+    assert!(toml["dependencies"].get("semver").is_none());
 
     // "semver/std" activated feature should NOT have been dropped as
     // there's still a build-dep on the crate:
@@ -75,17 +75,17 @@ fn remove_existing_dependency_from_specific_section() {
 
     // Test removing dev dependency.
     let toml = get_toml(&manifest);
-    assert!(!toml["dev-dependencies"]["regex"].is_none());
+    assert!(toml["dev-dependencies"].get("regex").is_some());
     execute_command(&["rm", "--dev", "regex"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"]["regex"].is_none());
+    assert!(toml["dev-dependencies"].get("regex").is_none());
 
     // Test removing build dependency.
     let toml = get_toml(&manifest);
-    assert!(!toml["build-dependencies"]["semver"].is_none());
+    assert!(toml["build-dependencies"].get("semver").is_some());
     execute_command(&["rm", "--build", "semver"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml["build-dependencies"].is_none());
+    assert!(toml.get("build-dependencies").is_none());
 }
 
 #[test]
@@ -94,11 +94,11 @@ fn remove_multiple_existing_dependencies_from_specific_section() {
 
     // Test removing dev dependency.
     let toml = get_toml(&manifest);
-    assert!(!toml["dev-dependencies"]["regex"].is_none());
-    assert!(!toml["dev-dependencies"]["serde"].is_none());
+    assert!(toml["dev-dependencies"].get("regex").is_some());
+    assert!(toml["dev-dependencies"].get("serde").is_some());
     execute_command(&["rm", "--dev", "regex", "serde"], &manifest);
     let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"].is_none());
+    assert!(toml.get("dev-dependencies").is_none());
 }
 
 #[test]
@@ -106,13 +106,13 @@ fn remove_section_after_removed_last_dependency() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(!toml["dev-dependencies"]["regex"].is_none());
+    assert!(toml["dev-dependencies"].get("regex").is_some());
     assert_eq!(toml["dev-dependencies"].as_table().unwrap().len(), 2);
 
     execute_command(&["rm", "--dev", "regex", "serde"], &manifest);
 
     let toml = get_toml(&manifest);
-    assert!(toml["dev-dependencies"].is_none());
+    assert!(toml.get("dev-dependencies").is_none());
 }
 
 // https://github.com/killercup/cargo-edit/issues/32
@@ -121,21 +121,21 @@ fn issue_32() {
     let (_tmpdir, manifest) = clone_out_test("tests/fixtures/rm/Cargo.toml.sample");
 
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"]["foo"].is_none());
+    assert!(toml["dependencies"].get("foo").is_none());
 
     execute_command(&["add", "foo@1.0"], &manifest);
     execute_command(&["add", "bar@1.0.7"], &manifest);
 
     let toml = get_toml(&manifest);
-    assert!(!toml["dependencies"]["foo"].is_none());
-    assert!(!toml["dependencies"]["bar"].is_none());
+    assert!(toml["dependencies"].get("foo").is_some());
+    assert!(toml["dependencies"].get("bar").is_some());
 
     execute_command(&["rm", "foo"], &manifest);
     execute_command(&["rm", "bar"], &manifest);
 
     let toml = get_toml(&manifest);
-    assert!(toml["dependencies"]["foo"].is_none());
-    assert!(toml["dependencies"]["bar"].is_none());
+    assert!(toml["dependencies"].get("foo").is_none());
+    assert!(toml["dependencies"].get("bar").is_none());
 }
 
 #[test]
@@ -277,5 +277,5 @@ fn rm_dependency_from_workspace_member() {
         .find(|manifest| manifest["package"]["name"].as_str() == Some("one"))
         .expect("Couldn't find workspace member `one'");
 
-    assert!(one["dependencies"]["libc"].as_str().is_none());
+    assert!(one["dependencies"].get("libc").is_none());
 }

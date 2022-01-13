@@ -50,7 +50,7 @@ impl Manifest {
             }
         }
 
-        descend(&mut self.data.root, table_path)
+        descend(self.data.as_item_mut(), table_path)
     }
 
     /// Get all sections in the manifest that exist and might contain dependencies.
@@ -60,7 +60,12 @@ impl Manifest {
 
         for dependency_type in DEP_TABLES {
             // Dependencies can be in the three standard sections...
-            if self.data[dependency_type].is_table_like() {
+            if self
+                .data
+                .get(dependency_type)
+                .map(|t| t.is_table_like())
+                .unwrap_or(false)
+            {
                 sections.push((
                     vec![String::from(*dependency_type)],
                     self.data[dependency_type].clone(),
@@ -76,7 +81,7 @@ impl Manifest {
                 .into_iter()
                 .flat_map(toml_edit::TableLike::iter)
                 .filter_map(|(target_name, target_table)| {
-                    let dependency_table = &target_table[dependency_type];
+                    let dependency_table = target_table.get(dependency_type)?;
                     dependency_table.as_table_like().map(|_| {
                         (
                             vec![
@@ -173,8 +178,10 @@ impl LocalManifest {
 
     /// Write changes back to the file
     pub fn write(&self) -> Result<()> {
-        if self.manifest.data["package"].is_none() && self.manifest.data["project"].is_none() {
-            if !self.manifest.data["workspace"].is_none() {
+        if !self.manifest.data.contains_key("package")
+            && !self.manifest.data.contains_key("project")
+        {
+            if self.manifest.data.contains_key("workspace") {
                 return Err(ErrorKind::UnexpectedRootManifest.into());
             } else {
                 return Err(ErrorKind::InvalidManifest.into());
@@ -286,7 +293,7 @@ impl LocalManifest {
         let table = self.get_table(table_path)?;
 
         // If (and only if) there is an old entry, merge the new one in.
-        if !table[dep_key].is_none() {
+        if table.as_table_like().unwrap().contains_key(dep_key) {
             if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[dep_key], &new_dependency)
             {
                 eprintln!("Error while displaying upgrade message, {}", e);
@@ -317,26 +324,29 @@ impl LocalManifest {
     ///   let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
     ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
     ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
-    ///   assert!(manifest.data["dependencies"].is_none());
+    ///   assert!(!manifest.data.contains_key("dependencies"));
     /// ```
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<()> {
-        if !self.data[table].is_table_like() {
-            return Err(ErrorKind::NonExistentTable(table.into()).into());
-        } else {
-            {
-                let dep = &mut self.data[table][name];
-                if dep.is_none() {
-                    return Err(ErrorKind::NonExistentDependency(name.into(), table.into()).into());
-                }
-                // remove the dependency
-                *dep = toml_edit::Item::None;
-            }
+        let parent_table = self
+            .data
+            .get_mut(table)
+            .filter(|t| t.is_table_like())
+            .ok_or_else(|| ErrorKind::NonExistentTable(table.into()))?;
 
-            // remove table if empty
-            if self.data[table].as_table_like().unwrap().is_empty() {
-                self.data[table] = toml_edit::Item::None;
-            }
+        {
+            let dep = parent_table
+                .get_mut(name)
+                .filter(|t| !t.is_none())
+                .ok_or_else(|| ErrorKind::NonExistentDependency(name.into(), table.into()))?;
+            // remove the dependency
+            *dep = toml_edit::Item::None;
         }
+
+        // remove table if empty
+        if parent_table.as_table_like().unwrap().is_empty() {
+            *parent_table = toml_edit::Item::None;
+        }
+
         Ok(())
     }
 
@@ -381,7 +391,7 @@ impl LocalManifest {
     ) -> impl Iterator<Item = &mut dyn toml_edit::TableLike> + 'r {
         let root = self.data.as_table_mut();
         root.iter_mut().flat_map(|(k, v)| {
-            if DEP_TABLES.contains(&k) {
+            if DEP_TABLES.contains(&k.get()) {
                 v.as_table_like_mut().into_iter().collect::<Vec<_>>()
             } else if k == "target" {
                 v.as_table_like_mut()
@@ -390,7 +400,7 @@ impl LocalManifest {
                     .flat_map(|(_, v)| {
                         v.as_table_like_mut().into_iter().flat_map(|v| {
                             v.iter_mut().filter_map(|(k, v)| {
-                                if DEP_TABLES.contains(&k) {
+                                if DEP_TABLES.contains(&k.get()) {
                                     v.as_table_like_mut()
                                 } else {
                                     None
@@ -484,12 +494,8 @@ fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
     if str_or_1_len_table(old_dep) {
         Ok(old_dep.clone())
     } else if old_dep.is_table_like() {
-        let version = old_dep["version"].clone();
-        if version.is_none() {
-            Err("Missing version field".into())
-        } else {
-            Ok(version)
-        }
+        let version = old_dep.get("version").ok_or("Missing version field")?;
+        Ok(version.clone())
     } else {
         unreachable!("Invalid old dependency type")
     }
@@ -644,7 +650,9 @@ mod tests {
         };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let other_dep = Dependency::new("other-dep").set_version("0.1.0");
-        let _ = manifest.insert_into_table(&["dependencies".to_owned()], &other_dep);
+        assert!(manifest
+            .insert_into_table(&["dependencies".to_owned()], &other_dep)
+            .is_ok());
         assert!(manifest
             .remove_from_table("dependencies", &dep.name)
             .is_err());
