@@ -170,7 +170,7 @@ fn fails_to_upgrade_missing_dependency() {
     execute_command(&["upgrade", "failure"], &manifest);
 
     // Verify that `failure` has not been added
-    assert!(get_toml(&manifest)["dependencies"]["failure"].is_none());
+    assert!(get_toml(&manifest).get("dependencies").is_none());
 }
 
 #[test]
