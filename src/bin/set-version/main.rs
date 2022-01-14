@@ -105,7 +105,8 @@ fn process(args: Args) -> Result<()> {
                 manifest.write()?;
             }
 
-            let crate_root = manifest.path.parent().expect("at least a parent");
+            let crate_root =
+                dunce::canonicalize(manifest.path.parent().expect("at least a parent"))?;
             for member in workspace_members.iter() {
                 let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
                 let dep_crate_root = dep_manifest
@@ -123,7 +124,7 @@ fn process(args: Args) -> Result<()> {
                         match d.get("path").and_then(|i| i.as_str()).and_then(|relpath| {
                             dunce::canonicalize(dep_crate_root.join(relpath)).ok()
                         }) {
-                            Some(dep_path) => dep_path == crate_root,
+                            Some(dep_path) => dep_path == crate_root.as_path(),
                             None => false,
                         }
                     })

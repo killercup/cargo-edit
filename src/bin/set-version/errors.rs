@@ -13,6 +13,7 @@ error_chain! {
         CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
     }
     foreign_links {
+        Io(::std::io::Error) #[doc = "An error from the std::io module"];
         CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
         Version(::semver::Error)#[doc = "An error from the semver crate"];
     }
