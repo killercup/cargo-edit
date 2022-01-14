@@ -1,0 +1,7 @@
+bin.name = "cargo-rm"
+args = ["rm", "docopt", "semver"]
+status = "success"
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
