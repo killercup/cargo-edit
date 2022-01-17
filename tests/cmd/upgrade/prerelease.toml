@@ -1,0 +1,7 @@
+bin.name = "cargo-upgrade"
+args = ["upgrade", "--allow-prerelease"]
+status = "success"
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
