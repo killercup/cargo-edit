@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 /// A dependency handled by Cargo
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Dependency {
     /// The name of the dependency (as it is set in its `Cargo.toml` and known to crates.io)
     pub name: String,
@@ -262,7 +262,7 @@ impl Default for Dependency {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 enum DependencySource {
     Version {
         version: Option<String>,
