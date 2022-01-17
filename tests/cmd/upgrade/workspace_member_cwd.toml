@@ -1,0 +1,8 @@
+bin.name = "cargo-upgrade"
+args = ["upgrade", "libc"]
+status = "success"
+fs.sandbox = true
+fs.cwd = "workspace_member_cwd.in/one"
+
+[env.add]
+CARGO_IS_TEST="1"

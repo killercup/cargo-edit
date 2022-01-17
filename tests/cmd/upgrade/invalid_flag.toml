@@ -1,0 +1,7 @@
+bin.name = "cargo-upgrade"
+args = ["upgrade", "--flag"]
+status.code = 2
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

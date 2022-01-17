@@ -1,0 +1,11 @@
+[package]
+name = "one"
+version = "0.1.0"
+
+[lib]
+path = "../dummy.rs"
+
+[dependencies]
+libc = "0.2.28"
+rand = "0.3"
+three = { path = "../implicit/three"}
