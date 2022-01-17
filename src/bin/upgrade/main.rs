@@ -20,7 +20,7 @@ use cargo_edit::{
     update_registry_index, CrateName, Dependency, LocalManifest,
 };
 use clap::Parser;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -251,7 +251,7 @@ impl Manifests {
                     Ok((name, None))
                 }
             })
-            .collect::<Result<HashMap<_, _>>>()?;
+            .collect::<Result<BTreeMap<_, _>>>()?;
 
         Ok(DesiredUpgrades(
             self.0
@@ -399,11 +399,11 @@ struct UpgradeMetadata {
 
 /// The set of dependencies to be upgraded, alongside the registries returned from cargo metadata, and
 /// the desired versions, if specified by the user.
-struct DesiredUpgrades(HashMap<Dependency, UpgradeMetadata>);
+struct DesiredUpgrades(BTreeMap<Dependency, UpgradeMetadata>);
 
 /// The complete specification of the upgrades that will be performed. Map of the dependency names
 /// to the new versions.
-struct ActualUpgrades(HashMap<Dependency, String>);
+struct ActualUpgrades(BTreeMap<Dependency, String>);
 
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
@@ -502,7 +502,7 @@ fn process(args: Args) -> Result<()> {
                 .0
                 .values()
                 .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
-                .collect::<HashSet<_>>()
+                .collect::<BTreeSet<_>>()
             {
                 update_registry_index(
                     &Url::parse(registry_url).map_err(|_| {
