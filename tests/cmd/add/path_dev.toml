@@ -1,0 +1,8 @@
+bin.name = "cargo-add"
+args = ["add", "cargo-list-test-fixture-dependency", "../dependency", "--dev"]
+status = "success"
+fs.sandbox = true
+fs.cwd = "path_dev.in/primary"
+
+[env.add]
+CARGO_IS_TEST="1"

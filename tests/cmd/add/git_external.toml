@@ -1,0 +1,4 @@
+bin.name = "cargo-add"
+args = ["add", "https://github.com/killercup/cargo-edit.git"]
+status = "success"
+fs.sandbox = true

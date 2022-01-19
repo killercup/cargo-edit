@@ -1,0 +1,13 @@
+    Updating 'https://github.com/rust-lang/crates.io-index' index
+      Adding cargo-edit (unknown version) to dependencies. 
+             Available features: 
+             - default
+             - add
+             - rm
+             - upgrade
+             - set-version
+             - cli
+             - color
+             - test-external-apis
+             - vendored-openssl
+             - vendored-libgit2

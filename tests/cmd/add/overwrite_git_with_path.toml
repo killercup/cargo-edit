@@ -1,0 +1,8 @@
+bin.name = "cargo-add"
+args = ["add", "cargo-list-test-fixture-dependency", "--path", "../dependency"]
+status = "success"
+fs.sandbox = true
+fs.cwd = "overwrite_git_with_path.in/primary"
+
+[env.add]
+CARGO_IS_TEST="1"

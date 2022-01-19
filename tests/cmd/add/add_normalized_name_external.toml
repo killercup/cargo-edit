@@ -1,0 +1,4 @@
+bin.name = "cargo-add"
+args = ["add", "linked_hash_map", "Inflector"]
+status = "success"
+fs.sandbox = true

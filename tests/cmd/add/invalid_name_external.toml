@@ -1,0 +1,4 @@
+bin.name = "cargo-add"
+args = ["add", "lets_hope_nobody_ever_publishes_this_crate"]
+status.code = 1
+fs.sandbox = true

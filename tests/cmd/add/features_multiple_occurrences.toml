@@ -1,0 +1,7 @@
+bin.name = "cargo-add"
+args = ["add", "your-face", "--features", "eyes", "--features", "nose"]
+status = "success"
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

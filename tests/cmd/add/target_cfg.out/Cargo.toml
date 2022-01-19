@@ -1,0 +1,11 @@
+[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[target]
+
+[target."cfg(unix)"]
+
+[target."cfg(unix)".dependencies]
+my-package1 = "99999.0.0"
+my-package2 = "99999.0.0"
