@@ -1,0 +1,7 @@
+bin.name = "cargo-add"
+args = ["add", "my-package1@>=0.1.1", "my-package2@0.2.3", "my-package"]
+status = "success"
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

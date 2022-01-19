@@ -1,0 +1,7 @@
+bin.name = "cargo-add"
+args = ["add", "./tests/fixtures/local"]
+status.code = 1
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

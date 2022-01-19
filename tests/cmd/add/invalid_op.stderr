@@ -1,0 +1,7 @@
+error: "an_invalid_string" isn't a valid value for '--upgrade <METHOD>'
+	[possible values: all, default, minor, none, patch]
+
+USAGE:
+    cargo add --upgrade <METHOD> <CRATE>...
+
+For more information try --help

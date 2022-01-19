@@ -1,0 +1,4 @@
+bin.name = "cargo-add"
+args = ["add", "https://github.com/killercup/fake-git-repo.git"]
+status.code = 1
+fs.sandbox = true

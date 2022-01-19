@@ -1,0 +1,7 @@
+bin.name = "cargo-add"
+args = ["add", "my-package", "--git", "https://github.com/dcjanus/invalid", "--path", "/path/here"]
+status.code = 2
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

@@ -1,0 +1,4 @@
+Command failed due to unhandled error: Unable to open local Cargo.toml
+
+Caused by: Failed to read manifest contents
+Caused by: [..]

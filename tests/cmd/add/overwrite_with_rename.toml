@@ -1,0 +1,7 @@
+bin.name = "cargo-add"
+args = ["add", "versioned-package", "--rename", "renamed"]
+status = "success"
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
