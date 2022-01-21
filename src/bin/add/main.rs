@@ -177,7 +177,8 @@ fn handle_add(args: &Args) -> Result<()> {
             .map(|s| s.as_ref())
             .collect::<BTreeSet<&str>>();
 
-        let unknown_features: Vec<&&str> = req_feats.difference(&available_features).collect();
+        let mut unknown_features: Vec<&&str> = req_feats.difference(&available_features).collect();
+        unknown_features.sort();
 
         if !unknown_features.is_empty() {
             unrecognized_features_message(&format!(
