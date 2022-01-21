@@ -1,6 +1,0 @@
-    Removing semver from dev-dependencies
-Could not edit `Cargo.toml`.
-
-ERROR: The dependency `semver` could not be found in `dev-dependencies`.
-Command failed due to unhandled error: The dependency `semver` could not be found in `dev-dependencies`.
-

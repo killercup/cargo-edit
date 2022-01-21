@@ -1,6 +1,0 @@
-      Adding this-should-not-show-up (unknown version) to dependencies. 
-Could not edit `Cargo.toml`.
-
-ERROR: Cannot add `cargo-list-test-fixture` as a dependency to itself
-Command failed due to unhandled error: Cannot add `cargo-list-test-fixture` as a dependency to itself
-

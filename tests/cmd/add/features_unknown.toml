@@ -1,6 +1,17 @@
 bin.name = "cargo-add"
 args = ["add", "your-face", "--features", "noze"]
 status = "success"
+stdout = ""
+stderr = """
+Unrecognized features: [\"noze\"]
+      Adding your-face v99999.0.0 to dependencies with features: [\"noze\"]
+. 
+             Available features: 
+             - nose
+             - mouth
+             - eyes
+             - ears
+"""
 fs.sandbox = true
 
 [env.add]

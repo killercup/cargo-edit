@@ -1,6 +1,13 @@
 bin.name = "cargo-add"
 args = ["add", "./tests/fixtures/local"]
 status.code = 1
+stdout = ""
+stderr = """
+Command failed due to unhandled error: Unable to open local Cargo.toml
+
+Caused by: Failed to read manifest contents
+Caused by: [..]
+"""
 fs.sandbox = true
 
 [env.add]

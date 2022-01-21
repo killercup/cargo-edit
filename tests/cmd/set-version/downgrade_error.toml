@@ -1,6 +1,11 @@
 bin.name = "cargo-set-version"
 args = ["set-version", "0.0.1"]
 status.code = 1
+stdout = ""
+stderr = """
+Command failed due to unhandled error: Cannot downgrade from 0.1.0 to 0.0.1
+
+"""
 fs.sandbox = true
 
 [env.add]

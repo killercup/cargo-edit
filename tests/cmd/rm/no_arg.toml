@@ -1,6 +1,16 @@
 bin.name = "cargo-rm"
 args = ["rm"]
 status.code = 2
+stdout = ""
+stderr = """
+error: The following required arguments were not provided:
+    <CRATE>...
+
+USAGE:
+    cargo rm [OPTIONS] <CRATE>...
+
+For more information try --help
+"""
 fs.sandbox = true
 
 [env.add]

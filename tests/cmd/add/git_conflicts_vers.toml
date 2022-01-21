@@ -1,6 +1,15 @@
 bin.name = "cargo-add"
 args = ["add", "my-package", "--git", "https://github.com/dcjanus/invalid", "--vers", "0.4.3"]
 status.code = 2
+stdout = ""
+stderr = """
+error: The argument '--git <URI>' cannot be used with '--vers <URI>'
+
+USAGE:
+    cargo add --git <URI> --upgrade <METHOD> <CRATE>...
+
+For more information try --help
+"""
 fs.sandbox = true
 
 [env.add]

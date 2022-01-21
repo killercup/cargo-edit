@@ -1,6 +1,11 @@
 bin.name = "cargo-add"
 args = ["add", "--build", "my-build-package1", "my-build-package2"]
 status = "success"
+stdout = ""
+stderr = """
+      Adding my-build-package1 v99999.0.0 to build-dependencies. 
+      Adding my-build-package2 v99999.0.0 to build-dependencies. 
+"""
 fs.sandbox = true
 
 [env.add]

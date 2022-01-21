@@ -1,6 +1,15 @@
 bin.name = "cargo-add"
 args = ["add", "my-package", "--registry", "alternative", "--path", "/path/here"]
 status.code = 2
+stdout = ""
+stderr = """
+error: The argument '--registry <REGISTRY>' cannot be used with '--path <PATH>'
+
+USAGE:
+    cargo add --registry <REGISTRY> --upgrade <METHOD> <CRATE>...
+
+For more information try --help
+"""
 fs.sandbox = true
 
 [env.add]

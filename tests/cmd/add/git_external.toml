@@ -1,4 +1,20 @@
 bin.name = "cargo-add"
 args = ["add", "https://github.com/killercup/cargo-edit.git"]
 status = "success"
+stdout = ""
+stderr = """
+    Updating 'https://github.com/rust-lang/crates.io-index' index
+      Adding cargo-edit (unknown version) to dependencies. 
+             Available features: 
+             - default
+             - add
+             - rm
+             - upgrade
+             - set-version
+             - cli
+             - color
+             - test-external-apis
+             - vendored-openssl
+             - vendored-libgit2
+"""
 fs.sandbox = true

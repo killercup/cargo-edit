@@ -1,6 +1,10 @@
 bin.name = "cargo-rm"
 args = ["rm", "--dev", "serde"]
 status = "success"
+stdout = ""
+stderr = """
+    Removing serde from dev-dependencies
+"""
 fs.sandbox = true
 
 [env.add]

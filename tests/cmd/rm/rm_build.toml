@@ -1,6 +1,10 @@
 bin.name = "cargo-rm"
 args = ["rm", "--build", "semver"]
 status = "success"
+stdout = ""
+stderr = """
+    Removing semver from build-dependencies
+"""
 fs.sandbox = true
 
 [env.add]

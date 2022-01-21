@@ -1,6 +1,16 @@
 bin.name = "cargo-add"
 args = ["add", "my-package", "--upgrade=an_invalid_string"]
 status.code = 2
+stdout = ""
+stderr = """
+error: \"an_invalid_string\" isn't a valid value for '--upgrade <METHOD>'
+\t[possible values: all, default, minor, none, patch]
+
+USAGE:
+    cargo add --upgrade <METHOD> <CRATE>...
+
+For more information try --help
+"""
 fs.sandbox = true
 
 [env.add]

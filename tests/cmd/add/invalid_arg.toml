@@ -1,6 +1,17 @@
 bin.name = "cargo-add"
 args = ["add", "my-package", "--flag"]
 status.code = 2
+stdout = ""
+stderr = """
+error: Found argument '--flag' which wasn't expected, or isn't valid in this context
+
+\tIf you tried to supply `--flag` as a value rather than a flag, use `-- --flag`
+
+USAGE:
+    cargo add [OPTIONS] <CRATE>...
+
+For more information try --help
+"""
 fs.sandbox = true
 
 [env.add]

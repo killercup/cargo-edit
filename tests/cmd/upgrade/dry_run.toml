@@ -1,6 +1,13 @@
 bin.name = "cargo-upgrade"
 args = ["upgrade", "--dry-run"]
 status = "success"
+stdout = """
+cargo-list-test-fixture:
+"""
+stderr = """
+Starting dry run. Changes will not be saved.
+    Upgrading docopt v0.8.0 -> v99999.0.0
+"""
 fs.sandbox = true
 
 [env.add]

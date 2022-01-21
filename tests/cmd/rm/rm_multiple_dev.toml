@@ -1,6 +1,11 @@
 bin.name = "cargo-rm"
 args = ["rm", "--dev", "regex", "serde"]
 status = "success"
+stdout = ""
+stderr = """
+    Removing regex from dev-dependencies
+    Removing serde from dev-dependencies
+"""
 fs.sandbox = true
 
 [env.add]

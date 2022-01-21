@@ -1,6 +1,10 @@
 bin.name = "cargo-add"
 args = ["add", "git-package", "--git", "http://localhost/git-package.git", "--branch", "main"]
 status = "success"
+stdout = ""
+stderr = """
+      Adding git-package (unknown version) to dependencies. 
+"""
 fs.sandbox = true
 
 [env.add]
