@@ -106,11 +106,13 @@ fn fuzzy_query_registry_index(
             .versions()
             .iter()
             .map(|v| {
+                let mut available_features: Vec<_> = v.features().keys().cloned().collect();
+                available_features.sort();
                 Ok(CrateVersion {
                     name: v.name().to_owned(),
                     version: v.version().parse()?,
                     yanked: v.is_yanked(),
-                    available_features: v.features().keys().cloned().collect(),
+                    available_features,
                 })
             })
             .collect();
