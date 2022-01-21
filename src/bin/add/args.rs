@@ -80,7 +80,12 @@ pub struct Args {
     pub path: Option<PathBuf>,
 
     /// Add as dependency to the given target platform.
-    #[clap(long, conflicts_with = "dev", conflicts_with = "build")]
+    #[clap(
+        long,
+        conflicts_with = "dev",
+        conflicts_with = "build",
+        forbid_empty_values = true
+    )]
     pub target: Option<String>,
 
     /// Add as an optional dependency (for use in features).
