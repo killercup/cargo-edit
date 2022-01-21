@@ -1,6 +1,11 @@
 bin.name = "cargo-upgrade"
 args = ["upgrade", "--manifest-path", "Cargo.toml"]
 status.code = 1
+stdout = ""
+stderr = """
+Command failed due to unhandled error: Found virtual manifest, but this command requires running against an actual package in this workspace. Try adding `--workspace`.
+
+"""
 fs.sandbox = true
 
 [env.add]

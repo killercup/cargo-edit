@@ -1,6 +1,11 @@
 bin.name = "cargo-rm"
 args = ["rm", "docopt", "semver"]
 status = "success"
+stdout = ""
+stderr = """
+    Removing docopt from dependencies
+    Removing semver from dependencies
+"""
 fs.sandbox = true
 
 [env.add]

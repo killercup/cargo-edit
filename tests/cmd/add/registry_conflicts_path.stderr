@@ -1,6 +1,0 @@
-error: The argument '--registry <REGISTRY>' cannot be used with '--path <PATH>'
-
-USAGE:
-    cargo add --registry <REGISTRY> --upgrade <METHOD> <CRATE>...
-
-For more information try --help

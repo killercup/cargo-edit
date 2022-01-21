@@ -1,6 +1,13 @@
 bin.name = "cargo-upgrade"
 args = ["upgrade"]
 status = "success"
+stdout = """
+cargo-list-test-fixture:
+"""
+stderr = """
+    Upgrading a v1.0 -> v99999.0.0
+    Upgrading b v0.8.0-alpha -> v99999.0.0-alpha.1
+"""
 fs.sandbox = true
 
 [env.add]

@@ -1,6 +1,0 @@
-error: The argument '--optional' cannot be used with '--dev'
-
-USAGE:
-    cargo add --optional --upgrade <METHOD> <CRATE>...
-
-For more information try --help

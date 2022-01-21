@@ -1,6 +1,0 @@
-error: The argument '<TARGET>' cannot be used with '--bump <BUMP>'
-
-USAGE:
-    cargo set-version <TARGET>
-
-For more information try --help

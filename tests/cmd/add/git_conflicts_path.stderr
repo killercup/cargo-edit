@@ -1,6 +1,0 @@
-error: The argument '--git <URI>' cannot be used with '--path <PATH>'
-
-USAGE:
-    cargo add --git <URI> --upgrade <METHOD> <CRATE>...
-
-For more information try --help

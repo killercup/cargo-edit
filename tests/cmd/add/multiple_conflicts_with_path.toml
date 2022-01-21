@@ -1,6 +1,11 @@
 bin.name = "cargo-add"
 args = ["add", "my-package1", "my-package2", "--path", "./foo"]
 status.code = 1
+stdout = ""
+stderr = """
+Command failed due to unhandled error: Cannot specify multiple crates with path or git or vers
+
+"""
 fs.sandbox = true
 
 [env.add]

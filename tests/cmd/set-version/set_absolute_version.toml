@@ -1,6 +1,10 @@
 bin.name = "cargo-set-version"
 args = ["set-version", "2.0.0"]
 status = "success"
+stdout = ""
+stderr = """
+    Upgraded sample from 0.1.0 to 2.0.0
+"""
 fs.sandbox = true
 
 [env.add]

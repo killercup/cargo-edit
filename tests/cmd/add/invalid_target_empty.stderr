@@ -1,6 +1,0 @@
-error: The argument '--target <TARGET>' requires a value but none was supplied
-
-USAGE:
-    cargo add [OPTIONS] <CRATE>...
-
-For more information try --help

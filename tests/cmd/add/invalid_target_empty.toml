@@ -1,6 +1,15 @@
 bin.name = "cargo-add"
 args = ["add", "my-package", "--target", ""]
 status.code = 2
+stdout = ""
+stderr = """
+error: The argument '--target <TARGET>' requires a value but none was supplied
+
+USAGE:
+    cargo add [OPTIONS] <CRATE>...
+
+For more information try --help
+"""
 fs.sandbox = true
 
 [env.add]

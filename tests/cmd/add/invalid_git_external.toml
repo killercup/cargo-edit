@@ -1,4 +1,10 @@
 bin.name = "cargo-add"
 args = ["add", "https://github.com/killercup/fake-git-repo.git"]
 status.code = 1
+stdout = ""
+stderr = """
+    Updating 'https://github.com/rust-lang/crates.io-index' index
+Command failed due to unhandled error: HTTP request `https://raw.githubusercontent.com/killercup/fake-git-repo/master/Cargo.toml` failed: 404
+
+"""
 fs.sandbox = true

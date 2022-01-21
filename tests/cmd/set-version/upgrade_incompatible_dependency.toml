@@ -1,6 +1,11 @@
 bin.name = "cargo-set-version"
 args = ["set-version", "2.0.0", "-p", "cargo-list-test-fixture-dependency"]
 status = "success"
+stdout = ""
+stderr = """
+    Upgraded cargo-list-test-fixture-dependency from 0.4.3 to 2.0.0
+Updated dependency cargo-list-test-fixture from 0.4.3 to 2.0.0
+"""
 fs.sandbox = true
 
 [env.add]

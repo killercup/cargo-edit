@@ -1,6 +1,11 @@
 bin.name = "cargo-add"
 args = ["add", "my-package1", "your-face", "--features", "nose"]
 status.code = 1
+stdout = ""
+stderr = """
+Command failed due to unhandled error: Cannot specify multiple crates with features
+
+"""
 fs.sandbox = true
 
 [env.add]
