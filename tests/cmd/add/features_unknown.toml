@@ -6,7 +6,7 @@ stderr = """
 Unrecognized features: [\"noze\"]
       Adding your-face v99999.0.0 to dependencies with features: [\"noze\"]
 .
-             Available features: 
+             Available features:
              - nose
              - mouth
              - eyes
