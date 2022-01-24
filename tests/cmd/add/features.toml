@@ -3,7 +3,7 @@ args = ["add", "your-face", "--features", "eyes"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding your-face v99999.0.0 to dependencies with features: [\"eyes\"]
+      Adding your-face v99999.0.0 to dependencies with features: eyes.
              Available features:
              - nose
              - mouth
