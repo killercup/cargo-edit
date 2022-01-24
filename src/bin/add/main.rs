@@ -96,10 +96,11 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
     };
     write!(output, " {}", section)?;
     if let Some(f) = &dep.features {
-        writeln!(output, " with features: {:?}", f)?;
-    } else {
-        writeln!(output, ".")?;
+        if !f.is_empty() {
+            write!(output, " with features: {}", f.join(", "))?;
+        }
     }
+    writeln!(output, ".")?;
 
     if !&dep.available_features.is_empty() {
         writeln!(output, "{:>13}Available features:", " ")?;
