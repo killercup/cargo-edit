@@ -1,9 +1,8 @@
 bin.name = "cargo-add"
-args = ["add", "cargo-list-test-fixture-dependency", "../dependency"]
+args = ["add", "cargo-list-test-fixture-dependency", "--path", "../dependency"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding cargo-list-test-fixture-dependency (local) to dependencies.
       Adding cargo-list-test-fixture-dependency (local) to dependencies.
 """
 fs.sandbox = true
