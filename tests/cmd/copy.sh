@@ -10,6 +10,7 @@ if [ -z "${AFTER}" ]; then
     exit 1
 fi
 
+cp -r $1.toml $2.toml
 IN_LINK=$(readlink $1.in)
 if [ -n "${IN_LINK}" ]; then
     ln -s ${IN_LINK} $2.in
@@ -17,7 +18,10 @@ else
     cp -r $1.in $2.in
 fi
 cp -r $1.out $2.out
-cp -r $1.stdout $2.stdout
-cp -r $1.stderr $2.stderr
-cp -r $1.toml $2.toml
+if [ -e "$1.stdout" ]; then
+    cp -r $1.stdout $2.stdout
+fi
+if [ -e "$1.stderr" ]; then
+    cp -r $1.stderr $2.stderr
+fi
 git add $2.*
