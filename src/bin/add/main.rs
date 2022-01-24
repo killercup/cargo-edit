@@ -79,7 +79,11 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
     if dep.path().is_some() {
         write!(output, " (local)")?;
     } else if let Some(version) = dep.version() {
-        write!(output, " v{}", version)?;
+        if version.chars().next().unwrap_or('0').is_ascii_digit() {
+            write!(output, " v{}", version)?;
+        } else {
+            write!(output, " {}", version)?;
+        }
     }
     write!(output, " to")?;
     if optional {

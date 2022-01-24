@@ -3,7 +3,7 @@ args = ["add", "my-package", "--vers", ">=0.1.1"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding my-package v>=0.1.1 to dependencies.
+      Adding my-package >=0.1.1 to dependencies.
 """
 fs.sandbox = true
 
