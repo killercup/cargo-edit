@@ -24,7 +24,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process;
 use std::{borrow::Cow, collections::BTreeSet};
-use termcolor::{BufferWriter, Color, ColorSpec, StandardStream, WriteColor};
+use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
 
 mod args;
@@ -130,19 +130,13 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
 
 fn unrecognized_features_message(message: &str) -> Result<()> {
     let colorchoice = colorize_stderr();
-    let bufwtr = BufferWriter::stderr(colorchoice);
-    let mut buffer = bufwtr.buffer();
-    buffer
-        .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    writeln!(&mut buffer, "{}", message)
+    let mut output = StandardStream::stderr(colorchoice);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+    write!(output, "{:>12}", "Warning:")?;
+    output.reset()?;
+    writeln!(output, " {}", message)
         .chain_err(|| "Failed to write unrecognized features message")?;
-    buffer
-        .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
-    bufwtr
-        .print(&buffer)
-        .chain_err(|| "Failed to print unrecognized features message")
+    Ok(())
 }
 
 fn handle_add(args: &Args) -> Result<()> {
