@@ -3,8 +3,8 @@ args = ["add", "cargo-list-test-fixture-dependency", "../dependency", "--dev"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding cargo-list-test-fixture-dependency (unknown version) to dev-dependencies.
-      Adding cargo-list-test-fixture-dependency (unknown version) to dev-dependencies.
+      Adding cargo-list-test-fixture-dependency (local) to dev-dependencies.
+      Adding cargo-list-test-fixture-dependency (local) to dev-dependencies.
 """
 fs.sandbox = true
 fs.cwd = "workspace_path_dev.in/primary"
