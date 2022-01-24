@@ -71,8 +71,16 @@ pub struct Args {
     pub git: Option<String>,
 
     /// Specify a git branch to download the crate from.
-    #[clap(long, value_name = "BRANCH", requires = "git")]
+    #[clap(long, value_name = "BRANCH", requires = "git", group = "git-ref")]
     pub branch: Option<String>,
+
+    /// Specify a git branch to download the crate from.
+    #[clap(long, value_name = "TAG", requires = "git", group = "git-ref")]
+    pub tag: Option<String>,
+
+    /// Specify a git branch to download the crate from.
+    #[clap(long, value_name = "REV", requires = "git", group = "git-ref")]
+    pub rev: Option<String>,
 
     /// Specify the path the crate should be loaded from.
     #[clap(long, parse(from_os_str), conflicts_with = "git")]
@@ -239,7 +247,12 @@ impl Args {
                     .unwrap_or_else(Vec::new);
 
                 dependency = dependency
-                    .set_git(repo, self.branch.clone())
+                    .set_git(
+                        repo,
+                        self.branch.clone(),
+                        self.tag.clone(),
+                        self.rev.clone(),
+                    )
                     .set_available_features(features);
             } else {
                 if let Some(path) = &self.path {
@@ -368,6 +381,8 @@ impl Default for Args {
             vers: None,
             git: None,
             branch: None,
+            tag: None,
+            rev: None,
             path: None,
             target: None,
             optional: false,

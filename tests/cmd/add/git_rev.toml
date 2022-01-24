@@ -1,0 +1,11 @@
+bin.name = "cargo-add"
+args = ["add", "git-package", "--git", "http://localhost/git-package.git", "--rev", "423a3"]
+status = "success"
+stdout = ""
+stderr = """
+      Adding git-package to dependencies.
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
