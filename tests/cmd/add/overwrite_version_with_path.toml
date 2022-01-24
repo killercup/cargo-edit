@@ -3,7 +3,7 @@ args = ["add", "cargo-list-test-fixture-dependency", "--path", "../dependency"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding cargo-list-test-fixture-dependency (unknown version) to dependencies.
+      Adding cargo-list-test-fixture-dependency (local) to dependencies.
 """
 fs.sandbox = true
 fs.cwd = "overwrite_version_with_path.in/primary"
