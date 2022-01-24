@@ -61,12 +61,11 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
     // find head of the relevant linked list
     let mut source = match registry {
         Some(CRATES_IO_INDEX) | None => {
-            registries
-                .remove(CRATES_IO_REGISTRY)
-                .unwrap_or_else(|| Source {
-                    replace_with: None,
-                    registry: Some(CRATES_IO_INDEX.to_string()),
-                })
+            let mut source = registries.remove(CRATES_IO_REGISTRY).unwrap_or_default();
+            source
+                .registry
+                .get_or_insert_with(|| CRATES_IO_INDEX.to_string());
+            source
         }
         Some(r) => registries
             .remove(r)
@@ -75,9 +74,15 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> Result<Url>
 
     // search this linked list and find the tail
     while let Some(replace_with) = &source.replace_with {
+        let is_crates_io = replace_with == CRATES_IO_INDEX;
         source = registries
             .remove(replace_with)
             .chain_err(|| ErrorKind::NoSuchSourceFound(replace_with.to_string()))?;
+        if is_crates_io {
+            source
+                .registry
+                .get_or_insert_with(|| CRATES_IO_INDEX.to_string());
+        }
     }
 
     let registry_url = source
@@ -96,7 +101,7 @@ struct CargoConfig {
     source: HashMap<String, Source>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Default, Debug, Deserialize)]
 struct Source {
     #[serde(rename = "replace-with")]
     replace_with: Option<String>,
