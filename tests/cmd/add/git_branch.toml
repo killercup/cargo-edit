@@ -3,7 +3,7 @@ args = ["add", "git-package", "--git", "http://localhost/git-package.git", "--br
 status = "success"
 stdout = ""
 stderr = """
-      Adding git-package (unknown version) to dependencies. 
+      Adding git-package (unknown version) to dependencies.
 """
 fs.sandbox = true
 
