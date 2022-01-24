@@ -10,9 +10,13 @@ if [ -z "${AFTER}" ]; then
     exit 1
 fi
 
+mv $1.toml $2.toml
 mv $1.in $2.in
 mv $1.out $2.out
-mv $1.stdout $2.stdout
-mv $1.stderr $2.stderr
-mv $1.toml $2.toml
+if [ -e "$1.stdout" ]; then
+    mv $1.stdout $2.stdout
+fi
+if [ -e "$1.stderr" ]; then
+    mv $1.stderr $2.stderr
+fi
 git add $2.*
