@@ -236,13 +236,19 @@ fn main() {
     let Command::Add(args) = args;
 
     if let Err(err) = handle_add(&args) {
-        eprintln!("Command failed due to unhandled error: {}\n", err);
+        eprintln!("Command failed due to unhandled error: {}", err);
 
+        let mut gap = false;
         for e in err.iter().skip(1) {
+            if !gap {
+                eprintln!();
+                gap = true;
+            }
             eprintln!("Caused by: {}", e);
         }
 
         if let Some(backtrace) = err.backtrace() {
+            eprintln!();
             eprintln!("Backtrace: {:?}", backtrace);
         }
 
