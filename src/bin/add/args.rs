@@ -44,12 +44,16 @@ pub struct Args {
     pub rename: Option<String>,
 
     /// Add crate as development dependency.
-    #[clap(long, short = 'D', conflicts_with = "build")]
+    #[clap(long, short = 'D', group = "section")]
     pub dev: bool,
 
     /// Add crate as build dependency.
-    #[clap(long, short = 'B', conflicts_with = "dev")]
+    #[clap(long, short = 'B', group = "section")]
     pub build: bool,
+
+    /// Add as dependency to the given target platform.
+    #[clap(long, forbid_empty_values = true, group = "section")]
+    pub target: Option<String>,
 
     /// Specify the version to grab from the registry(crates.io).
     /// You can also specify version as part of name, e.g
@@ -67,26 +71,12 @@ pub struct Args {
     pub git: Option<String>,
 
     /// Specify a git branch to download the crate from.
-    #[clap(
-        long,
-        value_name = "BRANCH",
-        conflicts_with = "vers",
-        conflicts_with = "path"
-    )]
+    #[clap(long, value_name = "BRANCH", requires = "git")]
     pub branch: Option<String>,
 
     /// Specify the path the crate should be loaded from.
     #[clap(long, parse(from_os_str), conflicts_with = "git")]
     pub path: Option<PathBuf>,
-
-    /// Add as dependency to the given target platform.
-    #[clap(
-        long,
-        conflicts_with = "dev",
-        conflicts_with = "build",
-        forbid_empty_values = true
-    )]
-    pub target: Option<String>,
 
     /// Add as an optional dependency (for use in features).
     #[clap(long, conflicts_with = "dev")]
