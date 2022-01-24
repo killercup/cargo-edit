@@ -4,7 +4,7 @@ status = "success"
 stdout = ""
 stderr = """
       Adding your-face v99999.0.0 to dependencies with features: [\"eyes\", \"nose\"]
-. 
+.
              Available features: 
              - nose
              - mouth

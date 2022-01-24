@@ -3,7 +3,7 @@ args = ["add", "my-package", "--upgrade", "all"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding my-package v>=99999.0.0 to dependencies. 
+      Adding my-package v>=99999.0.0 to dependencies.
 """
 fs.sandbox = true
 
