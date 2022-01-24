@@ -52,10 +52,18 @@ impl Dependency {
     }
 
     /// Set dependency to a given repository
-    pub fn set_git(mut self, repo: &str, branch: Option<String>) -> Dependency {
+    pub fn set_git(
+        mut self,
+        repo: &str,
+        branch: Option<String>,
+        tag: Option<String>,
+        rev: Option<String>,
+    ) -> Dependency {
         self.source = DependencySource::Git {
             repo: repo.into(),
             branch,
+            tag,
+            rev,
         };
         self
     }
@@ -216,9 +224,22 @@ impl Dependency {
                             data.get_or_insert("registry", r);
                         }
                     }
-                    DependencySource::Git { repo, branch } => {
+                    DependencySource::Git {
+                        repo,
+                        branch,
+                        tag,
+                        rev,
+                    } => {
                         data.get_or_insert("git", repo);
-                        branch.map(|branch| data.get_or_insert("branch", branch));
+                        if let Some(branch) = branch {
+                            data.get_or_insert("branch", branch);
+                        }
+                        if let Some(tag) = tag {
+                            data.get_or_insert("tag", tag);
+                        }
+                        if let Some(rev) = rev {
+                            data.get_or_insert("rev", rev);
+                        }
                     }
                 }
                 if self.optional {
@@ -272,6 +293,8 @@ enum DependencySource {
     Git {
         repo: String,
         branch: Option<String>,
+        tag: Option<String>,
+        rev: Option<String>,
     },
 }
 
@@ -346,7 +369,7 @@ mod tests {
     fn to_toml_dep_with_git_source() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let toml = Dependency::new("dep")
-            .set_git("https://foor/bar.git", None)
+            .set_git("https://foor/bar.git", None, None, None)
             .to_toml(&crate_root);
 
         assert_eq!(toml.0, "dep".to_owned());

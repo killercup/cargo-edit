@@ -45,7 +45,7 @@ impl<'a> CrateName<'a> {
             let available_features = manifest.features()?;
             Ok(Some(
                 Dependency::new(crate_name)
-                    .set_git(self.0, None)
+                    .set_git(self.0, None, None, None)
                     .set_available_features(available_features),
             ))
         } else if self.is_path() {

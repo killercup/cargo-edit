@@ -463,7 +463,7 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new_toml: toml_edit::Item) 
         // The old dependency is just a version/git/path. We are safe to overwrite.
         *old_dep = new_toml;
     } else if old_dep.is_table_like() {
-        for key in &["version", "path", "git", "branch"] {
+        for key in &["version", "path", "git", "branch", "tag", "rev"] {
             // remove this key/value pairs
             old_dep[key] = toml_edit::Item::None;
         }
