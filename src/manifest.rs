@@ -244,8 +244,9 @@ impl LocalManifest {
             // to
             // alias = { version = "0.2", package = "a" }
             if let Some(renamed) = dep.rename() {
-                table[renamed] = dep_item.clone();
+                let dep_item = dep_item.clone();
                 table[&old_dep_key] = toml_edit::Item::None;
+                table[renamed] = dep_item;
             } else if dep_key != old_dep_key {
                 // if `dep` had been renamed in the manifest,
                 // and is not rename in the `add` command,
