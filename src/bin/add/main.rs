@@ -80,8 +80,6 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()>
         write!(output, " (local)")?;
     } else if let Some(version) = dep.version() {
         write!(output, " v{}", version)?;
-    } else {
-        write!(output, " (unknown version)")?;
     }
     write!(output, " to")?;
     if optional {
