@@ -62,7 +62,7 @@ Add new dependencies to your `Cargo.toml`. When no version is specified, `cargo 
 
 #### Examples
 
-```sh
+```console
 $ # Add a specific version
 $ cargo add regex@0.1.41 --dev
 $ # Query the latest version from crates.io and adds it as build dependency
@@ -79,58 +79,52 @@ $ cargo add thiserror --rename error
 
 #### Usage
 
-```plain
+```console
 $ cargo add -h
 cargo-add
 Add dependency to a Cargo.toml manifest file
 
 USAGE:
-    cargo add [FLAGS] [OPTIONS] <crate>...
-
-FLAGS:
-        --allow-prerelease       Include prerelease versions when fetching from crates.io (e.g. '0.6.0-alpha')
-    -B, --build                  Add crate as build dependency
-    -D, --dev                    Add crate as development dependency
-    -h, --help                   Prints help information
-        --no-default-features    Set `default-features = false` for the added dependency
-        --offline                Run without accessing the network
-        --optional               Add as an optional dependency (for use in features)
-    -q, --quiet                  Do not print any output in case of success
-    -s, --sort                   Sort dependencies even if currently unsorted
-    -V, --version                Prints version information
-
-OPTIONS:
-        --branch <branch>           Specify a git branch to download the crate from
-        --features <features>...    Space-separated list of features to add. For an alternative approach to enabling
-                                    features, consider installing the `cargo-feature` utility
-        --git <uri>                 Specify a git repository to download the crate from
-        --manifest-path <path>      Path to the manifest to add a dependency to
-        --path <path>               Specify the path the crate should be loaded from
-    -p, --package <pkgid>           Package id of the crate to add this dependency to
-        --registry <registry>       Registry to use
-    -r, --rename <rename>           Rename a dependency in Cargo.toml, https://doc.rust-
-                                    lang.org/cargo/reference/specifying-
-                                    dependencies.html#renaming-dependencies-in-cargotoml Only works
-                                    when specifying a single dependency
-        --target <target>           Add as dependency to the given target platform
-        --upgrade <method>          Choose method of semantic version upgrade.  Must be one of "none" (exact version,
-                                    `=` modifier), "patch" (`~` modifier), "minor" (`^` modifier), "all" (`>=`), or
-                                    "default" (no modifier) [default: default]  [possible values: none, patch, minor,
-                                    all, default]
-        --vers <uri>                Specify the version to grab from the registry(crates.io). You can also specify
-                                    version as part of name, e.g `cargo add bitflags@0.3.2`
+    cargo add [OPTIONS] <CRATE>...
 
 ARGS:
-    <crate>...    Crates to be added
+    <CRATE>...    Crates to be added
 
+OPTIONS:
+        --allow-prerelease        Include prerelease versions when fetching from crates.io (e.g. '0.6.0-alpha')
+    -B, --build                   Add crate as build dependency
+        --branch <BRANCH>         Specify a git branch to download the crate from
+    -D, --dev                     Add crate as development dependency
+        --features <FEATURES>     Space-separated list of features to add. For an alternative approach to enabling features, consider installing
+                                  the `cargo-feature` utility
+        --git <URI>               Specify a git repository to download the crate from
+    -h, --help                    Print help information
+        --manifest-path <PATH>    Path to the manifest to add a dependency to
+        --no-default-features     Set `default-features = false` for the added dependency
+        --offline                 Run without accessing the network
+        --optional                Add as an optional dependency (for use in features)
+    -p, --package <PKGID>         Package id of the crate to add this dependency to
+        --path <PATH>             Specify the path the crate should be loaded from
+        --quiet                   Do not print any output in case of success
+    -r, --rename <RENAME>         Rename a dependency in Cargo.toml, https://doc.rust-lang.org/cargo/reference/specifying-
+                                  dependencies.html#renaming-dependencies-in-cargotoml. Only works when specifying a single dependency
+        --registry <REGISTRY>     Registry to use
+        --rev <REV>               Specify a git branch to download the crate from
+    -s, --sort                    Sort dependencies even if currently unsorted
+        --tag <TAG>               Specify a git branch to download the crate from
+        --target <TARGET>         Add as dependency to the given target platform
+        --upgrade <METHOD>        Choose method of semantic version upgrade.  Must be one of "none" (exact version, `=` modifier), "patch" (`~`
+                                  modifier), "minor" (`^` modifier), "all" (`>=`), or "default" (no modifier) [default: default] [possible values:
+                                  none, patch, minor, all, default]
+    -V, --version                 Print version information
+        --vers <URI>              Specify the version to grab from the registry(crates.io). You can also specify version as part of name, e.g
+                                  `cargo add bitflags@0.3.2`
 
-This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github
-or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name
-and set the appropriate `--git` or `--path` value.
+This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github or gitlab repository URL, or a local path, `cargo
+add` will try to automatically get the crate name and set the appropriate `--git` or `--path` value.
 
-Please note that Cargo treats versions like '1.2.3' as '^1.2.3' (and that '^1.2.3' is specified
-as '>=1.2.3 and <2.0.0'). By default, `cargo add` will use this format, as it is the one that the
-crates.io registry suggests. One goal of `cargo add` is to prevent you from using wildcard
+Please note that Cargo treats versions like '1.2.3' as '^1.2.3' (and that '^1.2.3' is specified as '>=1.2.3 and <2.0.0'). By default, `cargo add`
+will use this format, as it is the one that the crates.io registry suggests. One goal of `cargo add` is to prevent you from using wildcard
 dependencies (version set to '*').
 ```
 
@@ -140,7 +134,7 @@ Remove dependencies from your `Cargo.toml`.
 
 #### Examples
 
-```sh
+```console
 $ # Remove a dependency
 $ cargo rm regex
 $ # Remove a development dependency
@@ -157,21 +151,19 @@ cargo-rm
 Remove a dependency from a Cargo.toml manifest file
 
 USAGE:
-    cargo rm [FLAGS] [OPTIONS] <crates>...
-
-FLAGS:
-    -B, --build      Remove crate as build dependency
-    -D, --dev        Remove crate as development dependency
-    -h, --help       Prints help information
-    -q, --quiet      Do not print any output in case of success
-    -V, --version    Prints version information
-
-OPTIONS:
-        --manifest-path <path>    Path to the manifest to remove a dependency from
-    -p, --package <package>       Specify the package in the workspace to add a dependency to (see `cargo help pkgid`)
+    cargo rm [OPTIONS] <CRATE>...
 
 ARGS:
-    <crates>...    Crates to be removed
+    <CRATE>...    Crates to be removed
+
+OPTIONS:
+    -B, --build                   Remove crate as build dependency
+    -D, --dev                     Remove crate as development dependency
+    -h, --help                    Print help information
+        --manifest-path <PATH>    Path to the manifest to remove a dependency from
+    -p, --package <PKGID>         Package id of the crate to remove this dependency from
+    -q, --quiet                   Do not print any output in case of success
+    -V, --version                 Print version information
 ```
 
 ### `cargo upgrade`
@@ -186,7 +178,7 @@ local lock file (Cargo.lock).
 
 #### Examples
 
-```sh
+```console
 # Upgrade all dependencies for the current crate
 $ cargo upgrade
 # Upgrade docopt (to ~0.9) and serde (to >=0.9,<2.0)
@@ -199,47 +191,44 @@ $ cargo upgrade --exclude docopt serde
 
 #### Usage
 
-```plain
+```console
 $ cargo upgrade -h
 cargo-upgrade
 Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml)
 
 USAGE:
-    cargo upgrade [FLAGS] [OPTIONS] [dependency]...
-
-FLAGS:
-        --workspace           Upgrade all packages in the workspace
-        --allow-prerelease    Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha')
-        --dry-run             Print changes to be made without making them
-    -h, --help                Prints help information
-        --offline             Run without accessing the network
-        --skip-compatible     Only update a dependency if the new version is semver incompatible
-        --to-lockfile         Upgrade all packages to the version in the lockfile
-    -V, --version             Prints version information
-
-OPTIONS:
-        --exclude <exclude>...    Crates to exclude and not upgrade
-        --manifest-path <path>    Path to the manifest to upgrade
-    -p, --package <package>       Specify the package in the workspace to add a dependency to (see `cargo help pkgid`)
+    cargo upgrade [OPTIONS] [DEPENDENCY]...
 
 ARGS:
-    <dependency>...    Crates to be upgraded
+    <DEPENDENCY>...    Crates to be upgraded
 
-This command differs from `cargo update`, which updates the dependency versions recorded in the
-local lock file (Cargo.lock).
+OPTIONS:
+        --all                     [deprecated in favor of `--workspace`]
+        --allow-prerelease        Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha')
+        --dry-run                 Print changes to be made without making them
+        --exclude <EXCLUDE>       Crates to exclude and not upgrade
+    -h, --help                    Print help information
+        --manifest-path <PATH>    Path to the manifest to upgrade
+        --offline                 Run without accessing the network
+    -p, --package <PKGID>         Package id of the crate to add this dependency to
+        --skip-compatible         Only update a dependency if the new version is semver incompatible
+        --to-lockfile             Upgrade all packages to the version in the lockfile
+    -V, --version                 Print version information
+        --workspace               Upgrade all packages in the workspace
 
-If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to
-upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2.0`.
+This command differs from `cargo update`, which updates the dependency versions recorded in the local lock file (Cargo.lock).
 
-Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are
-supported. Git/path dependencies will be ignored.
+If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version to upgrade to for each can be specified with e.g.
+`docopt@0.8.0` or `serde@>=0.9,<2.0`.
 
-All packages in the workspace will be upgraded if the `--workspace` flag is supplied.
-The `--workspace` flag may be supplied in the presence of a virtual manifest.
+Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io are supported. Git/path dependencies will be
+ignored.
 
-If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
-version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is
-up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
+All packages in the workspace will be upgraded if the `--workspace` flag is supplied. The `--workspace` flag may be supplied in the presence of a
+virtual manifest.
+
+If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked version as recorded in the Cargo.lock file. This
+flag requires that the Cargo.lock file is up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
 error. If the '--to-lockfile' flag is supplied then the network won't be accessed.
 ```
 
@@ -249,7 +238,7 @@ Set the version in your `Cargo.toml`.
 
 #### Examples
 
-```sh
+```console
 # Set the version to the version 1.0.0
 $ cargo set-version 1.0.0
 # Bump the version to the next major
@@ -262,30 +251,27 @@ $ cargo set-version --bump patch
 
 #### Usage
 
-```plain
-cargo-set-version 0.7.0
+```console
+cargo-set-version
 Change a package's version in the local manifest file (i.e. Cargo.toml)
 
 USAGE:
-    cargo set-version [FLAGS] [OPTIONS] [--] [target]
-
-FLAGS:
-        --all          [deprecated in favor of `--workspace`]
-        --dry-run      Print changes to be made without making them
-    -h, --help         Prints help information
-    -V, --version      Prints version information
-        --workspace    Modify all packages in the workspace
-
-OPTIONS:
-        --bump <bump>             Increment manifest version [possible values: major, minor, patch,
-                                  release, rc, beta, alpha]
-        --exclude <exclude>...    Crates to exclude and not modify
-        --manifest-path <path>    Path to the manifest to upgrade
-    -m, --metadata <metadata>     Specify the version metadata field (e.g. a wrapped libraries version)
-    -p, --package <pkgid>         Package id of the crate to change the version of
+    cargo set-version [OPTIONS] [TARGET]
 
 ARGS:
-    <target>    Version to change manifests to
+    <TARGET>    Version to change manifests to
+
+OPTIONS:
+        --all                     [deprecated in favor of `--workspace`]
+        --bump <BUMP>             Increment manifest version [possible values: major, minor, patch, release, rc, beta, alpha]
+        --dry-run                 Print changes to be made without making them
+        --exclude <EXCLUDE>       Crates to exclude and not modify
+    -h, --help                    Print help information
+    -m, --metadata <METADATA>     Specify the version metadata field (e.g. a wrapped libraries version)
+        --manifest-path <PATH>    Path to the manifest to upgrade
+    -p, --package <PKGID>         Package id of the crate to change the version of
+    -V, --version                 Print version information
+        --workspace               Modify all packages in the workspace
 ```
 
 For more on `metadata`, see the
