@@ -1,7 +1,7 @@
 //! Crate name parsing.
 use crate::errors::*;
+use crate::get_manifest_from_path;
 use crate::Dependency;
-use crate::{get_manifest_from_path, get_manifest_from_url};
 
 /// A crate specifier. This can be a plain name (e.g. `docopt`), a name and a versionreq (e.g.
 /// `docopt@^0.8`), a URL, or a path.
@@ -40,15 +40,7 @@ impl<'a> CrateName<'a> {
 
     /// Will parse this crate name on the assumption that it is a URI.
     pub fn parse_crate_name_from_uri(&self) -> Result<Option<Dependency>> {
-        if let Some(manifest) = get_manifest_from_url(self.0)? {
-            let crate_name = manifest.package_name()?;
-            let available_features = manifest.features()?;
-            Ok(Some(
-                Dependency::new(crate_name)
-                    .set_git(self.0, None, None, None)
-                    .set_available_features(available_features),
-            ))
-        } else if self.is_path() {
+        if self.is_path() {
             let path = std::path::Path::new(self.0);
             let manifest = get_manifest_from_path(path)?;
             let crate_name = manifest.package_name()?;
