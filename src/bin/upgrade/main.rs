@@ -48,7 +48,7 @@ This command differs from `cargo update`, which updates the dependency versions 
 local lock file (Cargo.lock).
 
 If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version \
-to upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2.0`.
+to upgrade to for each can be specified with e.g. `docopt:0.8.0` or `serde:>=0.9,<2.0`.
 
 Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io \
 are supported. Git/path dependencies will be ignored.

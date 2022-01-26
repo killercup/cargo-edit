@@ -31,7 +31,7 @@ impl CrateSpec {
             Self::Path(path.to_owned())
         } else {
             let (name, version) = pkg_id
-                .split_once('@')
+                .split_once(':')
                 .map(|(n, v)| (n, Some(v)))
                 .unwrap_or((pkg_id, None));
 
