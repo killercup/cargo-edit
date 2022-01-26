@@ -130,10 +130,6 @@ pub struct Args {
     #[clap(long)]
     pub offline: bool,
 
-    /// Sort dependencies even if currently unsorted
-    #[clap(long, short)]
-    pub sort: bool,
-
     /// Registry to use
     #[clap(long, conflicts_with = "git", conflicts_with = "path")]
     pub registry: Option<String>,
@@ -362,7 +358,6 @@ impl Default for Args {
             no_default_features: false,
             quiet: false,
             offline: true,
-            sort: false,
             registry: None,
         }
     }
