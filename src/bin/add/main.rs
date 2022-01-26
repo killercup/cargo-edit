@@ -212,7 +212,7 @@ fn handle_add(args: &Args) -> Result<()> {
                         .map(TomlItem::as_table_mut)
                         .map(|table_option| {
                             table_option.map(|table| {
-                                if was_sorted || args.sort {
+                                if was_sorted {
                                     table.sort_values();
                                 }
                             })
