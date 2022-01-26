@@ -108,21 +108,6 @@ pub struct Args {
     )]
     pub pkgid: Option<String>,
 
-    /// Choose method of semantic version upgrade.  Must be one of "none" (exact version, `=`
-    /// modifier), "patch" (`~` modifier), "minor" (`^` modifier), "all" (`>=`), or "default" (no
-    /// modifier).
-    #[clap(
-        long,
-        value_name = "METHOD",
-        possible_value = "none",
-        possible_value = "patch",
-        possible_value = "minor",
-        possible_value = "all",
-        possible_value = "default",
-        default_value = "default"
-    )]
-    pub upgrade: String,
-
     /// Include prerelease versions when fetching from crates.io (e.g.
     /// '0.6.0-alpha').
     #[clap(long)]
@@ -223,11 +208,8 @@ impl Args {
                         p.manifest_path.parent().map(|p| p.as_std_path())
                             == Some(dep_path.as_path())
                     }) {
-                        let v = format!(
-                            "{prefix}{version}",
-                            prefix = self.get_upgrade_prefix(),
-                            version = package.version
-                        );
+                        let op = "";
+                        let v = format!("{op}{version}", op = op, version = package.version);
 
                         dependency = dependency.set_version(&v);
                     }
@@ -283,11 +265,8 @@ impl Args {
                         );
                         // dev-dependencies do not need the version populated
                         if !self.dev {
-                            let v = format!(
-                                "{prefix}{version}",
-                                prefix = self.get_upgrade_prefix(),
-                                version = package.version
-                            );
+                            let op = "";
+                            let v = format!("{op}{version}", op = op, version = package.version);
                             dependency = dependency.set_version(&v);
                         }
                     } else {
@@ -297,9 +276,10 @@ impl Args {
                             &manifest_path,
                             Some(&registry_url),
                         )?;
+                        let op = "";
                         let v = format!(
-                            "{prefix}{version}",
-                            prefix = self.get_upgrade_prefix(),
+                            "{op}{version}",
+                            op = op,
                             // If version is unavailable `get_latest_dependency` must have
                             // returned `Err(FetchVersionError::GetVersion)`
                             version = dependency.version().unwrap_or_else(|| unreachable!())
@@ -357,17 +337,6 @@ impl Args {
             })
             .collect()
     }
-
-    fn get_upgrade_prefix(&self) -> &'static str {
-        match self.upgrade.as_ref() {
-            "default" => "",
-            "none" => "=",
-            "patch" => "~",
-            "minor" => "^",
-            "all" => ">=",
-            _ => unreachable!(),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -388,7 +357,6 @@ impl Default for Args {
             optional: false,
             manifest_path: None,
             pkgid: None,
-            upgrade: "minor".to_string(),
             allow_prerelease: false,
             features: None,
             no_default_features: false,
