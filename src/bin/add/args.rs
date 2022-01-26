@@ -57,7 +57,7 @@ pub struct Args {
 
     /// Specify the version to grab from the registry(crates.io).
     /// You can also specify version as part of name, e.g
-    /// `cargo add bitflags@0.3.2`.
+    /// `cargo add bitflags:0.3.2`.
     #[clap(long, value_name = "URI", conflicts_with = "git")]
     pub vers: Option<String>,
 
@@ -175,7 +175,7 @@ impl Args {
                 version_req: Some(_),
             } => {
                 let mut dependency = crate_spec.to_dependency()?;
-                // crate specifier includes a version (e.g. `docopt@0.8`)
+                // crate specifier includes a version (e.g. `docopt:0.8`)
                 if let Some(ref url) = self.git {
                     let url = url.clone();
                     let version = dependency.version().unwrap().to_string();
