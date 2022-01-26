@@ -6,7 +6,7 @@ stderr = """
 error: The argument '--git <URI>' cannot be used with '--vers <URI>'
 
 USAGE:
-    cargo add --git <URI> --upgrade <METHOD> <CRATE>...
+    cargo add --git <URI> <CRATE>...
 
 For more information try --help
 """

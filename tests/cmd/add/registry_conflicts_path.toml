@@ -6,7 +6,7 @@ stderr = """
 error: The argument '--registry <REGISTRY>' cannot be used with '--path <PATH>'
 
 USAGE:
-    cargo add --registry <REGISTRY> --upgrade <METHOD> <CRATE>...
+    cargo add --registry <REGISTRY> <CRATE>...
 
 For more information try --help
 """
