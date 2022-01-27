@@ -17,7 +17,7 @@ extern crate error_chain;
 use crate::errors::*;
 use cargo_edit::{
     colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url,
-    update_registry_index, CrateName, Dependency, LocalManifest,
+    update_registry_index, CrateSpec, Dependency, LocalManifest,
 };
 use clap::Parser;
 use std::collections::{BTreeMap, BTreeSet};
@@ -231,7 +231,7 @@ impl Manifests {
         Ok(Manifests(vec![(manifest, package.to_owned())]))
     }
 
-    /// Get the the combined set of dependencies to upgrade. If the user has specified
+    /// Get the combined set of dependencies to upgrade. If the user has specified
     /// per-dependency desired versions, extract those here.
     fn get_dependencies(
         &self,
@@ -241,15 +241,9 @@ impl Manifests {
         // Map the names of user-specified dependencies to the (optionally) requested version.
         let selected_dependencies = only_update
             .into_iter()
-            .map(|name| {
-                if let Some(dependency) = CrateName::new(&name).parse_as_version()? {
-                    Ok((
-                        dependency.name.clone(),
-                        dependency.version().map(String::from),
-                    ))
-                } else {
-                    Ok((name, None))
-                }
+            .map(|name| match CrateSpec::resolve(&name)? {
+                CrateSpec::PkgId { name, version_req } => Ok((name, version_req)),
+                CrateSpec::Path(path) => Err(format!("Invalid name: {}", path.display()).into()),
             })
             .collect::<Result<BTreeMap<_, _>>>()?;
 

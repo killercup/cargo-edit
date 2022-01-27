@@ -6,7 +6,7 @@ use cargo_edit::{
     find, get_features_from_registry, get_manifest_from_path, get_manifest_from_url, registry_url,
     workspace_members, Dependency,
 };
-use cargo_edit::{get_latest_dependency, CrateName};
+use cargo_edit::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
 use clap::Parser;
 use std::path::PathBuf;
@@ -162,130 +162,140 @@ impl Args {
 
     fn parse_single_dependency(
         &self,
-        crate_name: &str,
+        crate_spec: &str,
         workspace_members: &[Package],
     ) -> Result<Dependency> {
-        let crate_name = CrateName::new(crate_name);
+        let crate_spec = CrateSpec::resolve(crate_spec)?;
         let manifest_path = find(&self.manifest_path)?;
         let registry_url = registry_url(&manifest_path, self.registry.as_deref())?;
 
-        let mut dependency = if let Some(mut dependency) = crate_name.parse_as_version()? {
-            // crate specifier includes a version (e.g. `docopt@0.8`)
-            if let Some(ref url) = self.git {
-                let url = url.clone();
-                let version = dependency.version().unwrap().to_string();
-                return Err(ErrorKind::GitUrlWithVersion(url, version).into());
-            }
-
-            if let Some(ref path) = self.path {
-                let manifest = get_manifest_from_path(path)?;
-                let dep_path = dunce::canonicalize(path)?;
-
-                dependency = dependency.set_available_features(manifest.features()?);
-                dependency = dependency.set_path(dep_path);
-            } else {
-                let features = get_features_from_registry(
-                    &dependency.name,
-                    dependency
-                        .version()
-                        .expect("version populated by `parse_as_version`"),
-                    &registry_url,
-                )?;
-                dependency = dependency.set_available_features(features);
-            }
-
-            dependency
-        } else if let Some(mut dependency) = crate_name.parse_crate_name_from_uri()? {
-            // dev-dependencies do not need the version populated
-            if !self.dev {
-                let dep_path = dependency.path().map(ToOwned::to_owned);
-                if let Some(dep_path) = dep_path {
-                    if let Some(package) = workspace_members.iter().find(|p| {
-                        p.manifest_path.parent().map(|p| p.as_std_path())
-                            == Some(dep_path.as_path())
-                    }) {
-                        let op = "";
-                        let v = format!("{op}{version}", op = op, version = package.version);
-
-                        dependency = dependency.set_version(&v);
-                    }
+        let mut dependency = match &crate_spec {
+            CrateSpec::PkgId {
+                name: _,
+                version_req: Some(_),
+            } => {
+                let mut dependency = crate_spec.to_dependency()?;
+                // crate specifier includes a version (e.g. `docopt@0.8`)
+                if let Some(ref url) = self.git {
+                    let url = url.clone();
+                    let version = dependency.version().unwrap().to_string();
+                    return Err(ErrorKind::GitUrlWithVersion(url, version).into());
                 }
-            }
-            dependency
-        } else {
-            let mut dependency = Dependency::new(crate_name.name());
 
-            if let Some(repo) = &self.git {
-                assert!(self.vers.is_none());
-                assert!(self.path.is_none());
-                assert!(self.registry.is_none());
-                let features = get_manifest_from_url(repo)?
-                    .map(|m| m.features())
-                    .transpose()?
-                    .unwrap_or_else(Vec::new);
-
-                dependency = dependency
-                    .set_git(
-                        repo,
-                        self.branch.clone(),
-                        self.tag.clone(),
-                        self.rev.clone(),
-                    )
-                    .set_available_features(features);
-            } else {
-                if let Some(path) = &self.path {
-                    assert!(self.registry.is_none());
+                if let Some(ref path) = self.path {
                     let manifest = get_manifest_from_path(path)?;
+                    let dep_path = dunce::canonicalize(path)?;
 
                     dependency = dependency.set_available_features(manifest.features()?);
-                    dependency = dependency.set_path(dunce::canonicalize(path)?);
-                }
-                if let Some(version) = &self.vers {
-                    dependency = dependency.set_version(parse_version_req(version)?);
+                    dependency = dependency.set_path(dep_path);
+                } else {
+                    let features = get_features_from_registry(
+                        &dependency.name,
+                        dependency
+                            .version()
+                            .expect("version populated by `parse_as_version`"),
+                        &registry_url,
+                    )?;
+                    dependency = dependency.set_available_features(features);
                 }
 
-                if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
-                    // Only special-case workspaces when the user doesn't provide any extra
-                    // information, otherwise, trust the user.
-                    if let Some(package) = workspace_members
-                        .iter()
-                        .find(|p| p.name == crate_name.name())
-                    {
-                        dependency = dependency.set_path(
-                            package
-                                .manifest_path
-                                .parent()
-                                .expect("at least parent dir")
-                                .as_std_path()
-                                .to_owned(),
-                        );
-                        // dev-dependencies do not need the version populated
-                        if !self.dev {
+                dependency
+            }
+            CrateSpec::PkgId {
+                name,
+                version_req: None,
+            } => {
+                let mut dependency = crate_spec.to_dependency()?;
+
+                if let Some(repo) = &self.git {
+                    assert!(self.vers.is_none());
+                    assert!(self.path.is_none());
+                    assert!(self.registry.is_none());
+                    let features = get_manifest_from_url(repo)?
+                        .map(|m| m.features())
+                        .transpose()?
+                        .unwrap_or_else(Vec::new);
+
+                    dependency = dependency
+                        .set_git(
+                            repo,
+                            self.branch.clone(),
+                            self.tag.clone(),
+                            self.rev.clone(),
+                        )
+                        .set_available_features(features);
+                } else {
+                    if let Some(path) = &self.path {
+                        assert!(self.registry.is_none());
+                        let manifest = get_manifest_from_path(path)?;
+
+                        dependency = dependency.set_available_features(manifest.features()?);
+                        dependency = dependency.set_path(dunce::canonicalize(path)?);
+                    }
+                    if let Some(version) = &self.vers {
+                        dependency = dependency.set_version(parse_version_req(version)?);
+                    }
+
+                    if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
+                        // Only special-case workspaces when the user doesn't provide any extra
+                        // information, otherwise, trust the user.
+                        if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
+                            dependency = dependency.set_path(
+                                package
+                                    .manifest_path
+                                    .parent()
+                                    .expect("at least parent dir")
+                                    .as_std_path()
+                                    .to_owned(),
+                            );
+                            // dev-dependencies do not need the version populated
+                            if !self.dev {
+                                let op = "";
+                                let v =
+                                    format!("{op}{version}", op = op, version = package.version);
+                                dependency = dependency.set_version(&v);
+                            }
+                        } else {
+                            dependency = get_latest_dependency(
+                                name,
+                                self.allow_prerelease,
+                                &manifest_path,
+                                Some(&registry_url),
+                            )?;
                             let op = "";
-                            let v = format!("{op}{version}", op = op, version = package.version);
+                            let v = format!(
+                                "{op}{version}",
+                                op = op,
+                                // If version is unavailable `get_latest_dependency` must have
+                                // returned `Err(FetchVersionError::GetVersion)`
+                                version = dependency.version().unwrap_or_else(|| unreachable!())
+                            );
                             dependency = dependency.set_version(&v);
                         }
-                    } else {
-                        dependency = get_latest_dependency(
-                            crate_name.name(),
-                            self.allow_prerelease,
-                            &manifest_path,
-                            Some(&registry_url),
-                        )?;
-                        let op = "";
-                        let v = format!(
-                            "{op}{version}",
-                            op = op,
-                            // If version is unavailable `get_latest_dependency` must have
-                            // returned `Err(FetchVersionError::GetVersion)`
-                            version = dependency.version().unwrap_or_else(|| unreachable!())
-                        );
-                        dependency = dependency.set_version(&v);
                     }
                 }
-            }
 
-            dependency
+                dependency
+            }
+            CrateSpec::Path(_) => {
+                let mut dependency = crate_spec.to_dependency()?;
+                // dev-dependencies do not need the version populated
+                if !self.dev {
+                    let dep_path = dependency.path().map(ToOwned::to_owned);
+                    if let Some(dep_path) = dep_path {
+                        if let Some(package) = workspace_members.iter().find(|p| {
+                            p.manifest_path.parent().map(|p| p.as_std_path())
+                                == Some(dep_path.as_path())
+                        }) {
+                            let op = "";
+                            let v = format!("{op}{version}", op = op, version = package.version);
+
+                            dependency = dependency.set_version(&v);
+                        }
+                    }
+                }
+                dependency
+            }
         };
 
         if let Some(registry) = &self.registry {
@@ -318,8 +328,8 @@ impl Args {
 
         self.crates
             .iter()
-            .map(|crate_name| {
-                self.parse_single_dependency(crate_name, &workspace_members)
+            .map(|crate_spec| {
+                self.parse_single_dependency(crate_spec, &workspace_members)
                     .map(|x| {
                         let mut x = x
                             .set_optional(self.optional)
