@@ -18,7 +18,7 @@ extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
 
-mod crate_name;
+mod crate_spec;
 mod dependency;
 mod errors;
 mod fetch;
@@ -28,7 +28,7 @@ mod registry;
 mod util;
 mod version;
 
-pub use crate::crate_name::CrateName;
+pub use crate::crate_spec::CrateSpec;
 pub use crate::dependency::Dependency;
 pub use crate::errors::*;
 pub use crate::fetch::{
