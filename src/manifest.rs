@@ -232,33 +232,9 @@ impl LocalManifest {
             dep.to_toml(self.path.parent().expect("manifest path is absolute"));
 
         let table = self.get_table(table_path)?;
-        let existing_dep = Self::find_dep(table, &dep.name);
-        if let Some((old_dep_key, dep_item)) = existing_dep {
+        if let Some(dep_item) = table.as_table_like_mut().unwrap().get_mut(&dep_key) {
             // update an existing entry
-
-            // if the `dep` is renamed in the `add` command,
-            // but was present before, then we need to remove
-            // the old entry and insert a new one
-            // as the key has changed, e.g. from
-            // a = "0.1"
-            // to
-            // alias = { version = "0.2", package = "a" }
-            if let Some(renamed) = dep.rename() {
-                let dep_item = dep_item.clone();
-                table[&old_dep_key] = toml_edit::Item::None;
-                table[renamed] = dep_item;
-            } else if dep_key != old_dep_key {
-                // if `dep` had been renamed in the manifest,
-                // and is not rename in the `add` command,
-                // we need to remove the old entry and insert a new one
-                // e.g. from
-                // alias = { version = "0.1", package = "a" }
-                // to
-                // a = "0.2"
-                table[&old_dep_key] = toml_edit::Item::None;
-                table[&dep_key] = new_dependency.clone();
-            }
-            merge_dependencies(&mut table[&dep_key], new_dependency);
+            merge_dependencies(dep_item, new_dependency);
             if let Some(t) = table.as_inline_table_mut() {
                 t.fmt()
             }
@@ -360,32 +336,6 @@ impl LocalManifest {
         Ok(())
     }
 
-    /// Find a dependency by name (matching on package name for renamed deps)
-    pub fn find_dep<'a>(
-        table: &'a mut toml_edit::Item,
-        dep_name: &'a str,
-    ) -> Option<(String, &'a toml_edit::Item)> {
-        table
-            .as_table_like()
-            .unwrap()
-            .iter()
-            .find(|&item| match item {
-                (name, _) if name == dep_name => true,
-                (_alias, toml_edit::Item::Table(table_dep))
-                    if table_dep.contains_key("package") =>
-                {
-                    table_dep.get("package").unwrap().as_str() == Some(dep_name)
-                }
-                (_alias, toml_edit::Item::Value(toml_edit::Value::InlineTable(inline_dep)))
-                    if inline_dep.contains_key("package") =>
-                {
-                    inline_dep.get("package").unwrap().as_str() == Some(dep_name)
-                }
-                _ => false,
-            })
-            .map(|dep| (dep.0.into(), dep.1))
-    }
-
     /// Allow mutating depedencies, wherever they live
     pub fn get_dependency_tables_mut<'r>(
         &'r mut self,
@@ -462,15 +412,21 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new_toml: toml_edit::Item) 
     if str_or_1_len_table(old_dep) {
         // The old dependency is just a version/git/path. We are safe to overwrite.
         *old_dep = new_toml;
-    } else if old_dep.is_table_like() {
-        for key in &["version", "path", "git", "branch", "tag", "rev"] {
-            // remove this key/value pairs
-            old_dep[key] = toml_edit::Item::None;
+    } else if let Some(old_dep) = old_dep.as_table_like_mut() {
+        if old_dep.get("package").map(|i| i.as_str()) != new_toml.get("package").map(|i| i.as_str())
+        {
+            // No existing keys are relevant when the package changes
+            old_dep.clear();
+        } else {
+            // These are not relevant when overwriting
+            for key in &["version", "path", "git", "branch", "tag", "rev"] {
+                old_dep.remove(key);
+            }
         }
         if let Some(name) = new_toml.as_str() {
-            old_dep["version"] = toml_edit::value(name);
+            old_dep.insert("version", toml_edit::value(name));
         } else {
-            merge_inline_table(old_dep, &new_toml);
+            merge_table(old_dep, &new_toml);
         }
     } else {
         unreachable!("Invalid old dependency type");
@@ -481,13 +437,13 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new_toml: toml_edit::Item) 
     }
 }
 
-fn merge_inline_table(old_dep: &mut toml_edit::Item, new: &toml_edit::Item) {
+fn merge_table(old_dep: &mut dyn toml_edit::TableLike, new: &toml_edit::Item) {
     for (k, v) in new
         .as_inline_table()
         .expect("expected an inline table")
         .iter()
     {
-        old_dep[k] = toml_edit::value(v.clone());
+        old_dep.insert(k, toml_edit::value(v.clone()));
     }
 }
 

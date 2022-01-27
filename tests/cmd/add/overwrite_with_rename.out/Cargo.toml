@@ -3,4 +3,5 @@ name = "cargo-list-test-fixture"
 version = "0.0.0"
 
 [dependencies]
-renamed = { version = "99999.0.0", optional = true, package = "versioned-package" }
+renamed = { version = "99999.0.0", package = "versioned-package" }
+versioned-package = { version = "0.1.1", optional = true }
