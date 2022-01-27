@@ -1,12 +1,12 @@
 bin.name = "cargo-add"
-args = ["add", "my-package", "--git", "https://github.com/dcjanus/invalid", "--registry", "alternative"]
+args = ["add", "my-package", "--git", "https://github.com/dcjanus/invalid", "--registry", "alternative", "-Zgit"]
 status.code = 2
 stdout = ""
 stderr = """
 error: The argument '--git <URI>' cannot be used with '--registry <REGISTRY>'
 
 USAGE:
-    cargo add --git <URI> <CRATE>...
+    cargo add --git <URI> -Z <FLAG> <CRATE>...
 
 For more information try --help
 """

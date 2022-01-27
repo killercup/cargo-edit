@@ -1,6 +1,6 @@
 # Ensure it works with other flags
 bin.name = "cargo-add"
-args = ["add", "git-package", "--git", "http://localhost/git-package.git", "--dev"]
+args = ["add", "git-package", "--git", "http://localhost/git-package.git", "--dev", "-Zgit"]
 status = "success"
 stdout = ""
 stderr = """

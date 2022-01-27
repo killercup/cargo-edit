@@ -14,7 +14,7 @@
 #[macro_use]
 extern crate error_chain;
 
-use crate::args::{Args, Command};
+use crate::args::{Args, Command, UnstableOptions};
 use cargo_edit::{
     colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, Dependency,
     LocalManifest,
@@ -140,6 +140,10 @@ fn unrecognized_features_message(message: &str) -> Result<()> {
 }
 
 fn handle_add(mut args: Args) -> Result<()> {
+    if args.git.is_some() && !args.unstable_features.contains(&UnstableOptions::Git) {
+        return Err("`--git` is unstable and requires `-Z git`".into());
+    }
+
     if let Some(ref pkgid) = args.pkgid {
         let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
         args.manifest_path = Some(pkg.manifest_path.into_std_path_buf());
