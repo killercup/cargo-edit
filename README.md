@@ -95,6 +95,7 @@ OPTIONS:
         --default-features        Re-enable the default features
         --features <FEATURES>     Space-separated list of features to add
         --optional                Mark the dependency as optional
+        --no-optional             Mark the dependency as required
     -r, --rename <RENAME>         Rename the dependency
         --registry <REGISTRY>     Package registry for this dependency
         --manifest-path <PATH>    Path to `Cargo.toml`
