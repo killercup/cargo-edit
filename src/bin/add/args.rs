@@ -3,8 +3,8 @@
 #![allow(clippy::bool_assert_comparison)]
 
 use cargo_edit::{
-    find, get_features_from_registry, get_manifest_from_path, get_manifest_from_url, registry_url,
-    workspace_members, Dependency,
+    find, get_features_from_registry, get_manifest_from_url, registry_url, workspace_members,
+    Dependency,
 };
 use cargo_edit::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
@@ -62,12 +62,7 @@ pub struct Args {
     pub vers: Option<String>,
 
     /// Specify a git repository to download the crate from.
-    #[clap(
-        long,
-        value_name = "URI",
-        conflicts_with = "vers",
-        conflicts_with = "path"
-    )]
+    #[clap(long, value_name = "URI", conflicts_with = "vers")]
     pub git: Option<String>,
 
     /// Specify a git branch to download the crate from.
@@ -81,10 +76,6 @@ pub struct Args {
     /// Specify a git branch to download the crate from.
     #[clap(long, value_name = "REV", requires = "git", group = "git-ref")]
     pub rev: Option<String>,
-
-    /// Specify the path the crate should be loaded from.
-    #[clap(long, parse(from_os_str), conflicts_with = "git")]
-    pub path: Option<PathBuf>,
 
     /// Add as an optional dependency (for use in features).
     #[clap(long, conflicts_with = "dev")]
@@ -126,7 +117,7 @@ pub struct Args {
     pub offline: bool,
 
     /// Registry to use
-    #[clap(long, conflicts_with = "git", conflicts_with = "path")]
+    #[clap(long, conflicts_with = "git")]
     pub registry: Option<String>,
 }
 
@@ -177,22 +168,14 @@ impl Args {
                     return Err(ErrorKind::GitUrlWithVersion(url, version).into());
                 }
 
-                if let Some(ref path) = self.path {
-                    let manifest = get_manifest_from_path(path)?;
-                    let dep_path = dunce::canonicalize(path)?;
-
-                    dependency = dependency.set_available_features(manifest.features()?);
-                    dependency = dependency.set_path(dep_path);
-                } else {
-                    let features = get_features_from_registry(
-                        &dependency.name,
-                        dependency
-                            .version()
-                            .expect("version populated by `parse_as_version`"),
-                        &registry_url,
-                    )?;
-                    dependency = dependency.set_available_features(features);
-                }
+                let features = get_features_from_registry(
+                    &dependency.name,
+                    dependency
+                        .version()
+                        .expect("version populated by `parse_as_version`"),
+                    &registry_url,
+                )?;
+                dependency = dependency.set_available_features(features);
 
                 dependency
             }
@@ -204,7 +187,6 @@ impl Args {
 
                 if let Some(repo) = &self.git {
                     assert!(self.vers.is_none());
-                    assert!(self.path.is_none());
                     assert!(self.registry.is_none());
                     let features = get_manifest_from_url(repo)?
                         .map(|m| m.features())
@@ -220,18 +202,11 @@ impl Args {
                         )
                         .set_available_features(features);
                 } else {
-                    if let Some(path) = &self.path {
-                        assert!(self.registry.is_none());
-                        let manifest = get_manifest_from_path(path)?;
-
-                        dependency = dependency.set_available_features(manifest.features()?);
-                        dependency = dependency.set_path(dunce::canonicalize(path)?);
-                    }
                     if let Some(version) = &self.vers {
                         dependency = dependency.set_version(parse_version_req(version)?);
                     }
 
-                    if self.git.is_none() && self.path.is_none() && self.vers.is_none() {
+                    if self.git.is_none() && self.vers.is_none() {
                         // Only special-case workspaces when the user doesn't provide any extra
                         // information, otherwise, trust the user.
                         if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
@@ -307,9 +282,7 @@ impl Args {
     ) -> Result<Vec<Dependency>> {
         let workspace_members = workspace_members(self.manifest_path.as_deref())?;
 
-        if self.crates.len() > 1
-            && (self.git.is_some() || self.path.is_some() || self.vers.is_some())
-        {
+        if self.crates.len() > 1 && (self.git.is_some() || self.vers.is_some()) {
             return Err(ErrorKind::MultipleCratesWithGitOrPathOrVers.into());
         }
 
@@ -353,7 +326,6 @@ impl Default for Args {
             branch: None,
             tag: None,
             rev: None,
-            path: None,
             target: None,
             optional: false,
             manifest_path: None,
