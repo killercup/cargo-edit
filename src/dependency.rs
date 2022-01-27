@@ -7,7 +7,7 @@ use crate::manifest::str_or_1_len_table;
 pub struct Dependency {
     /// The name of the dependency (as it is set in its `Cargo.toml` and known to crates.io)
     pub name: String,
-    optional: bool,
+    optional: Option<bool>,
     /// List of features to add (or None to keep features unchanged).
     pub features: Option<Vec<String>>,
     default_features: Option<bool>,
@@ -94,7 +94,7 @@ impl Dependency {
     }
 
     /// Set whether the dependency is optional
-    pub fn set_optional(mut self, opt: bool) -> Dependency {
+    pub fn set_optional(mut self, opt: Option<bool>) -> Dependency {
         self.optional = opt;
         self
     }
@@ -185,7 +185,7 @@ impl Dependency {
             crate_root.display()
         );
         let data: toml_edit::Item = match (
-            self.optional,
+            self.optional.unwrap_or(false),
             self.features.as_ref(),
             self.default_features.unwrap_or(true),
             self.source.clone(),
@@ -255,8 +255,11 @@ impl Dependency {
                     let features: toml_edit::Value = features.iter().cloned().collect();
                     data.insert("features", features);
                 }
-                if self.optional {
-                    data.insert("optional", self.optional.into());
+                match self.optional {
+                    Some(false) | None => {}
+                    Some(true) => {
+                        data.insert("optional", true.into());
+                    }
                 }
 
                 toml_edit::value(toml_edit::Value::InlineTable(data))
@@ -354,8 +357,14 @@ impl Dependency {
                 let features = toml_edit::value(features.into_iter().collect::<toml_edit::Value>());
                 table.insert("features", features);
             }
-            if self.optional {
-                table.insert("optional", toml_edit::value(self.optional));
+            match self.optional {
+                Some(true) => {
+                    table.insert("optional", toml_edit::value(true));
+                }
+                Some(false) => {
+                    table.remove("optional");
+                }
+                None => {}
             }
 
             table.fmt();
@@ -386,7 +395,7 @@ impl Default for Dependency {
         Dependency {
             name: "".into(),
             rename: None,
-            optional: false,
+            optional: None,
             features: None,
             default_features: None,
             source: DependencySource::Version {
@@ -443,7 +452,7 @@ mod tests {
     #[test]
     fn to_toml_optional_dep() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let dep = Dependency::new("dep").set_optional(true);
+        let dep = Dependency::new("dep").set_optional(Some(true));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 

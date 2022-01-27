@@ -1,0 +1,12 @@
+bin.name = "cargo-add"
+args = ["add", "my-package1", "my-package2:0.4.1", "--optional"]
+status = "success"
+stdout = ""
+stderr = """
+      Adding my-package1 v99999.0.0 to optional dependencies.
+      Adding my-package2 v0.4.1 to optional dependencies.
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

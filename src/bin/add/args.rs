@@ -58,6 +58,12 @@ pub struct Args {
     #[clap(long, conflicts_with = "dev")]
     pub optional: bool,
 
+    /// Mark the dependency as required
+    ///
+    /// The package will be removed from your features.
+    #[clap(long, conflicts_with = "dev", overrides_with = "optional")]
+    pub no_optional: bool,
+
     /// Rename the dependency
     ///
     /// Example uses:{n}
@@ -208,7 +214,7 @@ impl Args {
                 self.parse_single_dependency(crate_spec, &workspace_members)
                     .map(|x| {
                         let mut x = x
-                            .set_optional(self.optional)
+                            .set_optional(self.optional())
                             .set_features(requested_features.to_owned())
                             .set_default_features(self.default_features());
                         if let Some(ref rename) = self.rename {
@@ -342,6 +348,12 @@ impl Args {
     }
 }
 
+impl Args {
+    pub fn optional(&self) -> Option<bool> {
+        resolve_bool_arg(self.optional, self.no_optional)
+    }
+}
+
 #[cfg(test)]
 impl Default for Args {
     fn default() -> Args {
@@ -356,6 +368,7 @@ impl Default for Args {
             rev: None,
             target: None,
             optional: false,
+            no_optional: false,
             manifest_path: None,
             pkgid: None,
             features: None,
