@@ -1,0 +1,11 @@
+bin.name = "cargo-add"
+args = ["add", "--manifest-path", "Cargo.toml", "--package", "cargo-list-test-fixture", "cargo-list-test-fixture-dependency"]
+status = "success"
+stdout = ""
+stderr = """
+      Adding cargo-list-test-fixture-dependency (local) to dependencies.
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

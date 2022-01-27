@@ -20,10 +20,10 @@ use cargo_edit::{
     LocalManifest,
 };
 use clap::Parser;
+use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::Path;
 use std::process;
-use std::{borrow::Cow, collections::BTreeSet};
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
 
@@ -139,18 +139,16 @@ fn unrecognized_features_message(message: &str) -> Result<()> {
     Ok(())
 }
 
-fn handle_add(args: &Args) -> Result<()> {
-    let manifest_path = if let Some(ref pkgid) = args.pkgid {
+fn handle_add(mut args: Args) -> Result<()> {
+    if let Some(ref pkgid) = args.pkgid {
         let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
-        Cow::Owned(Some(pkg.manifest_path.into_std_path_buf()))
-    } else {
-        Cow::Borrowed(&args.manifest_path)
-    };
-    let mut manifest = LocalManifest::find(&manifest_path)?;
+        args.manifest_path = Some(pkg.manifest_path.into_std_path_buf());
+    }
+    let mut manifest = LocalManifest::find(&args.manifest_path)?;
 
     if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(
-            &find(&manifest_path)?,
+            &find(&args.manifest_path)?,
             args.registry.as_ref().map(String::as_ref),
         )?;
         update_registry_index(&url, args.quiet)?;
@@ -235,7 +233,7 @@ fn main() {
     let args: Command = Command::parse();
     let Command::Add(args) = args;
 
-    if let Err(err) = handle_add(&args) {
+    if let Err(err) = handle_add(args) {
         eprintln!("Command failed due to unhandled error: {}", err);
 
         let mut gap = false;
