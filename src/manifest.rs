@@ -417,16 +417,24 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new_toml: toml_edit::Item) 
         {
             // No existing keys are relevant when the package changes
             old_dep.clear();
-        } else {
-            // These are not relevant when overwriting
-            for key in &["version", "path", "git", "branch", "tag", "rev"] {
-                old_dep.remove(key);
-            }
         }
         if let Some(name) = new_toml.as_str() {
             old_dep.insert("version", toml_edit::value(name));
+            for key in &["path", "git", "branch", "tag", "rev"] {
+                old_dep.remove(key);
+            }
         } else {
-            merge_table(old_dep, &new_toml);
+            let new_toml = new_toml
+                .as_inline_table()
+                .expect("If a dep isn't a str, then its a table");
+            merge_table(old_dep, new_toml);
+            // These are not relevant when overwriting.  Doing this after to preserve order for
+            // existing fields
+            for key in &["version", "path", "git", "branch", "tag", "rev"] {
+                if !new_toml.contains_key(key) {
+                    old_dep.remove(key);
+                }
+            }
         }
     } else {
         unreachable!("Invalid old dependency type");
@@ -437,12 +445,8 @@ fn merge_dependencies(old_dep: &mut toml_edit::Item, new_toml: toml_edit::Item) 
     }
 }
 
-fn merge_table(old_dep: &mut dyn toml_edit::TableLike, new: &toml_edit::Item) {
-    for (k, v) in new
-        .as_inline_table()
-        .expect("expected an inline table")
-        .iter()
-    {
+fn merge_table(old_dep: &mut dyn toml_edit::TableLike, new: &toml_edit::InlineTable) {
+    for (k, v) in new.iter() {
         old_dep.insert(k, toml_edit::value(v.clone()));
     }
 }
