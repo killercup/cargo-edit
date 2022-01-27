@@ -55,14 +55,8 @@ pub struct Args {
     #[clap(long, forbid_empty_values = true, group = "section")]
     pub target: Option<String>,
 
-    /// Specify the version to grab from the registry(crates.io).
-    /// You can also specify version as part of name, e.g
-    /// `cargo add bitflags:0.3.2`.
-    #[clap(long, value_name = "URI", conflicts_with = "git")]
-    pub vers: Option<String>,
-
     /// Specify a git repository to download the crate from.
-    #[clap(long, value_name = "URI", conflicts_with = "vers")]
+    #[clap(long, value_name = "URI")]
     pub git: Option<String>,
 
     /// Specify a git branch to download the crate from.
@@ -111,11 +105,6 @@ pub struct Args {
     pub registry: Option<String>,
 }
 
-fn parse_version_req(s: &str) -> Result<&str> {
-    semver::VersionReq::parse(s).chain_err(|| "Invalid dependency version requirement")?;
-    Ok(s)
-}
-
 impl Args {
     /// Get dependency section
     pub fn get_section(&self) -> Vec<String> {
@@ -143,7 +132,7 @@ impl Args {
     ) -> Result<Vec<Dependency>> {
         let workspace_members = workspace_members(self.manifest_path.as_deref())?;
 
-        if self.crates.len() > 1 && (self.git.is_some() || self.vers.is_some()) {
+        if self.crates.len() > 1 && self.git.is_some() {
             return Err(ErrorKind::MultipleCratesWithGitOrPathOrVers.into());
         }
 
@@ -213,7 +202,6 @@ impl Args {
                 let mut dependency = crate_spec.to_dependency()?;
 
                 if let Some(repo) = &self.git {
-                    assert!(self.vers.is_none());
                     assert!(self.registry.is_none());
                     let features = get_manifest_from_url(repo)?
                         .map(|m| m.features())
@@ -229,46 +217,39 @@ impl Args {
                         )
                         .set_available_features(features);
                 } else {
-                    if let Some(version) = &self.vers {
-                        dependency = dependency.set_version(parse_version_req(version)?);
-                    }
-
-                    if self.git.is_none() && self.vers.is_none() {
-                        // Only special-case workspaces when the user doesn't provide any extra
-                        // information, otherwise, trust the user.
-                        if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
-                            dependency = dependency.set_path(
-                                package
-                                    .manifest_path
-                                    .parent()
-                                    .expect("at least parent dir")
-                                    .as_std_path()
-                                    .to_owned(),
-                            );
-                            // dev-dependencies do not need the version populated
-                            if !self.dev {
-                                let op = "";
-                                let v =
-                                    format!("{op}{version}", op = op, version = package.version);
-                                dependency = dependency.set_version(&v);
-                            }
-                        } else {
-                            dependency = get_latest_dependency(
-                                name,
-                                false,
-                                &manifest_path,
-                                Some(&registry_url),
-                            )?;
+                    // Only special-case workspaces when the user doesn't provide any extra
+                    // information, otherwise, trust the user.
+                    if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
+                        dependency = dependency.set_path(
+                            package
+                                .manifest_path
+                                .parent()
+                                .expect("at least parent dir")
+                                .as_std_path()
+                                .to_owned(),
+                        );
+                        // dev-dependencies do not need the version populated
+                        if !self.dev {
                             let op = "";
-                            let v = format!(
-                                "{op}{version}",
-                                op = op,
-                                // If version is unavailable `get_latest_dependency` must have
-                                // returned `Err(FetchVersionError::GetVersion)`
-                                version = dependency.version().unwrap_or_else(|| unreachable!())
-                            );
+                            let v = format!("{op}{version}", op = op, version = package.version);
                             dependency = dependency.set_version(&v);
                         }
+                    } else {
+                        dependency = get_latest_dependency(
+                            name,
+                            false,
+                            &manifest_path,
+                            Some(&registry_url),
+                        )?;
+                        let op = "";
+                        let v = format!(
+                            "{op}{version}",
+                            op = op,
+                            // If version is unavailable `get_latest_dependency` must have
+                            // returned `Err(FetchVersionError::GetVersion)`
+                            version = dependency.version().unwrap_or_else(|| unreachable!())
+                        );
+                        dependency = dependency.set_version(&v);
                     }
                 }
 
@@ -311,7 +292,6 @@ impl Default for Args {
             rename: None,
             dev: false,
             build: false,
-            vers: None,
             git: None,
             branch: None,
             tag: None,
@@ -332,20 +312,6 @@ impl Default for Args {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cargo_edit::Dependency;
-
-    #[test]
-    fn test_dependency_parsing() {
-        let args = Args {
-            vers: Some("0.4.2".to_owned()),
-            ..Args::default()
-        };
-
-        assert_eq!(
-            args.parse_dependencies(None).unwrap(),
-            vec![Dependency::new("demo").set_version("0.4.2")]
-        );
-    }
 
     #[test]
     #[cfg(feature = "test-external-apis")]
