@@ -146,6 +146,43 @@ impl Args {
         }
     }
 
+    /// Build dependencies from arguments
+    pub fn parse_dependencies(
+        &self,
+        requested_features: Option<Vec<String>>,
+    ) -> Result<Vec<Dependency>> {
+        let workspace_members = workspace_members(self.manifest_path.as_deref())?;
+
+        if self.crates.len() > 1 && (self.git.is_some() || self.vers.is_some()) {
+            return Err(ErrorKind::MultipleCratesWithGitOrPathOrVers.into());
+        }
+
+        if self.crates.len() > 1 && self.rename.is_some() {
+            return Err(ErrorKind::MultipleCratesWithRename.into());
+        }
+
+        if self.crates.len() > 1 && self.features.is_some() {
+            return Err(ErrorKind::MultipleCratesWithFeatures.into());
+        }
+
+        self.crates
+            .iter()
+            .map(|crate_spec| {
+                self.parse_single_dependency(crate_spec, &workspace_members)
+                    .map(|x| {
+                        let mut x = x
+                            .set_optional(self.optional)
+                            .set_features(requested_features.to_owned())
+                            .set_default_features(!self.no_default_features);
+                        if let Some(ref rename) = self.rename {
+                            x = x.set_rename(rename);
+                        }
+                        x
+                    })
+            })
+            .collect()
+    }
+
     fn parse_single_dependency(
         &self,
         crate_spec: &str,
@@ -273,43 +310,6 @@ impl Args {
         }
 
         Ok(dependency)
-    }
-
-    /// Build dependencies from arguments
-    pub fn parse_dependencies(
-        &self,
-        requested_features: Option<Vec<String>>,
-    ) -> Result<Vec<Dependency>> {
-        let workspace_members = workspace_members(self.manifest_path.as_deref())?;
-
-        if self.crates.len() > 1 && (self.git.is_some() || self.vers.is_some()) {
-            return Err(ErrorKind::MultipleCratesWithGitOrPathOrVers.into());
-        }
-
-        if self.crates.len() > 1 && self.rename.is_some() {
-            return Err(ErrorKind::MultipleCratesWithRename.into());
-        }
-
-        if self.crates.len() > 1 && self.features.is_some() {
-            return Err(ErrorKind::MultipleCratesWithFeatures.into());
-        }
-
-        self.crates
-            .iter()
-            .map(|crate_spec| {
-                self.parse_single_dependency(crate_spec, &workspace_members)
-                    .map(|x| {
-                        let mut x = x
-                            .set_optional(self.optional)
-                            .set_features(requested_features.to_owned())
-                            .set_default_features(!self.no_default_features);
-                        if let Some(ref rename) = self.rename {
-                            x = x.set_rename(rename);
-                        }
-                        x
-                    })
-            })
-            .collect()
     }
 }
 
