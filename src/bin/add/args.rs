@@ -108,11 +108,6 @@ pub struct Args {
     )]
     pub pkgid: Option<String>,
 
-    /// Include prerelease versions when fetching from crates.io (e.g.
-    /// '0.6.0-alpha').
-    #[clap(long)]
-    pub allow_prerelease: bool,
-
     /// Space-separated list of features to add. For an alternative approach to
     /// enabling features, consider installing the `cargo-feature` utility.
     #[clap(long)]
@@ -258,7 +253,7 @@ impl Args {
                         } else {
                             dependency = get_latest_dependency(
                                 name,
-                                self.allow_prerelease,
+                                false,
                                 &manifest_path,
                                 Some(&registry_url),
                             )?;
@@ -363,7 +358,6 @@ impl Default for Args {
             optional: false,
             manifest_path: None,
             pkgid: None,
-            allow_prerelease: false,
             features: None,
             no_default_features: false,
             quiet: false,
