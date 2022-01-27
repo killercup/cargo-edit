@@ -82,21 +82,11 @@ pub struct Args {
     pub optional: bool,
 
     /// Path to the manifest to add a dependency to.
-    #[clap(
-        long,
-        value_name = "PATH",
-        parse(from_os_str),
-        conflicts_with = "pkgid"
-    )]
+    #[clap(long, value_name = "PATH", parse(from_os_str))]
     pub manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to add this dependency to.
-    #[clap(
-        long = "package",
-        short = 'p',
-        value_name = "PKGID",
-        conflicts_with = "manifest-path"
-    )]
+    #[clap(long = "package", short = 'p', value_name = "PKGID")]
     pub pkgid: Option<String>,
 
     /// Space-separated list of features to add. For an alternative approach to
