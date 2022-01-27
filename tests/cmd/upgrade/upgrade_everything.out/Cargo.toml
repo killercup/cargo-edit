@@ -9,8 +9,8 @@ path = "dummy.rs"
 docopt = "99999.0.0"
 pad = "99999.0.0"
 serde_json = "99999.0.0"
-syn = { default-features = false, features = ["parsing"], version = "99999.0.0" }
-tar = { default-features = false, version = "99999.0.0" }
+syn = { version = "99999.0.0", default-features = false, features = ["parsing"] }
+tar = { version = "99999.0.0", default-features = false }
 ftp = "99999.0.0"
 te = { package = "toml_edit", version = "99999.0.0" }
 
@@ -37,7 +37,7 @@ openssl = "99999.0.0"
 dependencies = { rget = "99999.0.0" }
 
 [target.'cfg(target_arch = "x86_64")'.dev-dependencies]
-geo = { default-features = false, features = ["postgis-integration"], version = "99999.0.0" }
+geo = { version = "99999.0.0", default-features = false, features = ["postgis-integration"] }
 
 [target.foo.build-dependencies]
 ftp = "99999.0.0"
