@@ -103,6 +103,10 @@ pub struct Args {
     /// Registry to use
     #[clap(long, conflicts_with = "git")]
     pub registry: Option<String>,
+
+    /// Unstable (nightly-only) flags to Cargo, see 'cargo -Z help' for details
+    #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
+    pub unstable_features: Vec<UnstableOptions>,
 }
 
 impl Args {
@@ -305,8 +309,14 @@ impl Default for Args {
             quiet: false,
             offline: true,
             registry: None,
+            unstable_features: vec![],
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+pub enum UnstableOptions {
+    Git,
 }
 
 #[cfg(test)]

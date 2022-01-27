@@ -1,5 +1,5 @@
 bin.name = "cargo-add"
-args = ["add", "git-package", "--git", "http://localhost/git-package.git", "--branch", "main"]
+args = ["add", "git-package", "--git", "http://localhost/git-package.git", "--branch", "main", "-Zgit"]
 status = "success"
 stdout = ""
 stderr = """

@@ -1,5 +1,5 @@
 bin.name = "cargo-add"
-args = ["add", "my-package1", "my-package2", "--git", "https://github.com/dcjanus/invalid"]
+args = ["add", "my-package1", "my-package2", "--git", "https://github.com/dcjanus/invalid", "-Zgit"]
 status.code = 1
 stdout = ""
 stderr = """
