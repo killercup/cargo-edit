@@ -21,7 +21,7 @@ pub enum Command {
     #[clap(after_help = "\
 Examples:
   $ cargo add regex
-  $ cargo add regex:0.1.41 --build
+  $ cargo add regex@0.1.41 --build
   $ cargo add trycmd --dev
   $ cargo add ./crate/parser/
 ")]
@@ -36,7 +36,7 @@ pub struct Args {
     ///
     /// You can reference a packages by:{n}
     /// - `<name>`, like `cargo add serde` (latest version will be used){n}
-    /// - `<name>:<version-req>`, like `cargo add serde:1` or `cargo add serde:=1.0.38`{n}
+    /// - `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`{n}
     /// - `<path>`, like `cargo add ./crates/parser/`
     #[clap(value_name = "DEP_ID", required = true)]
     pub crates: Vec<String>,
@@ -241,7 +241,7 @@ impl Args {
                 version_req: Some(_),
             } => {
                 let mut dependency = crate_spec.to_dependency()?;
-                // crate specifier includes a version (e.g. `docopt:0.8`)
+                // crate specifier includes a version (e.g. `docopt@0.8`)
                 if let Some(ref url) = self.git {
                     let url = url.clone();
                     let version = dependency.version().unwrap().to_string();
