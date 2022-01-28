@@ -191,8 +191,8 @@ fn handle_add(mut args: Args) -> Result<()> {
     };
 
     let was_sorted = manifest
-        .get_table_mut(&args.get_section())
-        .map(TomlItem::as_table_mut)
+        .get_table(&args.get_section())
+        .map(TomlItem::as_table)
         .map_or(true, |table_option| {
             table_option.map_or(true, |table| is_sorted(table.iter().map(|(name, _)| name)))
         });

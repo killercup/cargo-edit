@@ -31,6 +31,28 @@ impl Manifest {
     }
 
     /// Get the specified table from the manifest.
+    pub fn get_table<'a>(&'a self, table_path: &[String]) -> Result<&'a toml_edit::Item> {
+        /// Descend into a manifest until the required table is found.
+        fn descend<'a>(input: &'a toml_edit::Item, path: &[String]) -> Result<&'a toml_edit::Item> {
+            if let Some(segment) = path.get(0) {
+                let value = input
+                    .get(&segment)
+                    .ok_or_else(|| ErrorKind::NonExistentTable(segment.clone()))?;
+
+                if value.is_table_like() {
+                    descend(value, &path[1..])
+                } else {
+                    Err(ErrorKind::NonExistentTable(segment.clone()).into())
+                }
+            } else {
+                Ok(input)
+            }
+        }
+
+        descend(self.data.as_item(), table_path)
+    }
+
+    /// Get the specified table from the manifest.
     pub fn get_table_mut<'a>(
         &'a mut self,
         table_path: &[String],
