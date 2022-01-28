@@ -6,7 +6,7 @@ stderr = """
 error: The argument '--dev' cannot be used with '--build'
 
 USAGE:
-    cargo add --dev <CRATE>...
+    cargo add --dev <DEP_ID>...
 
 For more information try --help
 """
