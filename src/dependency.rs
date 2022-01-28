@@ -217,9 +217,7 @@ impl Dependency {
                             data.insert("version", v.into());
                         }
                         if let Some(p) = path {
-                            let relpath = pathdiff::diff_paths(p, crate_root)
-                                .expect("both paths are absolute");
-                            let relpath = relpath.to_str().unwrap().replace('\\', "/");
+                            let relpath = path_field(crate_root, p);
                             data.insert("path", relpath.into());
                         }
                         if let Some(r) = registry {
@@ -298,6 +296,12 @@ impl Dependency {
             unreachable!("Invalid dependency type: {}", item.type_name());
         }
     }
+}
+
+fn path_field(crate_root: &Path, abs_path: &Path) -> String {
+    let relpath = pathdiff::diff_paths(abs_path, crate_root).expect("both paths are absolute");
+    let relpath = relpath.to_str().unwrap().replace('\\', "/");
+    relpath
 }
 
 fn is_package_eq(item: &mut toml_edit::Item, name: &str, rename: Option<&str>) -> bool {
