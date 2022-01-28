@@ -380,35 +380,54 @@ impl LocalManifest {
 
     /// Remove references to `dep_key` if its no longer present
     pub fn gc_dep(&mut self, dep_key: &str) {
-        if !self.dep_used(dep_key) {
+        let status = self.dep_feature(dep_key);
+        if matches!(status, FeatureStatus::None | FeatureStatus::DepFeature) {
             if let toml_edit::Item::Table(feature_table) = &mut self.data.as_table_mut()["features"]
             {
                 for (_feature, mut activated_crates) in feature_table.iter_mut() {
                     if let toml_edit::Item::Value(toml_edit::Value::Array(feature_activations)) =
                         &mut activated_crates
                     {
-                        remove_feature_activation(feature_activations, dep_key);
+                        remove_feature_activation(feature_activations, dep_key, status);
                     }
                 }
             }
         }
     }
 
-    /// Is there a crate with this name as any kind of dependency?
-    /// (maybe optional, maybe target specific).
-    fn dep_used(&self, dep_key: &str) -> bool {
+    fn dep_feature(&self, dep_key: &str) -> FeatureStatus {
+        let mut status = FeatureStatus::None;
         for (_, tbl) in self.get_sections() {
             if let toml_edit::Item::Table(tbl) = tbl {
-                if tbl.contains_key(dep_key) {
-                    return true;
+                if let Some(dep_item) = tbl.get(dep_key) {
+                    let optional = dep_item.get("optional");
+                    let optional = optional.and_then(|i| i.as_value());
+                    let optional = optional.and_then(|i| i.as_bool());
+                    let optional = optional.unwrap_or(false);
+                    if optional {
+                        return FeatureStatus::Feature;
+                    } else {
+                        status = FeatureStatus::DepFeature;
+                    }
                 }
             }
         }
-        false
+        status
     }
 }
 
-fn remove_feature_activation(feature_activations: &mut toml_edit::Array, dep: &str) {
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum FeatureStatus {
+    None,
+    DepFeature,
+    Feature,
+}
+
+fn remove_feature_activation(
+    feature_activations: &mut toml_edit::Array,
+    dep: &str,
+    status: FeatureStatus,
+) {
     let dep_feature: &str = &format!("{}/", dep);
 
     let remove_list: Vec<usize> = feature_activations
@@ -417,7 +436,12 @@ fn remove_feature_activation(feature_activations: &mut toml_edit::Array, dep: &s
         .filter_map(|(idx, feature_activation)| {
             if let toml_edit::Value::String(feature_activation) = feature_activation {
                 let activation = feature_activation.value();
-                (activation == dep || activation.starts_with(dep_feature)).then(|| idx)
+                match status {
+                    FeatureStatus::None => activation == dep || activation.starts_with(dep_feature),
+                    FeatureStatus::DepFeature => activation == dep,
+                    FeatureStatus::Feature => false,
+                }
+                .then(|| idx)
             } else {
                 None
             }
