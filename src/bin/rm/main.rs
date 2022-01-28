@@ -124,20 +124,7 @@ fn handle_rm(args: &Args) -> Result<()> {
 
             // Now that we have removed the crate, if that was the last reference to that crate,
             // then we need to drop any explicitly activated features on that crate.
-            if !dep_used(&manifest, dep) {
-                if let toml_edit::Item::Table(feature_table) =
-                    &mut manifest.data.as_table_mut()["features"]
-                {
-                    for (_feature, mut activated_crates) in feature_table.iter_mut() {
-                        if let toml_edit::Item::Value(toml_edit::Value::Array(
-                            feature_activations,
-                        )) = &mut activated_crates
-                        {
-                            remove_feature_activation(feature_activations, dep);
-                        }
-                    }
-                }
-            }
+            manifest.gc_dep(dep);
 
             result
         })
@@ -150,41 +137,6 @@ fn handle_rm(args: &Args) -> Result<()> {
     manifest.write()?;
 
     Ok(())
-}
-
-/// Is there a crate with this name as any kind of dependency?
-/// (maybe optional, maybe target specific).
-fn dep_used(manifest: &LocalManifest, dep: &str) -> bool {
-    for (_, tbl) in manifest.get_sections() {
-        if let toml_edit::Item::Table(tbl) = tbl {
-            if tbl.contains_key(dep) {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-fn remove_feature_activation(feature_activations: &mut toml_edit::Array, dep: &str) {
-    let dep_feature: &str = &format!("{}/", dep);
-
-    let remove_list: Vec<usize> = feature_activations
-        .iter()
-        .enumerate()
-        .filter_map(|(idx, feature_activation)| {
-            if let toml_edit::Value::String(feature_activation) = feature_activation {
-                let activation = feature_activation.value();
-                (activation == dep || activation.starts_with(dep_feature)).then(|| idx)
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    // Remove found idx in revers order so we don't invalidate the idx.
-    for idx in remove_list.iter().rev() {
-        feature_activations.remove(*idx);
-    }
 }
 
 fn main() {
