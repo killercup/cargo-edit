@@ -160,7 +160,9 @@ impl Dependency {
     pub fn rename(&self) -> Option<&str> {
         self.rename.as_deref()
     }
+}
 
+impl Dependency {
     /// Get the dependency name as defined in the manifest,
     /// that is, either the alias (rename field if Some),
     /// or the official package name (name field).
