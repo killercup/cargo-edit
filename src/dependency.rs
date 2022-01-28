@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use crate::manifest::str_or_1_len_table;
+
 /// A dependency handled by Cargo
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Dependency {
@@ -261,6 +263,48 @@ impl Dependency {
         };
 
         data
+    }
+
+    /// Modify existing entry to match this dependency
+    pub fn update_toml(&self, crate_root: &Path, item: &mut toml_edit::Item) {
+        if str_or_1_len_table(item) {
+            *item = self.to_toml(crate_root);
+        } else if let Some(table) = item.as_table_like_mut() {
+            let new_toml = self.to_toml(crate_root);
+            if table.get("package").map(|i| i.as_str())
+                != new_toml.get("package").map(|i| i.as_str())
+            {
+                // No existing keys are relevant when the package changes
+                table.clear();
+            }
+            if let Some(name) = new_toml.as_str() {
+                table.insert("version", toml_edit::value(name));
+                for key in &["path", "git", "branch", "tag", "rev"] {
+                    table.remove(key);
+                }
+            } else {
+                let new_toml = new_toml
+                    .as_inline_table()
+                    .expect("If a dep isn't a str, then its a table");
+                merge_table(table, new_toml);
+                // These are not relevant when overwriting.  Doing this after to preserve order for
+                // existing fields
+                for key in &["version", "path", "git", "branch", "tag", "rev"] {
+                    if !new_toml.contains_key(key) {
+                        table.remove(key);
+                    }
+                }
+            }
+            table.fmt();
+        } else {
+            unreachable!("Invalid dependency type: {}", item.type_name());
+        }
+    }
+}
+
+fn merge_table(old_dep: &mut dyn toml_edit::TableLike, new: &toml_edit::InlineTable) {
+    for (k, v) in new.iter() {
+        old_dep.insert(k, toml_edit::value(v.clone()));
     }
 }
 

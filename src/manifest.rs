@@ -228,19 +228,22 @@ impl LocalManifest {
 
     /// Add entry to a Cargo.toml.
     pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
+        let crate_root = self
+            .path
+            .parent()
+            .expect("manifest path is absolute")
+            .to_owned();
         let dep_key = dep.toml_key();
-        let new_dependency = dep.to_toml(self.path.parent().expect("manifest path is absolute"));
 
         let table = self.get_table(table_path)?;
         if let Some(dep_item) = table.as_table_like_mut().unwrap().get_mut(&dep_key) {
-            // update an existing entry
-            merge_dependencies(dep_item, new_dependency);
-            if let Some(t) = table.as_inline_table_mut() {
-                t.fmt()
-            }
+            dep.update_toml(&crate_root, dep_item);
         } else {
-            // insert a new entry
+            let new_dependency = dep.to_toml(&crate_root);
             table[dep_key] = new_dependency;
+        }
+        if let Some(t) = table.as_inline_table_mut() {
+            t.fmt()
         }
 
         Ok(())
@@ -264,6 +267,11 @@ impl LocalManifest {
         dep: &Dependency,
         dry_run: bool,
     ) -> Result<()> {
+        let crate_root = self
+            .path
+            .parent()
+            .expect("manifest path is absolute")
+            .to_owned();
         let new_dependency = dep.to_toml(self.path.parent().expect("manifest path is absolute"));
 
         let table = self.get_table(table_path)?;
@@ -275,7 +283,7 @@ impl LocalManifest {
                 eprintln!("Error while displaying upgrade message, {}", e);
             }
             if !dry_run {
-                merge_dependencies(&mut table[dep_key], new_dependency);
+                dep.update_toml(&crate_root, &mut table[dep_key]);
                 if let Some(t) = table.as_inline_table_mut() {
                     t.fmt()
                 }
@@ -403,53 +411,6 @@ fn search(dir: &Path) -> Result<PathBuf> {
     }
 }
 
-/// Merge a new dependency into an old entry. See `Dependency::to_toml` for what the format of the
-/// new dependency will be.
-fn merge_dependencies(old_dep: &mut toml_edit::Item, new_toml: toml_edit::Item) {
-    assert!(!old_dep.is_none());
-
-    if str_or_1_len_table(old_dep) {
-        // The old dependency is just a version/git/path. We are safe to overwrite.
-        *old_dep = new_toml;
-    } else if let Some(old_dep) = old_dep.as_table_like_mut() {
-        if old_dep.get("package").map(|i| i.as_str()) != new_toml.get("package").map(|i| i.as_str())
-        {
-            // No existing keys are relevant when the package changes
-            old_dep.clear();
-        }
-        if let Some(name) = new_toml.as_str() {
-            old_dep.insert("version", toml_edit::value(name));
-            for key in &["path", "git", "branch", "tag", "rev"] {
-                old_dep.remove(key);
-            }
-        } else {
-            let new_toml = new_toml
-                .as_inline_table()
-                .expect("If a dep isn't a str, then its a table");
-            merge_table(old_dep, new_toml);
-            // These are not relevant when overwriting.  Doing this after to preserve order for
-            // existing fields
-            for key in &["version", "path", "git", "branch", "tag", "rev"] {
-                if !new_toml.contains_key(key) {
-                    old_dep.remove(key);
-                }
-            }
-        }
-    } else {
-        unreachable!("Invalid old dependency type");
-    }
-
-    if let Some(t) = old_dep.as_inline_table_mut() {
-        t.fmt()
-    }
-}
-
-fn merge_table(old_dep: &mut dyn toml_edit::TableLike, new: &toml_edit::InlineTable) {
-    for (k, v) in new.iter() {
-        old_dep.insert(k, toml_edit::value(v.clone()));
-    }
-}
-
 fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
     if str_or_1_len_table(old_dep) {
         Ok(old_dep.clone())
@@ -478,7 +439,7 @@ fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<
     Ok(old_version.matches(&current_version))
 }
 
-fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
+pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
     item.is_str() || item.as_table_like().map(|t| t.len() == 1).unwrap_or(false)
 }
 
