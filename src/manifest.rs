@@ -31,7 +31,10 @@ impl Manifest {
     }
 
     /// Get the specified table from the manifest.
-    pub fn get_table<'a>(&'a mut self, table_path: &[String]) -> Result<&'a mut toml_edit::Item> {
+    pub fn get_table_mut<'a>(
+        &'a mut self,
+        table_path: &[String],
+    ) -> Result<&'a mut toml_edit::Item> {
         /// Descend into a manifest until the required table is found.
         fn descend<'a>(
             input: &'a mut toml_edit::Item,
@@ -235,7 +238,7 @@ impl LocalManifest {
             .to_owned();
         let dep_key = dep.toml_key();
 
-        let table = self.get_table(table_path)?;
+        let table = self.get_table_mut(table_path)?;
         if let Some(dep_item) = table.as_table_like_mut().unwrap().get_mut(dep_key) {
             dep.update_toml(&crate_root, dep_item);
         } else {
@@ -274,7 +277,7 @@ impl LocalManifest {
             .to_owned();
         let new_dependency = dep.to_toml(self.path.parent().expect("manifest path is absolute"));
 
-        let table = self.get_table(table_path)?;
+        let table = self.get_table_mut(table_path)?;
 
         // If (and only if) there is an old entry, merge the new one in.
         if table.as_table_like().unwrap().contains_key(dep_key) {
