@@ -66,6 +66,7 @@ clap = { version = "3.0", features = ["derive", "wrap_help"], optional = true }
 subprocess = "0.2.6"
 termcolor = "1.1.0"
 toml_edit = { version = "0.13.3", features = ["easy"] }
+indexmap = "1"
 url = "2.1.1"
 ureq = { version = "1.5.1", default-features = false, features = ["tls", "json", "socks"] }
 pathdiff = "0.2"

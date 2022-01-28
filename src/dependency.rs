@@ -339,9 +339,20 @@ impl Dependency {
                 }
                 None => {}
             }
-            if let Some(features) = self.features.as_deref() {
-                let features: toml_edit::Value = features.iter().cloned().collect();
-                table.insert("features", toml_edit::value(features));
+            if let Some(new_features) = self.features.as_deref() {
+                let mut features = table
+                    .get("features")
+                    .and_then(|i| i.as_value())
+                    .and_then(|v| v.as_array())
+                    .and_then(|a| {
+                        a.iter()
+                            .map(|v| v.as_str())
+                            .collect::<Option<indexmap::IndexSet<_>>>()
+                    })
+                    .unwrap_or_default();
+                features.extend(new_features.iter().map(|s| s.as_str()));
+                let features = toml_edit::value(features.into_iter().collect::<toml_edit::Value>());
+                table.insert("features", features);
             }
             if self.optional {
                 table.insert("optional", toml_edit::value(self.optional));
