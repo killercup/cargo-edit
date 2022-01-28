@@ -268,15 +268,13 @@ impl Dependency {
     /// Modify existing entry to match this dependency
     pub fn update_toml(&self, crate_root: &Path, item: &mut toml_edit::Item) {
         if str_or_1_len_table(item) {
+            // Nothing to preserve
+            *item = self.to_toml(crate_root);
+        } else if !is_package_eq(item, &self.name, self.rename.as_deref()) {
+            // No existing keys are relevant when the package changes
             *item = self.to_toml(crate_root);
         } else if let Some(table) = item.as_table_like_mut() {
             let new_toml = self.to_toml(crate_root);
-            if table.get("package").map(|i| i.as_str())
-                != new_toml.get("package").map(|i| i.as_str())
-            {
-                // No existing keys are relevant when the package changes
-                table.clear();
-            }
             if let Some(name) = new_toml.as_str() {
                 table.insert("version", toml_edit::value(name));
                 for key in &["path", "git", "branch", "tag", "rev"] {
@@ -299,6 +297,16 @@ impl Dependency {
         } else {
             unreachable!("Invalid dependency type: {}", item.type_name());
         }
+    }
+}
+
+fn is_package_eq(item: &mut toml_edit::Item, name: &str, rename: Option<&str>) -> bool {
+    if let Some(table) = item.as_table_like_mut() {
+        let existing_package = table.get("package").and_then(|i| i.as_str());
+        let new_package = rename.map(|_| name);
+        existing_package == new_package
+    } else {
+        false
     }
 }
 
