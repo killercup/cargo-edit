@@ -80,51 +80,46 @@ $ cargo add thiserror --rename error
 #### Usage
 
 ```console
-$ cargo-add add --help
+$ cargo-add add -h
 cargo-add [..]
-Add dependency to a Cargo.toml manifest file
+Add dependencies to a Cargo.toml manifest file
 
 USAGE:
-    cargo add [OPTIONS] <CRATE>...
+    cargo add [OPTIONS] <DEP_ID>...
 
 ARGS:
-    <CRATE>...    Crates to be added
+    <DEP_ID>...    Reference to a package to add as a dependency
 
 OPTIONS:
-    -B, --build                   Add crate as build dependency
-        --branch <BRANCH>         Specify a git branch to download the crate from
-    -D, --dev                     Add crate as development dependency
-        --features <FEATURES>     Space-separated list of features to add. For an alternative
-                                  approach to enabling features, consider installing the `cargo-
-                                  feature` utility
-        --git <URI>               Specify a git repository to download the crate from
-    -h, --help                    Print help information
-        --manifest-path <PATH>    Path to the manifest to add a dependency to
-        --no-default-features     Set `default-features = false` for the added dependency
+        --no-default-features     Disable the default features
+        --features <FEATURES>     Space-separated list of features to add
+        --optional                Mark the dependency as optional
+    -r, --rename <RENAME>         Rename the dependency
+        --registry <REGISTRY>     Package registry for this dependency
+        --manifest-path <PATH>    Path to `Cargo.toml`
+    -p, --package <PKGID>         Package to modify
         --offline                 Run without accessing the network
-        --optional                Add as an optional dependency (for use in features)
-    -p, --package <PKGID>         Package id of the crate to add this dependency to
         --quiet                   Do not print any output in case of success
-    -r, --rename <RENAME>         Rename a dependency in Cargo.toml, https://doc.rust-
-                                  lang.org/cargo/reference/specifying-dependencies.html#renaming-
-                                  dependencies-in-cargotoml. Only works when specifying a single
-                                  dependency
-        --registry <REGISTRY>     Registry to use
-        --rev <REV>               Specify a git branch to download the crate from
-        --tag <TAG>               Specify a git branch to download the crate from
-        --target <TARGET>         Add as dependency to the given target platform
+    -h, --help                    Print help information
     -V, --version                 Print version information
-    -Z <FLAG>                     Unstable (nightly-only) flags to Cargo, see 'cargo -Z help' for
-                                  details [possible values: git]
 
-This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github or
-gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate name and
-set the appropriate `--git` or `--path` value.
+SECTION:
+    -D, --dev                Add as development dependency
+    -B, --build              Add as build dependency
+        --target <TARGET>    Add as dependency to the given target platform
 
-Please note that Cargo treats versions like '1.2.3' as '^1.2.3' (and that '^1.2.3' is specified as
-'>=1.2.3 and <2.0.0'). By default, `cargo add` will use this format, as it is the one that the
-crates.io registry suggests. One goal of `cargo add` is to prevent you from using wildcard
-dependencies (version set to '*').
+UNSTABLE:
+    -Z <FLAG>                Unstable (nightly-only) flags [possible values: git]
+        --git <URI>          Git repository location
+        --branch <BRANCH>    Git branch to download the crate from
+        --tag <TAG>          Git tag to download the crate from
+        --rev <REV>          Git reference to download the crate from
+
+Examples:
+  $ cargo add regex
+  $ cargo add regex:0.1.41 --build
+  $ cargo add trycmd --dev
+  $ cargo add ./crate/parser/
 
 ```
 

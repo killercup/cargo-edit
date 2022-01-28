@@ -16,97 +16,144 @@ use crate::errors::*;
 #[derive(Debug, Parser)]
 #[clap(bin_name = "cargo")]
 pub enum Command {
-    /// Add dependency to a Cargo.toml manifest file.
+    /// Add dependencies to a Cargo.toml manifest file.
     #[clap(name = "add")]
     #[clap(after_help = "\
-This command allows you to add a dependency to a Cargo.toml manifest file. If <crate> is a github \
-or gitlab repository URL, or a local path, `cargo add` will try to automatically get the crate \
-name and set the appropriate `--git` or `--path` value.
-
-Please note that Cargo treats versions like '1.2.3' as '^1.2.3' (and that '^1.2.3' is specified \
-as '>=1.2.3 and <2.0.0'). By default, `cargo add` will use this format, as it is the one that the \
-crates.io registry suggests. One goal of `cargo add` is to prevent you from using wildcard \
-dependencies (version set to '*').")]
+Examples:
+  $ cargo add regex
+  $ cargo add regex:0.1.41 --build
+  $ cargo add trycmd --dev
+  $ cargo add ./crate/parser/
+")]
     Add(Args),
 }
 
 #[derive(Debug, Parser)]
 #[clap(about, version)]
+#[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 pub struct Args {
-    /// Crates to be added.
-    #[clap(value_name = "CRATE", required = true)]
+    /// Reference to a package to add as a dependency
+    ///
+    /// You can reference a packages by:{n}
+    /// - `<name>`, like `cargo add serde` (latest version will be used){n}
+    /// - `<name>:<version-req>`, like `cargo add serde:1` or `cargo add serde:=1.0.38`{n}
+    /// - `<path>`, like `cargo add ./crates/parser/`
+    #[clap(value_name = "DEP_ID", required = true)]
     pub crates: Vec<String>,
 
-    /// Rename a dependency in Cargo.toml,
-    /// https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml.
-    /// Only works when specifying a single dependency.
-    #[clap(long, short)]
-    pub rename: Option<String>,
-
-    /// Add crate as development dependency.
-    #[clap(long, short = 'D', group = "section")]
-    pub dev: bool,
-
-    /// Add crate as build dependency.
-    #[clap(long, short = 'B', group = "section")]
-    pub build: bool,
-
-    /// Add as dependency to the given target platform.
-    #[clap(long, forbid_empty_values = true, group = "section")]
-    pub target: Option<String>,
-
-    /// Specify a git repository to download the crate from.
-    #[clap(long, value_name = "URI")]
-    pub git: Option<String>,
-
-    /// Specify a git branch to download the crate from.
-    #[clap(long, value_name = "BRANCH", requires = "git", group = "git-ref")]
-    pub branch: Option<String>,
-
-    /// Specify a git branch to download the crate from.
-    #[clap(long, value_name = "TAG", requires = "git", group = "git-ref")]
-    pub tag: Option<String>,
-
-    /// Specify a git branch to download the crate from.
-    #[clap(long, value_name = "REV", requires = "git", group = "git-ref")]
-    pub rev: Option<String>,
-
-    /// Add as an optional dependency (for use in features).
-    #[clap(long, conflicts_with = "dev")]
-    pub optional: bool,
-
-    /// Path to the manifest to add a dependency to.
-    #[clap(long, value_name = "PATH", parse(from_os_str))]
-    pub manifest_path: Option<PathBuf>,
-
-    /// Package id of the crate to add this dependency to.
-    #[clap(long = "package", short = 'p', value_name = "PKGID")]
-    pub pkgid: Option<String>,
-
-    /// Space-separated list of features to add. For an alternative approach to
-    /// enabling features, consider installing the `cargo-feature` utility.
-    #[clap(long)]
-    pub features: Option<Vec<String>>,
-
-    /// Set `default-features = false` for the added dependency.
+    /// Disable the default features
     #[clap(long)]
     pub no_default_features: bool,
 
-    /// Do not print any output in case of success.
+    /// Space-separated list of features to add
     #[clap(long)]
-    pub quiet: bool,
+    pub features: Option<Vec<String>>,
+
+    /// Mark the dependency as optional
+    ///
+    /// The package name will be exposed as feature of your crate.
+    #[clap(long, conflicts_with = "dev")]
+    pub optional: bool,
+
+    /// Rename the dependency
+    ///
+    /// Example uses:{n}
+    /// - Depending on multiple versions of a crate{n}
+    /// - Depend on crates with the same name from different registries
+    #[clap(long, short)]
+    pub rename: Option<String>,
+
+    /// Package registry for this dependency
+    #[clap(long, conflicts_with = "git")]
+    pub registry: Option<String>,
+
+    /// Add as development dependency
+    ///
+    /// Dev-dependencies are not used when compiling a package for building, but are used for compiling tests, examples, and benchmarks.
+    ///
+    /// These dependencies are not propagated to other packages which depend on this package.
+    #[clap(short = 'D', long, help_heading = "SECTION", group = "section")]
+    pub dev: bool,
+
+    /// Add as build dependency
+    ///
+    /// Build-dependencies are the only dependencies available for use by build scripts (`build.rs`
+    /// files).
+    #[clap(short = 'B', long, help_heading = "SECTION", group = "section")]
+    pub build: bool,
+
+    /// Add as dependency to the given target platform.
+    #[clap(
+        long,
+        forbid_empty_values = true,
+        help_heading = "SECTION",
+        group = "section"
+    )]
+    pub target: Option<String>,
+
+    /// Path to `Cargo.toml`
+    #[clap(long, value_name = "PATH", parse(from_os_str))]
+    pub manifest_path: Option<PathBuf>,
+
+    /// Package to modify
+    #[clap(short = 'p', long = "package", value_name = "PKGID")]
+    pub pkgid: Option<String>,
 
     /// Run without accessing the network
     #[clap(long)]
     pub offline: bool,
 
-    /// Registry to use
-    #[clap(long, conflicts_with = "git")]
-    pub registry: Option<String>,
+    /// Do not print any output in case of success.
+    #[clap(long)]
+    pub quiet: bool,
 
-    /// Unstable (nightly-only) flags to Cargo, see 'cargo -Z help' for details
-    #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
+    /// Unstable (nightly-only) flags
+    #[clap(
+        short = 'Z',
+        value_name = "FLAG",
+        help_heading = "UNSTABLE",
+        global = true,
+        arg_enum
+    )]
     pub unstable_features: Vec<UnstableOptions>,
+
+    /// Git repository location
+    ///
+    /// Without any other information, cargo will use latest commit on the main branch.
+    #[clap(long, value_name = "URI", help_heading = "UNSTABLE")]
+    pub git: Option<String>,
+
+    /// Git branch to download the crate from.
+    #[clap(
+        long,
+        value_name = "BRANCH",
+        help_heading = "UNSTABLE",
+        requires = "git",
+        group = "git-ref"
+    )]
+    pub branch: Option<String>,
+
+    /// Git tag to download the crate from.
+    #[clap(
+        long,
+        value_name = "TAG",
+        help_heading = "UNSTABLE",
+        requires = "git",
+        group = "git-ref"
+    )]
+    pub tag: Option<String>,
+
+    /// Git reference to download the crate from
+    ///
+    /// This is the catch all, handling hashes to named references in remote repositories.
+    #[clap(
+        long,
+        value_name = "REV",
+        help_heading = "UNSTABLE",
+        requires = "git",
+        group = "git-ref"
+    )]
+    pub rev: Option<String>,
 }
 
 impl Args {
