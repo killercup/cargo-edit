@@ -214,16 +214,16 @@ impl Dependency {
                         registry,
                     } => {
                         if let Some(v) = version {
-                            data.get_or_insert("version", v);
+                            data.insert("version", v.into());
                         }
                         if let Some(p) = path {
                             let relpath = pathdiff::diff_paths(p, crate_root)
                                 .expect("both paths are absolute");
                             let relpath = relpath.to_str().unwrap().replace('\\', "/");
-                            data.get_or_insert("path", relpath);
+                            data.insert("path", relpath.into());
                         }
                         if let Some(r) = registry {
-                            data.get_or_insert("registry", r);
+                            data.insert("registry", r.into());
                         }
                     }
                     DependencySource::Git {
@@ -232,30 +232,30 @@ impl Dependency {
                         tag,
                         rev,
                     } => {
-                        data.get_or_insert("git", repo);
+                        data.insert("git", repo.into());
                         if let Some(branch) = branch {
-                            data.get_or_insert("branch", branch);
+                            data.insert("branch", branch.into());
                         }
                         if let Some(tag) = tag {
-                            data.get_or_insert("tag", tag);
+                            data.insert("tag", tag.into());
                         }
                         if let Some(rev) = rev {
-                            data.get_or_insert("rev", rev);
+                            data.insert("rev", rev.into());
                         }
                     }
                 }
                 if rename.is_some() {
-                    data.get_or_insert("package", self.name.clone());
+                    data.insert("package", self.name.as_str().into());
                 }
                 if !self.default_features {
-                    data.get_or_insert("default-features", default_features);
+                    data.insert("default-features", default_features.into());
                 }
                 if let Some(features) = features {
                     let features: toml_edit::Value = features.iter().cloned().collect();
-                    data.get_or_insert("features", features);
+                    data.insert("features", features);
                 }
                 if self.optional {
-                    data.get_or_insert("optional", optional);
+                    data.insert("optional", optional.into());
                 }
 
                 toml_edit::value(toml_edit::Value::InlineTable(data))
