@@ -272,25 +272,71 @@ impl Dependency {
             // No existing keys are relevant when the package changes
             *item = self.to_toml(crate_root);
         } else if let Some(table) = item.as_table_like_mut() {
-            let new_toml = self.to_toml(crate_root);
-            if let Some(name) = new_toml.as_str() {
-                table.insert("version", toml_edit::value(name));
-                for key in &["path", "git", "branch", "tag", "rev"] {
-                    table.remove(key);
+            match &self.source {
+                DependencySource::Version {
+                    version,
+                    path,
+                    registry,
+                } => {
+                    if let Some(v) = version {
+                        table.insert("version", toml_edit::value(v));
+                    } else {
+                        table.remove("version");
+                    }
+                    if let Some(p) = path {
+                        let relpath = path_field(crate_root, p);
+                        table.insert("path", toml_edit::value(relpath));
+                    } else {
+                        table.remove("path");
+                    }
+                    if let Some(r) = registry {
+                        table.insert("registry", toml_edit::value(r));
+                    }
+                    for key in ["git", "branch", "tag", "rev"] {
+                        table.remove(key);
+                    }
                 }
-            } else {
-                let new_toml = new_toml
-                    .as_inline_table()
-                    .expect("If a dep isn't a str, then its a table");
-                merge_table(table, new_toml);
-                // These are not relevant when overwriting.  Doing this after to preserve order for
-                // existing fields
-                for key in &["version", "path", "git", "branch", "tag", "rev"] {
-                    if !new_toml.contains_key(key) {
+                DependencySource::Git {
+                    repo,
+                    branch,
+                    tag,
+                    rev,
+                } => {
+                    table.insert("git", toml_edit::value(repo));
+                    if let Some(branch) = branch {
+                        table.insert("branch", toml_edit::value(branch));
+                    } else {
+                        table.remove("branch");
+                    }
+                    if let Some(tag) = tag {
+                        table.insert("tag", toml_edit::value(tag));
+                    } else {
+                        table.remove("tag");
+                    }
+                    if let Some(rev) = rev {
+                        table.insert("rev", toml_edit::value(rev));
+                    } else {
+                        table.remove("rev");
+                    }
+                    for key in ["version", "path", "registry"] {
                         table.remove(key);
                     }
                 }
             }
+            if self.rename.is_some() {
+                table.insert("package", toml_edit::value(self.name.as_str()));
+            }
+            if !self.default_features {
+                table.insert("default-features", toml_edit::value(self.default_features));
+            }
+            if let Some(features) = self.features.as_deref() {
+                let features: toml_edit::Value = features.iter().cloned().collect();
+                table.insert("features", toml_edit::value(features));
+            }
+            if self.optional {
+                table.insert("optional", toml_edit::value(self.optional));
+            }
+
             table.fmt();
         } else {
             unreachable!("Invalid dependency type: {}", item.type_name());
@@ -311,12 +357,6 @@ fn is_package_eq(item: &mut toml_edit::Item, name: &str, rename: Option<&str>) -
         existing_package == new_package
     } else {
         false
-    }
-}
-
-fn merge_table(old_dep: &mut dyn toml_edit::TableLike, new: &toml_edit::InlineTable) {
-    for (k, v) in new.iter() {
-        old_dep.insert(k, toml_edit::value(v.clone()));
     }
 }
 
