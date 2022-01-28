@@ -207,6 +207,7 @@ fn handle_add(mut args: Args) -> Result<()> {
                 }
             }
             manifest.insert_into_table(&args.get_section(), dep)?;
+            manifest.gc_dep(dep.toml_key());
             Ok(())
         })
         .collect::<Result<Vec<_>>>()
