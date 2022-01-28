@@ -204,10 +204,10 @@ impl Dependency {
                 None,
             ) => toml_edit::value(v),
             // Other cases are represented as an inline table
-            (optional, features, default_features, source, rename) => {
+            (_, _, _, _, _) => {
                 let mut data = toml_edit::InlineTable::default();
 
-                match source {
+                match &self.source {
                     DependencySource::Version {
                         version,
                         path,
@@ -244,18 +244,18 @@ impl Dependency {
                         }
                     }
                 }
-                if rename.is_some() {
+                if self.rename.is_some() {
                     data.insert("package", self.name.as_str().into());
                 }
                 if !self.default_features {
-                    data.insert("default-features", default_features.into());
+                    data.insert("default-features", self.default_features.into());
                 }
-                if let Some(features) = features {
+                if let Some(features) = self.features.as_deref() {
                     let features: toml_edit::Value = features.iter().cloned().collect();
                     data.insert("features", features);
                 }
                 if self.optional {
-                    data.insert("optional", optional.into());
+                    data.insert("optional", self.optional.into());
                 }
 
                 toml_edit::value(toml_edit::Value::InlineTable(data))
