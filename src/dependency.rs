@@ -10,7 +10,7 @@ pub struct Dependency {
     optional: bool,
     /// List of features to add (or None to keep features unchanged).
     pub features: Option<Vec<String>>,
-    default_features: bool,
+    default_features: Option<bool>,
     source: DependencySource,
     /// If the dependency is renamed, this is the new name for the dependency
     /// as a string.  None if it is not renamed.
@@ -105,7 +105,7 @@ impl Dependency {
     }
 
     /// Set the value of default-features for the dependency
-    pub fn set_default_features(mut self, default_features: bool) -> Dependency {
+    pub fn set_default_features(mut self, default_features: Option<bool>) -> Dependency {
         self.default_features = default_features;
         self
     }
@@ -187,7 +187,7 @@ impl Dependency {
         let data: toml_edit::Item = match (
             self.optional,
             self.features.as_ref(),
-            self.default_features,
+            self.default_features.unwrap_or(true),
             self.source.clone(),
             self.rename.as_ref(),
         ) {
@@ -245,8 +245,11 @@ impl Dependency {
                 if self.rename.is_some() {
                     data.insert("package", self.name.as_str().into());
                 }
-                if !self.default_features {
-                    data.insert("default-features", self.default_features.into());
+                match self.default_features {
+                    Some(true) | None => {}
+                    Some(false) => {
+                        data.insert("default-features", false.into());
+                    }
                 }
                 if let Some(features) = self.features.as_deref() {
                     let features: toml_edit::Value = features.iter().cloned().collect();
@@ -327,8 +330,14 @@ impl Dependency {
             if self.rename.is_some() {
                 table.insert("package", toml_edit::value(self.name.as_str()));
             }
-            if !self.default_features {
-                table.insert("default-features", toml_edit::value(self.default_features));
+            match self.default_features {
+                Some(true) => {
+                    table.remove("default-features");
+                }
+                Some(false) => {
+                    table.insert("default-features", toml_edit::value(false));
+                }
+                None => {}
             }
             if let Some(features) = self.features.as_deref() {
                 let features: toml_edit::Value = features.iter().cloned().collect();
@@ -368,7 +377,7 @@ impl Default for Dependency {
             rename: None,
             optional: false,
             features: None,
-            default_features: true,
+            default_features: None,
             source: DependencySource::Version {
                 version: None,
                 path: None,
@@ -437,7 +446,7 @@ mod tests {
     #[test]
     fn to_toml_dep_without_default_features() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let dep = Dependency::new("dep").set_default_features(false);
+        let dep = Dependency::new("dep").set_default_features(Some(false));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -513,7 +522,7 @@ mod tests {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep")
             .set_version("1.0")
-            .set_default_features(false)
+            .set_default_features(Some(false))
             .set_rename("d");
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
