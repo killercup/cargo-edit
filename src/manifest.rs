@@ -377,6 +377,57 @@ impl LocalManifest {
     pub fn set_package_version(&mut self, version: &Version) {
         self.data["package"]["version"] = toml_edit::value(version.to_string());
     }
+
+    /// Remove references to `dep_key` if its no longer present
+    pub fn gc_dep(&mut self, dep_key: &str) {
+        if !self.dep_used(dep_key) {
+            if let toml_edit::Item::Table(feature_table) = &mut self.data.as_table_mut()["features"]
+            {
+                for (_feature, mut activated_crates) in feature_table.iter_mut() {
+                    if let toml_edit::Item::Value(toml_edit::Value::Array(feature_activations)) =
+                        &mut activated_crates
+                    {
+                        remove_feature_activation(feature_activations, dep_key);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Is there a crate with this name as any kind of dependency?
+    /// (maybe optional, maybe target specific).
+    fn dep_used(&self, dep_key: &str) -> bool {
+        for (_, tbl) in self.get_sections() {
+            if let toml_edit::Item::Table(tbl) = tbl {
+                if tbl.contains_key(dep_key) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
+
+fn remove_feature_activation(feature_activations: &mut toml_edit::Array, dep: &str) {
+    let dep_feature: &str = &format!("{}/", dep);
+
+    let remove_list: Vec<usize> = feature_activations
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, feature_activation)| {
+            if let toml_edit::Value::String(feature_activation) = feature_activation {
+                let activation = feature_activation.value();
+                (activation == dep || activation.starts_with(dep_feature)).then(|| idx)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Remove found idx in revers order so we don't invalidate the idx.
+    for idx in remove_list.iter().rev() {
+        feature_activations.remove(*idx);
+    }
 }
 
 /// If a manifest is specified, return that one, otherise perform a manifest search starting from
