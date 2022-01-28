@@ -259,6 +259,21 @@ impl LocalManifest {
         self.write()
     }
 
+    /// Lookup a depednency
+    pub fn get_dependency(&self, table_path: &[String], dep_key: &str) -> Result<Dependency> {
+        let crate_root = self.path.parent().expect("manifest path is absolute");
+        let table = self.get_table(table_path)?;
+        let table = table
+            .as_table_like()
+            .ok_or_else(|| ErrorKind::NonExistentTable(table_path.join(".")))?;
+        let dep_item = table.get(dep_key).ok_or_else(|| {
+            ErrorKind::NonExistentDependency(dep_key.into(), table_path.join("."))
+        })?;
+        Dependency::from_toml(crate_root, dep_key, dep_item).ok_or_else(|| {
+            format!("Invalid dependency {}.{}", table_path.join("."), dep_key).into()
+        })
+    }
+
     /// Add entry to a Cargo.toml.
     pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
         let crate_root = self

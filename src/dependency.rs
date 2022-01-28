@@ -174,6 +174,109 @@ impl Dependency {
 }
 
 impl Dependency {
+    /// Create a dependency from a TOML table entry
+    pub fn from_toml(crate_root: &Path, key: &str, item: &toml_edit::Item) -> Option<Self> {
+        if let Some(version) = item.as_str() {
+            let dep = Dependency::new(key).set_version(version);
+            Some(dep)
+        } else if let Some(table) = item.as_table_like() {
+            let (name, rename) = if let Some(value) = table.get("package") {
+                (value.as_str()?.to_owned(), Some(key.to_owned()))
+            } else {
+                (key.to_owned(), None)
+            };
+
+            let source = if let Some(repo) = table.get("git") {
+                let repo = repo.as_str()?.to_owned();
+                let branch = if let Some(value) = table.get("branch") {
+                    Some(value.as_str()?.to_owned())
+                } else {
+                    None
+                };
+                let tag = if let Some(value) = table.get("tag") {
+                    Some(value.as_str()?.to_owned())
+                } else {
+                    None
+                };
+                let rev = if let Some(value) = table.get("rev") {
+                    Some(value.as_str()?.to_owned())
+                } else {
+                    None
+                };
+                DependencySource::Git {
+                    repo,
+                    branch,
+                    tag,
+                    rev,
+                }
+            } else {
+                let version = if let Some(value) = table.get("version") {
+                    Some(value.as_str()?.to_owned())
+                } else {
+                    None
+                };
+                let path = if let Some(value) = table.get("path") {
+                    let path = value.as_str()?;
+                    let path = crate_root.join(path);
+                    Some(path)
+                } else {
+                    None
+                };
+                let registry = if let Some(value) = table.get("registry") {
+                    Some(value.as_str()?.to_owned())
+                } else {
+                    None
+                };
+                DependencySource::Version {
+                    version,
+                    path,
+                    registry,
+                }
+            };
+
+            let default_features = if let Some(value) = table.get("default-features") {
+                value.as_bool()?
+            } else {
+                true
+            };
+            let default_features = Some(default_features);
+
+            let features = if let Some(value) = table.get("features") {
+                Some(
+                    value
+                        .as_array()?
+                        .iter()
+                        .map(|v| v.as_str().map(|s| s.to_owned()))
+                        .collect::<Option<Vec<String>>>()?,
+                )
+            } else {
+                None
+            };
+
+            let available_features = vec![];
+
+            let optional = if let Some(value) = table.get("optional") {
+                value.as_bool()?
+            } else {
+                false
+            };
+            let optional = Some(optional);
+
+            let dep = Dependency {
+                name,
+                rename,
+                source,
+                default_features,
+                features,
+                available_features,
+                optional,
+            };
+            Some(dep)
+        } else {
+            None
+        }
+    }
+
     /// Get the dependency name as defined in the manifest,
     /// that is, either the alias (rename field if Some),
     /// or the official package name (name field).
@@ -446,9 +549,11 @@ mod tests {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep");
         let key = dep.toml_key();
-        let _item = dep.to_toml(&crate_root);
+        let item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "dep".to_owned());
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -460,6 +565,8 @@ mod tests {
 
         assert_eq!(key, "dep".to_owned());
         assert_eq!(item.as_str(), Some("1.0"));
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -474,6 +581,8 @@ mod tests {
 
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("optional").unwrap().as_bool(), Some(true));
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -488,6 +597,8 @@ mod tests {
 
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -503,6 +614,8 @@ mod tests {
 
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("path").unwrap().as_str(), Some("../bar"));
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -520,6 +633,8 @@ mod tests {
             dep.get("git").unwrap().as_str(),
             Some("https://foor/bar.git")
         );
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -534,6 +649,8 @@ mod tests {
 
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -548,6 +665,8 @@ mod tests {
 
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("registry").unwrap().as_str(), Some("alternative"));
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -567,6 +686,8 @@ mod tests {
         assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
         assert_eq!(dep.get("version").unwrap().as_str(), Some("1.0"));
         assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -575,11 +696,14 @@ mod tests {
         let path = crate_root.join("sibling/crate");
         let relpath = "sibling/crate";
         let dep = Dependency::new("dep").set_path(path);
+        let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
         let table = item.as_inline_table().unwrap();
         let got = table.get("path").unwrap().as_str().unwrap();
         assert_eq!(got, relpath);
+
+        verify_roundtrip(&crate_root, &key, &item);
     }
 
     #[test]
@@ -595,5 +719,15 @@ mod tests {
         let table = item.as_inline_table().unwrap();
         let got = table.get("path").unwrap().as_str().unwrap();
         assert_eq!(got, should_be);
+
+        verify_roundtrip(&crate_root, &key, &item);
+    }
+
+    fn verify_roundtrip(crate_root: &Path, key: &str, item: &toml_edit::Item) {
+        let roundtrip = Dependency::from_toml(crate_root, key, item).unwrap();
+        let round_key = roundtrip.toml_key();
+        let round_item = roundtrip.to_toml(&crate_root);
+        assert_eq!(key, round_key);
+        assert_eq!(item.to_string(), round_item.to_string());
     }
 }
