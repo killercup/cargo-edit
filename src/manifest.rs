@@ -236,7 +236,7 @@ impl LocalManifest {
         let dep_key = dep.toml_key();
 
         let table = self.get_table(table_path)?;
-        if let Some(dep_item) = table.as_table_like_mut().unwrap().get_mut(&dep_key) {
+        if let Some(dep_item) = table.as_table_like_mut().unwrap().get_mut(dep_key) {
             dep.update_toml(&crate_root, dep_item);
         } else {
             let new_dependency = dep.to_toml(&crate_root);
