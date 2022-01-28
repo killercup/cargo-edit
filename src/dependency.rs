@@ -256,7 +256,6 @@ impl Dependency {
                     data.get_or_insert("package", self.name.clone());
                 }
 
-                data.fmt();
                 toml_edit::value(toml_edit::Value::InlineTable(data))
             }
         };
