@@ -228,8 +228,8 @@ impl LocalManifest {
 
     /// Add entry to a Cargo.toml.
     pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
-        let (dep_key, new_dependency) =
-            dep.to_toml(self.path.parent().expect("manifest path is absolute"));
+        let dep_key = dep.toml_key();
+        let new_dependency = dep.to_toml(self.path.parent().expect("manifest path is absolute"));
 
         let table = self.get_table(table_path)?;
         if let Some(dep_item) = table.as_table_like_mut().unwrap().get_mut(&dep_key) {
@@ -253,7 +253,7 @@ impl LocalManifest {
         dep: &Dependency,
         dry_run: bool,
     ) -> Result<()> {
-        self.update_table_named_entry(table_path, dep.name_in_manifest(), dep, dry_run)
+        self.update_table_named_entry(table_path, dep.toml_key(), dep, dry_run)
     }
 
     /// Update an entry with a specified name in Cargo.toml.
@@ -264,8 +264,7 @@ impl LocalManifest {
         dep: &Dependency,
         dry_run: bool,
     ) -> Result<()> {
-        let (_dep_key, new_dependency) =
-            dep.to_toml(self.path.parent().expect("manifest path is absolute"));
+        let new_dependency = dep.to_toml(self.path.parent().expect("manifest path is absolute"));
 
         let table = self.get_table(table_path)?;
 

@@ -114,13 +114,6 @@ impl Dependency {
         self
     }
 
-    /// Get the dependency name as defined in the manifest,
-    /// that is, either the alias (rename field if Some),
-    /// or the official package name (name field).
-    pub fn name_in_manifest(&self) -> &str {
-        self.rename().unwrap_or(&self.name)
-    }
-
     /// Set the value of registry for the dependency
     pub fn set_registry(mut self, registry: &str) -> Dependency {
         let old_version = match self.source {
@@ -166,6 +159,13 @@ impl Dependency {
         self.rename.as_deref()
     }
 
+    /// Get the dependency name as defined in the manifest,
+    /// that is, either the alias (rename field if Some),
+    /// or the official package name (name field).
+    pub fn toml_key(&self) -> &str {
+        self.rename().unwrap_or(&self.name)
+    }
+
     /// Convert dependency to TOML
     ///
     /// Returns a tuple with the dependency's name and either the version as a `String`
@@ -176,7 +176,7 @@ impl Dependency {
     /// # Panic
     ///
     /// Panics if the path is relative
-    pub fn to_toml(&self, crate_root: &Path) -> (String, toml_edit::Item) {
+    pub fn to_toml(&self, crate_root: &Path) -> toml_edit::Item {
         assert!(
             crate_root.is_absolute(),
             "Absolute path needed, got: {}",
@@ -261,7 +261,7 @@ impl Dependency {
             }
         };
 
-        (self.name_in_manifest().to_string(), data)
+        data
     }
 }
 
@@ -307,7 +307,8 @@ mod tests {
     fn to_toml_simple_dep() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep");
-        let (key, _item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let _item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "dep".to_owned());
     }
@@ -316,7 +317,8 @@ mod tests {
     fn to_toml_simple_dep_with_version() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep").set_version("1.0");
-        let (key, item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "dep".to_owned());
         assert_eq!(item.as_str(), Some("1.0"));
@@ -326,7 +328,8 @@ mod tests {
     fn to_toml_optional_dep() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep").set_optional(true);
-        let (key, item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "dep".to_owned());
         assert!(item.is_inline_table());
@@ -339,7 +342,8 @@ mod tests {
     fn to_toml_dep_without_default_features() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep").set_default_features(false);
-        let (key, item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "dep".to_owned());
         assert!(item.is_inline_table());
@@ -353,7 +357,8 @@ mod tests {
         let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let crate_root = root.join("foo");
         let dep = Dependency::new("dep").set_path(root.join("bar"));
-        let (key, item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "dep".to_owned());
         assert!(item.is_inline_table());
@@ -366,7 +371,8 @@ mod tests {
     fn to_toml_dep_with_git_source() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep").set_git("https://foor/bar.git", None, None, None);
-        let (key, item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "dep".to_owned());
         assert!(item.is_inline_table());
@@ -382,7 +388,8 @@ mod tests {
     fn to_toml_renamed_dep() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep").set_rename("d");
-        let (key, item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "d".to_owned());
         assert!(item.is_inline_table());
@@ -395,7 +402,8 @@ mod tests {
     fn to_toml_dep_from_alt_registry() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep").set_registry("alternative");
-        let (key, item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "dep".to_owned());
         assert!(item.is_inline_table());
@@ -411,7 +419,8 @@ mod tests {
             .set_version("1.0")
             .set_default_features(false)
             .set_rename("d");
-        let (key, item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let item = dep.to_toml(&crate_root);
 
         assert_eq!(key, "d".to_owned());
         assert!(item.is_inline_table());
@@ -428,7 +437,7 @@ mod tests {
         let path = crate_root.join("sibling/crate");
         let relpath = "sibling/crate";
         let dep = Dependency::new("dep").set_path(path);
-        let (_key, item) = dep.to_toml(&crate_root);
+        let item = dep.to_toml(&crate_root);
 
         let table = item.as_inline_table().unwrap();
         let got = table.get("path").unwrap().as_str().unwrap();
@@ -442,7 +451,8 @@ mod tests {
         let original = crate_root.join(r"sibling\crate");
         let should_be = "sibling/crate";
         let dep = Dependency::new("dep").set_path(original);
-        let (key, item) = dep.to_toml(&crate_root);
+        let key = dep.toml_key();
+        let item = dep.to_toml(&crate_root);
 
         let table = item.as_inline_table().unwrap();
         let got = table.get("path").unwrap().as_str().unwrap();
