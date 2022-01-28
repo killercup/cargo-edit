@@ -92,6 +92,7 @@ ARGS:
 
 OPTIONS:
         --no-default-features     Disable the default features
+        --default-features        Re-enable the default features
         --features <FEATURES>     Space-separated list of features to add
         --optional                Mark the dependency as optional
     -r, --rename <RENAME>         Rename the dependency

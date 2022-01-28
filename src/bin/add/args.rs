@@ -43,7 +43,10 @@ pub struct Args {
 
     /// Disable the default features
     #[clap(long)]
-    pub no_default_features: bool,
+    no_default_features: bool,
+    /// Re-enable the default features
+    #[clap(long, overrides_with = "no-default-features")]
+    default_features: bool,
 
     /// Space-separated list of features to add
     #[clap(long)]
@@ -176,6 +179,10 @@ impl Args {
         }
     }
 
+    pub fn default_features(&self) -> Option<bool> {
+        resolve_bool_arg(self.default_features, self.no_default_features)
+    }
+
     /// Build dependencies from arguments
     pub fn parse_dependencies(
         &self,
@@ -203,7 +210,7 @@ impl Args {
                         let mut x = x
                             .set_optional(self.optional)
                             .set_features(requested_features.to_owned())
-                            .set_default_features(!self.no_default_features);
+                            .set_default_features(self.default_features());
                         if let Some(ref rename) = self.rename {
                             x = x.set_rename(rename);
                         }
@@ -353,6 +360,7 @@ impl Default for Args {
             pkgid: None,
             features: None,
             no_default_features: false,
+            default_features: false,
             quiet: false,
             offline: true,
             registry: None,
@@ -364,6 +372,15 @@ impl Default for Args {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 pub enum UnstableOptions {
     Git,
+}
+
+fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
+    match (yes, no) {
+        (true, false) => Some(true),
+        (false, true) => Some(false),
+        (false, false) => None,
+        (_, _) => unreachable!("clap should make this impossible"),
+    }
 }
 
 #[cfg(test)]
