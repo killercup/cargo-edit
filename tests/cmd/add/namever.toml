@@ -1,5 +1,5 @@
 bin.name = "cargo-add"
-args = ["add", "my-package1:>=0.1.1", "my-package2:0.2.3", "my-package"]
+args = ["add", "my-package1@>=0.1.1", "my-package2@0.2.3", "my-package"]
 status = "success"
 stdout = ""
 stderr = """

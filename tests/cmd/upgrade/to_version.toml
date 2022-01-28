@@ -1,5 +1,5 @@
 bin.name = "cargo-upgrade"
-args = ["upgrade", "docopt:1000000.0.0"]
+args = ["upgrade", "docopt@1000000.0.0"]
 status = "success"
 stdout = """
 cargo-list-test-fixture:
