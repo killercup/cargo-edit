@@ -244,18 +244,18 @@ impl Dependency {
                         }
                     }
                 }
-                if self.optional {
-                    data.get_or_insert("optional", optional);
+                if rename.is_some() {
+                    data.get_or_insert("package", self.name.clone());
+                }
+                if !self.default_features {
+                    data.get_or_insert("default-features", default_features);
                 }
                 if let Some(features) = features {
                     let features: toml_edit::Value = features.iter().cloned().collect();
                     data.get_or_insert("features", features);
                 }
-                if !self.default_features {
-                    data.get_or_insert("default-features", default_features);
-                }
-                if rename.is_some() {
-                    data.get_or_insert("package", self.name.clone());
+                if self.optional {
+                    data.get_or_insert("optional", optional);
                 }
 
                 toml_edit::value(toml_edit::Value::InlineTable(data))
