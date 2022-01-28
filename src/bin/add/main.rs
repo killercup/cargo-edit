@@ -206,27 +206,24 @@ fn handle_add(mut args: Args) -> Result<()> {
                     return Err(ErrorKind::AddingSelf(manifest.package_name()?.to_owned()).into());
                 }
             }
-            manifest
-                .insert_into_table(&args.get_section(), dep)
-                .map(|_| {
-                    manifest
-                        .get_table(&args.get_section())
-                        .map(TomlItem::as_table_mut)
-                        .map(|table_option| {
-                            table_option.map(|table| {
-                                if was_sorted {
-                                    table.sort_values();
-                                }
-                            })
-                        })
-                })
-                .map_err(Into::into)
+            manifest.insert_into_table(&args.get_section(), dep)?;
+            Ok(())
         })
         .collect::<Result<Vec<_>>>()
         .map_err(|err| {
             eprintln!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
             err
         })?;
+
+    if was_sorted {
+        if let Some(table) = manifest
+            .get_table(&args.get_section())
+            .ok()
+            .and_then(TomlItem::as_table_like_mut)
+        {
+            table.sort_values();
+        }
+    }
 
     manifest.write()?;
 
