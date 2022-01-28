@@ -306,47 +306,45 @@ mod tests {
     #[test]
     fn to_toml_simple_dep() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let toml = Dependency::new("dep").to_toml(&crate_root);
+        let dep = Dependency::new("dep");
+        let (key, _item) = dep.to_toml(&crate_root);
 
-        assert_eq!(toml.0, "dep".to_owned());
+        assert_eq!(key, "dep".to_owned());
     }
 
     #[test]
     fn to_toml_simple_dep_with_version() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let toml = Dependency::new("dep")
-            .set_version("1.0")
-            .to_toml(&crate_root);
+        let dep = Dependency::new("dep").set_version("1.0");
+        let (key, item) = dep.to_toml(&crate_root);
 
-        assert_eq!(toml.0, "dep".to_owned());
-        assert_eq!(toml.1.as_str(), Some("1.0"));
+        assert_eq!(key, "dep".to_owned());
+        assert_eq!(item.as_str(), Some("1.0"));
     }
 
     #[test]
     fn to_toml_optional_dep() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let toml = Dependency::new("dep")
-            .set_optional(true)
-            .to_toml(&crate_root);
+        let dep = Dependency::new("dep").set_optional(true);
+        let (key, item) = dep.to_toml(&crate_root);
 
-        assert_eq!(toml.0, "dep".to_owned());
-        assert!(toml.1.is_inline_table());
+        assert_eq!(key, "dep".to_owned());
+        assert!(item.is_inline_table());
 
-        let dep = toml.1.as_inline_table().unwrap();
+        let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("optional").unwrap().as_bool(), Some(true));
     }
 
     #[test]
     fn to_toml_dep_without_default_features() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let toml = Dependency::new("dep")
-            .set_default_features(false)
-            .to_toml(&crate_root);
+        let dep = Dependency::new("dep").set_default_features(false);
+        let (key, item) = dep.to_toml(&crate_root);
 
-        assert_eq!(toml.0, "dep".to_owned());
-        assert!(toml.1.is_inline_table());
+        assert_eq!(key, "dep".to_owned());
+        assert!(item.is_inline_table());
 
-        let dep = toml.1.as_inline_table().unwrap();
+        let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
     }
 
@@ -354,28 +352,26 @@ mod tests {
     fn to_toml_dep_with_path_source() {
         let root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let crate_root = root.join("foo");
-        let toml = Dependency::new("dep")
-            .set_path(root.join("bar"))
-            .to_toml(&crate_root);
+        let dep = Dependency::new("dep").set_path(root.join("bar"));
+        let (key, item) = dep.to_toml(&crate_root);
 
-        assert_eq!(toml.0, "dep".to_owned());
-        assert!(toml.1.is_inline_table());
+        assert_eq!(key, "dep".to_owned());
+        assert!(item.is_inline_table());
 
-        let dep = toml.1.as_inline_table().unwrap();
+        let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("path").unwrap().as_str(), Some("../bar"));
     }
 
     #[test]
     fn to_toml_dep_with_git_source() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let toml = Dependency::new("dep")
-            .set_git("https://foor/bar.git", None, None, None)
-            .to_toml(&crate_root);
+        let dep = Dependency::new("dep").set_git("https://foor/bar.git", None, None, None);
+        let (key, item) = dep.to_toml(&crate_root);
 
-        assert_eq!(toml.0, "dep".to_owned());
-        assert!(toml.1.is_inline_table());
+        assert_eq!(key, "dep".to_owned());
+        assert!(item.is_inline_table());
 
-        let dep = toml.1.as_inline_table().unwrap();
+        let dep = item.as_inline_table().unwrap();
         assert_eq!(
             dep.get("git").unwrap().as_str(),
             Some("https://foor/bar.git")
@@ -385,42 +381,42 @@ mod tests {
     #[test]
     fn to_toml_renamed_dep() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let toml = Dependency::new("dep").set_rename("d").to_toml(&crate_root);
+        let dep = Dependency::new("dep").set_rename("d");
+        let (key, item) = dep.to_toml(&crate_root);
 
-        assert_eq!(toml.0, "d".to_owned());
-        assert!(toml.1.is_inline_table());
+        assert_eq!(key, "d".to_owned());
+        assert!(item.is_inline_table());
 
-        let dep = toml.1.as_inline_table().unwrap();
+        let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
     }
 
     #[test]
     fn to_toml_dep_from_alt_registry() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let toml = Dependency::new("dep")
-            .set_registry("alternative")
-            .to_toml(&crate_root);
+        let dep = Dependency::new("dep").set_registry("alternative");
+        let (key, item) = dep.to_toml(&crate_root);
 
-        assert_eq!(toml.0, "dep".to_owned());
-        assert!(toml.1.is_inline_table());
+        assert_eq!(key, "dep".to_owned());
+        assert!(item.is_inline_table());
 
-        let dep = toml.1.as_inline_table().unwrap();
+        let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("registry").unwrap().as_str(), Some("alternative"));
     }
 
     #[test]
     fn to_toml_complex_dep() {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let toml = Dependency::new("dep")
+        let dep = Dependency::new("dep")
             .set_version("1.0")
             .set_default_features(false)
-            .set_rename("d")
-            .to_toml(&crate_root);
+            .set_rename("d");
+        let (key, item) = dep.to_toml(&crate_root);
 
-        assert_eq!(toml.0, "d".to_owned());
-        assert!(toml.1.is_inline_table());
+        assert_eq!(key, "d".to_owned());
+        assert!(item.is_inline_table());
 
-        let dep = toml.1.as_inline_table().unwrap();
+        let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
         assert_eq!(dep.get("version").unwrap().as_str(), Some("1.0"));
         assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
@@ -432,10 +428,9 @@ mod tests {
         let path = crate_root.join("sibling/crate");
         let relpath = "sibling/crate";
         let dep = Dependency::new("dep").set_path(path);
+        let (_key, item) = dep.to_toml(&crate_root);
 
-        let (_, toml) = dep.to_toml(&crate_root);
-
-        let table = toml.as_inline_table().unwrap();
+        let table = item.as_inline_table().unwrap();
         let got = table.get("path").unwrap().as_str().unwrap();
         assert_eq!(got, relpath);
     }
@@ -447,10 +442,9 @@ mod tests {
         let original = crate_root.join(r"sibling\crate");
         let should_be = "sibling/crate";
         let dep = Dependency::new("dep").set_path(original);
+        let (key, item) = dep.to_toml(&crate_root);
 
-        let (_, toml) = dep.to_toml(&crate_root);
-
-        let table = toml.as_inline_table().unwrap();
+        let table = item.as_inline_table().unwrap();
         let got = table.get("path").unwrap().as_str().unwrap();
         assert_eq!(got, should_be);
     }
