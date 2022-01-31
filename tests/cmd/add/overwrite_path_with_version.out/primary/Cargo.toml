@@ -5,4 +5,4 @@ name = "cargo-list-test-fixture"
 version = "0.0.0"
 
 [dependencies]
-cargo-list-test-fixture-dependency = { optional = true, version = "99999.0.0" }
+cargo-list-test-fixture-dependency = { optional = true, version = "20.0" }
