@@ -207,36 +207,8 @@ impl Args {
 
         self.crates
             .iter()
-            .map(|crate_spec| {
-                self.parse_single_dependency(crate_spec, &workspace_members)
-                    .map(|x| {
-                        let x = self.populate_dependency(x);
-                        x
-                    })
-            })
+            .map(|crate_spec| self.parse_single_dependency(crate_spec, &workspace_members))
             .collect()
-    }
-
-    fn populate_dependency(&self, mut dependency: Dependency) -> Dependency {
-        let requested_features: Option<Vec<_>> = self.features.as_ref().map(|v| {
-            v.iter()
-                .flat_map(|s| s.split(' '))
-                .flat_map(|s| s.split(','))
-                .filter(|s| !s.is_empty())
-                .map(|f| f.to_owned())
-                .collect()
-        });
-
-        dependency = dependency
-            .set_optional(self.optional())
-            .set_default_features(self.default_features())
-            .set_features(requested_features);
-
-        if let Some(ref rename) = self.rename {
-            dependency = dependency.set_rename(rename);
-        }
-
-        dependency
     }
 
     fn parse_single_dependency(
@@ -254,6 +226,7 @@ impl Args {
                 version_req: Some(_),
             } => {
                 let mut dependency = crate_spec.to_dependency()?;
+                dependency = self.populate_dependency(dependency);
                 // crate specifier includes a version (e.g. `docopt@0.8`)
                 if let Some(ref url) = self.git {
                     let url = url.clone();
@@ -277,6 +250,7 @@ impl Args {
                 version_req: None,
             } => {
                 let mut dependency = crate_spec.to_dependency()?;
+                dependency = self.populate_dependency(dependency);
 
                 if let Some(repo) = &self.git {
                     assert!(self.registry.is_none());
@@ -330,6 +304,8 @@ impl Args {
             }
             CrateSpec::Path(_) => {
                 let mut dependency = crate_spec.to_dependency()?;
+                dependency = self.populate_dependency(dependency);
+
                 // dev-dependencies do not need the version populated
                 if !self.dev {
                     let dep_path = dependency.path().map(ToOwned::to_owned);
@@ -354,6 +330,28 @@ impl Args {
         }
 
         Ok(dependency)
+    }
+
+    fn populate_dependency(&self, mut dependency: Dependency) -> Dependency {
+        let requested_features: Option<Vec<_>> = self.features.as_ref().map(|v| {
+            v.iter()
+                .flat_map(|s| s.split(' '))
+                .flat_map(|s| s.split(','))
+                .filter(|s| !s.is_empty())
+                .map(|f| f.to_owned())
+                .collect()
+        });
+
+        dependency = dependency
+            .set_optional(self.optional())
+            .set_default_features(self.default_features())
+            .set_features(requested_features);
+
+        if let Some(ref rename) = self.rename {
+            dependency = dependency.set_rename(rename);
+        }
+
+        dependency
     }
 }
 
