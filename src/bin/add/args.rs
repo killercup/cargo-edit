@@ -293,41 +293,35 @@ impl Args {
                             self.rev.clone(),
                         )
                         .set_available_features(features);
-                } else {
+                } else if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
                     // Only special-case workspaces when the user doesn't provide any extra
                     // information, otherwise, trust the user.
-                    if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
-                        dependency = dependency.set_path(
-                            package
-                                .manifest_path
-                                .parent()
-                                .expect("at least parent dir")
-                                .as_std_path()
-                                .to_owned(),
-                        );
-                        // dev-dependencies do not need the version populated
-                        if !self.dev {
-                            let op = "";
-                            let v = format!("{op}{version}", op = op, version = package.version);
-                            dependency = dependency.set_version(&v);
-                        }
-                    } else {
-                        dependency = get_latest_dependency(
-                            name,
-                            false,
-                            &manifest_path,
-                            Some(&registry_url),
-                        )?;
+                    dependency = dependency.set_path(
+                        package
+                            .manifest_path
+                            .parent()
+                            .expect("at least parent dir")
+                            .as_std_path()
+                            .to_owned(),
+                    );
+                    // dev-dependencies do not need the version populated
+                    if !self.dev {
                         let op = "";
-                        let v = format!(
-                            "{op}{version}",
-                            op = op,
-                            // If version is unavailable `get_latest_dependency` must have
-                            // returned `Err(FetchVersionError::GetVersion)`
-                            version = dependency.version().unwrap_or_else(|| unreachable!())
-                        );
+                        let v = format!("{op}{version}", op = op, version = package.version);
                         dependency = dependency.set_version(&v);
                     }
+                } else {
+                    dependency =
+                        get_latest_dependency(name, false, &manifest_path, Some(&registry_url))?;
+                    let op = "";
+                    let v = format!(
+                        "{op}{version}",
+                        op = op,
+                        // If version is unavailable `get_latest_dependency` must have
+                        // returned `Err(FetchVersionError::GetVersion)`
+                        version = dependency.version().unwrap_or_else(|| unreachable!())
+                    );
+                    dependency = dependency.set_version(&v);
                 }
 
                 dependency
