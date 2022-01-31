@@ -206,12 +206,12 @@ impl Args {
             return Err(ErrorKind::MultipleCratesWithFeatures.into());
         }
 
-        self.crates
-            .iter()
-            .map(|crate_spec| {
-                self.parse_single_dependency(manifest, crate_spec, &workspace_members)
-            })
-            .collect()
+        let mut deps = Vec::new();
+        for crate_spec in &self.crates {
+            let dep = self.parse_single_dependency(manifest, crate_spec, &workspace_members)?;
+            deps.push(dep);
+        }
+        Ok(deps)
     }
 
     fn parse_single_dependency(
