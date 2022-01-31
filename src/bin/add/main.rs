@@ -159,8 +159,8 @@ fn handle_add(mut args: Args) -> Result<()> {
     }
     let requested_features: Option<BTreeSet<&str>> = args.features.as_ref().map(|v| {
         v.iter()
-            .map(|s| s.split(' '))
-            .flatten()
+            .flat_map(|s| s.split(' '))
+            .flat_map(|s| s.split(','))
             .filter(|s| !s.is_empty())
             .collect()
     });
