@@ -3,12 +3,13 @@
 #![allow(clippy::bool_assert_comparison)]
 
 use cargo_edit::{
-    get_features_from_registry, get_manifest_from_url, registry_url, workspace_members, Dependency,
-    LocalManifest,
+    get_features_from_registry, get_manifest_from_path, get_manifest_from_url, registry_url,
+    workspace_members, Dependency, LocalManifest,
 };
 use cargo_edit::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
 use clap::Parser;
+use std::path::Path;
 use std::path::PathBuf;
 
 use crate::errors::*;
@@ -221,7 +222,6 @@ impl Args {
     ) -> Result<Dependency> {
         let crate_spec = CrateSpec::resolve(crate_spec)?;
         let manifest_path = manifest.path.as_path();
-        let registry_url = registry_url(&manifest_path, self.registry.as_deref())?;
 
         let mut dependency = match &crate_spec {
             CrateSpec::PkgId {
@@ -237,15 +237,6 @@ impl Args {
                     return Err(ErrorKind::GitUrlWithVersion(url, version).into());
                 }
 
-                let features = get_features_from_registry(
-                    &dependency.name,
-                    dependency
-                        .version()
-                        .expect("version populated by `parse_as_version`"),
-                    &registry_url,
-                )?;
-                dependency = dependency.set_available_features(features);
-
                 dependency
             }
             CrateSpec::PkgId {
@@ -257,27 +248,16 @@ impl Args {
 
                 if let Some(repo) = &self.git {
                     assert!(self.registry.is_none());
-                    let features = get_manifest_from_url(repo)?
-                        .map(|m| m.features())
-                        .transpose()?
-                        .unwrap_or_else(Vec::new);
-
-                    dependency = dependency
-                        .set_git(
-                            repo,
-                            self.branch.clone(),
-                            self.tag.clone(),
-                            self.rev.clone(),
-                        )
-                        .set_available_features(features);
+                    dependency = dependency.set_git(
+                        repo,
+                        self.branch.clone(),
+                        self.tag.clone(),
+                        self.rev.clone(),
+                    );
                 } else if let Some(version) =
                     manifest.get_dep_version(&self.get_section(), dependency.toml_key())
                 {
-                    let features =
-                        get_features_from_registry(&dependency.name, &version, &registry_url)?;
-                    dependency = dependency
-                        .set_version(&version)
-                        .set_available_features(features);
+                    dependency = dependency.set_version(&version);
                 } else if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
                     // Only special-case workspaces when the user doesn't provide any extra
                     // information, otherwise, trust the user.
@@ -296,6 +276,7 @@ impl Args {
                         dependency = dependency.set_version(&v);
                     }
                 } else {
+                    let registry_url = registry_url(&manifest_path, self.registry.as_deref())?;
                     let latest =
                         get_latest_dependency(name, false, &manifest_path, Some(&registry_url))?;
                     let op = "";
@@ -339,6 +320,7 @@ impl Args {
         if let Some(registry) = &self.registry {
             dependency = dependency.set_registry(registry);
         }
+        dependency = self.populate_available_features(dependency, manifest_path)?;
 
         Ok(dependency)
     }
@@ -363,6 +345,35 @@ impl Args {
         }
 
         dependency
+    }
+
+    /// Lookup available features
+    pub fn populate_available_features(
+        &self,
+        dependency: Dependency,
+        manifest_path: &Path,
+    ) -> Result<Dependency> {
+        if !dependency.available_features.is_empty() {
+            return Ok(dependency);
+        }
+
+        let available_features = if let Some(path) = dependency.path() {
+            let manifest = get_manifest_from_path(path)?;
+            manifest.features()?
+        } else if let Some(repo) = dependency.git() {
+            get_manifest_from_url(repo)?
+                .map(|m| m.features())
+                .transpose()?
+                .unwrap_or_else(Vec::new)
+        } else if let Some(version) = dependency.version() {
+            let registry_url = registry_url(&manifest_path, self.registry.as_deref())?;
+            get_features_from_registry(&dependency.name, version, &registry_url)?
+        } else {
+            vec![]
+        };
+
+        let dependency = dependency.set_available_features(available_features);
+        Ok(dependency)
     }
 }
 

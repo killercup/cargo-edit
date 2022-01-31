@@ -158,6 +158,15 @@ impl Dependency {
         }
     }
 
+    /// Get the git repo of the dependency
+    pub fn git(&self) -> Option<&str> {
+        if let DependencySource::Git { repo, .. } = &self.source {
+            Some(repo.as_str())
+        } else {
+            None
+        }
+    }
+
     /// Get the alias for the dependency (if any)
     pub fn rename(&self) -> Option<&str> {
         self.rename.as_deref()
