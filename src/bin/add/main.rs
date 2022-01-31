@@ -157,38 +157,32 @@ fn handle_add(mut args: Args) -> Result<()> {
         )?;
         update_registry_index(&url, args.quiet)?;
     }
-    let requested_features: Option<BTreeSet<&str>> = args.features.as_ref().map(|v| {
-        v.iter()
-            .flat_map(|s| s.split(' '))
-            .flat_map(|s| s.split(','))
-            .filter(|s| !s.is_empty())
-            .collect()
-    });
 
-    let deps = &args.parse_dependencies(
-        requested_features
-            .as_ref()
-            .map(|s| s.iter().map(|s| s.to_string()).collect()),
-    )?;
+    let deps = &args.parse_dependencies()?;
 
-    if let Some(req_feats) = requested_features {
-        assert!(deps.len() == 1);
-        let available_features = deps[0]
-            .available_features
-            .iter()
-            .map(|s| s.as_ref())
-            .collect::<BTreeSet<&str>>();
+    for dep in deps {
+        if let Some(req_feats) = dep.features.as_deref() {
+            let req_feats: BTreeSet<_> = req_feats.iter().map(|s| s.as_str()).collect();
 
-        let mut unknown_features: Vec<&&str> = req_feats.difference(&available_features).collect();
-        unknown_features.sort();
+            assert!(deps.len() == 1);
+            let available_features = dep
+                .available_features
+                .iter()
+                .map(|s| s.as_ref())
+                .collect::<BTreeSet<&str>>();
 
-        if !unknown_features.is_empty() {
-            unrecognized_features_message(&format!(
-                "Unrecognized features: {:?}",
-                unknown_features
-            ))?;
-        };
-    };
+            let mut unknown_features: Vec<&&str> =
+                req_feats.difference(&available_features).collect();
+            unknown_features.sort();
+
+            if !unknown_features.is_empty() {
+                unrecognized_features_message(&format!(
+                    "Unrecognized features: {:?}",
+                    unknown_features
+                ))?;
+            };
+        }
+    }
 
     let was_sorted = manifest
         .get_table(&args.get_section())

@@ -190,10 +190,7 @@ impl Args {
     }
 
     /// Build dependencies from arguments
-    pub fn parse_dependencies(
-        &self,
-        requested_features: Option<Vec<String>>,
-    ) -> Result<Vec<Dependency>> {
+    pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
         let workspace_members = workspace_members(self.manifest_path.as_deref())?;
 
         if self.crates.len() > 1 && self.git.is_some() {
@@ -214,7 +211,6 @@ impl Args {
                 self.parse_single_dependency(crate_spec, &workspace_members)
                     .map(|x| {
                         let x = self.populate_dependency(x);
-                        let x = x.set_features(requested_features.to_owned());
                         x
                     })
             })
@@ -222,12 +218,24 @@ impl Args {
     }
 
     fn populate_dependency(&self, mut dependency: Dependency) -> Dependency {
+        let requested_features: Option<Vec<_>> = self.features.as_ref().map(|v| {
+            v.iter()
+                .flat_map(|s| s.split(' '))
+                .flat_map(|s| s.split(','))
+                .filter(|s| !s.is_empty())
+                .map(|f| f.to_owned())
+                .collect()
+        });
+
         dependency = dependency
             .set_optional(self.optional())
-            .set_default_features(self.default_features());
+            .set_default_features(self.default_features())
+            .set_features(requested_features);
+
         if let Some(ref rename) = self.rename {
             dependency = dependency.set_rename(rename);
         }
+
         dependency
     }
 
@@ -414,7 +422,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_github.parse_dependencies(None).unwrap(),
+            args_github.parse_dependencies().unwrap(),
             vec![Dependency::new("cargo-edit").set_git(github_url, None)]
         );
 
@@ -438,9 +446,7 @@ mod tests {
             ..Args::default()
         };
         assert_eq!(
-            args_path.parse_dependencies(None).unwrap()[0]
-                .path()
-                .unwrap(),
+            args_path.parse_dependencies().unwrap()[0].path().unwrap(),
             self_path
         );
     }
