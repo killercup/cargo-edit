@@ -1,9 +1,9 @@
 bin.name = "cargo-add"
-args = ["add", "cargo-list-test-fixture-dependency"]
+args = ["add", "cargo-list-test-fixture-dependency@20.0"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding cargo-list-test-fixture-dependency v99999.0.0 to dependencies.
+      Adding cargo-list-test-fixture-dependency v20.0 to dependencies.
 """
 fs.sandbox = true
 fs.cwd = "overwrite_path_with_version.in/primary"
