@@ -276,9 +276,9 @@ impl Args {
                         dependency = dependency.set_version(&v);
                     }
                 } else {
-                    let registry_url = registry_url(&manifest_path, self.registry.as_deref())?;
+                    let registry_url = registry_url(manifest_path, self.registry.as_deref())?;
                     let latest =
-                        get_latest_dependency(name, false, &manifest_path, Some(&registry_url))?;
+                        get_latest_dependency(name, false, manifest_path, Some(&registry_url))?;
                     let op = "";
                     let v = format!(
                         "{op}{version}",
@@ -366,7 +366,7 @@ impl Args {
                 .transpose()?
                 .unwrap_or_else(Vec::new)
         } else if let Some(version) = dependency.version() {
-            let registry_url = registry_url(&manifest_path, self.registry.as_deref())?;
+            let registry_url = registry_url(manifest_path, self.registry.as_deref())?;
             get_features_from_registry(&dependency.name, version, &registry_url)?
         } else {
             vec![]
