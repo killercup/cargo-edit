@@ -18,20 +18,22 @@ use crate::errors::*;
 #[clap(bin_name = "cargo")]
 pub enum Command {
     /// Add dependencies to a Cargo.toml manifest file.
-    #[clap(name = "add")]
-    #[clap(after_help = "\
-Examples:
-  $ cargo add regex
-  $ cargo add regex@0.1.41 --build
-  $ cargo add trycmd --dev
-  $ cargo add ./crate/parser/
-")]
     Add(Args),
 }
 
 #[derive(Debug, Parser)]
 #[clap(about, version)]
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
+#[clap(after_help = "\
+Examples:
+  $ cargo add regex --build
+  $ cargo add trycmd --dev
+  $ cargo add ./crate/parser/
+  $ cargo add serde +derive serde_json
+")]
+#[clap(override_usage = "\
+    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
+    cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...")]
 pub struct Args {
     /// Reference to a package to add as a dependency
     ///
@@ -39,6 +41,9 @@ pub struct Args {
     /// - `<name>`, like `cargo add serde` (latest version will be used){n}
     /// - `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`{n}
     /// - `<path>`, like `cargo add ./crates/parser/`
+    ///
+    /// Additionally, you can specify features for a dependency by following it with a
+    /// `+<FEATURE>`.
     #[clap(value_name = "DEP_ID", required = true)]
     pub crates: Vec<String>,
 
@@ -50,6 +55,9 @@ pub struct Args {
     default_features: bool,
 
     /// Space-separated list of features to add
+    ///
+    /// Alternatively, you can specify features for a dependency by following it with a
+    /// `+<FEATURE>`.
     #[clap(long)]
     pub features: Option<Vec<String>>,
 
@@ -206,10 +214,24 @@ impl Args {
             return Err(ErrorKind::MultipleCratesWithFeatures.into());
         }
 
-        let mut deps = Vec::new();
+        let mut deps: Vec<Dependency> = Vec::new();
         for crate_spec in &self.crates {
-            let dep = self.parse_single_dependency(manifest, crate_spec, &workspace_members)?;
-            deps.push(dep);
+            if let Some(features) = crate_spec.strip_prefix('+') {
+                if !self.unstable_features.contains(&UnstableOptions::InlineAdd) {
+                    return Err("`+<feature>` is unstable and requires `-Z inline-add`".into());
+                } else if let Some(prior) = deps.last_mut() {
+                    let features = parse_feature(features);
+                    prior
+                        .features
+                        .get_or_insert_with(Default::default)
+                        .extend(features.map(|s| s.to_owned()));
+                } else {
+                    return Err("`+<feature>` must be preceded by a pkgid".into());
+                }
+            } else {
+                let dep = self.parse_single_dependency(manifest, crate_spec, &workspace_members)?;
+                deps.push(dep);
+            }
         }
         Ok(deps)
     }
@@ -336,9 +358,7 @@ impl Args {
     fn populate_dependency(&self, mut dependency: Dependency) -> Dependency {
         let requested_features: Option<Vec<_>> = self.features.as_ref().map(|v| {
             v.iter()
-                .flat_map(|s| s.split(' '))
-                .flat_map(|s| s.split(','))
-                .filter(|s| !s.is_empty())
+                .flat_map(|s| parse_feature(s))
                 .map(|f| f.to_owned())
                 .collect()
         });
@@ -385,6 +405,10 @@ impl Args {
     }
 }
 
+fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
+    feature.split([' ', ',']).filter(|s| !s.is_empty())
+}
+
 impl Args {
     pub fn optional(&self) -> Option<bool> {
         resolve_bool_arg(self.optional, self.no_optional)
@@ -422,6 +446,7 @@ impl Default for Args {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 pub enum UnstableOptions {
     Git,
+    InlineAdd,
 }
 
 fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {

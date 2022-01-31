@@ -8,7 +8,8 @@ error: Found argument '--flag' which wasn't expected, or isn't valid in this con
 \tIf you tried to supply `--flag` as a value rather than a flag, use `-- --flag`
 
 USAGE:
-    cargo add [OPTIONS] <DEP_ID>...
+    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
+    cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...
 
 For more information try --help
 """

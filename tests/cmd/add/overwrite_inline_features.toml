@@ -1,0 +1,17 @@
+bin.name = "cargo-add"
+args = ["add", "unrelateed-crate", "your-face", "+nose,mouth", "+ears", "-Zinline-add"]
+status = "success"
+stdout = ""
+stderr = """
+      Adding unrelateed-crate v99999.0.0 to dependencies.
+      Adding your-face v99999.0.0 to dependencies with features: nose, mouth, ears.
+             Available features:
+             - nose
+             - mouth
+             - eyes
+             - ears
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

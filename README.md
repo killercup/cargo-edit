@@ -85,7 +85,8 @@ cargo-add [..]
 Add dependencies to a Cargo.toml manifest file
 
 USAGE:
-    cargo add [OPTIONS] <DEP_ID>...
+    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
+    cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...
 
 ARGS:
     <DEP_ID>...    Reference to a package to add as a dependency
@@ -111,17 +112,17 @@ SECTION:
         --target <TARGET>    Add as dependency to the given target platform
 
 UNSTABLE:
-    -Z <FLAG>                Unstable (nightly-only) flags [possible values: git]
+    -Z <FLAG>                Unstable (nightly-only) flags [possible values: git, inline-add]
         --git <URI>          Git repository location
         --branch <BRANCH>    Git branch to download the crate from
         --tag <TAG>          Git tag to download the crate from
         --rev <REV>          Git reference to download the crate from
 
 Examples:
-  $ cargo add regex
-  $ cargo add regex@0.1.41 --build
+  $ cargo add regex --build
   $ cargo add trycmd --dev
   $ cargo add ./crate/parser/
+  $ cargo add serde +derive serde_json
 
 ```
 
