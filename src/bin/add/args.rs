@@ -311,7 +311,7 @@ impl Args {
                         dependency = dependency.set_version(&v);
                     }
                 } else {
-                    dependency =
+                    let latest =
                         get_latest_dependency(name, false, &manifest_path, Some(&registry_url))?;
                     let op = "";
                     let v = format!(
@@ -319,9 +319,11 @@ impl Args {
                         op = op,
                         // If version is unavailable `get_latest_dependency` must have
                         // returned `Err(FetchVersionError::GetVersion)`
-                        version = dependency.version().unwrap_or_else(|| unreachable!())
+                        version = latest.version().unwrap_or_else(|| unreachable!())
                     );
-                    dependency = dependency.set_version(&v);
+                    dependency = dependency
+                        .set_version(&v)
+                        .set_available_features(latest.available_features);
                 }
 
                 dependency
