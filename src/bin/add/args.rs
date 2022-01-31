@@ -254,10 +254,10 @@ impl Args {
                         self.tag.clone(),
                         self.rev.clone(),
                     );
-                } else if let Some(version) =
-                    manifest.get_dep_version(&self.get_section(), dependency.toml_key())
+                } else if let Ok(old) =
+                    manifest.get_dependency(&self.get_section(), dependency.toml_key())
                 {
-                    dependency = dependency.set_version(&version);
+                    dependency = self.populate_dependency(old);
                 } else if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
                     // Only special-case workspaces when the user doesn't provide any extra
                     // information, otherwise, trust the user.

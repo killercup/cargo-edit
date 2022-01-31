@@ -1,9 +1,9 @@
 bin.name = "cargo-add"
-args = ["add", "versioned-package"]
+args = ["add", "cargo-list-test-fixture-dependency"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding versioned-package v0.1.1 to dependencies.
+      Adding cargo-list-test-fixture-dependency (local) to dependencies.
 """
 fs.sandbox = true
 
