@@ -190,7 +190,17 @@ pub fn get_features_from_registry(
     registry: &Url,
 ) -> Result<Vec<String>> {
     if env::var("CARGO_IS_TEST").is_ok() {
-        return Ok(Vec::new());
+        let features = if crate_name == "your-face" {
+            vec![
+                "nose".to_string(),
+                "mouth".to_string(),
+                "eyes".to_string(),
+                "ears".to_string(),
+            ]
+        } else {
+            vec![]
+        };
+        return Ok(features);
     }
 
     let index = crates_index::Index::from_url(registry.as_str())?;
