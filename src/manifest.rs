@@ -141,14 +141,6 @@ impl Manifest {
             },
         }
     }
-
-    /// Find a dependency version
-    pub fn get_dep_version(&self, table_path: &[String], dep_key: &str) -> Option<String> {
-        let table = self.get_table(table_path).ok()?;
-        let dep_item = table.as_table_like()?.get(dep_key)?;
-        let version = get_version(dep_item).ok()?.as_str()?.to_owned();
-        Some(version)
-    }
 }
 
 impl str::FromStr for Manifest {
