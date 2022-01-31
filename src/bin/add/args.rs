@@ -4,7 +4,7 @@
 
 use cargo_edit::{
     find, get_features_from_registry, get_manifest_from_url, registry_url, workspace_members,
-    Dependency,
+    Dependency, LocalManifest,
 };
 use cargo_edit::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
@@ -190,7 +190,7 @@ impl Args {
     }
 
     /// Build dependencies from arguments
-    pub fn parse_dependencies(&self) -> Result<Vec<Dependency>> {
+    pub fn parse_dependencies(&self, manifest: &LocalManifest) -> Result<Vec<Dependency>> {
         let workspace_members = workspace_members(self.manifest_path.as_deref())?;
 
         if self.crates.len() > 1 && self.git.is_some() {
@@ -207,12 +207,15 @@ impl Args {
 
         self.crates
             .iter()
-            .map(|crate_spec| self.parse_single_dependency(crate_spec, &workspace_members))
+            .map(|crate_spec| {
+                self.parse_single_dependency(manifest, crate_spec, &workspace_members)
+            })
             .collect()
     }
 
     fn parse_single_dependency(
         &self,
+        manifest: &LocalManifest,
         crate_spec: &str,
         workspace_members: &[Package],
     ) -> Result<Dependency> {
@@ -284,6 +287,14 @@ impl Args {
                         let v = format!("{op}{version}", op = op, version = package.version);
                         dependency = dependency.set_version(&v);
                     }
+                } else if let Some(version) =
+                    manifest.get_dep_version(&self.get_section(), dependency.toml_key())
+                {
+                    let features =
+                        get_features_from_registry(&dependency.name, &version, &registry_url)?;
+                    dependency = dependency
+                        .set_version(&version)
+                        .set_available_features(features);
                 } else {
                     let latest =
                         get_latest_dependency(name, false, &manifest_path, Some(&registry_url))?;
@@ -406,44 +417,6 @@ fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    #[cfg(feature = "test-external-apis")]
-    fn test_repo_as_arg_parsing() {
-        let github_url = "https://github.com/killercup/cargo-edit/";
-        let args_github = Args {
-            crates: vec![github_url.to_owned()],
-            ..Args::default()
-        };
-        assert_eq!(
-            args_github.parse_dependencies().unwrap(),
-            vec![Dependency::new("cargo-edit").set_git(github_url, None)]
-        );
-
-        let gitlab_url = "https://gitlab.com/Polly-lang/Polly.git";
-        let args_gitlab = Args {
-            crates: vec![gitlab_url.to_owned()],
-            ..Args::default()
-        };
-        assert_eq!(
-            args_gitlab.parse_dependencies(None).unwrap(),
-            vec![Dependency::new("polly").set_git(gitlab_url, None)]
-        );
-    }
-
-    #[test]
-    fn test_path_as_arg_parsing() {
-        let self_path = dunce::canonicalize(std::env::current_dir().unwrap()).unwrap();
-        let args_path = Args {
-            // Hacky to `display` but should generally work
-            crates: vec![self_path.display().to_string()],
-            ..Args::default()
-        };
-        assert_eq!(
-            args_path.parse_dependencies().unwrap()[0].path().unwrap(),
-            self_path
-        );
-    }
 
     #[test]
     fn verify_app() {

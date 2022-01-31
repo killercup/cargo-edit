@@ -158,7 +158,7 @@ fn handle_add(mut args: Args) -> Result<()> {
         update_registry_index(&url, args.quiet)?;
     }
 
-    let deps = &args.parse_dependencies()?;
+    let deps = &args.parse_dependencies(&manifest)?;
 
     for dep in deps {
         if let Some(req_feats) = dep.features.as_deref() {
