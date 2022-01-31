@@ -164,7 +164,6 @@ fn handle_add(mut args: Args) -> Result<()> {
         if let Some(req_feats) = dep.features.as_deref() {
             let req_feats: BTreeSet<_> = req_feats.iter().map(|s| s.as_str()).collect();
 
-            assert!(deps.len() == 1);
             let available_features = dep
                 .available_features
                 .iter()
