@@ -3,8 +3,8 @@
 #![allow(clippy::bool_assert_comparison)]
 
 use cargo_edit::{
-    find, get_features_from_registry, get_manifest_from_url, registry_url, workspace_members,
-    Dependency, LocalManifest,
+    get_features_from_registry, get_manifest_from_url, registry_url, workspace_members, Dependency,
+    LocalManifest,
 };
 use cargo_edit::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
@@ -220,7 +220,7 @@ impl Args {
         workspace_members: &[Package],
     ) -> Result<Dependency> {
         let crate_spec = CrateSpec::resolve(crate_spec)?;
-        let manifest_path = find(&self.manifest_path)?;
+        let manifest_path = manifest.path.as_path();
         let registry_url = registry_url(&manifest_path, self.registry.as_deref())?;
 
         let mut dependency = match &crate_spec {
