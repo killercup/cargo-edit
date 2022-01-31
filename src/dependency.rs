@@ -81,14 +81,16 @@ impl Dependency {
             "Absolute path needed, got: {}",
             path.display()
         );
-        let old_version = match self.source {
-            DependencySource::Version { version, .. } => version,
-            _ => None,
+        let (old_version, old_registry) = match self.source {
+            DependencySource::Version {
+                version, registry, ..
+            } => (version, registry),
+            _ => (None, None),
         };
         self.source = DependencySource::Version {
             version: old_version,
             path: Some(path),
-            registry: None,
+            registry: old_registry,
         };
         self
     }
@@ -118,13 +120,13 @@ impl Dependency {
 
     /// Set the value of registry for the dependency
     pub fn set_registry(mut self, registry: &str) -> Dependency {
-        let old_version = match self.source {
-            DependencySource::Version { version, .. } => version,
-            _ => None,
+        let (old_version, old_path) = match self.source {
+            DependencySource::Version { version, path, .. } => (version, path),
+            _ => (None, None),
         };
         self.source = DependencySource::Version {
             version: old_version,
-            path: None,
+            path: old_path,
             registry: Some(registry.into()),
         };
         self
