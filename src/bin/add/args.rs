@@ -213,17 +213,22 @@ impl Args {
             .map(|crate_spec| {
                 self.parse_single_dependency(crate_spec, &workspace_members)
                     .map(|x| {
-                        let mut x = x
-                            .set_optional(self.optional())
-                            .set_features(requested_features.to_owned())
-                            .set_default_features(self.default_features());
-                        if let Some(ref rename) = self.rename {
-                            x = x.set_rename(rename);
-                        }
+                        let x = self.populate_dependency(x);
+                        let x = x.set_features(requested_features.to_owned());
                         x
                     })
             })
             .collect()
+    }
+
+    fn populate_dependency(&self, mut dependency: Dependency) -> Dependency {
+        dependency = dependency
+            .set_optional(self.optional())
+            .set_default_features(self.default_features());
+        if let Some(ref rename) = self.rename {
+            dependency = dependency.set_rename(rename);
+        }
+        dependency
     }
 
     fn parse_single_dependency(
