@@ -270,6 +270,14 @@ impl Args {
                             self.rev.clone(),
                         )
                         .set_available_features(features);
+                } else if let Some(version) =
+                    manifest.get_dep_version(&self.get_section(), dependency.toml_key())
+                {
+                    let features =
+                        get_features_from_registry(&dependency.name, &version, &registry_url)?;
+                    dependency = dependency
+                        .set_version(&version)
+                        .set_available_features(features);
                 } else if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
                     // Only special-case workspaces when the user doesn't provide any extra
                     // information, otherwise, trust the user.
@@ -287,14 +295,6 @@ impl Args {
                         let v = format!("{op}{version}", op = op, version = package.version);
                         dependency = dependency.set_version(&v);
                     }
-                } else if let Some(version) =
-                    manifest.get_dep_version(&self.get_section(), dependency.toml_key())
-                {
-                    let features =
-                        get_features_from_registry(&dependency.name, &version, &registry_url)?;
-                    dependency = dependency
-                        .set_version(&version)
-                        .set_available_features(features);
                 } else {
                     let latest =
                         get_latest_dependency(name, false, &manifest_path, Some(&registry_url))?;
