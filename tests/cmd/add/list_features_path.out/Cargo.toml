@@ -1,2 +1,2 @@
 [workspace]
-members = ["primary", "dependency"]
+members = ["primary", "dependency", "optional"]

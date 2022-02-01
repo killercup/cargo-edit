@@ -10,6 +10,7 @@ stderr = """
              - nose
              - mouth
              - eyes
+             - optional-dependency
 """
 fs.sandbox = true
 fs.cwd = "list_features_path.in/primary"
