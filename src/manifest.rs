@@ -127,19 +127,39 @@ impl Manifest {
 
     /// returns features exposed by this manifest
     pub fn features(&self) -> Result<Vec<String>> {
-        match self.data.as_table().get("features") {
-            None => Ok(vec![]),
+        let mut features: Vec<String> = match self.data.as_table().get("features") {
+            None => vec![],
             Some(item) => match item {
-                toml_edit::Item::None => Ok(vec![]),
-                toml_edit::Item::Table(t) => Ok(t
+                toml_edit::Item::None => vec![],
+                toml_edit::Item::Table(t) => t
                     .get_values()
                     .iter()
                     .map(|(keys, _val)| keys.iter().map(|&k| k.get().trim().to_owned()))
                     .flatten()
-                    .collect()),
-                _ => Err(ErrorKind::InvalidCargoConfig.into()),
+                    .collect(),
+                _ => return Err(ErrorKind::InvalidCargoConfig.into()),
             },
+        };
+
+        let sections = self.get_sections();
+        for (_, deps) in sections {
+            features.extend(
+                deps.as_table_like()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|(key, dep_item)| {
+                        let table = dep_item.as_table_like()?;
+                        table
+                            .get("optional")
+                            .and_then(|o| o.as_value())
+                            .and_then(|o| o.as_bool())
+                            .unwrap_or(false)
+                            .then(|| key.to_owned())
+                    }),
+            );
         }
+
+        Ok(features)
     }
 }
 

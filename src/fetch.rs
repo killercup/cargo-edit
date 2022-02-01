@@ -107,6 +107,12 @@ fn fuzzy_query_registry_index(
             .iter()
             .map(|v| {
                 let mut available_features: Vec<_> = v.features().keys().cloned().collect();
+                available_features.extend(
+                    v.dependencies()
+                        .iter()
+                        .filter(|d| d.is_optional())
+                        .map(|d| d.crate_name().to_owned()),
+                );
                 available_features.sort();
                 Ok(CrateVersion {
                     name: v.name().to_owned(),
