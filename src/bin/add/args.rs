@@ -3,14 +3,16 @@
 #![allow(clippy::bool_assert_comparison)]
 
 use cargo_edit::{
-    get_features_from_registry, get_manifest_from_path, get_manifest_from_url, registry_url,
-    workspace_members, Dependency, LocalManifest,
+    colorize_stderr, get_features_from_registry, get_manifest_from_path, get_manifest_from_url,
+    registry_url, workspace_members, Dependency, LocalManifest,
 };
 use cargo_edit::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
 use clap::Parser;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 
 use crate::errors::*;
 
@@ -218,8 +220,10 @@ impl Args {
         for crate_spec in &self.crates {
             if let Some(features) = crate_spec.strip_prefix('+') {
                 if !self.unstable_features.contains(&UnstableOptions::InlineAdd) {
-                    return Err("`+<feature>` is unstable and requires `-Z inline-add`".into());
-                } else if let Some(prior) = deps.last_mut() {
+                    inline_add_message()?;
+                }
+
+                if let Some(prior) = deps.last_mut() {
                     let features = parse_feature(features);
                     prior
                         .features
@@ -407,6 +411,20 @@ impl Args {
 
 fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
     feature.split([' ', ',']).filter(|s| !s.is_empty())
+}
+
+fn inline_add_message() -> Result<()> {
+    let colorchoice = colorize_stderr();
+    let mut output = StandardStream::stderr(colorchoice);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+    write!(output, "{:>12}", "Warning:")?;
+    output.reset()?;
+    writeln!(
+        output,
+        " `+<feature>` is unstable and requires `-Z inline-add`"
+    )
+    .chain_err(|| "Failed to write unrecognized features message")?;
+    Ok(())
 }
 
 impl Args {
