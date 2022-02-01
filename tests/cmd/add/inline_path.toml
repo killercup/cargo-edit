@@ -6,7 +6,7 @@ stderr = """
       Adding cargo-list-test-fixture-dependency (local) to dependencies.
 """
 fs.sandbox = true
-fs.cwd = "overwrite_version_with_implicit_path.in/primary"
+fs.cwd = "inline_path.in/primary"
 
 [env.add]
 CARGO_IS_TEST="1"
