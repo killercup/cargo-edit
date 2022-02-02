@@ -70,7 +70,14 @@ pub(crate) struct Args {
     /// Crates to exclude and not modify.
     #[clap(long)]
     pub(crate) exclude: Vec<String>,
+
+    /// Unstable (nightly-only) flags
+    #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
+    pub unstable_features: Vec<UnstableOptions>,
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+pub enum UnstableOptions {}
 
 #[test]
 fn verify_app() {
