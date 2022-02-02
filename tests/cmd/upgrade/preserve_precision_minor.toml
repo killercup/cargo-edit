@@ -1,0 +1,13 @@
+bin.name = "cargo-upgrade"
+args = ["upgrade", "-Z", "preserve-precision"]
+status = "success"
+stdout = """
+cargo-list-test-fixture:
+"""
+stderr = """
+    Upgrading docopt v0.8 -> v99999.0
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
