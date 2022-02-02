@@ -64,6 +64,7 @@ fn process(args: Args) -> Result<()> {
         dry_run,
         workspace,
         exclude,
+        unstable_features: _,
     } = args;
 
     let target = match (target, bump) {

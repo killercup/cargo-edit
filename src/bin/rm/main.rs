@@ -75,6 +75,10 @@ struct Args {
     )]
     pkgid: Option<String>,
 
+    /// Unstable (nightly-only) flags
+    #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
+    pub unstable_features: Vec<UnstableOptions>,
+
     /// Do not print any output in case of success.
     #[clap(long, short)]
     quiet: bool,
@@ -92,6 +96,9 @@ impl Args {
         }
     }
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+enum UnstableOptions {}
 
 fn print_msg(name: &str, section: &str) -> Result<()> {
     let colorchoice = colorize_stderr();

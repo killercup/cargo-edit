@@ -162,6 +162,7 @@ OPTIONS:
     -p, --package <PKGID>         Package id of the crate to remove this dependency from
     -q, --quiet                   Do not print any output in case of success
     -V, --version                 Print version information
+    -Z <FLAG>                     Unstable (nightly-only) flags
 
 ```
 
@@ -215,6 +216,7 @@ OPTIONS:
         --to-lockfile             Upgrade all packages to the version in the lockfile
     -V, --version                 Print version information
         --workspace               Upgrade all packages in the workspace
+    -Z <FLAG>                     Unstable (nightly-only) flags
 
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
@@ -278,6 +280,7 @@ OPTIONS:
     -p, --package <PKGID>         Package id of the crate to change the version of
     -V, --version                 Print version information
         --workspace               Modify all packages in the workspace
+    -Z <FLAG>                     Unstable (nightly-only) flags
 
 ```
 
