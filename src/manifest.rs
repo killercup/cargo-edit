@@ -257,10 +257,9 @@ impl LocalManifest {
                     .unwrap_or(name);
                 if dep_name == dependency.name {
                     if skip_compatible {
-                        if let Some(old_version) = get_version(toml_item)?.as_str() {
-                            if old_version_compatible(dependency, old_version)? {
-                                continue;
-                            }
+                        let old_version = get_version(toml_item)?;
+                        if old_version_compatible(dependency, old_version)? {
+                            continue;
                         }
                     }
                     self.update_table_named_entry(&table_path, name, dependency, dry_run)?;
@@ -572,12 +571,15 @@ fn search(dir: &Path) -> Result<PathBuf> {
     }
 }
 
-fn get_version(old_dep: &toml_edit::Item) -> Result<toml_edit::Item> {
-    if str_or_1_len_table(old_dep) {
-        Ok(old_dep.clone())
+fn get_version(old_dep: &toml_edit::Item) -> Result<&str> {
+    if let Some(req) = old_dep.as_str() {
+        Ok(req)
     } else if old_dep.is_table_like() {
         let version = old_dep.get("version").ok_or("Missing version field")?;
-        Ok(version.clone())
+        version
+            .as_str()
+            .ok_or("Expect version to be a string")
+            .map_err(Into::into)
     } else {
         unreachable!("Invalid old dependency type")
     }
@@ -613,30 +615,30 @@ fn print_upgrade_if_necessary(
     let old_version = get_version(old_dep)?;
     let new_version = get_version(new_dep)?;
 
-    if let (Some(old_version), Some(new_version)) = (old_version.as_str(), new_version.as_str()) {
-        if old_version == new_version {
-            return Ok(());
-        }
-        let colorchoice = crate::colorize_stderr();
-        let bufwtr = BufferWriter::stderr(colorchoice);
-        let mut buffer = bufwtr.buffer();
-        buffer
-            .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-            .chain_err(|| "Failed to set output colour")?;
-        write!(&mut buffer, "    Upgrading ").chain_err(|| "Failed to write upgrade message")?;
-        buffer
-            .set_color(&ColorSpec::new())
-            .chain_err(|| "Failed to clear output colour")?;
-        writeln!(
-            &mut buffer,
-            "{} v{} -> v{}",
-            crate_name, old_version, new_version,
-        )
-        .chain_err(|| "Failed to write upgrade versions")?;
-        bufwtr
-            .print(&buffer)
-            .chain_err(|| "Failed to print upgrade message")?;
+    if old_version == new_version {
+        return Ok(());
     }
+
+    let colorchoice = crate::colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
+    let mut buffer = bufwtr.buffer();
+    buffer
+        .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
+        .chain_err(|| "Failed to set output colour")?;
+    write!(&mut buffer, "    Upgrading ").chain_err(|| "Failed to write upgrade message")?;
+    buffer
+        .set_color(&ColorSpec::new())
+        .chain_err(|| "Failed to clear output colour")?;
+    writeln!(
+        &mut buffer,
+        "{} v{} -> v{}",
+        crate_name, old_version, new_version,
+    )
+    .chain_err(|| "Failed to write upgrade versions")?;
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print upgrade message")?;
+
     Ok(())
 }
 
