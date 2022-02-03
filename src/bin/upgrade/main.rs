@@ -190,7 +190,8 @@ fn process(args: Args) -> Result<()> {
     let manifests = args.resolve_targets()?;
 
     if args.to_lockfile {
-        sync_to_lockfile(manifests, args.dry_run, args.skip_compatible)?;
+        let locked = load_lockfile(&manifests)?;
+        sync_to_lockfile(manifests, &locked, args.dry_run, args.skip_compatible)?;
     } else {
         let existing_dependencies = get_dependencies(&manifests, args.dependency, args.exclude)?;
 
@@ -316,13 +317,9 @@ fn upgrade(
     Ok(())
 }
 
-/// Update dependencies in Cargo.toml file(s) to match the corresponding
-/// version in Cargo.lock.
-fn sync_to_lockfile(
-    targets: Vec<(LocalManifest, cargo_metadata::Package)>,
-    dry_run: bool,
-    skip_compatible: bool,
-) -> Result<()> {
+fn load_lockfile(
+    targets: &[(LocalManifest, cargo_metadata::Package)],
+) -> Result<Vec<cargo_metadata::Package>> {
     // Get locked dependencies. For workspaces with multiple Cargo.toml
     // files, there is only a single lockfile, so it suffices to get
     // metadata for any one of Cargo.toml files.
@@ -342,6 +339,17 @@ fn sync_to_lockfile(
         .filter(|p| p.source.is_some()) // Source is none for local packages
         .collect::<Vec<_>>();
 
+    Ok(locked)
+}
+
+/// Update dependencies in Cargo.toml file(s) to match the corresponding
+/// version in Cargo.lock.
+fn sync_to_lockfile(
+    targets: Vec<(LocalManifest, cargo_metadata::Package)>,
+    locked: &[cargo_metadata::Package],
+    dry_run: bool,
+    skip_compatible: bool,
+) -> Result<()> {
     for (mut manifest, package) in targets {
         println!("{}:", package.name);
 
@@ -353,7 +361,7 @@ fn sync_to_lockfile(
             .into_iter()
             .filter(is_version_dep)
             .filter_map(|d| {
-                for p in &locked {
+                for p in locked {
                     // The requested dependency may be present in the lock file with different versions,
                     // but only one will be semver-compatible with the requested version.
                     if d.name == p.name && d.req.matches(&p.version) {
