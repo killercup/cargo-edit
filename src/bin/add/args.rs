@@ -280,8 +280,8 @@ impl Args {
                         self.tag.clone(),
                         self.rev.clone(),
                     );
-                } else if let Ok(old) =
-                    manifest.get_dependency(&self.get_section(), dependency.toml_key())
+                } else if let Some(old) =
+                    self.get_existing_dependency(manifest, dependency.toml_key())
                 {
                     dependency = self.populate_dependency(old);
                 } else if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
@@ -324,8 +324,7 @@ impl Args {
                 let mut dependency = crate_spec.to_dependency()?;
                 dependency = self.populate_dependency(dependency);
 
-                if let Ok(old) = manifest.get_dependency(&self.get_section(), dependency.toml_key())
-                {
+                if let Some(old) = self.get_existing_dependency(manifest, dependency.toml_key()) {
                     if old.path() == dependency.path() {
                         if let Some(version) = old.version() {
                             dependency = dependency.set_version(version);
@@ -357,6 +356,14 @@ impl Args {
         dependency = self.populate_available_features(dependency, manifest_path)?;
 
         Ok(dependency)
+    }
+
+    fn get_existing_dependency(
+        &self,
+        manifest: &LocalManifest,
+        dep_key: &str,
+    ) -> Option<Dependency> {
+        manifest.get_dependency(&self.get_section(), dep_key).ok()
     }
 
     fn populate_dependency(&self, mut dependency: Dependency) -> Dependency {
