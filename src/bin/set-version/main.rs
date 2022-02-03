@@ -16,7 +16,7 @@
 extern crate error_chain;
 
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process;
 
 use cargo_edit::{
@@ -79,11 +79,11 @@ fn process(args: Args) -> Result<()> {
     }
     let all = workspace || all;
     let manifests = if all {
-        Manifests::get_all(&manifest_path)
+        Manifests::get_all(manifest_path.as_deref())
     } else if let Some(ref pkgid) = pkgid {
         Manifests::get_pkgid(manifest_path.as_deref(), pkgid)
     } else {
-        Manifests::get_local_one(&manifest_path)
+        Manifests::get_local_one(manifest_path.as_deref())
     }?;
 
     if dry_run {
@@ -155,7 +155,7 @@ struct Manifests(Vec<(LocalManifest, cargo_metadata::Package)>);
 
 impl Manifests {
     /// Get all manifests in the workspace.
-    fn get_all(manifest_path: &Option<PathBuf>) -> Result<Self> {
+    fn get_all(manifest_path: Option<&Path>) -> Result<Self> {
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.no_deps();
         if let Some(path) = manifest_path {
@@ -185,7 +185,7 @@ impl Manifests {
 
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
     /// provided.
-    fn get_local_one(manifest_path: &Option<PathBuf>) -> Result<Self> {
+    fn get_local_one(manifest_path: Option<&Path>) -> Result<Self> {
         let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
 
         let manifest = LocalManifest::find(manifest_path)?;

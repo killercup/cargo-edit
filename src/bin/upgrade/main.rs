@@ -150,6 +150,22 @@ struct Args {
     pub unstable_features: Vec<UnstableOptions>,
 }
 
+impl Args {
+    fn workspace(&self) -> bool {
+        self.all || self.workspace
+    }
+
+    fn resolve_targets(&self) -> Result<Vec<(LocalManifest, cargo_metadata::Package)>> {
+        if self.workspace() {
+            resolve_all(self.manifest_path.as_deref())
+        } else if let Some(ref pkgid) = self.pkgid.as_deref() {
+            resolve_pkgid(self.manifest_path.as_deref(), pkgid)
+        } else {
+            resolve_local_one(self.manifest_path.as_deref())
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 enum UnstableOptions {}
 
@@ -162,43 +178,21 @@ fn verify_app() {
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
 fn process(args: Args) -> Result<()> {
-    let Args {
-        dependency,
-        manifest_path,
-        pkgid,
-        all,
-        allow_prerelease,
-        dry_run,
-        skip_compatible,
-        to_lockfile,
-        workspace,
-        exclude,
-        ..
-    } = args;
-
-    if all {
+    if args.all {
         deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
 
-    let all = workspace || all;
-
-    if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(&find(&manifest_path)?, None)?;
+    if !args.offline && !args.to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
+        let url = registry_url(&find(args.manifest_path.as_deref())?, None)?;
         update_registry_index(&url, false)?;
     }
 
-    let manifests = if all {
-        Manifests::get_all(&manifest_path)
-    } else if let Some(ref pkgid) = pkgid {
-        Manifests::get_pkgid(manifest_path.as_deref(), pkgid)
-    } else {
-        Manifests::get_local_one(&manifest_path)
-    }?;
+    let manifests = args.resolve_targets()?;
 
-    if to_lockfile {
-        manifests.sync_to_lockfile(dry_run, skip_compatible)
+    if args.to_lockfile {
+        sync_to_lockfile(manifests, args.dry_run, args.skip_compatible)
     } else {
-        let existing_dependencies = manifests.get_dependencies(dependency, exclude)?;
+        let existing_dependencies = get_dependencies(&manifests, args.dependency, args.exclude)?;
 
         // Update indices for any alternative registries, unless
         // we're offline.
@@ -218,220 +212,167 @@ fn process(args: Args) -> Result<()> {
             }
         }
 
-        let upgraded_dependencies =
-            existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;
+        let upgraded_dependencies = existing_dependencies
+            .get_upgraded(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?;
 
-        manifests.upgrade(&upgraded_dependencies, dry_run, skip_compatible)
+        upgrade(
+            manifests,
+            &upgraded_dependencies,
+            args.dry_run,
+            args.skip_compatible,
+        )
     }
 }
 
-/// A collection of manifests.
-struct Manifests(Vec<(LocalManifest, cargo_metadata::Package)>);
+/// Get the combined set of dependencies to upgrade. If the user has specified
+/// per-dependency desired versions, extract those here.
+fn get_dependencies(
+    targets: &[(LocalManifest, cargo_metadata::Package)],
+    only_update: Vec<String>,
+    exclude: Vec<String>,
+) -> Result<DesiredUpgrades> {
+    // Map the names of user-specified dependencies to the (optionally) requested version.
+    let selected_dependencies = only_update
+        .into_iter()
+        .map(|name| match CrateSpec::resolve(&name)? {
+            CrateSpec::PkgId { name, version_req } => Ok((name, version_req)),
+            CrateSpec::Path(path) => Err(format!("Invalid name: {}", path.display()).into()),
+        })
+        .collect::<Result<BTreeMap<_, _>>>()?;
 
-impl Manifests {
-    /// Get all manifests in the workspace.
-    fn get_all(manifest_path: &Option<PathBuf>) -> Result<Self> {
-        let mut cmd = cargo_metadata::MetadataCommand::new();
-        cmd.no_deps();
-        if let Some(path) = manifest_path {
-            cmd.manifest_path(path);
-        }
-        let result = cmd
-            .exec()
-            .chain_err(|| "Failed to get workspace metadata")?;
-        result
-            .packages
-            .into_iter()
-            .map(|package| {
-                Ok((
-                    LocalManifest::try_new(Path::new(&package.manifest_path))?,
-                    package,
-                ))
-            })
-            .collect::<Result<Vec<_>>>()
-            .map(Manifests)
-    }
-
-    fn get_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> Result<Self> {
-        let package = manifest_from_pkgid(manifest_path, pkgid)?;
-        let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
-        Ok(Manifests(vec![(manifest, package)]))
-    }
-
-    /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
-    /// provided.
-    fn get_local_one(manifest_path: &Option<PathBuf>) -> Result<Self> {
-        let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
-
-        let manifest = LocalManifest::find(manifest_path)?;
-
-        let mut cmd = cargo_metadata::MetadataCommand::new();
-        cmd.no_deps();
-        if let Some(path) = manifest_path {
-            cmd.manifest_path(path);
-        }
-        let result = cmd.exec().chain_err(|| "Invalid manifest")?;
-        let packages = result.packages;
-        let package = packages
-            .iter()
-            .find(|p| p.manifest_path == resolved_manifest_path)
-            // If we have successfully got metadata, but our manifest path does not correspond to a
-            // package, we must have been called against a virtual manifest.
-            .chain_err(|| {
-                "Found virtual manifest, but this command requires running against an \
-                 actual package in this workspace. Try adding `--workspace`."
-            })?;
-
-        Ok(Manifests(vec![(manifest, package.to_owned())]))
-    }
-
-    /// Get the combined set of dependencies to upgrade. If the user has specified
-    /// per-dependency desired versions, extract those here.
-    fn get_dependencies(
-        &self,
-        only_update: Vec<String>,
-        exclude: Vec<String>,
-    ) -> Result<DesiredUpgrades> {
-        // Map the names of user-specified dependencies to the (optionally) requested version.
-        let selected_dependencies = only_update
-            .into_iter()
-            .map(|name| match CrateSpec::resolve(&name)? {
-                CrateSpec::PkgId { name, version_req } => Ok((name, version_req)),
-                CrateSpec::Path(path) => Err(format!("Invalid name: {}", path.display()).into()),
-            })
-            .collect::<Result<BTreeMap<_, _>>>()?;
-
-        let mut upgrades = DesiredUpgrades::default();
-        for dependency in self
-            .0
-            .iter()
-            .flat_map(|&(_, ref package)| package.dependencies.clone())
-            .filter(is_version_dep)
-            .filter(|dependency| !exclude.contains(&dependency.name))
-            // Exclude renamed dependecies aswell
-            .filter(|dependency| {
-                dependency
-                    .rename
-                    .as_ref()
-                    .map_or(true, |rename| !exclude.contains(rename))
-            })
-        {
-            let is_prerelease = dependency.req.to_string().contains('-');
-            if selected_dependencies.is_empty() {
-                // User hasn't asked for any specific dependencies to be upgraded,
-                // so upgrade all the dependencies.
-                let mut dep = Dependency::new(&dependency.name);
-                if let Some(rename) = dependency.rename {
-                    dep = dep.set_rename(&rename);
-                }
+    let mut upgrades = DesiredUpgrades::default();
+    for dependency in targets
+        .iter()
+        .flat_map(|&(_, ref package)| package.dependencies.clone())
+        .filter(is_version_dep)
+        .filter(|dependency| !exclude.contains(&dependency.name))
+        // Exclude renamed dependecies aswell
+        .filter(|dependency| {
+            dependency
+                .rename
+                .as_ref()
+                .map_or(true, |rename| !exclude.contains(rename))
+        })
+    {
+        let is_prerelease = dependency.req.to_string().contains('-');
+        if selected_dependencies.is_empty() {
+            // User hasn't asked for any specific dependencies to be upgraded,
+            // so upgrade all the dependencies.
+            let mut dep = Dependency::new(&dependency.name);
+            if let Some(rename) = dependency.rename {
+                dep = dep.set_rename(&rename);
+            }
+            upgrades.0.insert(
+                dep,
+                UpgradeMetadata {
+                    registry: dependency.registry,
+                    version: None,
+                    is_prerelease,
+                },
+            );
+        } else {
+            // User has asked for specific dependencies. Check if this dependency
+            // was specified, populating the registry from the lockfile metadata.
+            if let Some(version) = selected_dependencies.get(&dependency.name) {
                 upgrades.0.insert(
-                    dep,
+                    Dependency::new(&dependency.name),
                     UpgradeMetadata {
                         registry: dependency.registry,
-                        version: None,
+                        version: version.clone(),
                         is_prerelease,
                     },
                 );
-            } else {
-                // User has asked for specific dependencies. Check if this dependency
-                // was specified, populating the registry from the lockfile metadata.
-                if let Some(version) = selected_dependencies.get(&dependency.name) {
-                    upgrades.0.insert(
-                        Dependency::new(&dependency.name),
-                        UpgradeMetadata {
-                            registry: dependency.registry,
-                            version: version.clone(),
-                            is_prerelease,
-                        },
-                    );
-                }
             }
         }
-        Ok(upgrades)
+    }
+    Ok(upgrades)
+}
+
+/// Upgrade the manifests on disk following the previously-determined upgrade schema.
+fn upgrade(
+    targets: Vec<(LocalManifest, cargo_metadata::Package)>,
+    upgraded_deps: &ActualUpgrades,
+    dry_run: bool,
+    skip_compatible: bool,
+) -> Result<()> {
+    if dry_run {
+        dry_run_message()?;
     }
 
-    /// Upgrade the manifests on disk following the previously-determined upgrade schema.
-    fn upgrade(
-        self,
-        upgraded_deps: &ActualUpgrades,
-        dry_run: bool,
-        skip_compatible: bool,
-    ) -> Result<()> {
-        if dry_run {
-            dry_run_message()?;
-        }
+    for (mut manifest, package) in targets {
+        println!("{}:", package.name);
 
-        for (mut manifest, package) in self.0 {
-            println!("{}:", package.name);
-
-            for (dep, version) in &upgraded_deps.0 {
-                let mut new_dep = Dependency::new(&dep.name).set_version(version);
-                if let Some(rename) = dep.rename() {
-                    new_dep = new_dep.set_rename(rename);
-                }
-                manifest.upgrade(&new_dep, dry_run, skip_compatible)?;
+        for (dep, version) in &upgraded_deps.0 {
+            let mut new_dep = Dependency::new(&dep.name).set_version(version);
+            if let Some(rename) = dep.rename() {
+                new_dep = new_dep.set_rename(rename);
             }
+            manifest.upgrade(&new_dep, dry_run, skip_compatible)?;
         }
-
-        Ok(())
     }
 
-    /// Update dependencies in Cargo.toml file(s) to match the corresponding
-    /// version in Cargo.lock.
-    fn sync_to_lockfile(self, dry_run: bool, skip_compatible: bool) -> Result<()> {
-        // Get locked dependencies. For workspaces with multiple Cargo.toml
-        // files, there is only a single lockfile, so it suffices to get
-        // metadata for any one of Cargo.toml files.
-        let (manifest, _package) = self.0.get(0).ok_or(ErrorKind::CargoEditLib(
-            ::cargo_edit::ErrorKind::InvalidCargoConfig,
-        ))?;
-        let mut cmd = cargo_metadata::MetadataCommand::new();
-        cmd.manifest_path(manifest.path.clone());
-        cmd.features(cargo_metadata::CargoOpt::AllFeatures);
-        cmd.other_options(vec!["--locked".to_string()]);
+    Ok(())
+}
 
-        let result = cmd.exec().chain_err(|| "Invalid manifest")?;
+/// Update dependencies in Cargo.toml file(s) to match the corresponding
+/// version in Cargo.lock.
+fn sync_to_lockfile(
+    targets: Vec<(LocalManifest, cargo_metadata::Package)>,
+    dry_run: bool,
+    skip_compatible: bool,
+) -> Result<()> {
+    // Get locked dependencies. For workspaces with multiple Cargo.toml
+    // files, there is only a single lockfile, so it suffices to get
+    // metadata for any one of Cargo.toml files.
+    let (manifest, _package) = targets.get(0).ok_or(ErrorKind::CargoEditLib(
+        ::cargo_edit::ErrorKind::InvalidCargoConfig,
+    ))?;
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.manifest_path(manifest.path.clone());
+    cmd.features(cargo_metadata::CargoOpt::AllFeatures);
+    cmd.other_options(vec!["--locked".to_string()]);
 
-        let locked = result
-            .packages
+    let result = cmd.exec().chain_err(|| "Invalid manifest")?;
+
+    let locked = result
+        .packages
+        .into_iter()
+        .filter(|p| p.source.is_some()) // Source is none for local packages
+        .collect::<Vec<_>>();
+
+    if dry_run {
+        dry_run_message()?;
+    }
+
+    for (mut manifest, package) in targets {
+        println!("{}:", package.name);
+
+        // Upgrade the manifests one at a time, as multiple manifests may
+        // request the same dependency at differing versions.
+        for (name, version) in package
+            .dependencies
+            .clone()
             .into_iter()
-            .filter(|p| p.source.is_some()) // Source is none for local packages
-            .collect::<Vec<_>>();
-
-        if dry_run {
-            dry_run_message()?;
-        }
-
-        for (mut manifest, package) in self.0 {
-            println!("{}:", package.name);
-
-            // Upgrade the manifests one at a time, as multiple manifests may
-            // request the same dependency at differing versions.
-            for (name, version) in package
-                .dependencies
-                .clone()
-                .into_iter()
-                .filter(is_version_dep)
-                .filter_map(|d| {
-                    for p in &locked {
-                        // The requested dependency may be present in the lock file with different versions,
-                        // but only one will be semver-compatible with the requested version.
-                        if d.name == p.name && d.req.matches(&p.version) {
-                            return Some((d.name, p.version.to_string()));
-                        }
+            .filter(is_version_dep)
+            .filter_map(|d| {
+                for p in &locked {
+                    // The requested dependency may be present in the lock file with different versions,
+                    // but only one will be semver-compatible with the requested version.
+                    if d.name == p.name && d.req.matches(&p.version) {
+                        return Some((d.name, p.version.to_string()));
                     }
-                    None
-                })
-            {
-                manifest.upgrade(
-                    &Dependency::new(&name).set_version(&version),
-                    dry_run,
-                    skip_compatible,
-                )?;
-            }
+                }
+                None
+            })
+        {
+            manifest.upgrade(
+                &Dependency::new(&name).set_version(&version),
+                dry_run,
+                skip_compatible,
+            )?;
         }
-        Ok(())
     }
+    Ok(())
 }
 
 // Some metadata about the dependency
@@ -498,6 +439,68 @@ impl DesiredUpgrades {
 /// to the new versions.
 #[derive(Default, Clone, Debug)]
 struct ActualUpgrades(BTreeMap<Dependency, String>);
+
+/// Get all manifests in the workspace.
+fn resolve_all(
+    manifest_path: Option<&Path>,
+) -> Result<Vec<(LocalManifest, cargo_metadata::Package)>> {
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.no_deps();
+    if let Some(path) = manifest_path {
+        cmd.manifest_path(path);
+    }
+    let result = cmd
+        .exec()
+        .chain_err(|| "Failed to get workspace metadata")?;
+    result
+        .packages
+        .into_iter()
+        .map(|package| {
+            Ok((
+                LocalManifest::try_new(Path::new(&package.manifest_path))?,
+                package,
+            ))
+        })
+        .collect::<Result<Vec<_>>>()
+}
+
+fn resolve_pkgid(
+    manifest_path: Option<&Path>,
+    pkgid: &str,
+) -> Result<Vec<(LocalManifest, cargo_metadata::Package)>> {
+    let package = manifest_from_pkgid(manifest_path, pkgid)?;
+    let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
+    Ok(vec![(manifest, package)])
+}
+
+/// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
+/// provided.
+fn resolve_local_one(
+    manifest_path: Option<&Path>,
+) -> Result<Vec<(LocalManifest, cargo_metadata::Package)>> {
+    let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
+
+    let manifest = LocalManifest::find(manifest_path)?;
+
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.no_deps();
+    if let Some(path) = manifest_path {
+        cmd.manifest_path(path);
+    }
+    let result = cmd.exec().chain_err(|| "Invalid manifest")?;
+    let packages = result.packages;
+    let package = packages
+        .iter()
+        .find(|p| p.manifest_path == resolved_manifest_path)
+        // If we have successfully got metadata, but our manifest path does not correspond to a
+        // package, we must have been called against a virtual manifest.
+        .chain_err(|| {
+            "Found virtual manifest, but this command requires running against an \
+                 actual package in this workspace. Try adding `--workspace`."
+        })?;
+
+    Ok(vec![(manifest, package.to_owned())])
+}
 
 /// Helper function to check whether a `cargo_metadata::Dependency` is a version dependency.
 fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {

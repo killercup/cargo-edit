@@ -148,11 +148,11 @@ fn handle_add(mut args: Args) -> Result<()> {
         let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
         args.manifest_path = Some(pkg.manifest_path.into_std_path_buf());
     }
-    let mut manifest = LocalManifest::find(&args.manifest_path)?;
+    let mut manifest = LocalManifest::find(args.manifest_path.as_deref())?;
 
     if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(
-            &find(&args.manifest_path)?,
+            &find(args.manifest_path.as_deref())?,
             args.registry.as_ref().map(String::as_ref),
         )?;
         update_registry_index(&url, args.quiet)?;
