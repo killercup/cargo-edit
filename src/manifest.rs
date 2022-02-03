@@ -207,7 +207,7 @@ impl DerefMut for LocalManifest {
 impl LocalManifest {
     /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
     /// the user means.
-    pub fn find(path: &Option<PathBuf>) -> Result<Self> {
+    pub fn find(path: Option<&Path>) -> Result<Self> {
         let path = dunce::canonicalize(find(path)?)?;
         Self::try_new(&path)
     }
@@ -545,16 +545,16 @@ fn remove_feature_activation(
 /// If a manifest is specified, return that one. If a path is specified, perform a manifest search
 /// starting from there. If nothing is specified, start searching from the current directory
 /// (`cwd`).
-pub fn find(specified: &Option<PathBuf>) -> Result<PathBuf> {
-    match *specified {
-        Some(ref path)
+pub fn find(specified: Option<&Path>) -> Result<PathBuf> {
+    match specified {
+        Some(path)
             if fs::metadata(&path)
                 .chain_err(|| "Failed to get cargo file metadata")?
                 .is_file() =>
         {
             Ok(path.to_owned())
         }
-        Some(ref path) => search(path),
+        Some(path) => search(path),
         None => search(&env::current_dir().chain_err(|| "Failed to get current directory")?),
     }
 }

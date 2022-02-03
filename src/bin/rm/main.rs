@@ -117,7 +117,7 @@ fn handle_rm(args: &Args) -> Result<()> {
     } else {
         Cow::Borrowed(&args.manifest_path)
     };
-    let mut manifest = LocalManifest::find(&manifest_path)?;
+    let mut manifest = LocalManifest::find(manifest_path.as_deref())?;
     let deps = &args.crates;
 
     deps.iter()
