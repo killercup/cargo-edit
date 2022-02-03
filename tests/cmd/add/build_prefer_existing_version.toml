@@ -1,0 +1,11 @@
+bin.name = "cargo-add"
+args = ["add", "cargo-list-test-fixture-dependency", "--build"]
+status = "success"
+stdout = ""
+stderr = """
+      Adding cargo-list-test-fixture-dependency (local) to build-dependencies.
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
