@@ -47,6 +47,20 @@ impl Dependency {
         self
     }
 
+    /// Remove the existing version requirement
+    pub fn clear_version(mut self) -> Dependency {
+        match &mut self.source {
+            DependencySource::Version {
+                version, registry, ..
+            } => {
+                *version = None;
+                *registry = None;
+            }
+            _ => {}
+        }
+        self
+    }
+
     /// Set the available features of the dependency to a given vec
     pub fn set_available_features(mut self, available_features: Vec<String>) -> Dependency {
         self.available_features = available_features;
