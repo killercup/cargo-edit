@@ -254,54 +254,53 @@ impl Manifests {
             })
             .collect::<Result<BTreeMap<_, _>>>()?;
 
-        Ok(DesiredUpgrades(
-            self.0
-                .iter()
-                .flat_map(|&(_, ref package)| package.dependencies.clone())
-                .filter(is_version_dep)
-                .filter(|dependency| !exclude.contains(&dependency.name))
-                // Exclude renamed dependecies aswell
-                .filter(|dependency| {
-                    dependency
-                        .rename
-                        .as_ref()
-                        .map_or(true, |rename| !exclude.contains(rename))
-                })
-                .filter_map(|dependency| {
-                    let is_prerelease = dependency.req.to_string().contains('-');
-                    if selected_dependencies.is_empty() {
-                        // User hasn't asked for any specific dependencies to be upgraded,
-                        // so upgrade all the dependencies.
-                        let mut dep = Dependency::new(&dependency.name);
-                        if let Some(rename) = dependency.rename {
-                            dep = dep.set_rename(&rename);
-                        }
-                        Some((
-                            dep,
-                            UpgradeMetadata {
-                                registry: dependency.registry,
-                                version: None,
-                                is_prerelease,
-                            },
-                        ))
-                    } else {
-                        // User has asked for specific dependencies. Check if this dependency
-                        // was specified, populating the registry from the lockfile metadata.
-                        match selected_dependencies.get(&dependency.name) {
-                            Some(version) => Some((
-                                Dependency::new(&dependency.name),
-                                UpgradeMetadata {
-                                    registry: dependency.registry,
-                                    version: version.clone(),
-                                    is_prerelease,
-                                },
-                            )),
-                            None => None,
-                        }
-                    }
-                })
-                .collect(),
-        ))
+        let mut upgrades = DesiredUpgrades::default();
+        for dependency in self
+            .0
+            .iter()
+            .flat_map(|&(_, ref package)| package.dependencies.clone())
+            .filter(is_version_dep)
+            .filter(|dependency| !exclude.contains(&dependency.name))
+            // Exclude renamed dependecies aswell
+            .filter(|dependency| {
+                dependency
+                    .rename
+                    .as_ref()
+                    .map_or(true, |rename| !exclude.contains(rename))
+            })
+        {
+            let is_prerelease = dependency.req.to_string().contains('-');
+            if selected_dependencies.is_empty() {
+                // User hasn't asked for any specific dependencies to be upgraded,
+                // so upgrade all the dependencies.
+                let mut dep = Dependency::new(&dependency.name);
+                if let Some(rename) = dependency.rename {
+                    dep = dep.set_rename(&rename);
+                }
+                upgrades.0.insert(
+                    dep,
+                    UpgradeMetadata {
+                        registry: dependency.registry,
+                        version: None,
+                        is_prerelease,
+                    },
+                );
+            } else {
+                // User has asked for specific dependencies. Check if this dependency
+                // was specified, populating the registry from the lockfile metadata.
+                if let Some(version) = selected_dependencies.get(&dependency.name) {
+                    upgrades.0.insert(
+                        Dependency::new(&dependency.name),
+                        UpgradeMetadata {
+                            registry: dependency.registry,
+                            version: version.clone(),
+                            is_prerelease,
+                        },
+                    );
+                }
+            }
+        }
+        Ok(upgrades)
     }
 
     /// Upgrade the manifests on disk following the previously-determined upgrade schema.
@@ -390,6 +389,7 @@ impl Manifests {
 
 // Some metadata about the dependency
 // we're trying to upgrade.
+#[derive(Clone, Debug)]
 struct UpgradeMetadata {
     registry: Option<String>,
     // `Some` if the user has specified an explicit
@@ -400,58 +400,55 @@ struct UpgradeMetadata {
 
 /// The set of dependencies to be upgraded, alongside the registries returned from cargo metadata, and
 /// the desired versions, if specified by the user.
+#[derive(Default, Clone, Debug)]
 struct DesiredUpgrades(BTreeMap<Dependency, UpgradeMetadata>);
 
 /// The complete specification of the upgrades that will be performed. Map of the dependency names
 /// to the new versions.
+#[derive(Default, Clone, Debug)]
 struct ActualUpgrades(BTreeMap<Dependency, String>);
 
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
     /// dependencies will get that version.
     fn get_upgraded(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
-        self.0
-            .into_iter()
-            .map(
-                |(
-                    dep,
-                    UpgradeMetadata {
-                        registry,
-                        version,
-                        is_prerelease,
-                    },
-                )| {
-                    if let Some(v) = version {
-                        Ok((dep, v))
-                    } else {
-                        let registry_url = match registry {
-                            Some(x) => Some(Url::parse(&x).map_err(|_| {
-                                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                            })?),
-                            None => None,
-                        };
-                        let allow_prerelease = allow_prerelease || is_prerelease;
-                        get_latest_dependency(
-                            &dep.name,
-                            allow_prerelease,
-                            manifest_path,
-                            registry_url.as_ref(),
-                        )
-                        .map(|new_dep| {
-                            (
-                                dep,
-                                new_dep
-                                    .version()
-                                    .expect("Invalid dependency type")
-                                    .to_string(),
-                            )
-                        })
-                        .chain_err(|| "Failed to get new version")
-                    }
-                },
+        let mut upgrades = ActualUpgrades::default();
+        for (
+            dep,
+            UpgradeMetadata {
+                registry,
+                version,
+                is_prerelease,
+            },
+        ) in self.0.into_iter()
+        {
+            if let Some(v) = version {
+                upgrades.0.insert(dep, v);
+                continue;
+            }
+
+            let registry_url = match registry {
+                Some(x) => Some(Url::parse(&x).map_err(|_| {
+                    ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+                })?),
+                None => None,
+            };
+            let allow_prerelease = allow_prerelease || is_prerelease;
+
+            let latest = get_latest_dependency(
+                &dep.name,
+                allow_prerelease,
+                manifest_path,
+                registry_url.as_ref(),
             )
-            .collect::<Result<_>>()
-            .map(ActualUpgrades)
+            .chain_err(|| "Failed to get new version")?;
+            let version = latest
+                .version()
+                .expect("Invalid dependency type")
+                .to_string();
+            upgrades.0.insert(dep, version);
+        }
+        Ok(upgrades)
     }
 }
 
