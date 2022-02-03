@@ -38,6 +38,25 @@ mod errors {
     }
 }
 
+fn main() {
+    let args: Command = Command::parse();
+    let Command::Upgrade(args) = args;
+
+    if let Err(err) = process(args) {
+        eprintln!("Command failed due to unhandled error: {}\n", err);
+
+        for e in err.iter().skip(1) {
+            eprintln!("Caused by: {}", e);
+        }
+
+        if let Some(backtrace) = err.backtrace() {
+            eprintln!("Backtrace: {:?}", backtrace);
+        }
+
+        process::exit(1);
+    }
+}
+
 #[derive(Debug, Parser)]
 #[clap(bin_name = "cargo")]
 enum Command {
@@ -134,52 +153,80 @@ struct Args {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 enum UnstableOptions {}
 
-/// A collection of manifests.
-struct Manifests(Vec<(LocalManifest, cargo_metadata::Package)>);
+#[test]
+fn verify_app() {
+    use clap::IntoApp;
+    Command::into_app().debug_assert()
+}
 
-/// Helper function to check whether a `cargo_metadata::Dependency` is a version dependency.
-fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
-    match dependency.source {
-        // This is the criterion cargo uses (in `SourceId::from_url`) to decide whether a
-        // dependency has the 'registry' kind.
-        Some(ref s) => s.split_once('+').map(|(x, _)| x) == Some("registry"),
-        _ => false,
+/// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
+/// messages.
+fn process(args: Args) -> Result<()> {
+    let Args {
+        dependency,
+        manifest_path,
+        pkgid,
+        all,
+        allow_prerelease,
+        dry_run,
+        skip_compatible,
+        to_lockfile,
+        workspace,
+        exclude,
+        ..
+    } = args;
+
+    if all {
+        deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
+    }
+
+    let all = workspace || all;
+
+    if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
+        let url = registry_url(&find(&manifest_path)?, None)?;
+        update_registry_index(&url, false)?;
+    }
+
+    let manifests = if all {
+        Manifests::get_all(&manifest_path)
+    } else if let Some(ref pkgid) = pkgid {
+        Manifests::get_pkgid(manifest_path.as_deref(), pkgid)
+    } else {
+        Manifests::get_local_one(&manifest_path)
+    }?;
+
+    if to_lockfile {
+        manifests.sync_to_lockfile(dry_run, skip_compatible)
+    } else {
+        let existing_dependencies = manifests.get_dependencies(dependency, exclude)?;
+
+        // Update indices for any alternative registries, unless
+        // we're offline.
+        if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
+            for registry_url in existing_dependencies
+                .0
+                .values()
+                .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
+                .collect::<BTreeSet<_>>()
+            {
+                update_registry_index(
+                    &Url::parse(registry_url).map_err(|_| {
+                        ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+                    })?,
+                    false,
+                )?;
+            }
+        }
+
+        let upgraded_dependencies =
+            existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;
+
+        manifests.upgrade(&upgraded_dependencies, dry_run, skip_compatible)
     }
 }
 
-fn deprecated_message(message: &str) -> Result<()> {
-    let colorchoice = colorize_stderr();
-    let bufwtr = BufferWriter::stderr(colorchoice);
-    let mut buffer = bufwtr.buffer();
-    buffer
-        .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    writeln!(&mut buffer, "{}", message).chain_err(|| "Failed to write deprecated message")?;
-    buffer
-        .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
-    bufwtr
-        .print(&buffer)
-        .chain_err(|| "Failed to print deprecated message")
-}
-
-fn dry_run_message() -> Result<()> {
-    let colorchoice = colorize_stderr();
-    let bufwtr = BufferWriter::stderr(colorchoice);
-    let mut buffer = bufwtr.buffer();
-    buffer
-        .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    write!(&mut buffer, "Starting dry run. ").chain_err(|| "Failed to write dry run message")?;
-    buffer
-        .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
-    writeln!(&mut buffer, "Changes will not be saved.")
-        .chain_err(|| "Failed to write dry run message")?;
-    bufwtr
-        .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
-}
+/// A collection of manifests.
+struct Manifests(Vec<(LocalManifest, cargo_metadata::Package)>);
 
 impl Manifests {
     /// Get all manifests in the workspace.
@@ -403,11 +450,6 @@ struct UpgradeMetadata {
 #[derive(Default, Clone, Debug)]
 struct DesiredUpgrades(BTreeMap<Dependency, UpgradeMetadata>);
 
-/// The complete specification of the upgrades that will be performed. Map of the dependency names
-/// to the new versions.
-#[derive(Default, Clone, Debug)]
-struct ActualUpgrades(BTreeMap<Dependency, String>);
-
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
     /// dependencies will get that version.
@@ -452,93 +494,51 @@ impl DesiredUpgrades {
     }
 }
 
-/// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
-/// messages.
-fn process(args: Args) -> Result<()> {
-    let Args {
-        dependency,
-        manifest_path,
-        pkgid,
-        all,
-        allow_prerelease,
-        dry_run,
-        skip_compatible,
-        to_lockfile,
-        workspace,
-        exclude,
-        ..
-    } = args;
+/// The complete specification of the upgrades that will be performed. Map of the dependency names
+/// to the new versions.
+#[derive(Default, Clone, Debug)]
+struct ActualUpgrades(BTreeMap<Dependency, String>);
 
-    if all {
-        deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
-    }
-
-    let all = workspace || all;
-
-    if !args.offline && !to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(&find(&manifest_path)?, None)?;
-        update_registry_index(&url, false)?;
-    }
-
-    let manifests = if all {
-        Manifests::get_all(&manifest_path)
-    } else if let Some(ref pkgid) = pkgid {
-        Manifests::get_pkgid(manifest_path.as_deref(), pkgid)
-    } else {
-        Manifests::get_local_one(&manifest_path)
-    }?;
-
-    if to_lockfile {
-        manifests.sync_to_lockfile(dry_run, skip_compatible)
-    } else {
-        let existing_dependencies = manifests.get_dependencies(dependency, exclude)?;
-
-        // Update indices for any alternative registries, unless
-        // we're offline.
-        if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
-            for registry_url in existing_dependencies
-                .0
-                .values()
-                .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
-                .collect::<BTreeSet<_>>()
-            {
-                update_registry_index(
-                    &Url::parse(registry_url).map_err(|_| {
-                        ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                    })?,
-                    false,
-                )?;
-            }
-        }
-
-        let upgraded_dependencies =
-            existing_dependencies.get_upgraded(allow_prerelease, &find(&manifest_path)?)?;
-
-        manifests.upgrade(&upgraded_dependencies, dry_run, skip_compatible)
+/// Helper function to check whether a `cargo_metadata::Dependency` is a version dependency.
+fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
+    match dependency.source {
+        // This is the criterion cargo uses (in `SourceId::from_url`) to decide whether a
+        // dependency has the 'registry' kind.
+        Some(ref s) => s.split_once('+').map(|(x, _)| x) == Some("registry"),
+        _ => false,
     }
 }
 
-fn main() {
-    let args: Command = Command::parse();
-    let Command::Upgrade(args) = args;
-
-    if let Err(err) = process(args) {
-        eprintln!("Command failed due to unhandled error: {}\n", err);
-
-        for e in err.iter().skip(1) {
-            eprintln!("Caused by: {}", e);
-        }
-
-        if let Some(backtrace) = err.backtrace() {
-            eprintln!("Backtrace: {:?}", backtrace);
-        }
-
-        process::exit(1);
-    }
+fn deprecated_message(message: &str) -> Result<()> {
+    let colorchoice = colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
+    let mut buffer = bufwtr.buffer();
+    buffer
+        .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
+        .chain_err(|| "Failed to set output colour")?;
+    writeln!(&mut buffer, "{}", message).chain_err(|| "Failed to write deprecated message")?;
+    buffer
+        .set_color(&ColorSpec::new())
+        .chain_err(|| "Failed to clear output colour")?;
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print deprecated message")
 }
 
-#[test]
-fn verify_app() {
-    use clap::IntoApp;
-    Command::into_app().debug_assert()
+fn dry_run_message() -> Result<()> {
+    let colorchoice = colorize_stderr();
+    let bufwtr = BufferWriter::stderr(colorchoice);
+    let mut buffer = bufwtr.buffer();
+    buffer
+        .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
+        .chain_err(|| "Failed to set output colour")?;
+    write!(&mut buffer, "Starting dry run. ").chain_err(|| "Failed to write dry run message")?;
+    buffer
+        .set_color(&ColorSpec::new())
+        .chain_err(|| "Failed to clear output colour")?;
+    writeln!(&mut buffer, "Changes will not be saved.")
+        .chain_err(|| "Failed to write dry run message")?;
+    bufwtr
+        .print(&buffer)
+        .chain_err(|| "Failed to print dry run message")
 }
