@@ -60,7 +60,7 @@ pub struct Args {
     ///
     /// Alternatively, you can specify features for a dependency by following it with a
     /// `+<FEATURE>`.
-    #[clap(long)]
+    #[clap(short = 'F', long)]
     pub features: Option<Vec<String>>,
 
     /// Mark the dependency as optional
