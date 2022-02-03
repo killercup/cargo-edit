@@ -363,7 +363,34 @@ impl Args {
         manifest: &LocalManifest,
         dep_key: &str,
     ) -> Option<Dependency> {
-        manifest.get_dependency(&self.get_section(), dep_key).ok()
+        let mut possible: Vec<_> = manifest
+            .get_dependency_versions(dep_key)
+            .filter_map(|(path, dep)| dep.ok().map(|dep| (path, dep)))
+            .collect();
+        if possible.is_empty() {
+            return None;
+        }
+
+        // Provide the existing dependency for the target table
+        //
+        // If it doesn't exist but exists in another table, let's use that as most likely users
+        // want to use the same version across all tables unless they are renaming.
+        let target_section = self.get_section();
+        possible.sort_by_key(|(path, _)| {
+            if path == &target_section {
+                4
+            } else {
+                match path[0].as_str() {
+                    "dependencies" => 3,
+                    "target" => 2,
+                    "build-dependencies" => 1,
+                    "dev-dependencies" => 0,
+                    other => unreachable!("Unknown dependency section: {}", other),
+                }
+            }
+        });
+        let (_, dep) = possible.pop().expect("checked for empty earlier");
+        Some(dep)
     }
 
     fn populate_dependency(&self, mut dependency: Dependency) -> Dependency {

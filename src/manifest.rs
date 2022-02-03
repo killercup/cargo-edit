@@ -271,7 +271,7 @@ impl LocalManifest {
         self.write()
     }
 
-    /// Lookup a depednency
+    /// Lookup a dependency
     pub fn get_dependency(&self, table_path: &[String], dep_key: &str) -> Result<Dependency> {
         let crate_root = self.path.parent().expect("manifest path is absolute");
         let table = self.get_table(table_path)?;
@@ -284,6 +284,32 @@ impl LocalManifest {
         Dependency::from_toml(crate_root, dep_key, dep_item).ok_or_else(|| {
             format!("Invalid dependency {}.{}", table_path.join("."), dep_key).into()
         })
+    }
+
+    /// Lookup a dependency
+    pub fn get_dependency_versions<'s>(
+        &'s self,
+        dep_key: &'s str,
+    ) -> impl Iterator<Item = (Vec<String>, Result<Dependency>)> + 's {
+        let crate_root = self.path.parent().expect("manifest path is absolute");
+        self.get_sections()
+            .into_iter()
+            .filter_map(move |(table_path, table)| {
+                let mut table = table.into_table().ok()?;
+                let dep_item = table.remove(dep_key)?;
+                Some((table_path, dep_item))
+            })
+            .map(move |(table_path, dep_item)| {
+                let dep = Dependency::from_toml(crate_root, dep_key, &dep_item);
+                match dep {
+                    Some(dep) => (table_path, Ok(dep)),
+                    None => {
+                        let message =
+                            format!("Invalid dependency {}.{}", table_path.join("."), dep_key);
+                        (table_path, Err(message.into()))
+                    }
+                }
+            })
     }
 
     /// Add entry to a Cargo.toml.
