@@ -24,7 +24,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
-use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
+use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use url::Url;
 
 mod errors {
@@ -190,7 +190,7 @@ fn process(args: Args) -> Result<()> {
     let manifests = args.resolve_targets()?;
 
     if args.to_lockfile {
-        sync_to_lockfile(manifests, args.dry_run, args.skip_compatible)
+        sync_to_lockfile(manifests, args.dry_run, args.skip_compatible)?;
     } else {
         let existing_dependencies = get_dependencies(&manifests, args.dependency, args.exclude)?;
 
@@ -220,8 +220,14 @@ fn process(args: Args) -> Result<()> {
             &upgraded_dependencies,
             args.dry_run,
             args.skip_compatible,
-        )
+        )?;
     }
+
+    if args.dry_run {
+        dry_run_message()?;
+    }
+
+    Ok(())
 }
 
 /// Get the combined set of dependencies to upgrade. If the user has specified
@@ -295,10 +301,6 @@ fn upgrade(
     dry_run: bool,
     skip_compatible: bool,
 ) -> Result<()> {
-    if dry_run {
-        dry_run_message()?;
-    }
-
     for (mut manifest, package) in targets {
         println!("{}:", package.name);
 
@@ -339,10 +341,6 @@ fn sync_to_lockfile(
         .into_iter()
         .filter(|p| p.source.is_some()) // Source is none for local packages
         .collect::<Vec<_>>();
-
-    if dry_run {
-        dry_run_message()?;
-    }
 
     for (mut manifest, package) in targets {
         println!("{}:", package.name);
@@ -514,34 +512,28 @@ fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
 
 fn deprecated_message(message: &str) -> Result<()> {
     let colorchoice = colorize_stderr();
-    let bufwtr = BufferWriter::stderr(colorchoice);
-    let mut buffer = bufwtr.buffer();
-    buffer
+    let mut output = StandardStream::stderr(colorchoice);
+    output
         .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
         .chain_err(|| "Failed to set output colour")?;
-    writeln!(&mut buffer, "{}", message).chain_err(|| "Failed to write deprecated message")?;
-    buffer
+    writeln!(output, "{}", message).chain_err(|| "Failed to write deprecated message")?;
+    output
         .set_color(&ColorSpec::new())
         .chain_err(|| "Failed to clear output colour")?;
-    bufwtr
-        .print(&buffer)
-        .chain_err(|| "Failed to print deprecated message")
+    Ok(())
 }
 
 fn dry_run_message() -> Result<()> {
     let colorchoice = colorize_stderr();
-    let bufwtr = BufferWriter::stderr(colorchoice);
-    let mut buffer = bufwtr.buffer();
-    buffer
-        .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
+    let mut output = StandardStream::stderr(colorchoice);
+    output
+        .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))
         .chain_err(|| "Failed to set output colour")?;
-    write!(&mut buffer, "Starting dry run. ").chain_err(|| "Failed to write dry run message")?;
-    buffer
+    write!(output, "warning").chain_err(|| "Failed to write dry run message")?;
+    output
         .set_color(&ColorSpec::new())
         .chain_err(|| "Failed to clear output colour")?;
-    writeln!(&mut buffer, "Changes will not be saved.")
+    writeln!(output, ": aborting upgrade due to dry run")
         .chain_err(|| "Failed to write dry run message")?;
-    bufwtr
-        .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
+    Ok(())
 }
