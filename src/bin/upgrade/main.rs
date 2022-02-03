@@ -191,37 +191,50 @@ fn process(args: Args) -> Result<()> {
 
     if args.to_lockfile {
         let locked = load_lockfile(&manifests)?;
-        sync_to_lockfile(manifests, &locked, args.dry_run, args.skip_compatible)?;
-    } else {
-        let existing_dependencies = get_dependencies(&manifests, args.dependency, args.exclude)?;
+        for (mut manifest, package) in manifests {
+            let upgrades = get_locked_dependencies(&package, &locked)?;
 
-        // Update indices for any alternative registries, unless
-        // we're offline.
-        if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
-            for registry_url in existing_dependencies
-                .0
-                .values()
-                .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
-                .collect::<BTreeSet<_>>()
-            {
-                update_registry_index(
-                    &Url::parse(registry_url).map_err(|_| {
-                        ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                    })?,
-                    false,
-                )?;
+            println!("{}:", package.name);
+            for upgrade in upgrades {
+                manifest.upgrade(&upgrade, args.dry_run, args.skip_compatible)?;
             }
         }
+    } else {
+        let mut updated_registries = BTreeSet::new();
+        for (manifest, package) in manifests {
+            let existing_dependencies =
+                get_dependencies(&package, &args.dependency, &args.exclude)?;
 
-        let upgraded_dependencies = existing_dependencies
-            .get_upgraded(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?;
+            // Update indices for any alternative registries, unless
+            // we're offline.
+            if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
+                for registry_url in existing_dependencies
+                    .0
+                    .values()
+                    .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
+                {
+                    if updated_registries.insert(registry_url.to_owned()) {
+                        update_registry_index(
+                            &Url::parse(registry_url).map_err(|_| {
+                                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
+                            })?,
+                            false,
+                        )?;
+                    }
+                }
+            }
 
-        upgrade(
-            manifests,
-            &upgraded_dependencies,
-            args.dry_run,
-            args.skip_compatible,
-        )?;
+            let upgraded_dependencies = existing_dependencies
+                .get_upgraded(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?;
+
+            upgrade(
+                manifest,
+                package,
+                &upgraded_dependencies,
+                args.dry_run,
+                args.skip_compatible,
+            )?;
+        }
     }
 
     if args.dry_run {
@@ -231,12 +244,40 @@ fn process(args: Args) -> Result<()> {
     Ok(())
 }
 
+fn get_locked_dependencies(
+    package: &cargo_metadata::Package,
+    locked: &[cargo_metadata::Package],
+) -> Result<Vec<Dependency>> {
+    let mut deps = Vec::new();
+    // Upgrade the manifests one at a time, as multiple manifests may
+    // request the same dependency at differing versions.
+    for (name, version) in package
+        .dependencies
+        .clone()
+        .into_iter()
+        .filter(is_version_dep)
+        .filter_map(|d| {
+            for p in locked {
+                // The requested dependency may be present in the lock file with different versions,
+                // but only one will be semver-compatible with the requested version.
+                if d.name == p.name && d.req.matches(&p.version) {
+                    return Some((d.name, p.version.to_string()));
+                }
+            }
+            None
+        })
+    {
+        deps.push(Dependency::new(&name).set_version(&version));
+    }
+    Ok(deps)
+}
+
 /// Get the combined set of dependencies to upgrade. If the user has specified
 /// per-dependency desired versions, extract those here.
 fn get_dependencies(
-    targets: &[(LocalManifest, cargo_metadata::Package)],
-    only_update: Vec<String>,
-    exclude: Vec<String>,
+    package: &cargo_metadata::Package,
+    only_update: &[String],
+    exclude: &[String],
 ) -> Result<DesiredUpgrades> {
     // Map the names of user-specified dependencies to the (optionally) requested version.
     let selected_dependencies = only_update
@@ -248,9 +289,10 @@ fn get_dependencies(
         .collect::<Result<BTreeMap<_, _>>>()?;
 
     let mut upgrades = DesiredUpgrades::default();
-    for dependency in targets
-        .iter()
-        .flat_map(|&(_, ref package)| package.dependencies.clone())
+    for dependency in package
+        .dependencies
+        .clone()
+        .into_iter()
         .filter(is_version_dep)
         .filter(|dependency| !exclude.contains(&dependency.name))
         // Exclude renamed dependecies aswell
@@ -297,21 +339,20 @@ fn get_dependencies(
 
 /// Upgrade the manifests on disk following the previously-determined upgrade schema.
 fn upgrade(
-    targets: Vec<(LocalManifest, cargo_metadata::Package)>,
+    mut manifest: LocalManifest,
+    package: cargo_metadata::Package,
     upgraded_deps: &ActualUpgrades,
     dry_run: bool,
     skip_compatible: bool,
 ) -> Result<()> {
-    for (mut manifest, package) in targets {
-        println!("{}:", package.name);
+    println!("{}:", package.name);
 
-        for (dep, version) in &upgraded_deps.0 {
-            let mut new_dep = Dependency::new(&dep.name).set_version(version);
-            if let Some(rename) = dep.rename() {
-                new_dep = new_dep.set_rename(rename);
-            }
-            manifest.upgrade(&new_dep, dry_run, skip_compatible)?;
+    for (dep, version) in &upgraded_deps.0 {
+        let mut new_dep = Dependency::new(&dep.name).set_version(version);
+        if let Some(rename) = dep.rename() {
+            new_dep = new_dep.set_rename(rename);
         }
+        manifest.upgrade(&new_dep, dry_run, skip_compatible)?;
     }
 
     Ok(())
@@ -340,45 +381,6 @@ fn load_lockfile(
         .collect::<Vec<_>>();
 
     Ok(locked)
-}
-
-/// Update dependencies in Cargo.toml file(s) to match the corresponding
-/// version in Cargo.lock.
-fn sync_to_lockfile(
-    targets: Vec<(LocalManifest, cargo_metadata::Package)>,
-    locked: &[cargo_metadata::Package],
-    dry_run: bool,
-    skip_compatible: bool,
-) -> Result<()> {
-    for (mut manifest, package) in targets {
-        println!("{}:", package.name);
-
-        // Upgrade the manifests one at a time, as multiple manifests may
-        // request the same dependency at differing versions.
-        for (name, version) in package
-            .dependencies
-            .clone()
-            .into_iter()
-            .filter(is_version_dep)
-            .filter_map(|d| {
-                for p in locked {
-                    // The requested dependency may be present in the lock file with different versions,
-                    // but only one will be semver-compatible with the requested version.
-                    if d.name == p.name && d.req.matches(&p.version) {
-                        return Some((d.name, p.version.to_string()));
-                    }
-                }
-                None
-            })
-        {
-            manifest.upgrade(
-                &Dependency::new(&name).set_version(&version),
-                dry_run,
-                skip_compatible,
-            )?;
-        }
-    }
-    Ok(())
 }
 
 // Some metadata about the dependency
