@@ -49,14 +49,12 @@ impl Dependency {
 
     /// Remove the existing version requirement
     pub fn clear_version(mut self) -> Dependency {
-        match &mut self.source {
-            DependencySource::Version {
-                version, registry, ..
-            } => {
-                *version = None;
-                *registry = None;
-            }
-            _ => {}
+        if let DependencySource::Version {
+            version, registry, ..
+        } = &mut self.source
+        {
+            *version = None;
+            *registry = None;
         }
         self
     }

@@ -403,10 +403,8 @@ impl Args {
         let (key, mut dep) = possible.pop().expect("checked for empty earlier");
         // dev-dependencies do not need the version populated when path is set though we
         // should preserve it if the user chose to populate it.
-        if self.dev && key != Key::Existing {
-            if dep.path().is_some() {
-                dep = dep.clear_version();
-            }
+        if dep.path().is_some() && self.dev && key != Key::Existing {
+            dep = dep.clear_version();
         }
         Some(dep)
     }
