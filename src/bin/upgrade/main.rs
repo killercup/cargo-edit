@@ -34,6 +34,7 @@ mod errors {
         }
         foreign_links {
             CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
+            Semver(::semver::Error)#[doc = "An error from the semver crate"];
         }
     }
 }
@@ -191,13 +192,19 @@ fn process(args: Args) -> Result<()> {
 
     if args.to_lockfile {
         let locked = load_lockfile(&manifests)?;
-        for (mut manifest, package) in manifests {
-            let upgrades = get_locked_dependencies(&package, &locked)?;
+        for (manifest, package) in manifests {
+            let existing_dependencies =
+                get_dependencies(&package, &args.dependency, &args.exclude)?;
 
-            println!("{}:", package.name);
-            for upgrade in upgrades {
-                manifest.upgrade(&upgrade, args.dry_run, args.skip_compatible)?;
-            }
+            let upgraded_dependencies = existing_dependencies.to_lockfile(&locked)?;
+
+            upgrade(
+                manifest,
+                package,
+                &upgraded_dependencies,
+                args.dry_run,
+                args.skip_compatible,
+            )?;
         }
     } else {
         let mut updated_registries = BTreeSet::new();
@@ -225,7 +232,7 @@ fn process(args: Args) -> Result<()> {
             }
 
             let upgraded_dependencies = existing_dependencies
-                .get_upgraded(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?;
+                .to_latest(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?;
 
             upgrade(
                 manifest,
@@ -242,34 +249,6 @@ fn process(args: Args) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn get_locked_dependencies(
-    package: &cargo_metadata::Package,
-    locked: &[cargo_metadata::Package],
-) -> Result<Vec<Dependency>> {
-    let mut deps = Vec::new();
-    // Upgrade the manifests one at a time, as multiple manifests may
-    // request the same dependency at differing versions.
-    for (name, version) in package
-        .dependencies
-        .clone()
-        .into_iter()
-        .filter(is_version_dep)
-        .filter_map(|d| {
-            for p in locked {
-                // The requested dependency may be present in the lock file with different versions,
-                // but only one will be semver-compatible with the requested version.
-                if d.name == p.name && d.req.matches(&p.version) {
-                    return Some((d.name, p.version.to_string()));
-                }
-            }
-            None
-        })
-    {
-        deps.push(Dependency::new(&name).set_version(&version));
-    }
-    Ok(deps)
 }
 
 /// Get the combined set of dependencies to upgrade. If the user has specified
@@ -295,7 +274,7 @@ fn get_dependencies(
         .into_iter()
         .filter(is_version_dep)
         .filter(|dependency| !exclude.contains(&dependency.name))
-        // Exclude renamed dependecies aswell
+        // Exclude renamed dependencies as well
         .filter(|dependency| {
             dependency
                 .rename
@@ -316,6 +295,7 @@ fn get_dependencies(
                 UpgradeMetadata {
                     registry: dependency.registry,
                     version: None,
+                    old_version: dependency.req.clone(),
                     is_prerelease,
                 },
             );
@@ -328,6 +308,7 @@ fn get_dependencies(
                     UpgradeMetadata {
                         registry: dependency.registry,
                         version: version.clone(),
+                        old_version: dependency.req.clone(),
                         is_prerelease,
                     },
                 );
@@ -391,6 +372,7 @@ struct UpgradeMetadata {
     // `Some` if the user has specified an explicit
     // version to upgrade to.
     version: Option<String>,
+    old_version: semver::VersionReq,
     is_prerelease: bool,
 }
 
@@ -402,13 +384,14 @@ struct DesiredUpgrades(BTreeMap<Dependency, UpgradeMetadata>);
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
     /// dependencies will get that version.
-    fn get_upgraded(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
+    fn to_latest(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
         let mut upgrades = ActualUpgrades::default();
         for (
             dep,
             UpgradeMetadata {
                 registry,
                 version,
+                old_version: _,
                 is_prerelease,
             },
         ) in self.0.into_iter()
@@ -438,6 +421,35 @@ impl DesiredUpgrades {
                 .expect("Invalid dependency type")
                 .to_string();
             upgrades.0.insert(dep, version);
+        }
+        Ok(upgrades)
+    }
+
+    fn to_lockfile(self, locked: &[cargo_metadata::Package]) -> Result<ActualUpgrades> {
+        let mut upgrades = ActualUpgrades::default();
+        for (
+            dep,
+            UpgradeMetadata {
+                registry: _,
+                version,
+                old_version,
+                is_prerelease: _,
+            },
+        ) in self.0.into_iter()
+        {
+            if let Some(v) = version {
+                upgrades.0.insert(dep, v);
+                continue;
+            }
+
+            for p in locked {
+                // The requested dependency may be present in the lock file with different versions,
+                // but only one will be semver-compatible with the requested version.
+                if dep.name == p.name && old_version.matches(&p.version) {
+                    upgrades.0.insert(dep, p.version.to_string());
+                    break;
+                }
+            }
         }
         Ok(upgrades)
     }
