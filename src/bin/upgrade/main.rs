@@ -189,29 +189,19 @@ fn process(args: Args) -> Result<()> {
     }
 
     let manifests = args.resolve_targets()?;
-
-    if args.to_lockfile {
-        let locked = load_lockfile(&manifests)?;
-        for (manifest, package) in manifests {
-            let existing_dependencies =
-                get_dependencies(&package, &args.dependency, &args.exclude)?;
-
-            let upgraded_dependencies = existing_dependencies.to_lockfile(&locked)?;
-
-            upgrade(
-                manifest,
-                package,
-                &upgraded_dependencies,
-                args.dry_run,
-                args.skip_compatible,
-            )?;
-        }
+    let locked = if std::env::var("CARGO_IS_TEST").is_err() {
+        load_lockfile(&manifests)?
     } else {
-        let mut updated_registries = BTreeSet::new();
-        for (manifest, package) in manifests {
-            let existing_dependencies =
-                get_dependencies(&package, &args.dependency, &args.exclude)?;
+        load_lockfile(&manifests).unwrap_or_default()
+    };
 
+    let mut updated_registries = BTreeSet::new();
+    for (manifest, package) in manifests {
+        let existing_dependencies = get_dependencies(&package, &args.dependency, &args.exclude)?;
+
+        let upgraded_dependencies = if args.to_lockfile {
+            existing_dependencies.to_lockfile(&locked)?
+        } else {
             // Update indices for any alternative registries, unless
             // we're offline.
             if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
@@ -231,17 +221,17 @@ fn process(args: Args) -> Result<()> {
                 }
             }
 
-            let upgraded_dependencies = existing_dependencies
-                .to_latest(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?;
+            existing_dependencies
+                .to_latest(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?
+        };
 
-            upgrade(
-                manifest,
-                package,
-                &upgraded_dependencies,
-                args.dry_run,
-                args.skip_compatible,
-            )?;
-        }
+        upgrade(
+            manifest,
+            package,
+            &upgraded_dependencies,
+            args.dry_run,
+            args.skip_compatible,
+        )?;
     }
 
     if args.dry_run {
