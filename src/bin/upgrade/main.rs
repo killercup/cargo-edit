@@ -159,7 +159,7 @@ impl Args {
     fn resolve_targets(&self) -> Result<Vec<(LocalManifest, cargo_metadata::Package)>> {
         if self.workspace() {
             resolve_all(self.manifest_path.as_deref())
-        } else if let Some(ref pkgid) = self.pkgid.as_deref() {
+        } else if let Some(pkgid) = self.pkgid.as_deref() {
             resolve_pkgid(self.manifest_path.as_deref(), pkgid)
         } else {
             resolve_local_one(self.manifest_path.as_deref())
@@ -200,7 +200,7 @@ fn process(args: Args) -> Result<()> {
         let existing_dependencies = get_dependencies(&package, &args.dependency, &args.exclude)?;
 
         let upgraded_dependencies = if args.to_lockfile {
-            existing_dependencies.to_lockfile(&locked)?
+            existing_dependencies.into_lockfile(&locked)?
         } else {
             // Update indices for any alternative registries, unless
             // we're offline.
@@ -222,7 +222,7 @@ fn process(args: Args) -> Result<()> {
             }
 
             existing_dependencies
-                .to_latest(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?
+                .into_latest(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?
         };
 
         upgrade(
@@ -250,8 +250,8 @@ fn get_dependencies(
 ) -> Result<DesiredUpgrades> {
     // Map the names of user-specified dependencies to the (optionally) requested version.
     let selected_dependencies = only_update
-        .into_iter()
-        .map(|name| match CrateSpec::resolve(&name)? {
+        .iter()
+        .map(|name| match CrateSpec::resolve(name)? {
             CrateSpec::PkgId { name, version_req } => Ok((name, version_req)),
             CrateSpec::Path(path) => Err(format!("Invalid name: {}", path.display()).into()),
         })
@@ -374,7 +374,7 @@ struct DesiredUpgrades(BTreeMap<Dependency, UpgradeMetadata>);
 impl DesiredUpgrades {
     /// Transform the dependencies into their upgraded forms. If a version is specified, all
     /// dependencies will get that version.
-    fn to_latest(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
+    fn into_latest(self, allow_prerelease: bool, manifest_path: &Path) -> Result<ActualUpgrades> {
         let mut upgrades = ActualUpgrades::default();
         for (
             dep,
@@ -415,7 +415,7 @@ impl DesiredUpgrades {
         Ok(upgrades)
     }
 
-    fn to_lockfile(self, locked: &[cargo_metadata::Package]) -> Result<ActualUpgrades> {
+    fn into_lockfile(self, locked: &[cargo_metadata::Package]) -> Result<ActualUpgrades> {
         let mut upgrades = ActualUpgrades::default();
         for (
             dep,
