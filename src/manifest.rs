@@ -286,21 +286,47 @@ impl LocalManifest {
         })
     }
 
+    /// Returns all dependencies
+    pub fn get_dependencies(&self) -> impl Iterator<Item = (Vec<String>, Result<Dependency>)> + '_ {
+        self.filter_dependencies(|_| true)
+    }
+
     /// Lookup a dependency
     pub fn get_dependency_versions<'s>(
         &'s self,
         dep_key: &'s str,
     ) -> impl Iterator<Item = (Vec<String>, Result<Dependency>)> + 's {
+        self.filter_dependencies(move |key| key == dep_key)
+    }
+
+    fn filter_dependencies<'s, P>(
+        &'s self,
+        mut predicate: P,
+    ) -> impl Iterator<Item = (Vec<String>, Result<Dependency>)> + 's
+    where
+        P: FnMut(&str) -> bool + 's,
+    {
         let crate_root = self.path.parent().expect("manifest path is absolute");
         self.get_sections()
             .into_iter()
             .filter_map(move |(table_path, table)| {
-                let mut table = table.into_table().ok()?;
-                let dep_item = table.remove(dep_key)?;
-                Some((table_path, dep_item))
+                let table = table.into_table().ok()?;
+                Some(
+                    table
+                        .into_iter()
+                        .filter_map(|(key, item)| {
+                            if predicate(&key) {
+                                Some((table_path.clone(), key, item))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>(),
+                )
             })
-            .map(move |(table_path, dep_item)| {
-                let dep = Dependency::from_toml(crate_root, dep_key, &dep_item);
+            .flatten()
+            .map(move |(table_path, dep_key, dep_item)| {
+                let dep = Dependency::from_toml(crate_root, &dep_key, &dep_item);
                 match dep {
                     Some(dep) => (table_path, Ok(dep)),
                     None => {
