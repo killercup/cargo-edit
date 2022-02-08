@@ -170,6 +170,19 @@ impl Dependency {
         }
     }
 
+    /// Get registry of the dependency
+    pub fn registry(&self) -> Option<&str> {
+        if let DependencySource::Version {
+            registry: Some(ref registry),
+            ..
+        } = self.source
+        {
+            Some(registry)
+        } else {
+            None
+        }
+    }
+
     /// Get the git repo of the dependency
     pub fn git(&self) -> Option<&str> {
         if let DependencySource::Git { repo, .. } = &self.source {

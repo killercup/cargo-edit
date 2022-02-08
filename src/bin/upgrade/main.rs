@@ -197,7 +197,7 @@ fn process(args: Args) -> Result<()> {
 
     let mut updated_registries = BTreeSet::new();
     for (manifest, package) in manifests {
-        let existing_dependencies = get_dependencies(&package, &args.dependency, &args.exclude)?;
+        let existing_dependencies = get_dependencies(&manifest, &args.dependency, &args.exclude)?;
 
         let upgraded_dependencies = if args.to_lockfile {
             existing_dependencies.into_lockfile(&locked)?
@@ -211,12 +211,7 @@ fn process(args: Args) -> Result<()> {
                     .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
                 {
                     if updated_registries.insert(registry_url.to_owned()) {
-                        update_registry_index(
-                            &Url::parse(registry_url).map_err(|_| {
-                                ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                            })?,
-                            false,
-                        )?;
+                        update_registry_index(registry_url, false)?;
                     }
                 }
             }
@@ -244,7 +239,7 @@ fn process(args: Args) -> Result<()> {
 /// Get the combined set of dependencies to upgrade. If the user has specified
 /// per-dependency desired versions, extract those here.
 fn get_dependencies(
-    package: &cargo_metadata::Package,
+    manifest: &LocalManifest,
     only_update: &[String],
     exclude: &[String],
 ) -> Result<DesiredUpgrades> {
@@ -258,34 +253,40 @@ fn get_dependencies(
         .collect::<Result<BTreeMap<_, _>>>()?;
 
     let mut upgrades = DesiredUpgrades::default();
-    for dependency in package
-        .dependencies
-        .clone()
+    for (dependency, old_version) in manifest
+        .get_dependencies()
+        .map(|(_, result)| result.map_err(Error::from))
+        .collect::<Result<Vec<_>>>()?
         .into_iter()
-        .filter(is_version_dep)
-        .filter(|dependency| !exclude.contains(&dependency.name))
-        // Exclude renamed dependencies as well
-        .filter(|dependency| {
+        .filter(|dependency| dependency.path().is_none())
+        .filter_map(|dependency| {
             dependency
-                .rename
-                .as_ref()
-                .map_or(true, |rename| !exclude.contains(rename))
+                .version()
+                .map(ToOwned::to_owned)
+                .map(|version| (dependency, version))
+        })
+        .filter(|(dependency, _)| !exclude.contains(&dependency.name))
+        // Exclude renamed dependencies as well
+        .filter(|(dependency, _)| {
+            dependency
+                .rename()
+                .map_or(true, |rename| !exclude.iter().any(|s| s == rename))
         })
     {
-        let is_prerelease = dependency.req.to_string().contains('-');
+        let registry = dependency
+            .registry()
+            .map(|registry| registry_url(&manifest.path, Some(registry)))
+            .transpose()?;
+        let is_prerelease = dependency
+            .version()
+            .map_or(false, |version| version.contains('-'));
         if selected_dependencies.is_empty() {
-            // User hasn't asked for any specific dependencies to be upgraded,
-            // so upgrade all the dependencies.
-            let mut dep = Dependency::new(&dependency.name);
-            if let Some(rename) = dependency.rename {
-                dep = dep.set_rename(&rename);
-            }
             upgrades.0.insert(
-                dep,
+                dependency,
                 UpgradeMetadata {
-                    registry: dependency.registry,
+                    registry,
                     version: None,
-                    old_version: dependency.req.clone(),
+                    old_version,
                     is_prerelease,
                 },
             );
@@ -294,11 +295,11 @@ fn get_dependencies(
             // was specified, populating the registry from the lockfile metadata.
             if let Some(version) = selected_dependencies.get(&dependency.name) {
                 upgrades.0.insert(
-                    Dependency::new(&dependency.name),
+                    dependency,
                     UpgradeMetadata {
-                        registry: dependency.registry,
+                        registry,
                         version: version.clone(),
-                        old_version: dependency.req.clone(),
+                        old_version,
                         is_prerelease,
                     },
                 );
@@ -358,11 +359,11 @@ fn load_lockfile(
 // we're trying to upgrade.
 #[derive(Clone, Debug)]
 struct UpgradeMetadata {
-    registry: Option<String>,
+    registry: Option<Url>,
     // `Some` if the user has specified an explicit
     // version to upgrade to.
     version: Option<String>,
-    old_version: semver::VersionReq,
+    old_version: String,
     is_prerelease: bool,
 }
 
@@ -391,19 +392,13 @@ impl DesiredUpgrades {
                 continue;
             }
 
-            let registry_url = match registry {
-                Some(x) => Some(Url::parse(&x).map_err(|_| {
-                    ErrorKind::CargoEditLib(::cargo_edit::ErrorKind::InvalidCargoConfig)
-                })?),
-                None => None,
-            };
             let allow_prerelease = allow_prerelease || is_prerelease;
 
             let latest = get_latest_dependency(
                 &dep.name,
                 allow_prerelease,
                 manifest_path,
-                registry_url.as_ref(),
+                registry.as_ref(),
             )
             .chain_err(|| "Failed to get new version")?;
             let version = latest
@@ -435,7 +430,8 @@ impl DesiredUpgrades {
             for p in locked {
                 // The requested dependency may be present in the lock file with different versions,
                 // but only one will be semver-compatible with the requested version.
-                if dep.name == p.name && old_version.matches(&p.version) {
+                let req = semver::VersionReq::parse(&old_version)?;
+                if dep.name == p.name && req.matches(&p.version) {
                     upgrades.0.insert(dep, p.version.to_string());
                     break;
                 }
@@ -510,16 +506,6 @@ fn resolve_local_one(
         })?;
 
     Ok(vec![(manifest, package.to_owned())])
-}
-
-/// Helper function to check whether a `cargo_metadata::Dependency` is a version dependency.
-fn is_version_dep(dependency: &cargo_metadata::Dependency) -> bool {
-    match dependency.source {
-        // This is the criterion cargo uses (in `SourceId::from_url`) to decide whether a
-        // dependency has the 'registry' kind.
-        Some(ref s) => s.split_once('+').map(|(x, _)| x) == Some("registry"),
-        _ => false,
-    }
 }
 
 fn deprecated_message(message: &str) -> Result<()> {
