@@ -356,29 +356,21 @@ where
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
-    let mut req = ureq::get(url);
-    req.timeout(get_default_timeout());
+    let mut agent = ureq::AgentBuilder::new().timeout(get_default_timeout());
     if let Some(proxy) = env_proxy::for_url_str(url)
         .to_url()
         .and_then(|url| ureq::Proxy::new(url).ok())
     {
-        req.set_proxy(proxy);
+        agent = agent.proxy(proxy);
     }
+    let req = agent.build().get(url);
     let res = req.call();
-    if res.error() {
-        return Err(format!(
-            "HTTP request `{}` failed: {}",
-            url,
-            res.synthetic_error()
-                .as_ref()
-                .map(|x| x.to_string())
-                .unwrap_or_else(|| res.status().to_string())
-        )
-        .into());
+    match res {
+        Ok(res) => res
+            .into_string()
+            .chain_err(|| "Git response not a valid `String`"),
+        Err(err) => Err(format!("HTTP request `{}` failed: {}", url, err).into()),
     }
-
-    res.into_string()
-        .chain_err(|| "Git response not a valid `String`")
 }
 
 const fn get_default_timeout() -> Duration {
