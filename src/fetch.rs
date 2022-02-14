@@ -357,6 +357,18 @@ where
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
     let mut agent = ureq::AgentBuilder::new().timeout(get_default_timeout());
+    #[cfg(not(any(
+        target_arch = "x86_64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "aarch64"
+    )))]
+    {
+        use std::sync::Arc;
+
+        let tls_connector = Arc::new(native_tls::TlsConnector::new().map_err(|e| e.to_string())?);
+        agent = agent.tls_connector(tls_connector.clone());
+    }
     if let Some(proxy) = env_proxy::for_url_str(url)
         .to_url()
         .and_then(|url| ureq::Proxy::new(url).ok())
