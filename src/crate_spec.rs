@@ -1,7 +1,7 @@
 //! Crate name parsing.
-use crate::errors::*;
-use crate::get_manifest_from_path;
-use crate::Dependency;
+use super::errors::*;
+use super::get_manifest_from_path;
+use super::Dependency;
 
 /// User-specified crate
 ///

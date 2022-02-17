@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::manifest::str_or_1_len_table;
+use super::manifest::str_or_1_len_table;
 
 /// A dependency handled by Cargo
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -566,7 +566,7 @@ enum DependencySource {
 
 #[cfg(test)]
 mod tests {
-    use crate::dependency::Dependency;
+    use super::super::dependency::Dependency;
     use std::path::Path;
 
     #[test]

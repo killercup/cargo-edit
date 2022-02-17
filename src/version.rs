@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::errors::*;
+use super::errors::*;
 
 /// Additional version functionality
 pub trait VersionExt {

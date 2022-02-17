@@ -1,4 +1,4 @@
-use crate::errors::*;
+use super::errors::*;
 use cargo_metadata::Package;
 use std::convert::TryInto;
 use std::path::Path;
