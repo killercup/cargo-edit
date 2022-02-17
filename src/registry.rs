@@ -91,7 +91,7 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> CargoResult
     let registry_url = source
         .registry
         .and_then(|x| Url::parse(&x).ok())
-        .with_context(|| invalid_cargo_config())?;
+        .with_context(invalid_cargo_config)?;
 
     Ok(registry_url)
 }
