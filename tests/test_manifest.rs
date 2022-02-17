@@ -1,5 +1,3 @@
-mod utils;
-
 #[test]
 fn invalid_manifest() {
     assert_cmd::Command::cargo_bin("cargo-add")

@@ -1,7 +1,0 @@
-[package]
-name = "foo-crate"
-version = "0.0.0"
-
-[[bin]]
-name = "foo"
-src = "."
