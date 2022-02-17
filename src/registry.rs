@@ -1,4 +1,4 @@
-use crate::errors::*;
+use super::errors::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use url::Url;

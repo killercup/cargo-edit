@@ -7,8 +7,8 @@ use std::{env, str};
 use semver::{Version, VersionReq};
 use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
 
-use crate::dependency::Dependency;
-use crate::errors::*;
+use super::dependency::Dependency;
+use super::errors::*;
 
 const MANIFEST_FILENAME: &str = "Cargo.toml";
 const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
@@ -669,7 +669,7 @@ fn print_upgrade_if_necessary(
         return Ok(());
     }
 
-    let colorchoice = crate::colorize_stderr();
+    let colorchoice = super::colorize_stderr();
     let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
@@ -694,8 +694,8 @@ fn print_upgrade_if_necessary(
 
 #[cfg(test)]
 mod tests {
+    use super::super::dependency::Dependency;
     use super::*;
-    use crate::dependency::Dependency;
 
     #[test]
     fn add_remove_dependency() {

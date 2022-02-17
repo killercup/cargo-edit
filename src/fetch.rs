@@ -1,7 +1,7 @@
-use crate::errors::*;
-use crate::registry::registry_url;
-use crate::VersionExt;
-use crate::{Dependency, LocalManifest, Manifest};
+use super::errors::*;
+use super::registry::registry_url;
+use super::VersionExt;
+use super::{Dependency, LocalManifest, Manifest};
 use regex::Regex;
 use std::env;
 use std::io::Write;
@@ -241,7 +241,7 @@ pub fn get_features_from_registry(
 
 /// update registry index for given project
 pub fn update_registry_index(registry: &Url, quiet: bool) -> CargoResult<()> {
-    let colorchoice = crate::colorize_stderr();
+    let colorchoice = super::colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
 
     let mut index = crates_index::Index::from_url(registry.as_str())?;
