@@ -7,8 +7,7 @@ stderr = """
 Could not edit `Cargo.toml`.
 
 ERROR: The table `build-dependencies` could not be found.
-Command failed due to unhandled error: The table `build-dependencies` could not be found.
-
+Error: The table `build-dependencies` could not be found.
 """
 fs.sandbox = true
 

@@ -3,9 +3,10 @@ args = ["add", "my-package@invalid version string"]
 status.code = 1
 stdout = ""
 stderr = """
-Command failed due to unhandled error: Invalid version requirement `invalid version string`
+Error: Invalid version requirement `invalid version string`
 
-Caused by: unexpected character 'i' while parsing major version number
+Caused by:
+    unexpected character 'i' while parsing major version number
 """
 fs.sandbox = true
 

@@ -11,13 +11,9 @@
     unused_qualifications
 )]
 
-#[macro_use]
-extern crate error_chain;
-
-use crate::errors::*;
 use cargo_edit::{
     colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url,
-    update_registry_index, CrateSpec, Dependency, LocalManifest,
+    update_registry_index, CargoResult, Context, CrateSpec, Dependency, LocalManifest,
 };
 use clap::Parser;
 use std::collections::{BTreeMap, BTreeSet};
@@ -27,32 +23,12 @@ use std::process;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use url::Url;
 
-mod errors {
-    error_chain! {
-        links {
-            CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
-        }
-        foreign_links {
-            CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
-            Semver(::semver::Error)#[doc = "An error from the semver crate"];
-        }
-    }
-}
-
 fn main() {
     let args: Command = Command::parse();
     let Command::Upgrade(args) = args;
 
     if let Err(err) = process(args) {
-        eprintln!("Command failed due to unhandled error: {}\n", err);
-
-        for e in err.iter().skip(1) {
-            eprintln!("Caused by: {}", e);
-        }
-
-        if let Some(backtrace) = err.backtrace() {
-            eprintln!("Backtrace: {:?}", backtrace);
-        }
+        eprintln!("Error: {:?}", err);
 
         process::exit(1);
     }
@@ -156,7 +132,7 @@ impl Args {
         self.all || self.workspace
     }
 
-    fn resolve_targets(&self) -> Result<Vec<(LocalManifest, cargo_metadata::Package)>> {
+    fn resolve_targets(&self) -> CargoResult<Vec<(LocalManifest, cargo_metadata::Package)>> {
         if self.workspace() {
             resolve_all(self.manifest_path.as_deref())
         } else if let Some(pkgid) = self.pkgid.as_deref() {
@@ -185,7 +161,7 @@ fn verify_app() {
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
-fn process(args: Args) -> Result<()> {
+fn process(args: Args) -> CargoResult<()> {
     if args.all {
         deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
@@ -253,21 +229,21 @@ fn get_dependencies(
     manifest: &LocalManifest,
     only_update: &[String],
     exclude: &[String],
-) -> Result<DesiredUpgrades> {
+) -> CargoResult<DesiredUpgrades> {
     // Map the names of user-specified dependencies to the (optionally) requested version.
     let selected_dependencies = only_update
         .iter()
         .map(|name| match CrateSpec::resolve(name)? {
             CrateSpec::PkgId { name, version_req } => Ok((name, version_req)),
-            CrateSpec::Path(path) => Err(format!("Invalid name: {}", path.display()).into()),
+            CrateSpec::Path(path) => Err(anyhow::format_err!("Invalid name: {}", path.display())),
         })
-        .collect::<Result<BTreeMap<_, _>>>()?;
+        .collect::<CargoResult<BTreeMap<_, _>>>()?;
 
     let mut upgrades = DesiredUpgrades::default();
     for (dependency, old_version) in manifest
         .get_dependencies()
-        .map(|(_, result)| result.map_err(Error::from))
-        .collect::<Result<Vec<_>>>()?
+        .map(|(_, result)| result)
+        .collect::<CargoResult<Vec<_>>>()?
         .into_iter()
         .filter(|dependency| dependency.path().is_none())
         .filter_map(|dependency| {
@@ -327,7 +303,7 @@ fn upgrade(
     upgraded_deps: &ActualUpgrades,
     dry_run: bool,
     skip_compatible: bool,
-) -> Result<()> {
+) -> CargoResult<()> {
     println!("{}:", package.name);
 
     for (dep, version) in &upgraded_deps.0 {
@@ -343,19 +319,19 @@ fn upgrade(
 
 fn load_lockfile(
     targets: &[(LocalManifest, cargo_metadata::Package)],
-) -> Result<Vec<cargo_metadata::Package>> {
+) -> CargoResult<Vec<cargo_metadata::Package>> {
     // Get locked dependencies. For workspaces with multiple Cargo.toml
     // files, there is only a single lockfile, so it suffices to get
     // metadata for any one of Cargo.toml files.
-    let (manifest, _package) = targets.get(0).ok_or(ErrorKind::CargoEditLib(
-        ::cargo_edit::ErrorKind::InvalidCargoConfig,
-    ))?;
+    let (manifest, _package) = targets
+        .get(0)
+        .ok_or(anyhow::format_err!("Invalid cargo config"))?;
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.manifest_path(manifest.path.clone());
     cmd.features(cargo_metadata::CargoOpt::AllFeatures);
     cmd.other_options(vec!["--locked".to_string()]);
 
-    let result = cmd.exec().chain_err(|| "Invalid manifest")?;
+    let result = cmd.exec().with_context(|| "Invalid manifest")?;
 
     let locked = result
         .packages
@@ -391,7 +367,7 @@ impl DesiredUpgrades {
         allow_prerelease: bool,
         manifest_path: &Path,
         preserve_precision: bool,
-    ) -> Result<ActualUpgrades> {
+    ) -> CargoResult<ActualUpgrades> {
         let mut upgrades = ActualUpgrades::default();
         for (
             dep,
@@ -416,7 +392,7 @@ impl DesiredUpgrades {
                 manifest_path,
                 registry.as_ref(),
             )
-            .chain_err(|| "Failed to get new version")?;
+            .with_context(|| "Failed to get new version")?;
             let latest_version = latest.version().expect("Invalid dependency type");
             if preserve_precision {
                 let latest_version: semver::Version = latest_version.parse()?;
@@ -436,7 +412,7 @@ impl DesiredUpgrades {
         self,
         locked: &[cargo_metadata::Package],
         preserve_precision: bool,
-    ) -> Result<ActualUpgrades> {
+    ) -> CargoResult<ActualUpgrades> {
         let mut upgrades = ActualUpgrades::default();
         for (
             dep,
@@ -484,7 +460,7 @@ struct ActualUpgrades(BTreeMap<Dependency, String>);
 /// Get all manifests in the workspace.
 fn resolve_all(
     manifest_path: Option<&Path>,
-) -> Result<Vec<(LocalManifest, cargo_metadata::Package)>> {
+) -> CargoResult<Vec<(LocalManifest, cargo_metadata::Package)>> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.no_deps();
     if let Some(path) = manifest_path {
@@ -492,7 +468,7 @@ fn resolve_all(
     }
     let result = cmd
         .exec()
-        .chain_err(|| "Failed to get workspace metadata")?;
+        .with_context(|| "Failed to get workspace metadata")?;
     result
         .packages
         .into_iter()
@@ -502,13 +478,13 @@ fn resolve_all(
                 package,
             ))
         })
-        .collect::<Result<Vec<_>>>()
+        .collect::<CargoResult<Vec<_>>>()
 }
 
 fn resolve_pkgid(
     manifest_path: Option<&Path>,
     pkgid: &str,
-) -> Result<Vec<(LocalManifest, cargo_metadata::Package)>> {
+) -> CargoResult<Vec<(LocalManifest, cargo_metadata::Package)>> {
     let package = manifest_from_pkgid(manifest_path, pkgid)?;
     let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
     Ok(vec![(manifest, package)])
@@ -518,7 +494,7 @@ fn resolve_pkgid(
 /// provided.
 fn resolve_local_one(
     manifest_path: Option<&Path>,
-) -> Result<Vec<(LocalManifest, cargo_metadata::Package)>> {
+) -> CargoResult<Vec<(LocalManifest, cargo_metadata::Package)>> {
     let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
 
     let manifest = LocalManifest::find(manifest_path)?;
@@ -528,14 +504,14 @@ fn resolve_local_one(
     if let Some(path) = manifest_path {
         cmd.manifest_path(path);
     }
-    let result = cmd.exec().chain_err(|| "Invalid manifest")?;
+    let result = cmd.exec().with_context(|| "Invalid manifest")?;
     let packages = result.packages;
     let package = packages
         .iter()
         .find(|p| p.manifest_path == resolved_manifest_path)
         // If we have successfully got metadata, but our manifest path does not correspond to a
         // package, we must have been called against a virtual manifest.
-        .chain_err(|| {
+        .with_context(|| {
             "Found virtual manifest, but this command requires running against an \
                  actual package in this workspace. Try adding `--workspace`."
         })?;
@@ -543,30 +519,30 @@ fn resolve_local_one(
     Ok(vec![(manifest, package.to_owned())])
 }
 
-fn deprecated_message(message: &str) -> Result<()> {
+fn deprecated_message(message: &str) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output
         .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    writeln!(output, "{}", message).chain_err(|| "Failed to write deprecated message")?;
+        .with_context(|| "Failed to set output colour")?;
+    writeln!(output, "{}", message).with_context(|| "Failed to write deprecated message")?;
     output
         .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
+        .with_context(|| "Failed to clear output colour")?;
     Ok(())
 }
 
-fn dry_run_message() -> Result<()> {
+fn dry_run_message() -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output
         .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    write!(output, "warning").chain_err(|| "Failed to write dry run message")?;
+        .with_context(|| "Failed to set output colour")?;
+    write!(output, "warning").with_context(|| "Failed to write dry run message")?;
     output
         .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
+        .with_context(|| "Failed to clear output colour")?;
     writeln!(output, ": aborting upgrade due to dry run")
-        .chain_err(|| "Failed to write dry run message")?;
+        .with_context(|| "Failed to write dry run message")?;
     Ok(())
 }

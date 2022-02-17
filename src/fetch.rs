@@ -25,7 +25,7 @@ pub fn get_latest_dependency(
     flag_allow_prerelease: bool,
     manifest_path: &Path,
     registry: Option<&Url>,
-) -> Result<Dependency> {
+) -> CargoResult<Dependency> {
     if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
@@ -56,7 +56,7 @@ pub fn get_latest_dependency(
     }
 
     if crate_name.is_empty() {
-        return Err(ErrorKind::EmptyCrateName.into());
+        anyhow::bail!("Found empty crate name");
     }
 
     let registry = match registry {
@@ -87,7 +87,7 @@ struct CrateVersion {
 fn fuzzy_query_registry_index(
     crate_name: impl Into<String>,
     registry: &Url,
-) -> Result<Vec<CrateVersion>> {
+) -> CargoResult<Vec<CrateVersion>> {
     let index = crates_index::Index::from_url(registry.as_str())?;
 
     let crate_name = crate_name.into();
@@ -123,7 +123,7 @@ fn fuzzy_query_registry_index(
             })
             .collect();
     }
-    Err(ErrorKind::NoCrate(crate_name).into())
+    Err(no_crate_err(crate_name))
 }
 
 /// Generate all similar crate names
@@ -135,7 +135,7 @@ fn fuzzy_query_registry_index(
 /// | cargo | cargo  |
 /// | cargo-edit | cargo-edit, cargo_edit |
 /// | parking_lot_core | parking_lot_core, parking_lot-core, parking-lot_core, parking-lot-core |
-fn gen_fuzzy_crate_names(crate_name: String) -> Result<Vec<String>> {
+fn gen_fuzzy_crate_names(crate_name: String) -> CargoResult<Vec<String>> {
     const PATTERN: [u8; 2] = [b'-', b'_'];
 
     let wildcard_indexs = crate_name
@@ -174,13 +174,19 @@ fn version_is_stable(version: &CrateVersion) -> bool {
 fn read_latest_version(
     versions: &[CrateVersion],
     flag_allow_prerelease: bool,
-) -> Result<Dependency> {
+) -> CargoResult<Dependency> {
     let latest = versions
         .iter()
         .filter(|&v| flag_allow_prerelease || version_is_stable(v))
         .filter(|&v| !v.yanked)
         .max_by_key(|&v| v.version.clone())
-        .ok_or(ErrorKind::NoVersionsAvailable)?;
+        .ok_or_else(|| {
+            anyhow::format_err!(
+                "No available versions exist. Either all were yanked \
+                         or only prerelease versions exist. Trying with the \
+                         --allow-prerelease flag might solve the issue."
+            )
+        })?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
@@ -194,7 +200,7 @@ pub fn get_features_from_registry(
     crate_name: &str,
     version: &str,
     registry: &Url,
-) -> Result<Vec<String>> {
+) -> CargoResult<Vec<String>> {
     if env::var("CARGO_IS_TEST").is_ok() {
         let features = if crate_name == "your-face" {
             vec![
@@ -210,12 +216,12 @@ pub fn get_features_from_registry(
     }
 
     let index = crates_index::Index::from_url(registry.as_str())?;
-    let version = semver::VersionReq::parse(version)
-        .map_err(|_| ErrorKind::ParseVersion(version.to_owned(), crate_name.to_owned()))?;
+    let version =
+        semver::VersionReq::parse(version).map_err(|_| parse_version_err(version, crate_name))?;
 
     let crate_ = index
         .crate_(crate_name)
-        .ok_or_else(|| ErrorKind::NoCrate(crate_name.into()))?;
+        .ok_or_else(|| no_crate_err(crate_name))?;
     for crate_instance in crate_.versions().iter().rev() {
         let instance_version = match semver::Version::parse(crate_instance.version()) {
             Ok(version) => version,
@@ -234,7 +240,7 @@ pub fn get_features_from_registry(
 }
 
 /// update registry index for given project
-pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
+pub fn update_registry_index(registry: &Url, quiet: bool) -> CargoResult<()> {
     let colorchoice = crate::colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
 
@@ -258,7 +264,7 @@ pub fn update_registry_index(registry: &Url, quiet: bool) -> Result<()> {
 const REGISTRY_BACKOFF: Duration = Duration::from_secs(1);
 
 /// Check if we need to retry retrieving the Index.
-fn need_retry(res: std::result::Result<(), crates_index::Error>) -> Result<bool> {
+fn need_retry(res: Result<(), crates_index::Error>) -> CargoResult<bool> {
     match res {
         Ok(()) => Ok(false),
         Err(crates_index::Error::Git(err)) => {
@@ -273,7 +279,7 @@ fn need_retry(res: std::result::Result<(), crates_index::Error>) -> Result<bool>
 }
 
 /// Report to user that the Registry is locked
-fn registry_blocked_message(output: &mut StandardStream) -> Result<()> {
+fn registry_blocked_message(output: &mut StandardStream) -> CargoResult<()> {
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Blocking")?;
     output.reset()?;
@@ -284,9 +290,9 @@ fn registry_blocked_message(output: &mut StandardStream) -> Result<()> {
 /// Load Cargo.toml in a local path
 ///
 /// This will fail, when Cargo.toml is not present in the root of the path.
-pub fn get_manifest_from_path(path: &Path) -> Result<LocalManifest> {
+pub fn get_manifest_from_path(path: &Path) -> CargoResult<LocalManifest> {
     let cargo_file = path.join("Cargo.toml");
-    LocalManifest::try_new(&cargo_file).chain_err(|| "Unable to open local Cargo.toml")
+    LocalManifest::try_new(&cargo_file).with_context(|| "Unable to open local Cargo.toml")
 }
 
 /// Load Cargo.toml from  github repo Cargo.toml
@@ -295,7 +301,7 @@ pub fn get_manifest_from_path(path: &Path) -> Result<LocalManifest> {
 /// - there is no Internet connection,
 /// - Cargo.toml is not present in the root of the master branch,
 /// - the response from the server is an error or in an incorrect format.
-pub fn get_manifest_from_url(url: &str) -> Result<Option<Manifest>> {
+pub fn get_manifest_from_url(url: &str) -> CargoResult<Option<Manifest>> {
     let manifest = if is_github_url(url) {
         Some(get_manifest_from_github(url)?)
     } else if is_gitlab_url(url) {
@@ -314,7 +320,7 @@ fn is_gitlab_url(url: &str) -> bool {
     url.contains("https://gitlab.com")
 }
 
-fn get_manifest_from_github(repo: &str) -> Result<Manifest> {
+fn get_manifest_from_github(repo: &str) -> CargoResult<Manifest> {
     let re =
         Regex::new(r"^https://github.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
     get_manifest_from_repository(repo, &re, |user, repo| {
@@ -326,7 +332,7 @@ fn get_manifest_from_github(repo: &str) -> Result<Manifest> {
     })
 }
 
-fn get_manifest_from_gitlab(repo: &str) -> Result<Manifest> {
+fn get_manifest_from_gitlab(repo: &str) -> CargoResult<Manifest> {
     let re =
         Regex::new(r"^https://gitlab.com/([-_0-9a-zA-Z]+)/([-_0-9a-zA-Z]+)(/|.git)?$").unwrap();
     get_manifest_from_repository(repo, &re, |user, repo| {
@@ -338,24 +344,28 @@ fn get_manifest_from_gitlab(repo: &str) -> Result<Manifest> {
     })
 }
 
-fn get_manifest_from_repository<T>(repo: &str, matcher: &Regex, url_template: T) -> Result<Manifest>
+fn get_manifest_from_repository<T>(
+    repo: &str,
+    matcher: &Regex,
+    url_template: T,
+) -> CargoResult<Manifest>
 where
     T: Fn(&str, &str) -> String,
 {
     matcher
         .captures(repo)
-        .ok_or_else(|| "Unable to parse git repo URL".into())
+        .ok_or_else(|| anyhow::format_err!("Unable to parse git repo URL"))
         .and_then(|cap| match (cap.get(1), cap.get(2)) {
             (Some(user), Some(repo)) => {
                 let url = url_template(user.as_str(), repo.as_str());
                 get_cargo_toml_from_git_url(&url)
-                    .and_then(|m| m.parse().chain_err(|| ErrorKind::ParseCargoToml))
+                    .and_then(|m| m.parse().with_context(parse_manifest_err))
             }
-            _ => Err("Git repo url seems incomplete".into()),
+            _ => Err(anyhow::format_err!("Git repo url seems incomplete")),
         })
 }
 
-fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
+fn get_cargo_toml_from_git_url(url: &str) -> CargoResult<String> {
     let mut agent = ureq::AgentBuilder::new().timeout(get_default_timeout());
     #[cfg(not(any(
         target_arch = "x86_64",
@@ -380,8 +390,12 @@ fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
     match res {
         Ok(res) => res
             .into_string()
-            .chain_err(|| "Git response not a valid `String`"),
-        Err(err) => Err(format!("HTTP request `{}` failed: {}", url, err).into()),
+            .with_context(|| "Git response not a valid `String`"),
+        Err(err) => Err(anyhow::format_err!(
+            "HTTP request `{}` failed: {}",
+            url,
+            err
+        )),
     }
 }
 

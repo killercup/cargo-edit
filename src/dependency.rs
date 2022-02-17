@@ -578,7 +578,7 @@ mod tests {
 
         assert_eq!(key, "dep".to_owned());
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -591,7 +591,7 @@ mod tests {
         assert_eq!(key, "dep".to_owned());
         assert_eq!(item.as_str(), Some("1.0"));
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -607,7 +607,7 @@ mod tests {
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("optional").unwrap().as_bool(), Some(true));
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -623,7 +623,7 @@ mod tests {
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -640,7 +640,7 @@ mod tests {
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("path").unwrap().as_str(), Some("../bar"));
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -659,7 +659,7 @@ mod tests {
             Some("https://foor/bar.git")
         );
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -675,7 +675,7 @@ mod tests {
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("package").unwrap().as_str(), Some("dep"));
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -691,7 +691,7 @@ mod tests {
         let dep = item.as_inline_table().unwrap();
         assert_eq!(dep.get("registry").unwrap().as_str(), Some("alternative"));
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -712,7 +712,7 @@ mod tests {
         assert_eq!(dep.get("version").unwrap().as_str(), Some("1.0"));
         assert_eq!(dep.get("default-features").unwrap().as_bool(), Some(false));
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -728,7 +728,7 @@ mod tests {
         let got = table.get("path").unwrap().as_str().unwrap();
         assert_eq!(got, relpath);
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     #[test]
@@ -745,13 +745,13 @@ mod tests {
         let got = table.get("path").unwrap().as_str().unwrap();
         assert_eq!(got, should_be);
 
-        verify_roundtrip(&crate_root, &key, &item);
+        verify_roundtrip(&crate_root, key, &item);
     }
 
     fn verify_roundtrip(crate_root: &Path, key: &str, item: &toml_edit::Item) {
         let roundtrip = Dependency::from_toml(crate_root, key, item).unwrap();
         let round_key = roundtrip.toml_key();
-        let round_item = roundtrip.to_toml(&crate_root);
+        let round_item = roundtrip.to_toml(crate_root);
         assert_eq!(key, round_key);
         assert_eq!(item.to_string(), round_item.to_string());
     }

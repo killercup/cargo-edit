@@ -4,18 +4,18 @@ use std::convert::TryInto;
 use std::path::Path;
 
 /// Takes a pkgid and attempts to find the path to it's `Cargo.toml`, using `cargo`'s metadata
-pub fn manifest_from_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> Result<Package> {
+pub fn manifest_from_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoResult<Package> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.no_deps();
     if let Some(manifest_path) = manifest_path {
         cmd.manifest_path(manifest_path);
     }
-    let result = cmd.exec().chain_err(|| "Invalid manifest")?;
+    let result = cmd.exec().with_context(|| "Invalid manifest")?;
     let packages = result.packages;
     let package = packages
         .into_iter()
         .find(|pkg| pkg.name == pkgid)
-        .chain_err(|| {
+        .with_context(|| {
             "Found virtual manifest, but this command requires running against an \
              actual package in this workspace. Try adding `--workspace`."
         })?;
@@ -23,13 +23,13 @@ pub fn manifest_from_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> Result<
 }
 
 /// Lookup all members of the current workspace
-pub fn workspace_members(manifest_path: Option<&Path>) -> Result<Vec<Package>> {
+pub fn workspace_members(manifest_path: Option<&Path>) -> CargoResult<Vec<Package>> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.no_deps();
     if let Some(manifest_path) = manifest_path {
         cmd.manifest_path(manifest_path);
     }
-    let result = cmd.exec().chain_err(|| "Invalid manifest")?;
+    let result = cmd.exec().with_context(|| "Invalid manifest")?;
     let workspace_members: std::collections::HashSet<_> =
         result.workspace_members.into_iter().collect();
     let workspace_members: Vec<_> = result

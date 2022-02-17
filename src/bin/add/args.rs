@@ -201,19 +201,19 @@ impl Args {
     }
 
     /// Build dependencies from arguments
-    pub fn parse_dependencies(&self, manifest: &LocalManifest) -> Result<Vec<Dependency>> {
+    pub fn parse_dependencies(&self, manifest: &LocalManifest) -> CargoResult<Vec<Dependency>> {
         let workspace_members = workspace_members(self.manifest_path.as_deref())?;
 
         if self.crates.len() > 1 && self.git.is_some() {
-            return Err(ErrorKind::MultipleCratesWithGitOrPathOrVers.into());
+            anyhow::bail!("Cannot specify multiple crates with path or git or vers");
         }
 
         if self.crates.len() > 1 && self.rename.is_some() {
-            return Err(ErrorKind::MultipleCratesWithRename.into());
+            anyhow::bail!("Cannot specify multiple crates with rename");
         }
 
         if self.crates.len() > 1 && self.features.is_some() {
-            return Err(ErrorKind::MultipleCratesWithFeatures.into());
+            anyhow::bail!("Cannot specify multiple crates with features");
         }
 
         let mut deps: Vec<Dependency> = Vec::new();
@@ -230,7 +230,7 @@ impl Args {
                         .get_or_insert_with(Default::default)
                         .extend(features.map(|s| s.to_owned()));
                 } else {
-                    return Err("`+<feature>` must be preceded by a pkgid".into());
+                    anyhow::bail!("`+<feature>` must be preceded by a pkgid");
                 }
             } else {
                 let dep = self.parse_single_dependency(manifest, crate_spec, &workspace_members)?;
@@ -245,7 +245,7 @@ impl Args {
         manifest: &LocalManifest,
         crate_spec: &str,
         workspace_members: &[Package],
-    ) -> Result<Dependency> {
+    ) -> CargoResult<Dependency> {
         let crate_spec = CrateSpec::resolve(crate_spec)?;
         let manifest_path = manifest.path.as_path();
 
@@ -260,7 +260,11 @@ impl Args {
                 if let Some(ref url) = self.git {
                     let url = url.clone();
                     let version = dependency.version().unwrap().to_string();
-                    return Err(ErrorKind::GitUrlWithVersion(url, version).into());
+                    anyhow::bail!(
+                        "Cannot specify a git URL (`{}`) with a version (`{}`).",
+                        url,
+                        version
+                    )
                 }
 
                 dependency
@@ -434,7 +438,7 @@ impl Args {
         &self,
         dependency: Dependency,
         manifest_path: &Path,
-    ) -> Result<Dependency> {
+    ) -> CargoResult<Dependency> {
         if !dependency.available_features.is_empty() {
             return Ok(dependency);
         }
@@ -463,7 +467,7 @@ fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
     feature.split([' ', ',']).filter(|s| !s.is_empty())
 }
 
-fn inline_add_message() -> Result<()> {
+fn inline_add_message() -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
@@ -473,7 +477,7 @@ fn inline_add_message() -> Result<()> {
         output,
         " `+<feature>` is unstable and requires `-Z inline-add`"
     )
-    .chain_err(|| "Failed to write unrecognized features message")?;
+    .with_context(|| "Failed to write unrecognized features message")?;
     Ok(())
 }
 

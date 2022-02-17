@@ -3,10 +3,11 @@ args = ["add", "./tests/fixtures/local"]
 status.code = 1
 stdout = ""
 stderr = """
-Command failed due to unhandled error: Unable to open local Cargo.toml
+Error: Unable to open local Cargo.toml
 
-Caused by: Failed to read manifest contents
-Caused by: [..]
+Caused by:
+    0: Failed to read manifest contents
+    1: [..]
 """
 fs.sandbox = true
 

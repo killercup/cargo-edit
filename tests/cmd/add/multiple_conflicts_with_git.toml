@@ -3,7 +3,7 @@ args = ["add", "my-package1", "my-package2", "--git", "https://github.com/dcjanu
 status.code = 1
 stdout = ""
 stderr = """
-Command failed due to unhandled error: Cannot specify multiple crates with path or git or vers
+Error: Cannot specify multiple crates with path or git or vers
 """
 fs.sandbox = true
 

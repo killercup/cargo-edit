@@ -11,9 +11,6 @@
     unused_qualifications
 )]
 
-#[macro_use]
-extern crate error_chain;
-
 use crate::args::{Args, Command, UnstableOptions};
 use cargo_edit::{
     colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, Dependency,
@@ -30,46 +27,15 @@ use toml_edit::Item as TomlItem;
 mod args;
 
 mod errors {
-    error_chain! {
-        errors {
-            /// Specified a dependency with both a git URL and a version.
-            GitUrlWithVersion(git: String, version: String) {
-                description("Specified git URL with version")
-                display("Cannot specify a git URL (`{}`) with a version (`{}`).", git, version)
-            }
-            /// Specified multiple crates with path or git or vers
-            MultipleCratesWithGitOrPathOrVers {
-                description("Specified multiple crates with path or git or vers")
-                display("Cannot specify multiple crates with path or git or vers")
-            }
-            /// Specified multiple crates with renaming.
-            MultipleCratesWithRename {
-                description("Specified multiple crates with rename")
-                display("Cannot specify multiple crates with rename")
-            }
-            /// Specified multiple crates with features.
-            MultipleCratesWithFeatures {
-                description("Specified multiple crates with features")
-                display("Cannot specify multiple crates with features")
-            }
-            AddingSelf(crate_: String) {
-                description("Adding crate to itself")
-                display("Cannot add `{}` as a dependency to itself", crate_)
-            }
-        }
-        links {
-            CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
-        }
-        foreign_links {
-            CargoMetadata(::cargo_metadata::Error)#[doc = "An error from the cargo_metadata crate"];
-            Io(::std::io::Error);
-        }
-    }
+    pub use cargo_edit::CargoResult;
+    pub use cargo_edit::CliResult;
+    pub use cargo_edit::Context;
+    pub use cargo_edit::Error;
 }
 
 use crate::errors::*;
 
-fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> Result<()> {
+fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
@@ -128,20 +94,20 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
     true
 }
 
-fn unrecognized_features_message(message: &str) -> Result<()> {
+fn unrecognized_features_message(message: &str) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
     write!(output, "{:>12}", "Warning:")?;
     output.reset()?;
     writeln!(output, " {}", message)
-        .chain_err(|| "Failed to write unrecognized features message")?;
+        .with_context(|| "Failed to write unrecognized features message")?;
     Ok(())
 }
 
-fn handle_add(mut args: Args) -> Result<()> {
+fn handle_add(mut args: Args) -> CargoResult<()> {
     if args.git.is_some() && !args.unstable_features.contains(&UnstableOptions::Git) {
-        return Err("`--git` is unstable and requires `-Z git`".into());
+        anyhow::bail!("`--git` is unstable and requires `-Z git`");
     }
 
     if let Some(ref pkgid) = args.pkgid {
@@ -196,14 +162,17 @@ fn handle_add(mut args: Args) -> Result<()> {
             }
             if let Some(path) = dep.path() {
                 if path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
-                    return Err(ErrorKind::AddingSelf(manifest.package_name()?.to_owned()).into());
+                    anyhow::bail!(
+                        "Cannot add `{}` as a dependency to itself",
+                        manifest.package_name()?
+                    )
                 }
             }
             manifest.insert_into_table(&args.get_section(), dep)?;
             manifest.gc_dep(dep.toml_key());
             Ok(())
         })
-        .collect::<Result<Vec<_>>>()
+        .collect::<CargoResult<Vec<_>>>()
         .map_err(|err| {
             eprintln!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
             err
@@ -229,21 +198,7 @@ fn main() {
     let Command::Add(args) = args;
 
     if let Err(err) = handle_add(args) {
-        eprintln!("Command failed due to unhandled error: {}", err);
-
-        let mut gap = false;
-        for e in err.iter().skip(1) {
-            if !gap {
-                eprintln!();
-                gap = true;
-            }
-            eprintln!("Caused by: {}", e);
-        }
-
-        if let Some(backtrace) = err.backtrace() {
-            eprintln!();
-            eprintln!("Backtrace: {:?}", backtrace);
-        }
+        eprintln!("Error: {:?}", err);
 
         process::exit(1);
     }

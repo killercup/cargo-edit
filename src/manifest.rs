@@ -22,27 +22,30 @@ pub struct Manifest {
 
 impl Manifest {
     /// Get the manifest's package name
-    pub fn package_name(&self) -> Result<&str> {
+    pub fn package_name(&self) -> CargoResult<&str> {
         self.data
             .as_table()
             .get("package")
             .and_then(|m| m["name"].as_str())
-            .ok_or_else(|| ErrorKind::ParseCargoToml.into())
+            .ok_or_else(parse_manifest_err)
     }
 
     /// Get the specified table from the manifest.
-    pub fn get_table<'a>(&'a self, table_path: &[String]) -> Result<&'a toml_edit::Item> {
+    pub fn get_table<'a>(&'a self, table_path: &[String]) -> CargoResult<&'a toml_edit::Item> {
         /// Descend into a manifest until the required table is found.
-        fn descend<'a>(input: &'a toml_edit::Item, path: &[String]) -> Result<&'a toml_edit::Item> {
+        fn descend<'a>(
+            input: &'a toml_edit::Item,
+            path: &[String],
+        ) -> CargoResult<&'a toml_edit::Item> {
             if let Some(segment) = path.get(0) {
                 let value = input
                     .get(&segment)
-                    .ok_or_else(|| ErrorKind::NonExistentTable(segment.clone()))?;
+                    .ok_or_else(|| non_existent_table_err(segment))?;
 
                 if value.is_table_like() {
                     descend(value, &path[1..])
                 } else {
-                    Err(ErrorKind::NonExistentTable(segment.clone()).into())
+                    Err(non_existent_table_err(segment))
                 }
             } else {
                 Ok(input)
@@ -56,19 +59,19 @@ impl Manifest {
     pub fn get_table_mut<'a>(
         &'a mut self,
         table_path: &[String],
-    ) -> Result<&'a mut toml_edit::Item> {
+    ) -> CargoResult<&'a mut toml_edit::Item> {
         /// Descend into a manifest until the required table is found.
         fn descend<'a>(
             input: &'a mut toml_edit::Item,
             path: &[String],
-        ) -> Result<&'a mut toml_edit::Item> {
+        ) -> CargoResult<&'a mut toml_edit::Item> {
             if let Some(segment) = path.get(0) {
                 let value = input[&segment].or_insert(toml_edit::table());
 
                 if value.is_table_like() {
                     descend(value, &path[1..])
                 } else {
-                    Err(ErrorKind::NonExistentTable(segment.clone()).into())
+                    Err(non_existent_table_err(segment))
                 }
             } else {
                 Ok(input)
@@ -126,7 +129,7 @@ impl Manifest {
     }
 
     /// returns features exposed by this manifest
-    pub fn features(&self) -> Result<Vec<String>> {
+    pub fn features(&self) -> CargoResult<Vec<String>> {
         let mut features: Vec<String> = match self.data.as_table().get("features") {
             None => vec![],
             Some(item) => match item {
@@ -137,7 +140,7 @@ impl Manifest {
                     .map(|(keys, _val)| keys.iter().map(|&k| k.get().trim().to_owned()))
                     .flatten()
                     .collect(),
-                _ => return Err(ErrorKind::InvalidCargoConfig.into()),
+                _ => return Err(invalid_cargo_config()),
             },
         };
 
@@ -168,7 +171,7 @@ impl str::FromStr for Manifest {
 
     /// Read manifest data from string
     fn from_str(input: &str) -> ::std::result::Result<Self, Self::Err> {
-        let d: toml_edit::Document = input.parse().chain_err(|| "Manifest not valid TOML")?;
+        let d: toml_edit::Document = input.parse().with_context(|| "Manifest not valid TOML")?;
 
         Ok(Manifest { data: d })
     }
@@ -207,29 +210,36 @@ impl DerefMut for LocalManifest {
 impl LocalManifest {
     /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
     /// the user means.
-    pub fn find(path: Option<&Path>) -> Result<Self> {
+    pub fn find(path: Option<&Path>) -> CargoResult<Self> {
         let path = dunce::canonicalize(find(path)?)?;
         Self::try_new(&path)
     }
 
     /// Construct the `LocalManifest` corresponding to the `Path` provided.
-    pub fn try_new(path: &Path) -> Result<Self> {
+    pub fn try_new(path: &Path) -> CargoResult<Self> {
         let path = path.to_path_buf();
         let data =
-            std::fs::read_to_string(&path).chain_err(|| "Failed to read manifest contents")?;
-        let manifest = data.parse().chain_err(|| "Unable to parse Cargo.toml")?;
+            std::fs::read_to_string(&path).with_context(|| "Failed to read manifest contents")?;
+        let manifest = data.parse().with_context(|| "Unable to parse Cargo.toml")?;
         Ok(LocalManifest { manifest, path })
     }
 
     /// Write changes back to the file
-    pub fn write(&self) -> Result<()> {
+    pub fn write(&self) -> CargoResult<()> {
         if !self.manifest.data.contains_key("package")
             && !self.manifest.data.contains_key("project")
         {
             if self.manifest.data.contains_key("workspace") {
-                return Err(ErrorKind::UnexpectedRootManifest.into());
+                anyhow::bail!(
+                    "Found virtual manifest at {}, but this command requires running against an \
+                         actual package in this workspace.",
+                    self.path.display()
+                );
             } else {
-                return Err(ErrorKind::InvalidManifest.into());
+                anyhow::bail!(
+                    "Missing expected `package` or `project` fields in {}",
+                    self.path.display()
+                );
             }
         }
 
@@ -237,7 +247,7 @@ impl LocalManifest {
         let new_contents_bytes = s.as_bytes();
 
         std::fs::write(&self.path, new_contents_bytes)
-            .chain_err(|| "Failed to write updated Cargo.toml")
+            .with_context(|| "Failed to write updated Cargo.toml")
     }
 
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
@@ -247,7 +257,7 @@ impl LocalManifest {
         dependency: &Dependency,
         dry_run: bool,
         skip_compatible: bool,
-    ) -> Result<()> {
+    ) -> CargoResult<()> {
         for (table_path, table) in self.get_sections() {
             let table_like = table.as_table_like().expect("Unexpected non-table");
             for (name, toml_item) in table_like.iter() {
@@ -271,22 +281,24 @@ impl LocalManifest {
     }
 
     /// Lookup a dependency
-    pub fn get_dependency(&self, table_path: &[String], dep_key: &str) -> Result<Dependency> {
+    pub fn get_dependency(&self, table_path: &[String], dep_key: &str) -> CargoResult<Dependency> {
         let crate_root = self.path.parent().expect("manifest path is absolute");
         let table = self.get_table(table_path)?;
         let table = table
             .as_table_like()
-            .ok_or_else(|| ErrorKind::NonExistentTable(table_path.join(".")))?;
-        let dep_item = table.get(dep_key).ok_or_else(|| {
-            ErrorKind::NonExistentDependency(dep_key.into(), table_path.join("."))
-        })?;
+            .ok_or_else(|| non_existent_table_err(table_path.join(".")))?;
+        let dep_item = table
+            .get(dep_key)
+            .ok_or_else(|| non_existent_dependency_err(dep_key, table_path.join(".")))?;
         Dependency::from_toml(crate_root, dep_key, dep_item).ok_or_else(|| {
-            format!("Invalid dependency {}.{}", table_path.join("."), dep_key).into()
+            anyhow::format_err!("Invalid dependency {}.{}", table_path.join("."), dep_key)
         })
     }
 
     /// Returns all dependencies
-    pub fn get_dependencies(&self) -> impl Iterator<Item = (Vec<String>, Result<Dependency>)> + '_ {
+    pub fn get_dependencies(
+        &self,
+    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + '_ {
         self.filter_dependencies(|_| true)
     }
 
@@ -294,14 +306,14 @@ impl LocalManifest {
     pub fn get_dependency_versions<'s>(
         &'s self,
         dep_key: &'s str,
-    ) -> impl Iterator<Item = (Vec<String>, Result<Dependency>)> + 's {
+    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's {
         self.filter_dependencies(move |key| key == dep_key)
     }
 
     fn filter_dependencies<'s, P>(
         &'s self,
         mut predicate: P,
-    ) -> impl Iterator<Item = (Vec<String>, Result<Dependency>)> + 's
+    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's
     where
         P: FnMut(&str) -> bool + 's,
     {
@@ -329,16 +341,23 @@ impl LocalManifest {
                 match dep {
                     Some(dep) => (table_path, Ok(dep)),
                     None => {
-                        let message =
-                            format!("Invalid dependency {}.{}", table_path.join("."), dep_key);
-                        (table_path, Err(message.into()))
+                        let message = anyhow::format_err!(
+                            "Invalid dependency {}.{}",
+                            table_path.join("."),
+                            dep_key
+                        );
+                        (table_path, Err(message))
                     }
                 }
             })
     }
 
     /// Add entry to a Cargo.toml.
-    pub fn insert_into_table(&mut self, table_path: &[String], dep: &Dependency) -> Result<()> {
+    pub fn insert_into_table(
+        &mut self,
+        table_path: &[String],
+        dep: &Dependency,
+    ) -> CargoResult<()> {
         let crate_root = self
             .path
             .parent()
@@ -366,7 +385,7 @@ impl LocalManifest {
         table_path: &[String],
         dep: &Dependency,
         dry_run: bool,
-    ) -> Result<()> {
+    ) -> CargoResult<()> {
         self.update_table_named_entry(table_path, dep.toml_key(), dep, dry_run)
     }
 
@@ -377,7 +396,7 @@ impl LocalManifest {
         dep_key: &str,
         dep: &Dependency,
         dry_run: bool,
-    ) -> Result<()> {
+    ) -> CargoResult<()> {
         let crate_root = self
             .path
             .parent()
@@ -421,18 +440,18 @@ impl LocalManifest {
     ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
     ///   assert!(!manifest.data.contains_key("dependencies"));
     /// ```
-    pub fn remove_from_table(&mut self, table: &str, name: &str) -> Result<()> {
+    pub fn remove_from_table(&mut self, table: &str, name: &str) -> CargoResult<()> {
         let parent_table = self
             .data
             .get_mut(table)
             .filter(|t| t.is_table_like())
-            .ok_or_else(|| ErrorKind::NonExistentTable(table.into()))?;
+            .ok_or_else(|| non_existent_table_err(table))?;
 
         {
             let dep = parent_table
                 .get_mut(name)
                 .filter(|t| !t.is_none())
-                .ok_or_else(|| ErrorKind::NonExistentDependency(name.into(), table.into()))?;
+                .ok_or_else(|| non_existent_dependency_err(name, table))?;
             // remove the dependency
             *dep = toml_edit::Item::None;
         }
@@ -446,10 +465,10 @@ impl LocalManifest {
     }
 
     /// Add multiple dependencies to manifest
-    pub fn add_deps(&mut self, table: &[String], deps: &[Dependency]) -> Result<()> {
+    pub fn add_deps(&mut self, table: &[String], deps: &[Dependency]) -> CargoResult<()> {
         deps.iter()
             .map(|dep| self.insert_into_table(table, dep))
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<CargoResult<Vec<_>>>()?;
 
         Ok(())
     }
@@ -570,60 +589,65 @@ fn remove_feature_activation(
 /// If a manifest is specified, return that one. If a path is specified, perform a manifest search
 /// starting from there. If nothing is specified, start searching from the current directory
 /// (`cwd`).
-pub fn find(specified: Option<&Path>) -> Result<PathBuf> {
+pub fn find(specified: Option<&Path>) -> CargoResult<PathBuf> {
     match specified {
         Some(path)
             if fs::metadata(&path)
-                .chain_err(|| "Failed to get cargo file metadata")?
+                .with_context(|| "Failed to get cargo file metadata")?
                 .is_file() =>
         {
             Ok(path.to_owned())
         }
         Some(path) => search(path),
-        None => search(&env::current_dir().chain_err(|| "Failed to get current directory")?),
+        None => search(&env::current_dir().with_context(|| "Failed to get current directory")?),
     }
 }
 
 /// Search for Cargo.toml in this directory and recursively up the tree until one is found.
-fn search(dir: &Path) -> Result<PathBuf> {
-    let manifest = dir.join(MANIFEST_FILENAME);
+fn search(dir: &Path) -> CargoResult<PathBuf> {
+    let mut current_dir = dir;
 
-    if fs::metadata(&manifest).is_ok() {
-        Ok(manifest)
-    } else {
-        dir.parent()
-            .ok_or_else(|| ErrorKind::MissingManifest.into())
-            .and_then(search)
+    loop {
+        let manifest = current_dir.join(MANIFEST_FILENAME);
+        if fs::metadata(&manifest).is_ok() {
+            return Ok(manifest);
+        }
+
+        current_dir = match current_dir.parent() {
+            Some(current_dir) => current_dir,
+            None => {
+                anyhow::bail!("Unable to find Cargo.toml for {}", dir.display());
+            }
+        };
     }
 }
 
-fn get_version(old_dep: &toml_edit::Item) -> Result<&str> {
+fn get_version(old_dep: &toml_edit::Item) -> CargoResult<&str> {
     if let Some(req) = old_dep.as_str() {
         Ok(req)
     } else if old_dep.is_table_like() {
-        let version = old_dep.get("version").ok_or("Missing version field")?;
+        let version = old_dep
+            .get("version")
+            .ok_or_else(|| anyhow::format_err!("Missing version field"))?;
         version
             .as_str()
-            .ok_or("Expect version to be a string")
-            .map_err(Into::into)
+            .ok_or_else(|| anyhow::format_err!("Expect version to be a string"))
     } else {
         unreachable!("Invalid old dependency type")
     }
 }
 
-fn old_version_compatible(dependency: &Dependency, old_version: &str) -> Result<bool> {
-    let old_version = VersionReq::parse(old_version).chain_err(|| {
-        ErrorKind::ParseVersion(dependency.name.to_string(), old_version.to_string())
-    })?;
+fn old_version_compatible(dependency: &Dependency, old_version: &str) -> CargoResult<bool> {
+    let old_version = VersionReq::parse(old_version)
+        .with_context(|| parse_version_err(&dependency.name, old_version))?;
 
     let current_version = match dependency.version() {
         Some(current_version) => current_version,
         None => return Ok(false),
     };
 
-    let current_version = Version::parse(current_version).chain_err(|| {
-        ErrorKind::ParseVersion(dependency.name.to_string(), current_version.into())
-    })?;
+    let current_version = Version::parse(current_version)
+        .with_context(|| parse_version_err(&dependency.name, current_version))?;
 
     Ok(old_version.matches(&current_version))
 }
@@ -637,7 +661,7 @@ fn print_upgrade_if_necessary(
     crate_name: &str,
     old_dep: &toml_edit::Item,
     new_dep: &toml_edit::Item,
-) -> Result<()> {
+) -> CargoResult<()> {
     let old_version = get_version(old_dep)?;
     let new_version = get_version(new_dep)?;
 
@@ -650,20 +674,20 @@ fn print_upgrade_if_necessary(
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    write!(&mut buffer, "    Upgrading ").chain_err(|| "Failed to write upgrade message")?;
+        .with_context(|| "Failed to set output colour")?;
+    write!(&mut buffer, "    Upgrading ").with_context(|| "Failed to write upgrade message")?;
     buffer
         .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
+        .with_context(|| "Failed to clear output colour")?;
     writeln!(
         &mut buffer,
         "{} v{} -> v{}",
         crate_name, old_version, new_version,
     )
-    .chain_err(|| "Failed to write upgrade versions")?;
+    .with_context(|| "Failed to write upgrade versions")?;
     bufwtr
         .print(&buffer)
-        .chain_err(|| "Failed to print upgrade message")?;
+        .with_context(|| "Failed to print upgrade message")?;
 
     Ok(())
 }
@@ -798,7 +822,7 @@ edition = "2015"
     }
 
     #[test]
-    fn old_version_is_compatible() -> Result<()> {
+    fn old_version_is_compatible() -> CargoResult<()> {
         let with_version = Dependency::new("foo").set_version("2.3.4");
         assert!(!old_version_compatible(&with_version, "1")?);
         assert!(old_version_compatible(&with_version, "2")?);
@@ -807,7 +831,7 @@ edition = "2015"
     }
 
     #[test]
-    fn old_incompatible_with_missing_new_version() -> Result<()> {
+    fn old_incompatible_with_missing_new_version() -> CargoResult<()> {
         let no_version = Dependency::new("foo");
         assert!(!old_version_compatible(&no_version, "1")?);
         assert!(!old_version_compatible(&no_version, "2")?);

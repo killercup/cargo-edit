@@ -11,9 +11,7 @@
     unused_qualifications
 )]
 
-#[macro_use]
-extern crate error_chain;
-
+use cargo_edit::CargoResult;
 use cargo_edit::{colorize_stderr, manifest_from_pkgid, LocalManifest};
 use clap::Parser;
 use std::borrow::Cow;
@@ -21,18 +19,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
-
-mod errors {
-    error_chain! {
-        links {
-            CargoEditLib(::cargo_edit::Error, ::cargo_edit::ErrorKind);
-        }
-        foreign_links {
-            Io(::std::io::Error);
-        }
-    }
-}
-use crate::errors::*;
 
 #[derive(Debug, Parser)]
 #[clap(bin_name = "cargo")]
@@ -100,7 +86,7 @@ impl Args {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 enum UnstableOptions {}
 
-fn print_msg(name: &str, section: &str) -> Result<()> {
+fn print_msg(name: &str, section: &str) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
@@ -110,7 +96,7 @@ fn print_msg(name: &str, section: &str) -> Result<()> {
     Ok(())
 }
 
-fn handle_rm(args: &Args) -> Result<()> {
+fn handle_rm(args: &Args) -> CargoResult<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
         let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
         Cow::Owned(Some(pkg.manifest_path.into_std_path_buf()))
@@ -135,7 +121,7 @@ fn handle_rm(args: &Args) -> Result<()> {
 
             result
         })
-        .collect::<Result<Vec<_>>>()
+        .collect::<CargoResult<Vec<_>>>()
         .map_err(|err| {
             eprintln!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
             err
@@ -151,15 +137,7 @@ fn main() {
     let Command::Rm(args) = args;
 
     if let Err(err) = handle_rm(&args) {
-        eprintln!("Command failed due to unhandled error: {}\n", err);
-
-        for e in err.iter().skip(1) {
-            eprintln!("Caused by: {}", e);
-        }
-
-        if let Some(backtrace) = err.backtrace() {
-            eprintln!("Backtrace: {:?}", backtrace);
-        }
+        eprintln!("Error: {:?}", err);
 
         process::exit(1);
     }
