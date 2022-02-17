@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use cargo_edit::VersionExt;
 
-use crate::{Error, ErrorKind};
+use crate::{version_downgrade_err, CargoResult};
 
 #[derive(Clone, Debug)]
 pub enum TargetVersion {
@@ -15,7 +15,7 @@ impl TargetVersion {
         &self,
         current: &semver::Version,
         metadata: Option<&str>,
-    ) -> Result<Option<semver::Version>, Error> {
+    ) -> CargoResult<Option<semver::Version>> {
         match self {
             TargetVersion::Relative(bump_level) => {
                 let mut potential_version = current.to_owned();
@@ -42,7 +42,7 @@ impl TargetVersion {
                 } else if current == version {
                     Ok(None)
                 } else {
-                    Err(ErrorKind::VersionDowngreade(current.clone(), version.clone()).into())
+                    Err(version_downgrade_err(current, version))
                 }
             }
         }
@@ -97,7 +97,7 @@ impl BumpLevel {
         self,
         version: &mut semver::Version,
         metadata: Option<&str>,
-    ) -> Result<(), Error> {
+    ) -> CargoResult<()> {
         match self {
             BumpLevel::Major => {
                 version.increment_major();

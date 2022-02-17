@@ -24,7 +24,7 @@ pub enum CrateSpec {
 
 impl CrateSpec {
     /// Convert a string to a `Crate`
-    pub fn resolve(pkg_id: &str) -> Result<Self> {
+    pub fn resolve(pkg_id: &str) -> CargoResult<Self> {
         let path = std::path::Path::new(pkg_id);
         // For improved error messages, treat it like a path if it looks like one
         let id = if is_path_like(pkg_id) || path.exists() {
@@ -41,12 +41,16 @@ impl CrateSpec {
                 .map(|c| c.to_string())
                 .collect();
             if !invalid.is_empty() {
-                return Err(format!("Invalid name `{}`: {}", name, invalid.join(", ")).into());
+                return Err(anyhow::format_err!(
+                    "Invalid name `{}`: {}",
+                    name,
+                    invalid.join(", ")
+                ));
             }
 
             if let Some(version) = version {
                 semver::VersionReq::parse(version)
-                    .chain_err(|| format!("Invalid version requirement `{}`", version))?;
+                    .with_context(|| format!("Invalid version requirement `{}`", version))?;
             }
 
             Self::PkgId {
@@ -73,7 +77,7 @@ impl CrateSpec {
     }
 
     /// Generate a dependency entry for this crate specifier
-    pub fn to_dependency(&self) -> Result<Dependency> {
+    pub fn to_dependency(&self) -> CargoResult<Dependency> {
         let dep = match self {
             Self::PkgId { name, version_req } => {
                 let mut dep = Dependency::new(name);
@@ -100,7 +104,7 @@ impl CrateSpec {
 impl std::str::FromStr for CrateSpec {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self> {
+    fn from_str(s: &str) -> CargoResult<Self> {
         Self::resolve(s)
     }
 }

@@ -3,16 +3,17 @@ args = ["upgrade"]
 status.code = 1
 stdout = ""
 stderr = """
-Command failed due to unhandled error: Unable to parse Cargo.toml
+Error: Unable to parse Cargo.toml
 
-Caused by: Manifest not valid TOML
-Caused by: TOML parse error at line 1, column 6
-  |
-1 | This is clearly not a valid Cargo.toml.
-  |      ^
-Unexpected `i`
-Expected `.` or `=`
-
+Caused by:
+    0: Manifest not valid TOML
+    1: TOML parse error at line 1, column 6
+         |
+       1 | This is clearly not a valid Cargo.toml.
+         |      ^
+       Unexpected `i`
+       Expected `.` or `=`
+       
 """
 fs.sandbox = true
 

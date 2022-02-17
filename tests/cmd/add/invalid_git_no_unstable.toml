@@ -3,7 +3,7 @@ args = ["add", "git-package", "--git", "http://localhost/git-package.git"]
 status.code = 1
 stdout = ""
 stderr = """
-Command failed due to unhandled error: `--git` is unstable and requires `-Z git`
+Error: `--git` is unstable and requires `-Z git`
 """
 fs.sandbox = true
 

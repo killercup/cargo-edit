@@ -12,9 +12,6 @@
 )]
 #![allow(clippy::comparison_chain)]
 
-#[macro_use]
-extern crate error_chain;
-
 use std::io::Write;
 use std::path::Path;
 use std::process;
@@ -37,15 +34,7 @@ fn main() {
     let Command::Version(args) = args;
 
     if let Err(err) = process(args) {
-        eprintln!("Command failed due to unhandled error: {}\n", err);
-
-        for e in err.iter().skip(1) {
-            eprintln!("Caused by: {}", e);
-        }
-
-        if let Some(backtrace) = err.backtrace() {
-            eprintln!("Backtrace: {:?}", backtrace);
-        }
+        eprintln!("Error: {:?}", err);
 
         process::exit(1);
     }
@@ -53,7 +42,7 @@ fn main() {
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
-fn process(args: Args) -> Result<()> {
+fn process(args: Args) -> CargoResult<()> {
     let Args {
         target,
         bump,
@@ -155,7 +144,7 @@ struct Manifests(Vec<(LocalManifest, cargo_metadata::Package)>);
 
 impl Manifests {
     /// Get all manifests in the workspace.
-    fn get_all(manifest_path: Option<&Path>) -> Result<Self> {
+    fn get_all(manifest_path: Option<&Path>) -> CargoResult<Self> {
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.no_deps();
         if let Some(path) = manifest_path {
@@ -163,7 +152,7 @@ impl Manifests {
         }
         let result = cmd
             .exec()
-            .chain_err(|| "Failed to get workspace metadata")?;
+            .with_context(|| "Failed to get workspace metadata")?;
         result
             .packages
             .into_iter()
@@ -173,11 +162,11 @@ impl Manifests {
                     package,
                 ))
             })
-            .collect::<Result<Vec<_>>>()
+            .collect::<CargoResult<Vec<_>>>()
             .map(Manifests)
     }
 
-    fn get_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> Result<Self> {
+    fn get_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoResult<Self> {
         let package = manifest_from_pkgid(manifest_path, pkgid)?;
         let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
         Ok(Manifests(vec![(manifest, package)]))
@@ -185,7 +174,7 @@ impl Manifests {
 
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
     /// provided.
-    fn get_local_one(manifest_path: Option<&Path>) -> Result<Self> {
+    fn get_local_one(manifest_path: Option<&Path>) -> CargoResult<Self> {
         let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
 
         let manifest = LocalManifest::find(manifest_path)?;
@@ -195,14 +184,14 @@ impl Manifests {
         if let Some(path) = manifest_path {
             cmd.manifest_path(path);
         }
-        let result = cmd.exec().chain_err(|| "Invalid manifest")?;
+        let result = cmd.exec().with_context(|| "Invalid manifest")?;
         let packages = result.packages;
         let package = packages
             .iter()
             .find(|p| p.manifest_path == resolved_manifest_path)
             // If we have successfully got metadata, but our manifest path does not correspond to a
             // package, we must have been called against a virtual manifest.
-            .chain_err(|| {
+            .with_context(|| {
                 "Found virtual manifest, but this command requires running against an \
                  actual package in this workspace. Try adding `--workspace`."
             })?;
@@ -211,73 +200,73 @@ impl Manifests {
     }
 }
 
-fn dry_run_message() -> Result<()> {
+fn dry_run_message() -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    write!(&mut buffer, "Starting dry run. ").chain_err(|| "Failed to write dry run message")?;
+        .with_context(|| "Failed to set output colour")?;
+    write!(&mut buffer, "Starting dry run. ").with_context(|| "Failed to write dry run message")?;
     buffer
         .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
+        .with_context(|| "Failed to clear output colour")?;
     writeln!(&mut buffer, "Changes will not be saved.")
-        .chain_err(|| "Failed to write dry run message")?;
+        .with_context(|| "Failed to write dry run message")?;
     bufwtr
         .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
+        .with_context(|| "Failed to print dry run message")
 }
 
-fn deprecated_message(message: &str) -> Result<()> {
+fn deprecated_message(message: &str) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
-        .chain_err(|| "Failed to set output colour")?;
-    writeln!(&mut buffer, "{}", message).chain_err(|| "Failed to write dry run message")?;
+        .with_context(|| "Failed to set output colour")?;
+    writeln!(&mut buffer, "{}", message).with_context(|| "Failed to write dry run message")?;
     buffer
         .set_color(&ColorSpec::new())
-        .chain_err(|| "Failed to clear output colour")?;
+        .with_context(|| "Failed to clear output colour")?;
     bufwtr
         .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
+        .with_context(|| "Failed to print dry run message")
 }
 
-fn upgrade_message(name: &str, from: &semver::Version, to: &semver::Version) -> Result<()> {
+fn upgrade_message(name: &str, from: &semver::Version, to: &semver::Version) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-        .chain_err(|| "Failed to print dry run message")?;
-    write!(&mut buffer, "{:>12}", "Upgraded").chain_err(|| "Failed to print dry run message")?;
+        .with_context(|| "Failed to print dry run message")?;
+    write!(&mut buffer, "{:>12}", "Upgraded").with_context(|| "Failed to print dry run message")?;
     buffer
         .reset()
-        .chain_err(|| "Failed to print dry run message")?;
+        .with_context(|| "Failed to print dry run message")?;
     writeln!(&mut buffer, " {} from {} to {}", name, from, to)
-        .chain_err(|| "Failed to print dry run message")?;
+        .with_context(|| "Failed to print dry run message")?;
     bufwtr
         .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
+        .with_context(|| "Failed to print dry run message")
 }
 
-fn upgrade_dependent_message(name: &str, old_req: &str, new_req: &str) -> Result<()> {
+fn upgrade_dependent_message(name: &str, old_req: &str, new_req: &str) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let bufwtr = BufferWriter::stderr(colorchoice);
     let mut buffer = bufwtr.buffer();
     buffer
         .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-        .chain_err(|| "Failed to print dry run message")?;
+        .with_context(|| "Failed to print dry run message")?;
     write!(&mut buffer, "{:>16}", "Updated dependency")
-        .chain_err(|| "Failed to print dry run message")?;
+        .with_context(|| "Failed to print dry run message")?;
     buffer
         .reset()
-        .chain_err(|| "Failed to print dry run message")?;
+        .with_context(|| "Failed to print dry run message")?;
     writeln!(&mut buffer, " {} from {} to {}", name, old_req, new_req)
-        .chain_err(|| "Failed to print dry run message")?;
+        .with_context(|| "Failed to print dry run message")?;
     bufwtr
         .print(&buffer)
-        .chain_err(|| "Failed to print dry run message")
+        .with_context(|| "Failed to print dry run message")
 }

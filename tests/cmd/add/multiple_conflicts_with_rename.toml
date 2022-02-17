@@ -3,7 +3,7 @@ args = ["add", "my-package1", "my-package2", "--rename", "renamed"]
 status.code = 1
 stdout = ""
 stderr = """
-Command failed due to unhandled error: Cannot specify multiple crates with rename
+Error: Cannot specify multiple crates with rename
 """
 fs.sandbox = true
 
