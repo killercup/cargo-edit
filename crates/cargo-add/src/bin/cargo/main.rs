@@ -11,8 +11,8 @@
     unused_qualifications
 )]
 
-mod add;
 mod cli;
+mod commands;
 
 use std::process;
 

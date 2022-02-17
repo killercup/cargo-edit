@@ -31,7 +31,7 @@ resolver = "2"
 
 [[bin]]
 name = "cargo-add"
-path = "src/bin/add/main.rs"
+path = "src/bin/cargo/main.rs"
 required-features = ["add"]
 
 [dependencies]
