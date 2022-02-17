@@ -79,7 +79,7 @@ $ cargo add thiserror --rename error
 
 #### Usage
 
-```console
+```console,ignore
 $ cargo-add add -h
 cargo-add [..]
 Add dependencies to a Cargo.toml manifest file

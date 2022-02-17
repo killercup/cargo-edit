@@ -1,10 +1,10 @@
-use cargo_edit::CargoResult;
+use cargo_add::ops::cargo_add::CargoResult;
 use clap::Parser;
 
 #[derive(Debug, Parser)]
 #[clap(bin_name = "cargo")]
 pub enum Command {
-    Add(crate::add::AddArgs),
+    Add(crate::commands::add::AddArgs),
 }
 
 impl Command {

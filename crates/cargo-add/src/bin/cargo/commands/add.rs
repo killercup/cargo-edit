@@ -5,16 +5,16 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
-use cargo_edit::CargoResult;
-use cargo_edit::Context;
-use cargo_edit::{
+use cargo_add::ops::cargo_add::CargoResult;
+use cargo_add::ops::cargo_add::Context;
+use cargo_add::ops::cargo_add::{
     colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, Dependency,
     LocalManifest,
 };
-use cargo_edit::{
+use cargo_add::ops::cargo_add::{
     get_features_from_registry, get_manifest_from_path, get_manifest_from_url, workspace_members,
 };
-use cargo_edit::{get_latest_dependency, CrateSpec};
+use cargo_add::ops::cargo_add::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
 use clap::Args;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};

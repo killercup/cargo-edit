@@ -1,4 +1,6 @@
-//! `cargo add`
+//! Show and Edit Cargo's Manifest Files
+#![recursion_limit = "256"]
+#![cfg_attr(test, allow(dead_code))]
 #![warn(
     missing_docs,
     missing_debug_implementations,
@@ -11,19 +13,7 @@
     unused_qualifications
 )]
 
-mod add;
-mod cli;
+#[macro_use]
+extern crate serde_derive;
 
-use std::process;
-
-use clap::Parser;
-
-fn main() {
-    let args = cli::Command::parse();
-
-    if let Err(err) = args.exec() {
-        eprintln!("Error: {:?}", err);
-
-        process::exit(1);
-    }
-}
+pub mod ops;
