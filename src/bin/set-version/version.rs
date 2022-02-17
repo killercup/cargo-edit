@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use cargo_edit::VersionExt;
 
-use crate::{version_downgrade_err, CargoResult};
+use crate::errors::*;
 
 #[derive(Clone, Debug)]
 pub enum TargetVersion {

@@ -1,31 +1,28 @@
-//! Handle `cargo add` arguments
-
 #![allow(clippy::bool_assert_comparison)]
 
+use std::collections::BTreeSet;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
+
+use cargo_edit::CargoResult;
+use cargo_edit::Context;
 use cargo_edit::{
-    colorize_stderr, get_features_from_registry, get_manifest_from_path, get_manifest_from_url,
-    registry_url, workspace_members, Dependency, LocalManifest,
+    colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, Dependency,
+    LocalManifest,
+};
+use cargo_edit::{
+    get_features_from_registry, get_manifest_from_path, get_manifest_from_url, workspace_members,
 };
 use cargo_edit::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
 use clap::Args;
-use clap::Parser;
-use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
+use toml_edit::Item as TomlItem;
 
-use crate::errors::*;
-
-#[derive(Debug, Parser)]
-#[clap(bin_name = "cargo")]
-pub enum Command {
-    /// Add dependencies to a Cargo.toml manifest file.
-    Add(AddArgs),
-}
-
+/// Add dependencies to a Cargo.toml manifest file.
 #[derive(Debug, Args)]
-#[clap(about, version)]
+#[clap(version)]
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 #[clap(after_help = "\
 Examples:
@@ -178,6 +175,10 @@ pub struct AddArgs {
 }
 
 impl AddArgs {
+    pub fn exec(self) -> CargoResult<()> {
+        exec(self)
+    }
+
     /// Get dependency section
     pub fn get_section(&self) -> Vec<String> {
         if self.dev {
@@ -531,13 +532,160 @@ fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn verify_app() {
-        use clap::IntoApp;
-        Command::into_app().debug_assert()
+fn exec(mut args: AddArgs) -> CargoResult<()> {
+    if args.git.is_some() && !args.unstable_features.contains(&UnstableOptions::Git) {
+        anyhow::bail!("`--git` is unstable and requires `-Z git`");
     }
+
+    if let Some(ref pkgid) = args.pkgid {
+        let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
+        args.manifest_path = Some(pkg.manifest_path.into_std_path_buf());
+    }
+    let mut manifest = LocalManifest::find(args.manifest_path.as_deref())?;
+
+    if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
+        let url = registry_url(
+            &find(args.manifest_path.as_deref())?,
+            args.registry.as_ref().map(String::as_ref),
+        )?;
+        update_registry_index(&url, args.quiet)?;
+    }
+
+    let deps = &args.parse_dependencies(&manifest)?;
+
+    for dep in deps {
+        if let Some(req_feats) = dep.features.as_deref() {
+            let req_feats: BTreeSet<_> = req_feats.iter().map(|s| s.as_str()).collect();
+
+            let available_features = dep
+                .available_features
+                .iter()
+                .map(|s| s.as_ref())
+                .collect::<BTreeSet<&str>>();
+
+            let mut unknown_features: Vec<&&str> =
+                req_feats.difference(&available_features).collect();
+            unknown_features.sort();
+
+            if !unknown_features.is_empty() {
+                unrecognized_features_message(&format!(
+                    "Unrecognized features: {:?}",
+                    unknown_features
+                ))?;
+            };
+        }
+    }
+
+    let was_sorted = manifest
+        .get_table(&args.get_section())
+        .map(TomlItem::as_table)
+        .map_or(true, |table_option| {
+            table_option.map_or(true, |table| is_sorted(table.iter().map(|(name, _)| name)))
+        });
+    deps.iter()
+        .map(|dep| {
+            if !args.quiet {
+                print_msg(dep, &args.get_section(), args.optional)?;
+            }
+            if let Some(path) = dep.path() {
+                if path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
+                    anyhow::bail!(
+                        "Cannot add `{}` as a dependency to itself",
+                        manifest.package_name()?
+                    )
+                }
+            }
+            manifest.insert_into_table(&args.get_section(), dep)?;
+            manifest.gc_dep(dep.toml_key());
+            Ok(())
+        })
+        .collect::<CargoResult<Vec<_>>>()
+        .map_err(|err| {
+            eprintln!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
+            err
+        })?;
+
+    if was_sorted {
+        if let Some(table) = manifest
+            .get_table_mut(&args.get_section())
+            .ok()
+            .and_then(TomlItem::as_table_like_mut)
+        {
+            table.sort_values();
+        }
+    }
+
+    manifest.write()?;
+
+    Ok(())
+}
+
+fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResult<()> {
+    let colorchoice = colorize_stderr();
+    let mut output = StandardStream::stderr(colorchoice);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+    write!(output, "{:>12}", "Adding")?;
+    output.reset()?;
+    write!(output, " {}", dep.name)?;
+    if dep.path().is_some() {
+        write!(output, " (local)")?;
+    } else if let Some(version) = dep.version() {
+        if version.chars().next().unwrap_or('0').is_ascii_digit() {
+            write!(output, " v{}", version)?;
+        } else {
+            write!(output, " {}", version)?;
+        }
+    }
+    write!(output, " to")?;
+    if optional {
+        write!(output, " optional")?;
+    }
+    let section = if section.len() == 1 {
+        section[0].clone()
+    } else {
+        format!("{} for target `{}`", &section[2], &section[1])
+    };
+    write!(output, " {}", section)?;
+    if let Some(f) = &dep.features {
+        if !f.is_empty() {
+            write!(output, " with features: {}", f.join(", "))?;
+        }
+    }
+    writeln!(output, ".")?;
+
+    if !&dep.available_features.is_empty() {
+        writeln!(output, "{:>13}Available features:", " ")?;
+        for feat in dep.available_features.iter() {
+            writeln!(output, "{:>13}- {}", " ", feat)?;
+        }
+    }
+    Ok(())
+}
+
+// Based on Iterator::is_sorted from nightly std; remove in favor of that when stabilized.
+fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
+    let mut last = match it.next() {
+        Some(e) => e,
+        None => return true,
+    };
+
+    for curr in it {
+        if curr < last {
+            return false;
+        }
+        last = curr;
+    }
+
+    true
+}
+
+fn unrecognized_features_message(message: &str) -> CargoResult<()> {
+    let colorchoice = colorize_stderr();
+    let mut output = StandardStream::stderr(colorchoice);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+    write!(output, "{:>12}", "Warning:")?;
+    output.reset()?;
+    writeln!(output, " {}", message)
+        .with_context(|| "Failed to write unrecognized features message")?;
+    Ok(())
 }
