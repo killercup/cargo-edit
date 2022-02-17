@@ -1,4 +1,4 @@
-use cargo_edit::CargoResult;
+use cargo_add::CargoResult;
 use clap::Parser;
 
 #[derive(Debug, Parser)]
