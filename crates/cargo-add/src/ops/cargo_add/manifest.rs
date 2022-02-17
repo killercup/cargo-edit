@@ -424,22 +424,6 @@ impl LocalManifest {
     }
 
     /// Remove entry from a Cargo.toml.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    ///   use cargo_add::{Dependency, LocalManifest, Manifest};
-    ///   use toml_edit;
-    ///
-    ///   let root = std::path::PathBuf::from("/").canonicalize().unwrap();
-    ///   let path = root.join("Cargo.toml");
-    ///   let mut manifest = LocalManifest { path, manifest: Manifest { data: toml_edit::Document::new() } };
-    ///   let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-    ///   let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
-    ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
-    ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
-    ///   assert!(!manifest.data.contains_key("dependencies"));
-    /// ```
     pub fn remove_from_table(&mut self, table: &str, name: &str) -> CargoResult<()> {
         let parent_table = self
             .data
