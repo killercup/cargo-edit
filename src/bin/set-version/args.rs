@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use clap::Args;
 use clap::Parser;
 
 #[derive(Debug, Parser)]
@@ -7,13 +8,13 @@ use clap::Parser;
 pub(crate) enum Command {
     /// Change a package's version in the local manifest file (i.e. Cargo.toml).
     #[clap(name = "set-version")]
-    Version(Args),
+    Version(VersionArgs),
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
 #[clap(about, version)]
 #[clap(group = clap::ArgGroup::new("ver").multiple(false))]
-pub(crate) struct Args {
+pub(crate) struct VersionArgs {
     /// Version to change manifests to
     #[clap(parse(try_from_str), group = "ver")]
     pub(crate) target: Option<semver::Version>,

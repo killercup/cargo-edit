@@ -42,8 +42,8 @@ fn main() {
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
-fn process(args: Args) -> CargoResult<()> {
-    let Args {
+fn process(args: VersionArgs) -> CargoResult<()> {
+    let VersionArgs {
         target,
         bump,
         metadata,

@@ -8,6 +8,7 @@ use cargo_edit::{
 };
 use cargo_edit::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
+use clap::Args;
 use clap::Parser;
 use std::io::Write;
 use std::path::Path;
@@ -20,10 +21,10 @@ use crate::errors::*;
 #[clap(bin_name = "cargo")]
 pub enum Command {
     /// Add dependencies to a Cargo.toml manifest file.
-    Add(Args),
+    Add(AddArgs),
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
 #[clap(about, version)]
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 #[clap(after_help = "\
@@ -36,7 +37,7 @@ Examples:
 #[clap(override_usage = "\
     cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
     cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...")]
-pub struct Args {
+pub struct AddArgs {
     /// Reference to a package to add as a dependency
     ///
     /// You can reference a packages by:{n}
@@ -176,7 +177,7 @@ pub struct Args {
     pub rev: Option<String>,
 }
 
-impl Args {
+impl AddArgs {
     /// Get dependency section
     pub fn get_section(&self) -> Vec<String> {
         if self.dev {
@@ -481,16 +482,16 @@ fn inline_add_message() -> CargoResult<()> {
     Ok(())
 }
 
-impl Args {
+impl AddArgs {
     pub fn optional(&self) -> Option<bool> {
         resolve_bool_arg(self.optional, self.no_optional)
     }
 }
 
 #[cfg(test)]
-impl Default for Args {
-    fn default() -> Args {
-        Args {
+impl Default for AddArgs {
+    fn default() -> AddArgs {
+        AddArgs {
             crates: vec!["demo".to_owned()],
             rename: None,
             dev: false,

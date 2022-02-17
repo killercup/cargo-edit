@@ -15,6 +15,7 @@ use cargo_edit::{
     colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url,
     update_registry_index, CargoResult, Context, CrateSpec, Dependency, LocalManifest,
 };
+use clap::Args;
 use clap::Parser;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
@@ -56,12 +57,12 @@ If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to th
 version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is \
 up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with \
 an error. If the '--to-lockfile' flag is supplied then the network won't be accessed.")]
-    Upgrade(Args),
+    Upgrade(UpgradeArgs),
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
 #[clap(about, version)]
-struct Args {
+struct UpgradeArgs {
     /// Crates to be upgraded.
     dependency: Vec<String>,
 
@@ -127,7 +128,7 @@ struct Args {
     pub unstable_features: Vec<UnstableOptions>,
 }
 
-impl Args {
+impl UpgradeArgs {
     fn workspace(&self) -> bool {
         self.all || self.workspace
     }
@@ -161,7 +162,7 @@ fn verify_app() {
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
-fn process(args: Args) -> CargoResult<()> {
+fn process(args: UpgradeArgs) -> CargoResult<()> {
     if args.all {
         deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }

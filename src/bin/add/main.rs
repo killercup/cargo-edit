@@ -11,7 +11,7 @@
     unused_qualifications
 )]
 
-use crate::args::{Args, Command, UnstableOptions};
+use crate::args::{AddArgs, Command, UnstableOptions};
 use cargo_edit::{
     colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, Dependency,
     LocalManifest,
@@ -105,7 +105,7 @@ fn unrecognized_features_message(message: &str) -> CargoResult<()> {
     Ok(())
 }
 
-fn handle_add(mut args: Args) -> CargoResult<()> {
+fn handle_add(mut args: AddArgs) -> CargoResult<()> {
     if args.git.is_some() && !args.unstable_features.contains(&UnstableOptions::Git) {
         anyhow::bail!("`--git` is unstable and requires `-Z git`");
     }

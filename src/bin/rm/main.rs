@@ -13,6 +13,7 @@
 
 use cargo_edit::CargoResult;
 use cargo_edit::{colorize_stderr, manifest_from_pkgid, LocalManifest};
+use clap::Args;
 use clap::Parser;
 use std::borrow::Cow;
 use std::io::Write;
@@ -25,12 +26,12 @@ use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 enum Command {
     /// Remove a dependency from a Cargo.toml manifest file.
     #[clap(name = "rm")]
-    Rm(Args),
+    Rm(RmArgs),
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
 #[clap(about, version)]
-struct Args {
+struct RmArgs {
     /// Crates to be removed.
     #[clap(value_name = "CRATE", required = true)]
     crates: Vec<String>,
@@ -70,7 +71,7 @@ struct Args {
     quiet: bool,
 }
 
-impl Args {
+impl RmArgs {
     /// Get depenency section
     pub fn get_section(&self) -> &'static str {
         if self.dev {
@@ -96,7 +97,7 @@ fn print_msg(name: &str, section: &str) -> CargoResult<()> {
     Ok(())
 }
 
-fn handle_rm(args: &Args) -> CargoResult<()> {
+fn handle_rm(args: &RmArgs) -> CargoResult<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
         let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
         Cow::Owned(Some(pkg.manifest_path.into_std_path_buf()))
