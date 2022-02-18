@@ -196,6 +196,11 @@ impl Dependency {
     pub fn rename(&self) -> Option<&str> {
         self.rename.as_deref()
     }
+
+    /// Get whether the dep is optional
+    pub fn optional(&self) -> Option<bool> {
+        self.optional
+    }
 }
 
 impl Dependency {

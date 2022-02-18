@@ -16,12 +16,8 @@ mod commands;
 
 use std::process;
 
-use clap::Parser;
-
 fn main() {
-    let args = cli::Command::parse();
-
-    if let Err(err) = args.exec() {
+    if let Err(err) = cli::main() {
         eprintln!("Error: {:?}", err);
 
         process::exit(1);

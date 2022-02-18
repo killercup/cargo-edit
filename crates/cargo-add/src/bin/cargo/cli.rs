@@ -1,22 +1,25 @@
 use cargo_add::ops::cargo_add::CargoResult;
-use clap::Parser;
+use clap::ArgMatches;
+use clap::Command;
 
-#[derive(Debug, Parser)]
-#[clap(bin_name = "cargo")]
-pub enum Command {
-    Add(crate::commands::add::AddArgs),
+pub fn main() -> CargoResult<()> {
+    let args = cli().get_matches();
+    let (cmd, subcommand_args) = args.subcommand().expect("subcommand_required(true)");
+    execute_subcommand(cmd, subcommand_args)
 }
 
-impl Command {
-    pub fn exec(self) -> CargoResult<()> {
-        match self {
-            Self::Add(add) => add.exec(),
-        }
-    }
+fn cli() -> Command<'static> {
+    Command::new("cargo")
+        .subcommands(crate::commands::builtin())
+        .subcommand_required(true)
+}
+
+fn execute_subcommand(cmd: &str, subcommand_args: &ArgMatches) -> CargoResult<()> {
+    let exec = crate::commands::builtin_exec(cmd).expect("all of `builtin` supported");
+    exec(subcommand_args)
 }
 
 #[test]
 fn verify_app() {
-    use clap::CommandFactory;
-    Command::command().debug_assert()
+    cli().debug_assert()
 }

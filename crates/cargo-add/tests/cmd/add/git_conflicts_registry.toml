@@ -3,7 +3,7 @@ args = ["add", "my-package", "--git", "https://github.com/dcjanus/invalid", "--r
 status.code = 2
 stdout = ""
 stderr = """
-error: The argument '--git <URI>' cannot be used with '--registry <REGISTRY>'
+error: The argument '--git <URI>' cannot be used with '--registry <NAME>'
 
 USAGE:
     cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
