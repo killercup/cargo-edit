@@ -9,7 +9,7 @@ use cargo_add::ops::cargo_add::CargoResult;
 use cargo_add::ops::cargo_add::Context;
 use cargo_add::ops::cargo_add::Dependency;
 use cargo_add::ops::cargo_add::{
-    colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, LocalManifest,
+    colorize_stderr, find, registry_url, update_registry_index, LocalManifest,
 };
 use cargo_add::ops::cargo_add::{
     get_features_from_registry, get_manifest_from_path, get_manifest_from_url, workspace_members,
@@ -252,13 +252,18 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
         .collect::<Vec<_>>();
 
     let ws = args.workspace(config)?;
-    let manifest_path = if let Some(pkgid) = args.value_of("package") {
-        let pkg = manifest_from_pkgid(Some(ws.root_manifest()), pkgid)?;
-        pkg.manifest_path.into_std_path_buf()
-    } else {
-        ws.current()?.manifest_path().to_path_buf()
+    let packages = args.packages_from_flags()?;
+    let packages = packages.get_packages(&ws)?;
+    let package = match packages.len() {
+        0 => anyhow::bail!("No packages selected.  Please specify one with `-p <PKGID>`"),
+        1 => packages[0],
+        len => anyhow::bail!(
+            "{} packages selected.  Please specify one with `-p <PKGID>`",
+            len
+        ),
     };
-    let manifest_path = Some(manifest_path);
+    let manifest_path = package.manifest_path();
+    let manifest_path = Some(manifest_path.to_path_buf());
     let mut manifest = LocalManifest::find(manifest_path.as_deref())?;
 
     let raw_deps = parse_dependencies(args, &unstable_features)?;
