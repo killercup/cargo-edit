@@ -69,10 +69,6 @@ native-tls = "^0.2"
 ureq = { version = "2.4.0", default-features = false, features = ["native-tls", "json", "socks", "socks-proxy"] }
 
 [dev-dependencies]
-predicates = { version = "2.0.3", features = ["color-auto"] }
-assert_cmd = { version = "2.0.2", features = ["color-auto"] }
-assert_fs = { version = "1.0.6", features = ["color-auto"] }
-pretty_assertions = "0.6.1"
 trycmd = "0.12.1"
 
 [features]
