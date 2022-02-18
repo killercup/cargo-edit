@@ -12,10 +12,9 @@ use cargo_add::ops::cargo_add::{
     colorize_stderr, find, registry_url, update_registry_index, LocalManifest,
 };
 use cargo_add::ops::cargo_add::{
-    get_features_from_registry, get_manifest_from_path, get_manifest_from_url, workspace_members,
+    get_features_from_registry, get_manifest_from_path, get_manifest_from_url,
 };
 use cargo_add::ops::cargo_add::{get_latest_dependency, CrateSpec};
-use cargo_metadata::Package;
 use indexmap::IndexSet;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
@@ -267,7 +266,6 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
     let mut manifest = LocalManifest::find(manifest_path.as_deref())?;
 
     let raw_deps = parse_dependencies(args, &unstable_features)?;
-    let workspace_members = workspace_members(manifest_path.as_deref())?;
 
     let registry = args.registry(config)?;
     if !args.is_present("offline") && std::env::var("CARGO_IS_TEST").is_err() {
@@ -277,7 +275,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
 
     let deps = raw_deps
         .iter()
-        .map(|raw| resolve_dependency(&manifest, raw, &workspace_members))
+        .map(|raw| resolve_dependency(&manifest, raw, &ws))
         .collect::<CargoResult<Vec<_>>>()?;
 
     let was_sorted = manifest
@@ -493,7 +491,7 @@ fn parse_section(matches: &ArgMatches) -> Section<'_> {
 fn resolve_dependency(
     manifest: &LocalManifest,
     arg: &RawDependency<'_>,
-    workspace_members: &[Package],
+    ws: &cargo::core::Workspace,
 ) -> CargoResult<Dependency> {
     let crate_spec = CrateSpec::resolve(arg.crate_spec)?;
     let manifest_path = manifest.path.as_path();
@@ -536,21 +534,14 @@ fn resolve_dependency(
             } else if let Some(old) = get_existing_dependency(arg, manifest, dependency.toml_key())
             {
                 dependency = populate_dependency(old, arg);
-            } else if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
+            } else if let Some(package) = ws.members().find(|p| p.name().as_str() == *name) {
                 // Only special-case workspaces when the user doesn't provide any extra
                 // information, otherwise, trust the user.
-                dependency = dependency.set_path(
-                    package
-                        .manifest_path
-                        .parent()
-                        .expect("at least parent dir")
-                        .as_std_path()
-                        .to_owned(),
-                );
+                dependency = dependency.set_path(package.root().to_owned());
                 // dev-dependencies do not need the version populated
                 if arg.section != Section::DevDep {
                     let op = "";
-                    let v = format!("{op}{version}", op = op, version = package.version);
+                    let v = format!("{op}{version}", op = op, version = package.version());
                     dependency = dependency.set_version(&v);
                 }
             } else {
@@ -586,12 +577,9 @@ fn resolve_dependency(
                 // dev-dependencies do not need the version populated
                 let dep_path = dependency.path().map(ToOwned::to_owned);
                 if let Some(dep_path) = dep_path {
-                    if let Some(package) = workspace_members.iter().find(|p| {
-                        p.manifest_path.parent().map(|p| p.as_std_path())
-                            == Some(dep_path.as_path())
-                    }) {
+                    if let Some(package) = ws.members().find(|p| p.root() == dep_path.as_path()) {
                         let op = "";
-                        let v = format!("{op}{version}", op = op, version = package.version);
+                        let v = format!("{op}{version}", op = op, version = package.version());
 
                         dependency = dependency.set_version(&v);
                     }
