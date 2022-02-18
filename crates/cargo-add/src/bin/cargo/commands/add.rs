@@ -3,19 +3,18 @@
 use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
 
+use cargo::util::command_prelude::*;
 use cargo_add::ops::cargo_add::CargoResult;
 use cargo_add::ops::cargo_add::Context;
 use cargo_add::ops::cargo_add::Dependency;
 use cargo_add::ops::cargo_add::{
-    colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, LocalManifest,
+    colorize_stderr, registry_url, update_registry_index, LocalManifest,
 };
 use cargo_add::ops::cargo_add::{
-    get_features_from_registry, get_manifest_from_path, get_manifest_from_url, workspace_members,
+    get_features_from_registry, get_manifest_from_path, get_manifest_from_url,
 };
 use cargo_add::ops::cargo_add::{get_latest_dependency, CrateSpec};
-use cargo_metadata::Package;
 use indexmap::IndexSet;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
@@ -107,29 +106,22 @@ Example uses:
                 .help("Package registry for this dependency")
                 .long_help(None)
                 .conflicts_with("git"),
-            clap::Arg::new("manifest-path")
-                .long("manifest-path")
-                .takes_value(true)
-                .value_name("PATH")
-                .allow_invalid_utf8(true)
-                .help("Path to `Cargo.toml`")
-                .long_help(None),
-            clap::Arg::new("pkgid")
+        ])
+        .arg_manifest_path()
+        .args([
+            clap::Arg::new("package")
                 .short('p')
                 .long("package")
                 .takes_value(true)
-                .value_name("PKGID")
+                .value_name("SPEC")
                 .help("Package to modify")
                 .long_help(None),
             clap::Arg::new("offline")
                 .long("offline")
                 .help("Run without accessing the network")
                 .long_help(None),
-            clap::Arg::new("quiet")
-                .long("quiet")
-                .help("Do not print any output in case of success")
-                .long_help(None),
         ])
+        .arg_quiet()
         .next_help_heading("SECTION")
         .args([
             clap::Arg::new("dev")
@@ -247,39 +239,43 @@ impl std::str::FromStr for UnstableOptions {
     }
 }
 
-pub fn exec(subcommand_args: &clap::ArgMatches) -> CargoResult<()> {
-    let unstable_features: Vec<UnstableOptions> = subcommand_args
-        .values_of_t("unstable-features")
-        .unwrap_or_default();
-    let quiet = subcommand_args.is_present("quiet");
-    let section = parse_section(subcommand_args);
+pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
+    let unstable_features: Vec<UnstableOptions> =
+        args.values_of_t("unstable-features").unwrap_or_default();
+    let quiet = args.is_present("quiet");
+    let section = parse_section(args);
     let dep_table = section
         .to_table()
         .into_iter()
         .map(String::from)
         .collect::<Vec<_>>();
 
-    let mut manifest_path = subcommand_args
-        .value_of_os("manifest-path")
-        .map(PathBuf::from);
-    if let Some(pkgid) = subcommand_args.value_of("pkgid") {
-        let pkg = manifest_from_pkgid(manifest_path.as_deref(), pkgid)?;
-        manifest_path = Some(pkg.manifest_path.into_std_path_buf());
-    }
-    let mut manifest = LocalManifest::find(manifest_path.as_deref())?;
+    let ws = args.workspace(config)?;
+    let packages = args.packages_from_flags()?;
+    let packages = packages.get_packages(&ws)?;
+    let package = match packages.len() {
+        0 => anyhow::bail!("No packages selected.  Please specify one with `-p <PKGID>`"),
+        1 => packages[0],
+        len => anyhow::bail!(
+            "{} packages selected.  Please specify one with `-p <PKGID>`",
+            len
+        ),
+    };
+    let manifest_path = package.manifest_path();
+    let manifest_path = manifest_path.to_path_buf();
+    let mut manifest = LocalManifest::try_new(&manifest_path)?;
 
-    let raw_deps = parse_dependencies(subcommand_args, &unstable_features)?;
-    let workspace_members = workspace_members(manifest_path.as_deref())?;
+    let raw_deps = parse_dependencies(args, &unstable_features)?;
 
-    let registry = subcommand_args.value_of("registry");
-    if !subcommand_args.is_present("offline") && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(&find(manifest_path.as_deref())?, registry)?;
+    let registry = args.registry(config)?;
+    if !args.is_present("offline") && std::env::var("CARGO_IS_TEST").is_err() {
+        let url = registry_url(&manifest_path, registry.as_deref())?;
         update_registry_index(&url, quiet)?;
     }
 
     let deps = raw_deps
         .iter()
-        .map(|raw| resolve_dependency(&manifest, raw, &workspace_members))
+        .map(|raw| resolve_dependency(&manifest, raw, &ws))
         .collect::<CargoResult<Vec<_>>>()?;
 
     let was_sorted = manifest
@@ -361,7 +357,7 @@ struct RawDependency<'m> {
 }
 
 fn parse_dependencies<'m>(
-    matches: &'m clap::ArgMatches,
+    matches: &'m ArgMatches,
     unstable_features: &[UnstableOptions],
 ) -> CargoResult<Vec<RawDependency<'m>>> {
     let crates = matches
@@ -437,14 +433,14 @@ fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
     feature.split([' ', ',']).filter(|s| !s.is_empty())
 }
 
-fn default_features(matches: &clap::ArgMatches) -> Option<bool> {
+fn default_features(matches: &ArgMatches) -> Option<bool> {
     resolve_bool_arg(
         matches.is_present("default-features"),
         matches.is_present("no-default-features"),
     )
 }
 
-fn optional(matches: &clap::ArgMatches) -> Option<bool> {
+fn optional(matches: &ArgMatches) -> Option<bool> {
     resolve_bool_arg(
         matches.is_present("optional"),
         matches.is_present("no-optional"),
@@ -479,7 +475,7 @@ impl<'m> Section<'m> {
     }
 }
 
-fn parse_section(matches: &clap::ArgMatches) -> Section<'_> {
+fn parse_section(matches: &ArgMatches) -> Section<'_> {
     if matches.is_present("dev") {
         Section::DevDep
     } else if matches.is_present("build") {
@@ -495,7 +491,7 @@ fn parse_section(matches: &clap::ArgMatches) -> Section<'_> {
 fn resolve_dependency(
     manifest: &LocalManifest,
     arg: &RawDependency<'_>,
-    workspace_members: &[Package],
+    ws: &cargo::core::Workspace,
 ) -> CargoResult<Dependency> {
     let crate_spec = CrateSpec::resolve(arg.crate_spec)?;
     let manifest_path = manifest.path.as_path();
@@ -538,21 +534,14 @@ fn resolve_dependency(
             } else if let Some(old) = get_existing_dependency(arg, manifest, dependency.toml_key())
             {
                 dependency = populate_dependency(old, arg);
-            } else if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
+            } else if let Some(package) = ws.members().find(|p| p.name().as_str() == *name) {
                 // Only special-case workspaces when the user doesn't provide any extra
                 // information, otherwise, trust the user.
-                dependency = dependency.set_path(
-                    package
-                        .manifest_path
-                        .parent()
-                        .expect("at least parent dir")
-                        .as_std_path()
-                        .to_owned(),
-                );
+                dependency = dependency.set_path(package.root().to_owned());
                 // dev-dependencies do not need the version populated
                 if arg.section != Section::DevDep {
                     let op = "";
-                    let v = format!("{op}{version}", op = op, version = package.version);
+                    let v = format!("{op}{version}", op = op, version = package.version());
                     dependency = dependency.set_version(&v);
                 }
             } else {
@@ -588,12 +577,9 @@ fn resolve_dependency(
                 // dev-dependencies do not need the version populated
                 let dep_path = dependency.path().map(ToOwned::to_owned);
                 if let Some(dep_path) = dep_path {
-                    if let Some(package) = workspace_members.iter().find(|p| {
-                        p.manifest_path.parent().map(|p| p.as_std_path())
-                            == Some(dep_path.as_path())
-                    }) {
+                    if let Some(package) = ws.members().find(|p| p.root() == dep_path.as_path()) {
                         let op = "";
-                        let v = format!("{op}{version}", op = op, version = package.version);
+                        let v = format!("{op}{version}", op = op, version = package.version());
 
                         dependency = dependency.set_version(&v);
                     }
