@@ -211,13 +211,13 @@ impl LocalManifest {
     /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
     /// the user means.
     pub fn find(path: Option<&Path>) -> CargoResult<Self> {
-        let path = dunce::canonicalize(find(path)?)?;
+        let path = find(path)?;
         Self::try_new(&path)
     }
 
     /// Construct the `LocalManifest` corresponding to the `Path` provided.
     pub fn try_new(path: &Path) -> CargoResult<Self> {
-        let path = path.to_path_buf();
+        let path = dunce::canonicalize(path).with_context(|| "Failed to read manifest contents")?;
         let data =
             std::fs::read_to_string(&path).with_context(|| "Failed to read manifest contents")?;
         let manifest = data.parse().with_context(|| "Unable to parse Cargo.toml")?;

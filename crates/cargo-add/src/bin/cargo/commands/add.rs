@@ -9,7 +9,7 @@ use cargo_add::ops::cargo_add::CargoResult;
 use cargo_add::ops::cargo_add::Context;
 use cargo_add::ops::cargo_add::Dependency;
 use cargo_add::ops::cargo_add::{
-    colorize_stderr, find, registry_url, update_registry_index, LocalManifest,
+    colorize_stderr, registry_url, update_registry_index, LocalManifest,
 };
 use cargo_add::ops::cargo_add::{
     get_features_from_registry, get_manifest_from_path, get_manifest_from_url,
@@ -262,14 +262,14 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
         ),
     };
     let manifest_path = package.manifest_path();
-    let manifest_path = Some(manifest_path.to_path_buf());
-    let mut manifest = LocalManifest::find(manifest_path.as_deref())?;
+    let manifest_path = manifest_path.to_path_buf();
+    let mut manifest = LocalManifest::try_new(&manifest_path)?;
 
     let raw_deps = parse_dependencies(args, &unstable_features)?;
 
     let registry = args.registry(config)?;
     if !args.is_present("offline") && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(&find(manifest_path.as_deref())?, registry.as_deref())?;
+        let url = registry_url(&manifest_path, registry.as_deref())?;
         update_registry_index(&url, quiet)?;
     }
 
