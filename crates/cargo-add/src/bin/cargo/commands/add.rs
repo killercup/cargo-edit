@@ -240,30 +240,29 @@ impl std::str::FromStr for UnstableOptions {
     }
 }
 
-pub fn exec(config: &Config, subcommand_args: &ArgMatches) -> CargoResult<()> {
-    let unstable_features: Vec<UnstableOptions> = subcommand_args
-        .values_of_t("unstable-features")
-        .unwrap_or_default();
-    let quiet = subcommand_args.is_present("quiet");
-    let section = parse_section(subcommand_args);
+pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
+    let unstable_features: Vec<UnstableOptions> =
+        args.values_of_t("unstable-features").unwrap_or_default();
+    let quiet = args.is_present("quiet");
+    let section = parse_section(args);
     let dep_table = section
         .to_table()
         .into_iter()
         .map(String::from)
         .collect::<Vec<_>>();
 
-    let mut manifest_path = Some(subcommand_args.root_manifest(config)?);
-    if let Some(pkgid) = subcommand_args.value_of("pkgid") {
+    let mut manifest_path = Some(args.root_manifest(config)?);
+    if let Some(pkgid) = args.value_of("pkgid") {
         let pkg = manifest_from_pkgid(manifest_path.as_deref(), pkgid)?;
         manifest_path = Some(pkg.manifest_path.into_std_path_buf());
     }
     let mut manifest = LocalManifest::find(manifest_path.as_deref())?;
 
-    let raw_deps = parse_dependencies(subcommand_args, &unstable_features)?;
+    let raw_deps = parse_dependencies(args, &unstable_features)?;
     let workspace_members = workspace_members(manifest_path.as_deref())?;
 
-    let registry = subcommand_args.registry(config)?;
-    if !subcommand_args.is_present("offline") && std::env::var("CARGO_IS_TEST").is_err() {
+    let registry = args.registry(config)?;
+    if !args.is_present("offline") && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(&find(manifest_path.as_deref())?, registry.as_deref())?;
         update_registry_index(&url, quiet)?;
     }
