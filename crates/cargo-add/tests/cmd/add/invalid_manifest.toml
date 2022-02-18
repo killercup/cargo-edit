@@ -1,0 +1,20 @@
+bin.name = "cargo-add"
+args = ["add", "my-package"]
+status.code = 1
+stdout = ""
+stderr = """
+Error: Unable to parse Cargo.toml
+
+Caused by:
+    0: Manifest not valid TOML
+    1: TOML parse error at line 6, column 7
+         |
+       6 | key = invalid-value
+         |       ^
+       Unexpected `v`
+       
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

@@ -130,8 +130,6 @@ name = "cargo-add"
 version = "0.8.0"
 dependencies = [
  "anyhow",
- "assert_cmd",
- "assert_fs",
  "cargo_metadata",
  "clap",
  "concolor-control",
@@ -144,8 +142,6 @@ dependencies = [
  "indexmap",
  "native-tls",
  "pathdiff",
- "predicates",
- "pretty_assertions",
  "regex",
  "semver",
  "serde",
