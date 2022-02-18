@@ -110,11 +110,11 @@ Example uses:
         ])
         .arg_manifest_path()
         .args([
-            clap::Arg::new("pkgid")
+            clap::Arg::new("package")
                 .short('p')
                 .long("package")
                 .takes_value(true)
-                .value_name("PKGID")
+                .value_name("SPEC")
                 .help("Package to modify")
                 .long_help(None),
             clap::Arg::new("offline")
@@ -251,11 +251,14 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
         .map(String::from)
         .collect::<Vec<_>>();
 
-    let mut manifest_path = Some(args.root_manifest(config)?);
-    if let Some(pkgid) = args.value_of("pkgid") {
-        let pkg = manifest_from_pkgid(manifest_path.as_deref(), pkgid)?;
-        manifest_path = Some(pkg.manifest_path.into_std_path_buf());
-    }
+    let ws = args.workspace(config)?;
+    let manifest_path = if let Some(pkgid) = args.value_of("package") {
+        let pkg = manifest_from_pkgid(Some(ws.root_manifest()), pkgid)?;
+        pkg.manifest_path.into_std_path_buf()
+    } else {
+        ws.current()?.manifest_path().to_path_buf()
+    };
+    let manifest_path = Some(manifest_path);
     let mut manifest = LocalManifest::find(manifest_path.as_deref())?;
 
     let raw_deps = parse_dependencies(args, &unstable_features)?;
