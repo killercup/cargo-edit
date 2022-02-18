@@ -17,8 +17,8 @@ mod commands;
 use std::process;
 
 fn main() {
-    let config = cargo::Config::default().unwrap();
-    if let Err(err) = cli::main(&config) {
+    let mut config = cargo::Config::default().unwrap();
+    if let Err(err) = cli::main(&mut config) {
         eprintln!("Error: {:?}", err);
 
         process::exit(1);
