@@ -7,520 +7,448 @@ use std::path::PathBuf;
 
 use cargo_add::ops::cargo_add::CargoResult;
 use cargo_add::ops::cargo_add::Context;
+use cargo_add::ops::cargo_add::Dependency;
 use cargo_add::ops::cargo_add::{
-    colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, Dependency,
-    LocalManifest,
+    colorize_stderr, find, manifest_from_pkgid, registry_url, update_registry_index, LocalManifest,
 };
 use cargo_add::ops::cargo_add::{
     get_features_from_registry, get_manifest_from_path, get_manifest_from_url, workspace_members,
 };
 use cargo_add::ops::cargo_add::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
-use clap::Args;
+use indexmap::IndexSet;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
 
-/// Add dependencies to a Cargo.toml manifest file.
-#[derive(Debug, Args)]
-#[clap(version)]
-#[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
-#[clap(after_help = "\
-Examples:
+pub fn cli() -> clap::Command<'static> {
+    clap::Command::new("add")
+        .setting(clap::AppSettings::DeriveDisplayOrder)
+        .about("Add dependencies to a Cargo.toml manifest file")
+        .override_usage(
+            "\
+    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
+    cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...",
+        )
+        .after_help(
+            "\
+EXAMPLES:
   $ cargo add regex --build
   $ cargo add trycmd --dev
   $ cargo add ./crate/parser/
   $ cargo add serde +derive serde_json
-")]
-#[clap(override_usage = "\
-    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
-    cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...")]
-pub struct AddArgs {
-    /// Reference to a package to add as a dependency
-    ///
-    /// You can reference a packages by:{n}
-    /// - `<name>`, like `cargo add serde` (latest version will be used){n}
-    /// - `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`{n}
-    /// - `<path>`, like `cargo add ./crates/parser/`
-    ///
-    /// Additionally, you can specify features for a dependency by following it with a
-    /// `+<FEATURE>`.
-    #[clap(value_name = "DEP_ID", required = true)]
-    pub crates: Vec<String>,
+",
+        )
+        .args([
+            clap::Arg::new("crates")
+                .takes_value(true)
+                .value_name("DEP_ID")
+                .multiple_occurrences(true)
+                .required(true)
+                .help("Reference to a package to add as a dependency")
+                .long_help(
+                "Reference to a package to add as a dependency
 
-    /// Disable the default features
-    #[clap(long)]
-    no_default_features: bool,
-    /// Re-enable the default features
-    #[clap(long, overrides_with = "no-default-features")]
-    default_features: bool,
+You can reference a packages by:
+- `<name>`, like `cargo add serde` (latest version will be used)
+- `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`
+- `<path>`, like `cargo add ./crates/parser/`
 
-    /// Space-separated list of features to add
-    ///
-    /// Alternatively, you can specify features for a dependency by following it with a
-    /// `+<FEATURE>`.
-    #[clap(short = 'F', long)]
-    pub features: Option<Vec<String>>,
+Additionally, you can specify features for a dependency by following it with a `+<FEATURE>`.",
+            ),
+            clap::Arg::new("no-default-features")
+                .long("no-default-features")
+                .help("Disable the default features")
+                .long_help(None),
+            clap::Arg::new("default-features")
+                .long("default-features")
+                .help("Re-enable the default features")
+                .long_help(None)
+                .overrides_with("no-default-features"),
+            clap::Arg::new("features")
+                .short('F')
+                .long("features")
+                .takes_value(true)
+                .value_name("FEATURES")
+                .multiple_occurrences(true)
+                .help("Space-separated list of features to add")
+                .long_help("Space-separated list of features to add
 
-    /// Mark the dependency as optional
-    ///
-    /// The package name will be exposed as feature of your crate.
-    #[clap(long, conflicts_with = "dev")]
-    pub optional: bool,
+Alternatively, you can specify features for a dependency by following it with a `+<FEATURE>`."),
+            clap::Arg::new("optional")
+                .long("optional")
+                .help("Mark the dependency as optional")
+                .long_help("Mark the dependency as optional
 
-    /// Mark the dependency as required
-    ///
-    /// The package will be removed from your features.
-    #[clap(long, conflicts_with = "dev", overrides_with = "optional")]
-    pub no_optional: bool,
+The package name will be exposed as feature of your crate.")
+                .conflicts_with("dev"),
+            clap::Arg::new("no-optional")
+                .long("no-optional")
+                .help("Mark the dependency as required")
+                .long_help("Mark the dependency as required
 
-    /// Rename the dependency
-    ///
-    /// Example uses:{n}
-    /// - Depending on multiple versions of a crate{n}
-    /// - Depend on crates with the same name from different registries
-    #[clap(long, short)]
-    pub rename: Option<String>,
+The package will be removed from your features.")
+                .conflicts_with("dev")
+                .overrides_with("optional"),
+            clap::Arg::new("rename")
+                .short('r')
+                .long("rename")
+                .takes_value(true)
+                .value_name("NAME")
+                .help("Rename the dependency")
+                .long_help("Rename the dependency
 
-    /// Package registry for this dependency
-    #[clap(long, conflicts_with = "git")]
-    pub registry: Option<String>,
+Example uses:
+- Depending on multiple versions of a crate
+- Depend on crates with the same name from different registries"),
+            clap::Arg::new("registry")
+                .long("registry")
+                .takes_value(true)
+                .value_name("NAME")
+                .help("Package registry for this dependency")
+                .long_help(None)
+                .conflicts_with("git"),
+            clap::Arg::new("manifest-path")
+                .long("manifest-path")
+                .takes_value(true)
+                .value_name("PATH")
+                .allow_invalid_utf8(true)
+                .help("Path to `Cargo.toml`")
+                .long_help(None),
+            clap::Arg::new("pkgid")
+                .short('p')
+                .long("package")
+                .takes_value(true)
+                .value_name("PKGID")
+                .help("Package to modify")
+                .long_help(None),
+            clap::Arg::new("offline")
+                .long("offline")
+                .help("Run without accessing the network")
+                .long_help(None),
+            clap::Arg::new("quiet")
+                .long("quiet")
+                .help("Do not print any output in case of success")
+                .long_help(None),
+        ])
+        .next_help_heading("SECTION")
+        .args([
+            clap::Arg::new("dev")
+                .short('D')
+                .long("dev")
+                .help("Add as development dependency")
+                .long_help("Add as development dependency
 
-    /// Add as development dependency
-    ///
-    /// Dev-dependencies are not used when compiling a package for building, but are used for compiling tests, examples, and benchmarks.
-    ///
-    /// These dependencies are not propagated to other packages which depend on this package.
-    #[clap(short = 'D', long, help_heading = "SECTION", group = "section")]
-    pub dev: bool,
+Dev-dependencies are not used when compiling a package for building, but are used for compiling tests, examples, and benchmarks.
 
-    /// Add as build dependency
-    ///
-    /// Build-dependencies are the only dependencies available for use by build scripts (`build.rs`
-    /// files).
-    #[clap(short = 'B', long, help_heading = "SECTION", group = "section")]
-    pub build: bool,
+These dependencies are not propagated to other packages which depend on this package.")
+                .group("section"),
+            clap::Arg::new("build")
+                .short('B')
+                .long("build")
+                .help("Add as build dependency")
+                .long_help("Add as build dependency
 
-    /// Add as dependency to the given target platform.
-    #[clap(
-        long,
-        forbid_empty_values = true,
-        help_heading = "SECTION",
-        group = "section"
-    )]
-    pub target: Option<String>,
+Build-dependencies are the only dependencies available for use by build scripts (`build.rs` files).")
+                .group("section"),
+            clap::Arg::new("target")
+                .long("target")
+                .takes_value(true)
+                .value_name("TARGET")
+                .forbid_empty_values(true)
+                .help("Add as dependency to the given target platform")
+                .long_help(None)
+                .group("section"),
+        ])
+        .next_help_heading("UNSTABLE")
+        .args([
+            clap::Arg::new("unstable-features")
+                .short('Z')
+                .value_name("FLAG")
+                .global(true)
+                .takes_value(true)
+                .multiple_occurrences(true)
+                .possible_values(UnstableOptions::possible_values())
+                .help("Unstable (nightly-only) flags")
+                .long_help(None),
+            clap::Arg::new("git")
+                .long("git")
+                .takes_value(true)
+                .value_name("URI")
+                .help("Git repository location")
+                .long_help("Git repository location
 
-    /// Path to `Cargo.toml`
-    #[clap(long, value_name = "PATH", parse(from_os_str))]
-    pub manifest_path: Option<PathBuf>,
+Without any other information, cargo will use latest commit on the main branch."),
+            clap::Arg::new("branch")
+                .long("branch")
+                .takes_value(true)
+                .value_name("BRANCH")
+                .help("Git branch to download the crate from")
+                .long_help(None)
+                .requires("git")
+                .group("git-ref"),
+            clap::Arg::new("tag")
+                .long("tag")
+                .takes_value(true)
+                .value_name("TAG")
+                .help("Git tag to download the crate from")
+                .long_help(None)
+                .requires("git")
+                .group("git-ref"),
+            clap::Arg::new("rev")
+                .long("rev")
+                .takes_value(true)
+                .value_name("REV")
+                .help("Git reference to download the crate from")
+                .long_help("Git reference to download the crate from
 
-    /// Package to modify
-    #[clap(short = 'p', long = "package", value_name = "PKGID")]
-    pub pkgid: Option<String>,
-
-    /// Run without accessing the network
-    #[clap(long)]
-    pub offline: bool,
-
-    /// Do not print any output in case of success.
-    #[clap(long)]
-    pub quiet: bool,
-
-    /// Unstable (nightly-only) flags
-    #[clap(
-        short = 'Z',
-        value_name = "FLAG",
-        help_heading = "UNSTABLE",
-        global = true,
-        arg_enum
-    )]
-    pub unstable_features: Vec<UnstableOptions>,
-
-    /// Git repository location
-    ///
-    /// Without any other information, cargo will use latest commit on the main branch.
-    #[clap(long, value_name = "URI", help_heading = "UNSTABLE")]
-    pub git: Option<String>,
-
-    /// Git branch to download the crate from.
-    #[clap(
-        long,
-        value_name = "BRANCH",
-        help_heading = "UNSTABLE",
-        requires = "git",
-        group = "git-ref"
-    )]
-    pub branch: Option<String>,
-
-    /// Git tag to download the crate from.
-    #[clap(
-        long,
-        value_name = "TAG",
-        help_heading = "UNSTABLE",
-        requires = "git",
-        group = "git-ref"
-    )]
-    pub tag: Option<String>,
-
-    /// Git reference to download the crate from
-    ///
-    /// This is the catch all, handling hashes to named references in remote repositories.
-    #[clap(
-        long,
-        value_name = "REV",
-        help_heading = "UNSTABLE",
-        requires = "git",
-        group = "git-ref"
-    )]
-    pub rev: Option<String>,
-}
-
-impl AddArgs {
-    pub fn exec(self) -> CargoResult<()> {
-        exec(self)
-    }
-
-    /// Get dependency section
-    pub fn get_section(&self) -> Vec<String> {
-        if self.dev {
-            vec!["dev-dependencies".to_owned()]
-        } else if self.build {
-            vec!["build-dependencies".to_owned()]
-        } else if let Some(ref target) = self.target {
-            assert!(!target.is_empty(), "Target specification may not be empty");
-
-            vec![
-                "target".to_owned(),
-                target.clone(),
-                "dependencies".to_owned(),
-            ]
-        } else {
-            vec!["dependencies".to_owned()]
-        }
-    }
-
-    pub fn default_features(&self) -> Option<bool> {
-        resolve_bool_arg(self.default_features, self.no_default_features)
-    }
-
-    /// Build dependencies from arguments
-    pub fn parse_dependencies(&self, manifest: &LocalManifest) -> CargoResult<Vec<Dependency>> {
-        let workspace_members = workspace_members(self.manifest_path.as_deref())?;
-
-        if self.crates.len() > 1 && self.git.is_some() {
-            anyhow::bail!("Cannot specify multiple crates with path or git or vers");
-        }
-
-        if self.crates.len() > 1 && self.rename.is_some() {
-            anyhow::bail!("Cannot specify multiple crates with rename");
-        }
-
-        if self.crates.len() > 1 && self.features.is_some() {
-            anyhow::bail!("Cannot specify multiple crates with features");
-        }
-
-        let mut deps: Vec<Dependency> = Vec::new();
-        for crate_spec in &self.crates {
-            if let Some(features) = crate_spec.strip_prefix('+') {
-                if !self.unstable_features.contains(&UnstableOptions::InlineAdd) {
-                    inline_add_message()?;
-                }
-
-                if let Some(prior) = deps.last_mut() {
-                    let features = parse_feature(features);
-                    prior
-                        .features
-                        .get_or_insert_with(Default::default)
-                        .extend(features.map(|s| s.to_owned()));
-                } else {
-                    anyhow::bail!("`+<feature>` must be preceded by a pkgid");
-                }
-            } else {
-                let dep = self.parse_single_dependency(manifest, crate_spec, &workspace_members)?;
-                deps.push(dep);
-            }
-        }
-        Ok(deps)
-    }
-
-    fn parse_single_dependency(
-        &self,
-        manifest: &LocalManifest,
-        crate_spec: &str,
-        workspace_members: &[Package],
-    ) -> CargoResult<Dependency> {
-        let crate_spec = CrateSpec::resolve(crate_spec)?;
-        let manifest_path = manifest.path.as_path();
-
-        let mut dependency = match &crate_spec {
-            CrateSpec::PkgId {
-                name: _,
-                version_req: Some(_),
-            } => {
-                let mut dependency = crate_spec.to_dependency()?;
-                dependency = self.populate_dependency(dependency);
-                // crate specifier includes a version (e.g. `docopt@0.8`)
-                if let Some(ref url) = self.git {
-                    let url = url.clone();
-                    let version = dependency.version().unwrap().to_string();
-                    anyhow::bail!(
-                        "Cannot specify a git URL (`{}`) with a version (`{}`).",
-                        url,
-                        version
-                    )
-                }
-
-                dependency
-            }
-            CrateSpec::PkgId {
-                name,
-                version_req: None,
-            } => {
-                let mut dependency = crate_spec.to_dependency()?;
-                dependency = self.populate_dependency(dependency);
-
-                if let Some(repo) = &self.git {
-                    assert!(self.registry.is_none());
-                    dependency = dependency.set_git(
-                        repo,
-                        self.branch.clone(),
-                        self.tag.clone(),
-                        self.rev.clone(),
-                    );
-                } else if let Some(old) =
-                    self.get_existing_dependency(manifest, dependency.toml_key())
-                {
-                    dependency = self.populate_dependency(old);
-                } else if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
-                    // Only special-case workspaces when the user doesn't provide any extra
-                    // information, otherwise, trust the user.
-                    dependency = dependency.set_path(
-                        package
-                            .manifest_path
-                            .parent()
-                            .expect("at least parent dir")
-                            .as_std_path()
-                            .to_owned(),
-                    );
-                    // dev-dependencies do not need the version populated
-                    if !self.dev {
-                        let op = "";
-                        let v = format!("{op}{version}", op = op, version = package.version);
-                        dependency = dependency.set_version(&v);
-                    }
-                } else {
-                    let registry_url = registry_url(manifest_path, self.registry.as_deref())?;
-                    let latest =
-                        get_latest_dependency(name, false, manifest_path, Some(&registry_url))?;
-                    let op = "";
-                    let v = format!(
-                        "{op}{version}",
-                        op = op,
-                        // If version is unavailable `get_latest_dependency` must have
-                        // returned `Err(FetchVersionError::GetVersion)`
-                        version = latest.version().unwrap_or_else(|| unreachable!())
-                    );
-                    dependency = dependency
-                        .set_version(&v)
-                        .set_available_features(latest.available_features);
-                }
-
-                dependency
-            }
-            CrateSpec::Path(_) => {
-                let mut dependency = crate_spec.to_dependency()?;
-                dependency = self.populate_dependency(dependency);
-
-                if let Some(old) = self.get_existing_dependency(manifest, dependency.toml_key()) {
-                    if old.path() == dependency.path() {
-                        if let Some(version) = old.version() {
-                            dependency = dependency.set_version(version);
-                        }
-                    }
-                } else if !self.dev {
-                    // dev-dependencies do not need the version populated
-                    let dep_path = dependency.path().map(ToOwned::to_owned);
-                    if let Some(dep_path) = dep_path {
-                        if let Some(package) = workspace_members.iter().find(|p| {
-                            p.manifest_path.parent().map(|p| p.as_std_path())
-                                == Some(dep_path.as_path())
-                        }) {
-                            let op = "";
-                            let v = format!("{op}{version}", op = op, version = package.version);
-
-                            dependency = dependency.set_version(&v);
-                        }
-                    }
-                }
-
-                dependency
-            }
-        };
-
-        if let Some(registry) = &self.registry {
-            dependency = dependency.set_registry(registry);
-        }
-        dependency = self.populate_available_features(dependency, manifest_path)?;
-
-        Ok(dependency)
-    }
-
-    /// Provide the existing dependency for the target table
-    ///
-    /// If it doesn't exist but exists in another table, let's use that as most likely users
-    /// want to use the same version across all tables unless they are renaming.
-    fn get_existing_dependency(
-        &self,
-        manifest: &LocalManifest,
-        dep_key: &str,
-    ) -> Option<Dependency> {
-        #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-        enum Key {
-            Dev,
-            Build,
-            Target,
-            Runtime,
-            Existing,
-        }
-
-        let target_section = self.get_section();
-        let mut possible: Vec<_> = manifest
-            .get_dependency_versions(dep_key)
-            .filter_map(|(path, dep)| dep.ok().map(|dep| (path, dep)))
-            .map(|(path, dep)| {
-                let key = if path == target_section {
-                    Key::Existing
-                } else {
-                    match path[0].as_str() {
-                        "dependencies" => Key::Runtime,
-                        "target" => Key::Target,
-                        "build-dependencies" => Key::Build,
-                        "dev-dependencies" => Key::Dev,
-                        other => unreachable!("Unknown dependency section: {}", other),
-                    }
-                };
-                (key, dep)
-            })
-            .collect();
-        if possible.is_empty() {
-            return None;
-        }
-
-        possible.sort_by_key(|(key, _)| *key);
-        let (key, mut dep) = possible.pop().expect("checked for empty earlier");
-        // dev-dependencies do not need the version populated when path is set though we
-        // should preserve it if the user chose to populate it.
-        if dep.path().is_some() && self.dev && key != Key::Existing {
-            dep = dep.clear_version();
-        }
-        Some(dep)
-    }
-
-    fn populate_dependency(&self, mut dependency: Dependency) -> Dependency {
-        let requested_features: Option<Vec<_>> = self.features.as_ref().map(|v| {
-            v.iter()
-                .flat_map(|s| parse_feature(s))
-                .map(|f| f.to_owned())
-                .collect()
-        });
-
-        dependency = dependency
-            .set_optional(self.optional())
-            .set_default_features(self.default_features())
-            .set_features(requested_features);
-
-        if let Some(ref rename) = self.rename {
-            dependency = dependency.set_rename(rename);
-        }
-
-        dependency
-    }
-
-    /// Lookup available features
-    pub fn populate_available_features(
-        &self,
-        dependency: Dependency,
-        manifest_path: &Path,
-    ) -> CargoResult<Dependency> {
-        if !dependency.available_features.is_empty() {
-            return Ok(dependency);
-        }
-
-        let available_features = if let Some(path) = dependency.path() {
-            let manifest = get_manifest_from_path(path)?;
-            manifest.features()?
-        } else if let Some(repo) = dependency.git() {
-            get_manifest_from_url(repo)?
-                .map(|m| m.features())
-                .transpose()?
-                .unwrap_or_else(Vec::new)
-        } else if let Some(version) = dependency.version() {
-            let registry_url = registry_url(manifest_path, self.registry.as_deref())?;
-            get_features_from_registry(&dependency.name, version, &registry_url)?
-        } else {
-            vec![]
-        };
-
-        let dependency = dependency.set_available_features(available_features);
-        Ok(dependency)
-    }
-}
-
-fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
-    feature.split([' ', ',']).filter(|s| !s.is_empty())
-}
-
-fn inline_add_message() -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
-    write!(output, "{:>12}", "Warning:")?;
-    output.reset()?;
-    writeln!(
-        output,
-        " `+<feature>` is unstable and requires `-Z inline-add`"
-    )
-    .with_context(|| "Failed to write unrecognized features message")?;
-    Ok(())
-}
-
-impl AddArgs {
-    pub fn optional(&self) -> Option<bool> {
-        resolve_bool_arg(self.optional, self.no_optional)
-    }
-}
-
-#[cfg(test)]
-impl Default for AddArgs {
-    fn default() -> AddArgs {
-        AddArgs {
-            crates: vec!["demo".to_owned()],
-            rename: None,
-            dev: false,
-            build: false,
-            git: None,
-            branch: None,
-            tag: None,
-            rev: None,
-            target: None,
-            optional: false,
-            no_optional: false,
-            manifest_path: None,
-            pkgid: None,
-            features: None,
-            no_default_features: false,
-            default_features: false,
-            quiet: false,
-            offline: true,
-            registry: None,
-            unstable_features: vec![],
-        }
-    }
+This is the catch all, handling hashes to named references in remote repositories.")
+                .requires("git")
+                .group("git-ref"),
+        ])
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 pub enum UnstableOptions {
     Git,
     InlineAdd,
+}
+
+impl UnstableOptions {
+    /// Report all `possible_values`
+    pub fn possible_values() -> impl Iterator<Item = clap::PossibleValue<'static>> {
+        use clap::ArgEnum;
+        Self::value_variants()
+            .iter()
+            .filter_map(ArgEnum::to_possible_value)
+    }
+}
+
+impl std::fmt::Display for UnstableOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use clap::ArgEnum;
+        self.to_possible_value()
+            .expect("no values are skipped")
+            .get_name()
+            .fmt(f)
+    }
+}
+
+impl std::str::FromStr for UnstableOptions {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use clap::ArgEnum;
+        for variant in Self::value_variants() {
+            if variant.to_possible_value().unwrap().matches(s, false) {
+                return Ok(*variant);
+            }
+        }
+        Err(format!("Invalid variant: {}", s))
+    }
+}
+
+pub fn exec(subcommand_args: &clap::ArgMatches) -> CargoResult<()> {
+    let unstable_features: Vec<UnstableOptions> = subcommand_args
+        .values_of_t("unstable-features")
+        .unwrap_or_default();
+    let quiet = subcommand_args.is_present("quiet");
+    let section = parse_section(subcommand_args);
+    let dep_table = section
+        .to_table()
+        .into_iter()
+        .map(String::from)
+        .collect::<Vec<_>>();
+
+    let mut manifest_path = subcommand_args
+        .value_of_os("manifest-path")
+        .map(PathBuf::from);
+    if let Some(pkgid) = subcommand_args.value_of("pkgid") {
+        let pkg = manifest_from_pkgid(manifest_path.as_deref(), pkgid)?;
+        manifest_path = Some(pkg.manifest_path.into_std_path_buf());
+    }
+    let mut manifest = LocalManifest::find(manifest_path.as_deref())?;
+
+    let raw_deps = parse_dependencies(subcommand_args, &unstable_features)?;
+    let workspace_members = workspace_members(manifest_path.as_deref())?;
+
+    let registry = subcommand_args.value_of("registry");
+    if !subcommand_args.is_present("offline") && std::env::var("CARGO_IS_TEST").is_err() {
+        let url = registry_url(&find(manifest_path.as_deref())?, registry)?;
+        update_registry_index(&url, quiet)?;
+    }
+
+    let deps = raw_deps
+        .iter()
+        .map(|raw| resolve_dependency(&manifest, raw, &workspace_members))
+        .collect::<CargoResult<Vec<_>>>()?;
+
+    let was_sorted = manifest
+        .get_table(&dep_table)
+        .map(TomlItem::as_table)
+        .map_or(true, |table_option| {
+            table_option.map_or(true, |table| is_sorted(table.iter().map(|(name, _)| name)))
+        });
+    for dep in deps {
+        if let Some(req_feats) = dep.features.as_deref() {
+            let req_feats: BTreeSet<_> = req_feats.iter().map(|s| s.as_str()).collect();
+
+            let available_features = dep
+                .available_features
+                .iter()
+                .map(|s| s.as_ref())
+                .collect::<BTreeSet<&str>>();
+
+            let mut unknown_features: Vec<&&str> =
+                req_feats.difference(&available_features).collect();
+            unknown_features.sort();
+
+            if !unknown_features.is_empty() {
+                unrecognized_features_message(&format!(
+                    "Unrecognized features: {:?}",
+                    unknown_features
+                ))?;
+            };
+        }
+
+        if !quiet {
+            print_msg(&dep, &dep_table)?;
+        }
+        if let Some(path) = dep.path() {
+            if path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
+                anyhow::bail!(
+                    "Cannot add `{}` as a dependency to itself",
+                    manifest.package_name()?
+                )
+            }
+        }
+        manifest.insert_into_table(&dep_table, &dep)?;
+        manifest.gc_dep(dep.toml_key());
+    }
+
+    if was_sorted {
+        if let Some(table) = manifest
+            .get_table_mut(&dep_table)
+            .ok()
+            .and_then(TomlItem::as_table_like_mut)
+        {
+            table.sort_values();
+        }
+    }
+
+    manifest.write()?;
+
+    Ok(())
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct RawDependency<'m> {
+    crate_spec: &'m str,
+    rename: Option<&'m str>,
+
+    features: Option<IndexSet<&'m str>>,
+    default_features: Option<bool>,
+
+    optional: Option<bool>,
+
+    registry: Option<&'m str>,
+
+    section: Section<'m>,
+
+    git: Option<&'m str>,
+    branch: Option<&'m str>,
+    rev: Option<&'m str>,
+    tag: Option<&'m str>,
+}
+
+fn parse_dependencies<'m>(
+    matches: &'m clap::ArgMatches,
+    unstable_features: &[UnstableOptions],
+) -> CargoResult<Vec<RawDependency<'m>>> {
+    let crates = matches
+        .values_of("crates")
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    let git = matches.value_of("git");
+    let branch = matches.value_of("branch");
+    let rev = matches.value_of("rev");
+    let tag = matches.value_of("tag");
+    let rename = matches.value_of("rename");
+    let registry = matches.value_of("registry");
+    let default_features = default_features(matches);
+    let features = matches
+        .values_of("features")
+        .map(|f| f.flat_map(parse_feature).collect::<IndexSet<_>>());
+    let optional = optional(matches);
+    let section = parse_section(matches);
+
+    if crates.len() > 1 && git.is_some() {
+        anyhow::bail!("Cannot specify multiple crates with path or git or vers");
+    }
+    if git.is_some() && !unstable_features.contains(&UnstableOptions::Git) {
+        anyhow::bail!("`--git` is unstable and requires `-Z git`");
+    }
+
+    if crates.len() > 1 && rename.is_some() {
+        anyhow::bail!("Cannot specify multiple crates with rename");
+    }
+
+    if crates.len() > 1 && features.is_some() {
+        anyhow::bail!("Cannot specify multiple crates with features");
+    }
+
+    let mut deps: Vec<RawDependency> = Vec::new();
+    for crate_spec in crates {
+        if let Some(features) = crate_spec.strip_prefix('+') {
+            if !unstable_features.contains(&UnstableOptions::InlineAdd) {
+                anyhow::bail!("`+<feature>` is unstable and requires `-Z inline-add`");
+            }
+
+            if let Some(prior) = deps.last_mut() {
+                let features = parse_feature(features);
+                prior
+                    .features
+                    .get_or_insert_with(Default::default)
+                    .extend(features);
+            } else {
+                anyhow::bail!("`+<feature>` must be preceded by a pkgid");
+            }
+        } else {
+            let dep = RawDependency {
+                crate_spec,
+                rename,
+                features: features.clone(),
+                default_features,
+                optional,
+                registry,
+                section: section.clone(),
+                git,
+                branch,
+                rev,
+                tag,
+            };
+            deps.push(dep);
+        }
+    }
+    Ok(deps)
+}
+
+fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
+    feature.split([' ', ',']).filter(|s| !s.is_empty())
+}
+
+fn default_features(matches: &clap::ArgMatches) -> Option<bool> {
+    resolve_bool_arg(
+        matches.is_present("default-features"),
+        matches.is_present("no-default-features"),
+    )
+}
+
+fn optional(matches: &clap::ArgMatches) -> Option<bool> {
+    resolve_bool_arg(
+        matches.is_present("optional"),
+        matches.is_present("no-optional"),
+    )
 }
 
 fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
@@ -532,7 +460,260 @@ fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
     }
 }
 
-fn exec(mut args: AddArgs) -> CargoResult<()> {
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Section<'m> {
+    Dep,
+    DevDep,
+    BuildDep,
+    TargetDep(&'m str),
+}
+
+impl<'m> Section<'m> {
+    fn to_table(&self) -> Vec<&str> {
+        match self {
+            Self::Dep => vec!["dependencies"],
+            Self::DevDep => vec!["dev-dependencies"],
+            Self::BuildDep => vec!["build-dependencies"],
+            Self::TargetDep(target) => vec!["target", target, "dependencies"],
+        }
+    }
+}
+
+fn parse_section(matches: &clap::ArgMatches) -> Section<'_> {
+    if matches.is_present("dev") {
+        Section::DevDep
+    } else if matches.is_present("build") {
+        Section::BuildDep
+    } else if let Some(target) = matches.value_of("target") {
+        assert!(!target.is_empty(), "Target specification may not be empty");
+        Section::TargetDep(target)
+    } else {
+        Section::Dep
+    }
+}
+
+fn resolve_dependency(
+    manifest: &LocalManifest,
+    arg: &RawDependency<'_>,
+    workspace_members: &[Package],
+) -> CargoResult<Dependency> {
+    let crate_spec = CrateSpec::resolve(arg.crate_spec)?;
+    let manifest_path = manifest.path.as_path();
+
+    let mut dependency = match &crate_spec {
+        CrateSpec::PkgId {
+            name: _,
+            version_req: Some(_),
+        } => {
+            let mut dependency = crate_spec.to_dependency()?;
+            dependency = populate_dependency(dependency, arg);
+            // crate specifier includes a version (e.g. `docopt@0.8`)
+            if let Some(url) = arg.git {
+                let url = url.clone();
+                let version = dependency.version().unwrap().to_string();
+                anyhow::bail!(
+                    "Cannot specify a git URL (`{}`) with a version (`{}`).",
+                    url,
+                    version
+                )
+            }
+
+            dependency
+        }
+        CrateSpec::PkgId {
+            name,
+            version_req: None,
+        } => {
+            let mut dependency = crate_spec.to_dependency()?;
+            dependency = populate_dependency(dependency, arg);
+
+            if let Some(repo) = arg.git {
+                assert!(arg.registry.is_none());
+                dependency = dependency.set_git(
+                    repo,
+                    arg.branch.map(String::from),
+                    arg.tag.map(String::from),
+                    arg.rev.map(String::from),
+                );
+            } else if let Some(old) = get_existing_dependency(arg, manifest, dependency.toml_key())
+            {
+                dependency = populate_dependency(old, arg);
+            } else if let Some(package) = workspace_members.iter().find(|p| p.name == *name) {
+                // Only special-case workspaces when the user doesn't provide any extra
+                // information, otherwise, trust the user.
+                dependency = dependency.set_path(
+                    package
+                        .manifest_path
+                        .parent()
+                        .expect("at least parent dir")
+                        .as_std_path()
+                        .to_owned(),
+                );
+                // dev-dependencies do not need the version populated
+                if arg.section != Section::DevDep {
+                    let op = "";
+                    let v = format!("{op}{version}", op = op, version = package.version);
+                    dependency = dependency.set_version(&v);
+                }
+            } else {
+                let registry_url = registry_url(manifest_path, arg.registry)?;
+                let latest =
+                    get_latest_dependency(name, false, manifest_path, Some(&registry_url))?;
+                let op = "";
+                let v = format!(
+                    "{op}{version}",
+                    op = op,
+                    // If version is unavailable `get_latest_dependency` must have
+                    // returned `Err(FetchVersionError::GetVersion)`
+                    version = latest.version().unwrap_or_else(|| unreachable!())
+                );
+                dependency = dependency
+                    .set_version(&v)
+                    .set_available_features(latest.available_features);
+            }
+
+            dependency
+        }
+        CrateSpec::Path(_) => {
+            let mut dependency = crate_spec.to_dependency()?;
+            dependency = populate_dependency(dependency, arg);
+
+            if let Some(old) = get_existing_dependency(arg, manifest, dependency.toml_key()) {
+                if old.path() == dependency.path() {
+                    if let Some(version) = old.version() {
+                        dependency = dependency.set_version(version);
+                    }
+                }
+            } else if arg.section != Section::DevDep {
+                // dev-dependencies do not need the version populated
+                let dep_path = dependency.path().map(ToOwned::to_owned);
+                if let Some(dep_path) = dep_path {
+                    if let Some(package) = workspace_members.iter().find(|p| {
+                        p.manifest_path.parent().map(|p| p.as_std_path())
+                            == Some(dep_path.as_path())
+                    }) {
+                        let op = "";
+                        let v = format!("{op}{version}", op = op, version = package.version);
+
+                        dependency = dependency.set_version(&v);
+                    }
+                }
+            }
+
+            dependency
+        }
+    };
+
+    if let Some(registry) = arg.registry {
+        dependency = dependency.set_registry(registry);
+    }
+    dependency = populate_available_features(dependency, manifest_path, arg)?;
+
+    Ok(dependency)
+}
+
+/// Provide the existing dependency for the target table
+///
+/// If it doesn't exist but exists in another table, let's use that as most likely users
+/// want to use the same version across all tables unless they are renaming.
+fn get_existing_dependency(
+    arg: &RawDependency<'_>,
+    manifest: &LocalManifest,
+    dep_key: &str,
+) -> Option<Dependency> {
+    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+    enum Key {
+        Dev,
+        Build,
+        Target,
+        Runtime,
+        Existing,
+    }
+
+    let target_section = arg.section.to_table();
+    let mut possible: Vec<_> = manifest
+        .get_dependency_versions(dep_key)
+        .filter_map(|(path, dep)| dep.ok().map(|dep| (path, dep)))
+        .map(|(path, dep)| {
+            let key = if path == target_section {
+                Key::Existing
+            } else {
+                match path[0].as_str() {
+                    "dependencies" => Key::Runtime,
+                    "target" => Key::Target,
+                    "build-dependencies" => Key::Build,
+                    "dev-dependencies" => Key::Dev,
+                    other => unreachable!("Unknown dependency section: {}", other),
+                }
+            };
+            (key, dep)
+        })
+        .collect();
+    if possible.is_empty() {
+        return None;
+    }
+
+    possible.sort_by_key(|(key, _)| *key);
+    let (key, mut dep) = possible.pop().expect("checked for empty earlier");
+    // dev-dependencies do not need the version populated when path is set though we
+    // should preserve it if the user chose to populate it.
+    if dep.path().is_some() && arg.section == Section::DevDep && key != Key::Existing {
+        dep = dep.clear_version();
+    }
+    Some(dep)
+}
+
+fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> Dependency {
+    let requested_features: Option<Vec<_>> = arg.features.as_ref().map(|v| {
+        v.iter()
+            .flat_map(|s| parse_feature(s))
+            .map(|f| f.to_owned())
+            .collect()
+    });
+
+    dependency = dependency
+        .set_optional(arg.optional)
+        .set_default_features(arg.default_features)
+        .set_features(requested_features);
+
+    if let Some(ref rename) = arg.rename {
+        dependency = dependency.set_rename(rename);
+    }
+
+    dependency
+}
+
+/// Lookup available features
+fn populate_available_features(
+    dependency: Dependency,
+    manifest_path: &Path,
+    arg: &RawDependency<'_>,
+) -> CargoResult<Dependency> {
+    if !dependency.available_features.is_empty() {
+        return Ok(dependency);
+    }
+
+    let available_features = if let Some(path) = dependency.path() {
+        let manifest = get_manifest_from_path(path)?;
+        manifest.features()?
+    } else if let Some(repo) = dependency.git() {
+        get_manifest_from_url(repo)?
+            .map(|m| m.features())
+            .transpose()?
+            .unwrap_or_else(Vec::new)
+    } else if let Some(version) = dependency.version() {
+        let registry_url = registry_url(manifest_path, arg.registry.as_deref())?;
+        get_features_from_registry(&dependency.name, version, &registry_url)?
+    } else {
+        vec![]
+    };
+
+    let dependency = dependency.set_available_features(available_features);
+    Ok(dependency)
+}
+
+/*
+fn process(mut args: AddArgs) -> CargoResult<()> {
     if args.git.is_some() && !args.unstable_features.contains(&UnstableOptions::Git) {
         anyhow::bail!("`--git` is unstable and requires `-Z git`");
     }
@@ -619,8 +800,9 @@ fn exec(mut args: AddArgs) -> CargoResult<()> {
 
     Ok(())
 }
+*/
 
-fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResult<()> {
+fn print_msg(dep: &Dependency, section: &[String]) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
@@ -637,7 +819,7 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResul
         }
     }
     write!(output, " to")?;
-    if optional {
+    if dep.optional().unwrap_or(false) {
         write!(output, " optional")?;
     }
     let section = if section.len() == 1 {
