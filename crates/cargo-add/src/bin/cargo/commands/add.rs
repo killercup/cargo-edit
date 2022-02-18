@@ -3,8 +3,8 @@
 use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
 
+use cargo::util::command_prelude::*;
 use cargo_add::ops::cargo_add::CargoResult;
 use cargo_add::ops::cargo_add::Context;
 use cargo_add::ops::cargo_add::Dependency;
@@ -107,13 +107,9 @@ Example uses:
                 .help("Package registry for this dependency")
                 .long_help(None)
                 .conflicts_with("git"),
-            clap::Arg::new("manifest-path")
-                .long("manifest-path")
-                .takes_value(true)
-                .value_name("PATH")
-                .allow_invalid_utf8(true)
-                .help("Path to `Cargo.toml`")
-                .long_help(None),
+        ])
+        .arg_manifest_path()
+        .args([
             clap::Arg::new("pkgid")
                 .short('p')
                 .long("package")
@@ -125,11 +121,8 @@ Example uses:
                 .long("offline")
                 .help("Run without accessing the network")
                 .long_help(None),
-            clap::Arg::new("quiet")
-                .long("quiet")
-                .help("Do not print any output in case of success")
-                .long_help(None),
         ])
+        .arg_quiet()
         .next_help_heading("SECTION")
         .args([
             clap::Arg::new("dev")
@@ -247,7 +240,7 @@ impl std::str::FromStr for UnstableOptions {
     }
 }
 
-pub fn exec(subcommand_args: &clap::ArgMatches) -> CargoResult<()> {
+pub fn exec(config: &Config, subcommand_args: &ArgMatches) -> CargoResult<()> {
     let unstable_features: Vec<UnstableOptions> = subcommand_args
         .values_of_t("unstable-features")
         .unwrap_or_default();
@@ -259,9 +252,7 @@ pub fn exec(subcommand_args: &clap::ArgMatches) -> CargoResult<()> {
         .map(String::from)
         .collect::<Vec<_>>();
 
-    let mut manifest_path = subcommand_args
-        .value_of_os("manifest-path")
-        .map(PathBuf::from);
+    let mut manifest_path = Some(subcommand_args.root_manifest(config)?);
     if let Some(pkgid) = subcommand_args.value_of("pkgid") {
         let pkg = manifest_from_pkgid(manifest_path.as_deref(), pkgid)?;
         manifest_path = Some(pkg.manifest_path.into_std_path_buf());
@@ -271,9 +262,9 @@ pub fn exec(subcommand_args: &clap::ArgMatches) -> CargoResult<()> {
     let raw_deps = parse_dependencies(subcommand_args, &unstable_features)?;
     let workspace_members = workspace_members(manifest_path.as_deref())?;
 
-    let registry = subcommand_args.value_of("registry");
+    let registry = subcommand_args.registry(config)?;
     if !subcommand_args.is_present("offline") && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(&find(manifest_path.as_deref())?, registry)?;
+        let url = registry_url(&find(manifest_path.as_deref())?, registry.as_deref())?;
         update_registry_index(&url, quiet)?;
     }
 
@@ -361,7 +352,7 @@ struct RawDependency<'m> {
 }
 
 fn parse_dependencies<'m>(
-    matches: &'m clap::ArgMatches,
+    matches: &'m ArgMatches,
     unstable_features: &[UnstableOptions],
 ) -> CargoResult<Vec<RawDependency<'m>>> {
     let crates = matches
@@ -437,14 +428,14 @@ fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
     feature.split([' ', ',']).filter(|s| !s.is_empty())
 }
 
-fn default_features(matches: &clap::ArgMatches) -> Option<bool> {
+fn default_features(matches: &ArgMatches) -> Option<bool> {
     resolve_bool_arg(
         matches.is_present("default-features"),
         matches.is_present("no-default-features"),
     )
 }
 
-fn optional(matches: &clap::ArgMatches) -> Option<bool> {
+fn optional(matches: &ArgMatches) -> Option<bool> {
     resolve_bool_arg(
         matches.is_present("optional"),
         matches.is_present("no-optional"),
@@ -479,7 +470,7 @@ impl<'m> Section<'m> {
     }
 }
 
-fn parse_section(matches: &clap::ArgMatches) -> Section<'_> {
+fn parse_section(matches: &ArgMatches) -> Section<'_> {
     if matches.is_present("dev") {
         Section::DevDep
     } else if matches.is_present("build") {
