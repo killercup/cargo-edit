@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
+use std::collections::VecDeque;
 use std::io::Write;
 use std::path::Path;
 
@@ -738,12 +739,22 @@ fn print_msg(dep: &Dependency, section: &[String]) -> CargoResult<()> {
 
     let mut activated = dep.features.clone().unwrap_or_default();
     if dep.default_features().unwrap_or(true) {
-        activated.extend(
-            dep.available_features
-                .get("default")
-                .into_iter()
-                .flat_map(|v| v.clone()),
-        );
+        let mut default_features: VecDeque<_> = dep
+            .available_features
+            .get("default")
+            .into_iter()
+            .flat_map(|v| v.clone())
+            .collect();
+        activated.reserve(default_features.len());
+        while let Some(next) = default_features.pop_front() {
+            default_features.extend(
+                dep.available_features
+                    .get(&next)
+                    .into_iter()
+                    .flat_map(|v| v.clone()),
+            );
+            activated.push(next);
+        }
     }
     activated.sort();
     let mut deactivated;
