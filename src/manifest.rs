@@ -150,7 +150,7 @@ impl Manifest {
                         v.map(|v| (k, v))
                     })
                     .collect::<Option<_>>()
-                    .ok_or_else(|| invalid_cargo_config())?,
+                    .ok_or_else(invalid_cargo_config)?,
                 _ => return Err(invalid_cargo_config()),
             },
         };

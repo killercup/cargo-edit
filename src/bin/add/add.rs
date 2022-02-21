@@ -456,7 +456,7 @@ impl AddArgs {
             get_manifest_from_url(repo)?
                 .map(|m| m.features())
                 .transpose()?
-                .unwrap_or_else(BTreeMap::default)
+                .unwrap_or_default()
         } else if let Some(version) = dependency.version() {
             let registry_url = registry_url(manifest_path, self.registry.as_deref())?;
             get_features_from_registry(&dependency.name, version, &registry_url)?
