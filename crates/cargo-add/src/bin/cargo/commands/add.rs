@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
+use std::collections::VecDeque;
 use std::io::Write;
 use std::path::Path;
 
@@ -123,6 +124,7 @@ Example uses:
                 .long_help(None),
         ])
         .arg_quiet()
+        .arg_dry_run("Don't actually write the manifest")
         .next_help_heading("SECTION")
         .args([
             clap::Arg::new("dev")
@@ -244,6 +246,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
     let unstable_features: Vec<UnstableOptions> =
         args.values_of_t("unstable-features").unwrap_or_default();
     let quiet = args.is_present("quiet");
+    let dry_run = args.is_present("dry-run");
     let section = parse_section(args);
     let dep_table = section
         .to_table()
@@ -332,7 +335,11 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
         }
     }
 
-    manifest.write()?;
+    if dry_run {
+        dry_run_message()?;
+    } else {
+        manifest.write()?;
+    }
 
     Ok(())
 }
@@ -732,12 +739,22 @@ fn print_msg(dep: &Dependency, section: &[String]) -> CargoResult<()> {
 
     let mut activated = dep.features.clone().unwrap_or_default();
     if dep.default_features().unwrap_or(true) {
-        activated.extend(
-            dep.available_features
-                .get("default")
-                .into_iter()
-                .flat_map(|v| v.clone()),
-        );
+        let mut default_features: VecDeque<_> = dep
+            .available_features
+            .get("default")
+            .into_iter()
+            .flat_map(|v| v.clone())
+            .collect();
+        activated.reserve(default_features.len());
+        while let Some(next) = default_features.pop_front() {
+            default_features.extend(
+                dep.available_features
+                    .get(&next)
+                    .into_iter()
+                    .flat_map(|v| v.clone()),
+            );
+            activated.push(next);
+        }
     }
     activated.sort();
     let mut deactivated;
@@ -794,6 +811,17 @@ fn unrecognized_features_message(message: &str) -> CargoResult<()> {
     write!(output, "{:>12}", "Warning:")?;
     output.reset()?;
     writeln!(output, " {}", message)
+        .with_context(|| "Failed to write unrecognized features message")?;
+    Ok(())
+}
+
+fn dry_run_message() -> CargoResult<()> {
+    let colorchoice = colorize_stderr();
+    let mut output = StandardStream::stderr(colorchoice);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+    write!(output, "{:>12}", "Warning:")?;
+    output.reset()?;
+    writeln!(output, " aborting add due to dry run")
         .with_context(|| "Failed to write unrecognized features message")?;
     Ok(())
 }
