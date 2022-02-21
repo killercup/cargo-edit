@@ -123,6 +123,7 @@ Example uses:
                 .long_help(None),
         ])
         .arg_quiet()
+        .arg_dry_run("Don't actually write the manifest")
         .next_help_heading("SECTION")
         .args([
             clap::Arg::new("dev")
@@ -244,6 +245,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
     let unstable_features: Vec<UnstableOptions> =
         args.values_of_t("unstable-features").unwrap_or_default();
     let quiet = args.is_present("quiet");
+    let dry_run = args.is_present("dry-run");
     let section = parse_section(args);
     let dep_table = section
         .to_table()
@@ -332,7 +334,11 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
         }
     }
 
-    manifest.write()?;
+    if dry_run {
+        dry_run_message()?;
+    } else {
+        manifest.write()?;
+    }
 
     Ok(())
 }
@@ -794,6 +800,17 @@ fn unrecognized_features_message(message: &str) -> CargoResult<()> {
     write!(output, "{:>12}", "Warning:")?;
     output.reset()?;
     writeln!(output, " {}", message)
+        .with_context(|| "Failed to write unrecognized features message")?;
+    Ok(())
+}
+
+fn dry_run_message() -> CargoResult<()> {
+    let colorchoice = colorize_stderr();
+    let mut output = StandardStream::stderr(colorchoice);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+    write!(output, "{:>12}", "Warning:")?;
+    output.reset()?;
+    writeln!(output, " aborting add due to dry run")
         .with_context(|| "Failed to write unrecognized features message")?;
     Ok(())
 }
