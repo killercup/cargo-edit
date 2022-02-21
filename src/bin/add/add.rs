@@ -663,6 +663,12 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResul
             .collect();
         activated.reserve(default_features.len());
         while let Some(next) = default_features.pop_front() {
+            default_features.extend(
+                dep.available_features
+                    .get(&next)
+                    .into_iter()
+                    .flat_map(|v| v.clone()),
+            );
             activated.push(next);
         }
     }

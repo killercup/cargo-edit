@@ -8,7 +8,7 @@ atty = "0.2.13"
 optional-dependency = { path = "../optional", optional = true }
 
 [features]
-default = ["nose","mouth"]
+default = ["mouth"]
 nose = []
-mouth = []
+mouth = ["nose"]
 eyes = []
