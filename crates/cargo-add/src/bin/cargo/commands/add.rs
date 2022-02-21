@@ -1,5 +1,6 @@
 #![allow(clippy::bool_assert_comparison)]
 
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::Path;
@@ -290,7 +291,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
 
             let available_features = dep
                 .available_features
-                .iter()
+                .keys()
                 .map(|s| s.as_ref())
                 .collect::<BTreeSet<&str>>();
 
@@ -548,6 +549,7 @@ fn resolve_dependency(
                 let registry_url = registry_url(manifest_path, arg.registry)?;
                 let latest =
                     get_latest_dependency(name, false, manifest_path, Some(&registry_url))?;
+
                 let op = "";
                 let v = format!(
                     "{op}{version}",
@@ -556,6 +558,8 @@ fn resolve_dependency(
                     // returned `Err(FetchVersionError::GetVersion)`
                     version = latest.version().unwrap_or_else(|| unreachable!())
                 );
+
+                dependency.name = latest.name; // Normalize the name
                 dependency = dependency
                     .set_version(&v)
                     .set_available_features(latest.available_features);
@@ -686,12 +690,12 @@ fn populate_available_features(
         get_manifest_from_url(repo)?
             .map(|m| m.features())
             .transpose()?
-            .unwrap_or_else(Vec::new)
+            .unwrap_or_default()
     } else if let Some(version) = dependency.version() {
         let registry_url = registry_url(manifest_path, arg.registry.as_deref())?;
         get_features_from_registry(&dependency.name, version, &registry_url)?
     } else {
-        vec![]
+        BTreeMap::new()
     };
 
     let dependency = dependency.set_available_features(available_features);
@@ -724,19 +728,45 @@ fn print_msg(dep: &Dependency, section: &[String]) -> CargoResult<()> {
         format!("{} for target `{}`", &section[2], &section[1])
     };
     write!(output, " {}", section)?;
-    if let Some(f) = &dep.features {
-        if !f.is_empty() {
-            write!(output, " with features: {}", f.join(", "))?;
-        }
-    }
     writeln!(output, ".")?;
 
-    if !&dep.available_features.is_empty() {
-        writeln!(output, "{:>13}Available features:", " ")?;
-        for feat in dep.available_features.iter() {
-            writeln!(output, "{:>13}- {}", " ", feat)?;
+    let mut activated = dep.features.clone().unwrap_or_default();
+    if dep.default_features().unwrap_or(true) {
+        activated.extend(
+            dep.available_features
+                .get("default")
+                .into_iter()
+                .flat_map(|v| v.clone()),
+        );
+    }
+    activated.sort();
+    let mut deactivated;
+    if dep.available_features.is_empty() {
+        deactivated = vec![];
+    } else {
+        deactivated = dep
+            .available_features
+            .keys()
+            .filter(|f| !activated.contains(f) && *f != "default")
+            .collect::<Vec<_>>();
+    }
+    deactivated.sort();
+    if !activated.is_empty() || !deactivated.is_empty() {
+        writeln!(output, "{:>13}Features:", " ")?;
+        for feat in activated {
+            output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+            write!(output, "{:>13}+ ", " ")?;
+            output.reset()?;
+            writeln!(output, "{}", feat)?;
+        }
+        for feat in deactivated {
+            output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+            write!(output, "{:>13}- ", " ")?;
+            output.reset()?;
+            writeln!(output, "{}", feat)?;
         }
     }
+
     Ok(())
 }
 
