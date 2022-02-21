@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use super::manifest::str_or_1_len_table;
@@ -17,7 +18,7 @@ pub struct Dependency {
     rename: Option<String>,
 
     /// Features that are exposed by the dependency
-    pub available_features: Vec<String>,
+    pub available_features: BTreeMap<String, Vec<String>>,
 }
 
 impl Dependency {
@@ -60,7 +61,10 @@ impl Dependency {
     }
 
     /// Set the available features of the dependency to a given vec
-    pub fn set_available_features(mut self, available_features: Vec<String>) -> Dependency {
+    pub fn set_available_features(
+        mut self,
+        available_features: BTreeMap<String, Vec<String>>,
+    ) -> Dependency {
         self.available_features = available_features;
         self
     }
@@ -278,7 +282,7 @@ impl Dependency {
                 None
             };
 
-            let available_features = vec![];
+            let available_features = BTreeMap::default();
 
             let optional = if let Some(value) = table.get("optional") {
                 value.as_bool()?
@@ -544,7 +548,7 @@ impl Default for Dependency {
                 path: None,
                 registry: None,
             },
-            available_features: vec![],
+            available_features: BTreeMap::default(),
         }
     }
 }

@@ -1,14 +1,17 @@
+use std::collections::BTreeMap;
+use std::env;
+use std::io::Write;
+use std::path::Path;
+use std::time::Duration;
+
+use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
+use url::Url;
+
 use super::errors::*;
 use super::registry::registry_url;
 use super::VersionExt;
 use super::{Dependency, LocalManifest, Manifest};
 use regex::Regex;
-use std::env;
-use std::io::Write;
-use std::path::Path;
-use std::time::Duration;
-use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
-use url::Url;
 
 /// Query latest version from a registry index
 ///
@@ -40,14 +43,16 @@ pub fn get_latest_dependency(
         };
 
         let features = if crate_name == "your-face" {
-            vec![
-                "nose".to_string(),
-                "mouth".to_string(),
-                "eyes".to_string(),
-                "ears".to_string(),
+            [
+                ("nose".to_string(), vec![]),
+                ("mouth".to_string(), vec![]),
+                ("eyes".to_string(), vec![]),
+                ("ears".to_string(), vec![]),
             ]
+            .into_iter()
+            .collect::<BTreeMap<_, _>>()
         } else {
-            vec![]
+            BTreeMap::default()
         };
 
         return Ok(Dependency::new(crate_name)
@@ -80,7 +85,7 @@ struct CrateVersion {
     name: String,
     version: semver::Version,
     yanked: bool,
-    available_features: Vec<String>,
+    available_features: BTreeMap<String, Vec<String>>,
 }
 
 /// Fuzzy query crate from registry index
@@ -106,19 +111,11 @@ fn fuzzy_query_registry_index(
             .versions()
             .iter()
             .map(|v| {
-                let mut available_features: Vec<_> = v.features().keys().cloned().collect();
-                available_features.extend(
-                    v.dependencies()
-                        .iter()
-                        .filter(|d| d.is_optional())
-                        .map(|d| d.crate_name().to_owned()),
-                );
-                available_features.sort();
                 Ok(CrateVersion {
                     name: v.name().to_owned(),
                     version: v.version().parse()?,
                     yanked: v.is_yanked(),
-                    available_features,
+                    available_features: registry_features(v),
                 })
             })
             .collect();
@@ -200,17 +197,19 @@ pub fn get_features_from_registry(
     crate_name: &str,
     version: &str,
     registry: &Url,
-) -> CargoResult<Vec<String>> {
+) -> CargoResult<BTreeMap<String, Vec<String>>> {
     if env::var("CARGO_IS_TEST").is_ok() {
         let features = if crate_name == "your-face" {
-            vec![
-                "nose".to_string(),
-                "mouth".to_string(),
-                "eyes".to_string(),
-                "ears".to_string(),
+            [
+                ("nose".to_string(), vec![]),
+                ("mouth".to_string(), vec![]),
+                ("eyes".to_string(), vec![]),
+                ("ears".to_string(), vec![]),
             ]
+            .into_iter()
+            .collect::<BTreeMap<_, _>>()
         } else {
-            vec![]
+            BTreeMap::default()
         };
         return Ok(features);
     }
@@ -228,15 +227,25 @@ pub fn get_features_from_registry(
             Err(_) => continue,
         };
         if version.matches(&instance_version) {
-            return Ok(crate_instance.features().keys().cloned().collect());
+            return Ok(registry_features(crate_instance));
         }
     }
-    Ok(crate_
-        .highest_version()
+    Ok(registry_features(crate_.highest_version()))
+}
+
+fn registry_features(v: &crates_index::Version) -> BTreeMap<String, Vec<String>> {
+    let mut features: BTreeMap<_, _> = v
         .features()
-        .keys()
-        .cloned()
-        .collect())
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    features.extend(
+        v.dependencies()
+            .iter()
+            .filter(|d| d.is_optional())
+            .map(|d| (d.crate_name().to_owned(), vec![])),
+    );
+    features
 }
 
 /// update registry index for given project
@@ -432,13 +441,13 @@ fn get_latest_stable_version() {
             name: "foo".into(),
             version: "0.6.0-alpha".parse().unwrap(),
             yanked: false,
-            available_features: vec![],
+            available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
             yanked: false,
-            available_features: vec![],
+            available_features: BTreeMap::new(),
         },
     ];
     assert_eq!(
@@ -457,13 +466,13 @@ fn get_latest_unstable_or_stable_version() {
             name: "foo".into(),
             version: "0.6.0-alpha".parse().unwrap(),
             yanked: false,
-            available_features: vec![],
+            available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
             yanked: false,
-            available_features: vec![],
+            available_features: BTreeMap::new(),
         },
     ];
     assert_eq!(
@@ -482,13 +491,13 @@ fn get_latest_version_with_yanked() {
             name: "treexml".into(),
             version: "0.3.1".parse().unwrap(),
             yanked: true,
-            available_features: vec![],
+            available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
             yanked: false,
-            available_features: vec![],
+            available_features: BTreeMap::new(),
         },
     ];
     assert_eq!(
@@ -507,13 +516,13 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
             name: "treexml".into(),
             version: "0.3.1".parse().unwrap(),
             yanked: true,
-            available_features: vec![],
+            available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
             yanked: true,
-            available_features: vec![],
+            available_features: BTreeMap::new(),
         },
     ];
     assert!(read_latest_version(&versions, false).is_err());
