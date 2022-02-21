@@ -122,6 +122,10 @@ pub struct AddArgs {
     #[clap(long)]
     pub offline: bool,
 
+    /// Don't actually write the manifest
+    #[clap(long)]
+    pub dry_run: bool,
+
     /// Do not print any output in case of success.
     #[clap(long)]
     pub quiet: bool,
@@ -513,6 +517,7 @@ impl Default for AddArgs {
             features: None,
             no_default_features: false,
             default_features: false,
+            dry_run: false,
             quiet: false,
             offline: true,
             registry: None,
@@ -619,7 +624,11 @@ fn exec(mut args: AddArgs) -> CargoResult<()> {
         }
     }
 
-    manifest.write()?;
+    if args.dry_run {
+        dry_run_message()?;
+    } else {
+        manifest.write()?;
+    }
 
     Ok(())
 }
@@ -716,6 +725,17 @@ fn unrecognized_features_message(message: &str) -> CargoResult<()> {
     write!(output, "{:>12}", "Warning:")?;
     output.reset()?;
     writeln!(output, " {}", message)
+        .with_context(|| "Failed to write unrecognized features message")?;
+    Ok(())
+}
+
+fn dry_run_message() -> CargoResult<()> {
+    let colorchoice = colorize_stderr();
+    let mut output = StandardStream::stderr(colorchoice);
+    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+    write!(output, "{:>12}", "Warning:")?;
+    output.reset()?;
+    writeln!(output, " aborting add due to dry run")
         .with_context(|| "Failed to write unrecognized features message")?;
     Ok(())
 }
