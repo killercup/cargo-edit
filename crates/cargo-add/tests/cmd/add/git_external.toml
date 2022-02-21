@@ -5,17 +5,16 @@ stdout = ""
 stderr = """
     Updating 'https://github.com/rust-lang/crates.io-index' index
       Adding cargo-edit to dependencies.
-             Available features:
-             - default
-             - add
-             - rm
-             - upgrade
-             - set-version
+             Features:
+             + add
+             + rm
+             + set-version
+             + upgrade
+             + vendored-libgit2
+             - clap
              - cli
              - color
              - test-external-apis
              - vendored-openssl
-             - vendored-libgit2
-             - clap
 """
 fs.sandbox = true

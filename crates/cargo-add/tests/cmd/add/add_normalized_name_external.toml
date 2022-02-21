@@ -6,7 +6,7 @@ stderr = """
     Updating 'https://github.com/rust-lang/crates.io-index' index
 WARN: Added `linked-hash-map` instead of `linked_hash_map`
       Adding linked-hash-map v0.5.4 to dependencies.
-             Available features:
+             Features:
              - clippy
              - heapsize
              - heapsize_impl
@@ -15,9 +15,8 @@ WARN: Added `linked-hash-map` instead of `linked_hash_map`
              - serde_impl
              - serde_test
       Adding Inflector v0.11.4 to dependencies.
-             Available features:
-             - default
-             - heavyweight
+             Features:
+             + heavyweight
              - lazy_static
              - regex
              - unstable

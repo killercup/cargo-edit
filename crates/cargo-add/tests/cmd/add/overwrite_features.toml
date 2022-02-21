@@ -3,12 +3,12 @@ args = ["add", "your-face", "--features", "nose"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding your-face v99999.0.0 to dependencies with features: nose.
-             Available features:
-             - nose
-             - mouth
-             - eyes
+      Adding your-face v99999.0.0 to dependencies.
+             Features:
+             + nose
              - ears
+             - eyes
+             - mouth
 """
 fs.sandbox = true
 
