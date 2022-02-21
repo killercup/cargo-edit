@@ -5,11 +5,11 @@ stdout = ""
 stderr = """
       Adding cargo-list-test-fixture-dependency v99999.0.0 to dependencies.
       Adding your-face (local) to dependencies.
-             Available features:
+             Features:
              - default
-             - nose
-             - mouth
              - eyes
+             - mouth
+             - nose
              - optional-dependency
 """
 fs.sandbox = true

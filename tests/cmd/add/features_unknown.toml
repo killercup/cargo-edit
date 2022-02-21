@@ -4,12 +4,13 @@ status = "success"
 stdout = ""
 stderr = """
     Warning: Unrecognized features: [\"noze\"]
-      Adding your-face v99999.0.0 to dependencies with features: noze.
-             Available features:
-             - nose
-             - mouth
-             - eyes
+      Adding your-face v99999.0.0 to dependencies.
+             Features:
+             + noze
              - ears
+             - eyes
+             - mouth
+             - nose
 """
 fs.sandbox = true
 

@@ -649,19 +649,31 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResul
         format!("{} for target `{}`", &section[2], &section[1])
     };
     write!(output, " {}", section)?;
-    if let Some(f) = &dep.features {
-        if !f.is_empty() {
-            write!(output, " with features: {}", f.join(", "))?;
-        }
-    }
     writeln!(output, ".")?;
 
-    if !&dep.available_features.is_empty() {
-        writeln!(output, "{:>13}Available features:", " ")?;
-        for feat in dep.available_features.iter() {
+    let mut activated = dep.features.clone().unwrap_or_default();
+    activated.sort();
+    let mut deactivated;
+    if dep.available_features.is_empty() {
+        deactivated = vec![];
+    } else {
+        deactivated = dep
+            .available_features
+            .iter()
+            .filter(|f| !activated.contains(f))
+            .collect::<Vec<_>>();
+    }
+    deactivated.sort();
+    if !activated.is_empty() || !deactivated.is_empty() {
+        writeln!(output, "{:>13}Features:", " ")?;
+        for feat in activated {
+            writeln!(output, "{:>13}+ {}", " ", feat)?;
+        }
+        for feat in deactivated {
             writeln!(output, "{:>13}- {}", " ", feat)?;
         }
     }
+
     Ok(())
 }
 
