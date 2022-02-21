@@ -200,6 +200,11 @@ impl Dependency {
     pub fn rename(&self) -> Option<&str> {
         self.rename.as_deref()
     }
+
+    /// Whether default features are activated
+    pub fn default_features(&self) -> Option<bool> {
+        self.default_features
+    }
 }
 
 impl Dependency {

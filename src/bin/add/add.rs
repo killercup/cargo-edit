@@ -653,6 +653,14 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResul
     writeln!(output, ".")?;
 
     let mut activated = dep.features.clone().unwrap_or_default();
+    if dep.default_features().unwrap_or(true) {
+        activated.extend(
+            dep.available_features
+                .get("default")
+                .into_iter()
+                .flat_map(|v| v.clone()),
+        );
+    }
     activated.sort();
     let mut deactivated;
     if dep.available_features.is_empty() {
