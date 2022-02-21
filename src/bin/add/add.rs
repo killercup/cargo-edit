@@ -667,10 +667,16 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResul
     if !activated.is_empty() || !deactivated.is_empty() {
         writeln!(output, "{:>13}Features:", " ")?;
         for feat in activated {
-            writeln!(output, "{:>13}+ {}", " ", feat)?;
+            output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
+            write!(output, "{:>13}+ ", " ")?;
+            output.reset()?;
+            writeln!(output, "{}", feat)?;
         }
         for feat in deactivated {
-            writeln!(output, "{:>13}- {}", " ", feat)?;
+            output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+            write!(output, "{:>13}- ", " ")?;
+            output.reset()?;
+            writeln!(output, "{}", feat)?;
         }
     }
 
