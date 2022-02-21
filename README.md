@@ -102,6 +102,7 @@ OPTIONS:
         --manifest-path <PATH>    Path to `Cargo.toml`
     -p, --package <PKGID>         Package to modify
         --offline                 Run without accessing the network
+        --dry-run                 Don't actually write the manifest
         --quiet                   Do not print any output in case of success
     -h, --help                    Print help information
     -V, --version                 Print version information
