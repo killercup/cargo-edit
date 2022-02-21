@@ -669,7 +669,7 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResul
         deactivated = dep
             .available_features
             .keys()
-            .filter(|f| !activated.contains(f))
+            .filter(|f| !activated.contains(f) && *f != "default")
             .collect::<Vec<_>>();
     }
     deactivated.sort();

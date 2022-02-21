@@ -17,7 +17,6 @@ WARN: Added `linked-hash-map` instead of `linked_hash_map`
       Adding Inflector v0.11.4 to dependencies.
              Features:
              + heavyweight
-             - default
              - lazy_static
              - regex
              - unstable

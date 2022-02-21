@@ -14,7 +14,6 @@ stderr = """
              - clap
              - cli
              - color
-             - default
              - test-external-apis
              - vendored-openssl
 """

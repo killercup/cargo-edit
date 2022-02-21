@@ -8,7 +8,6 @@ stderr = """
              Features:
              + mouth
              + nose
-             - default
              - eyes
              - optional-dependency
 """
