@@ -4,11 +4,11 @@ status = "success"
 stdout = ""
 stderr = """
       Adding your-face v99999.0.0 to dependencies.
-             Available features:
-             - nose
-             - mouth
-             - eyes
+             Features:
              - ears
+             - eyes
+             - mouth
+             - nose
 """
 fs.sandbox = true
 

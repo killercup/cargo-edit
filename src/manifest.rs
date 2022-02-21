@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs::{self};
 use std::io::Write;
 use std::ops::{Deref, DerefMut};
@@ -129,17 +130,27 @@ impl Manifest {
     }
 
     /// returns features exposed by this manifest
-    pub fn features(&self) -> CargoResult<Vec<String>> {
-        let mut features: Vec<String> = match self.data.as_table().get("features") {
-            None => vec![],
+    pub fn features(&self) -> CargoResult<BTreeMap<String, Vec<String>>> {
+        let mut features: BTreeMap<String, Vec<String>> = match self.data.as_table().get("features")
+        {
+            None => BTreeMap::default(),
             Some(item) => match item {
-                toml_edit::Item::None => vec![],
+                toml_edit::Item::None => BTreeMap::default(),
                 toml_edit::Item::Table(t) => t
-                    .get_values()
                     .iter()
-                    .map(|(keys, _val)| keys.iter().map(|&k| k.get().trim().to_owned()))
-                    .flatten()
-                    .collect(),
+                    .map(|(k, v)| {
+                        let k = k.to_owned();
+                        let v = v
+                            .as_array()
+                            .cloned()
+                            .unwrap_or_default()
+                            .iter()
+                            .map(|v| v.as_str().map(|s| s.to_owned()))
+                            .collect::<Option<Vec<_>>>();
+                        v.map(|v| (k, v))
+                    })
+                    .collect::<Option<_>>()
+                    .ok_or_else(invalid_cargo_config)?,
                 _ => return Err(invalid_cargo_config()),
             },
         };
@@ -157,7 +168,7 @@ impl Manifest {
                             .and_then(|o| o.as_value())
                             .and_then(|o| o.as_bool())
                             .unwrap_or(false)
-                            .then(|| key.to_owned())
+                            .then(|| (key.to_owned(), vec![]))
                     }),
             );
         }
