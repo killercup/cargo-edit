@@ -311,6 +311,7 @@ impl AddArgs {
                     let registry_url = registry_url(manifest_path, self.registry.as_deref())?;
                     let latest =
                         get_latest_dependency(name, false, manifest_path, Some(&registry_url))?;
+
                     let op = "";
                     let v = format!(
                         "{op}{version}",
@@ -319,6 +320,8 @@ impl AddArgs {
                         // returned `Err(FetchVersionError::GetVersion)`
                         version = latest.version().unwrap_or_else(|| unreachable!())
                     );
+
+                    dependency.name = latest.name; // Normalize the name
                     dependency = dependency
                         .set_version(&v)
                         .set_available_features(latest.available_features);
