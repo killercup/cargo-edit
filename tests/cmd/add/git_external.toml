@@ -1,5 +1,5 @@
 bin.name = "cargo-add"
-args = ["add", "https://github.com/killercup/cargo-edit.git"]
+args = ["add", "cargo-edit", "--git", "https://github.com/killercup/cargo-edit.git", "--tag", "v0.8.0", "-Zgit"]
 status = "success"
 stdout = ""
 stderr = """
@@ -16,5 +16,6 @@ stderr = """
              - test-external-apis
              - vendored-openssl
              - vendored-libgit2
+             - clap
 """
 fs.sandbox = true
