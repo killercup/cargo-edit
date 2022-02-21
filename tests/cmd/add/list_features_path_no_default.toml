@@ -1,0 +1,18 @@
+bin.name = "cargo-add"
+args = ["add", "cargo-list-test-fixture-dependency", "../dependency", "--no-default-features"]
+status = "success"
+stdout = ""
+stderr = """
+      Adding cargo-list-test-fixture-dependency v99999.0.0 to dependencies.
+      Adding your-face (local) to dependencies.
+             Features:
+             - eyes
+             - mouth
+             - nose
+             - optional-dependency
+"""
+fs.sandbox = true
+fs.cwd = "list_features_path_no_default.in/primary"
+
+[env.add]
+CARGO_IS_TEST="1"
