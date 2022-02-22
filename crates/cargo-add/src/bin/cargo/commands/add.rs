@@ -272,7 +272,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
     let raw_deps = parse_dependencies(args, &unstable_features)?;
 
     let registry = args.registry(config)?;
-    if !args.is_present("offline") && std::env::var("CARGO_IS_TEST").is_err() {
+    if !config.offline() && std::env::var("CARGO_IS_TEST").is_err() {
         let url = registry_url(&manifest_path, registry.as_deref())?;
         update_registry_index(&url, quiet)?;
     }
