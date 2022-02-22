@@ -19,6 +19,7 @@ use cargo_edit::{
 use cargo_edit::{get_latest_dependency, CrateSpec};
 use cargo_metadata::Package;
 use clap::Args;
+use indexmap::IndexSet;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
 
@@ -662,36 +663,34 @@ fn print_msg(dep: &Dependency, section: &[String], optional: bool) -> CargoResul
     write!(output, " {}", section)?;
     writeln!(output, ".")?;
 
-    let mut activated = dep.features.clone().unwrap_or_default();
+    let mut activated: IndexSet<_> = dep.features.iter().flatten().map(|s| s.as_str()).collect();
     if dep.default_features().unwrap_or(true) {
-        let mut default_features: VecDeque<_> = dep
-            .available_features
-            .get("default")
-            .into_iter()
-            .flat_map(|v| v.clone())
-            .collect();
-        activated.reserve(default_features.len());
-        while let Some(next) = default_features.pop_front() {
-            default_features.extend(
-                dep.available_features
-                    .get(&next)
-                    .into_iter()
-                    .flat_map(|v| v.clone()),
-            );
-            activated.push(next);
-        }
+        activated.insert("default");
     }
+    let mut walk: VecDeque<_> = activated.iter().cloned().collect();
+    while let Some(next) = walk.pop_front() {
+        walk.extend(
+            dep.available_features
+                .get(next)
+                .into_iter()
+                .flatten()
+                .map(|s| s.as_str()),
+        );
+        activated.extend(
+            dep.available_features
+                .get(next)
+                .into_iter()
+                .flatten()
+                .map(|s| s.as_str()),
+        );
+    }
+    activated.remove("default");
     activated.sort();
-    let mut deactivated;
-    if dep.available_features.is_empty() {
-        deactivated = vec![];
-    } else {
-        deactivated = dep
-            .available_features
-            .keys()
-            .filter(|f| !activated.contains(f) && *f != "default")
-            .collect::<Vec<_>>();
-    }
+    let mut deactivated = dep
+        .available_features
+        .keys()
+        .filter(|f| !activated.contains(f.as_str()) && *f != "default")
+        .collect::<Vec<_>>();
     deactivated.sort();
     if !activated.is_empty() || !deactivated.is_empty() {
         writeln!(output, "{:>13}Features:", " ")?;
