@@ -32,7 +32,16 @@ impl Dependency {
     pub fn new(name: &str) -> Dependency {
         Dependency {
             name: name.into(),
-            ..Dependency::default()
+            optional: None,
+            features: None,
+            default_features: None,
+            source: DependencySource::Version {
+                version: None,
+                path: None,
+                registry: None,
+            },
+            rename: None,
+            available_features: Default::default(),
         }
     }
 
@@ -548,24 +557,6 @@ fn is_package_eq(item: &mut toml_edit::Item, name: &str, rename: Option<&str>) -
         existing_package == new_package
     } else {
         false
-    }
-}
-
-impl Default for Dependency {
-    fn default() -> Dependency {
-        Dependency {
-            name: "".into(),
-            rename: None,
-            optional: None,
-            features: None,
-            default_features: None,
-            source: DependencySource::Version {
-                version: None,
-                path: None,
-                registry: None,
-            },
-            available_features: BTreeMap::default(),
-        }
     }
 }
 
