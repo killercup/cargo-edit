@@ -5,17 +5,23 @@ use super::manifest::str_or_1_len_table;
 
 /// A dependency handled by Cargo
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[non_exhaustive]
 pub struct Dependency {
     /// The name of the dependency (as it is set in its `Cargo.toml` and known to crates.io)
     pub name: String,
-    optional: Option<bool>,
+    /// Whether the dependency is opted-in with a feature flag
+    pub optional: Option<bool>,
+
     /// List of features to add (or None to keep features unchanged).
     pub features: Option<Vec<String>>,
-    default_features: Option<bool>,
-    source: DependencySource,
+    /// Whether default features are enabled
+    pub default_features: Option<bool>,
+
+    /// Where the dependency comes from
+    pub source: DependencySource,
     /// If the dependency is renamed, this is the new name for the dependency
     /// as a string.  None if it is not renamed.
-    rename: Option<String>,
+    pub rename: Option<String>,
 
     /// Features that are exposed by the dependency
     pub available_features: BTreeMap<String, Vec<String>>,
@@ -564,7 +570,7 @@ impl Default for Dependency {
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
-enum DependencySource {
+pub enum DependencySource {
     Version {
         version: Option<String>,
         path: Option<PathBuf>,
