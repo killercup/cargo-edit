@@ -7,13 +7,15 @@ stderr = """
       Adding cargo-edit to dependencies.
              Features:
              + add
+             + clap
+             + cli
+             + color
+             + concolor-control/auto
+             + git2/vendored-libgit2
              + rm
              + set-version
              + upgrade
              + vendored-libgit2
-             - clap
-             - cli
-             - color
              - test-external-apis
              - vendored-openssl
 """
