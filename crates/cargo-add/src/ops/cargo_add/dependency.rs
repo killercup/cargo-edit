@@ -29,8 +29,8 @@ pub struct Dependency {
 
 impl Dependency {
     /// Create a new dependency with a name
-    pub fn new(name: &str) -> Dependency {
-        Dependency {
+    pub fn new(name: &str) -> Self {
+        Self {
             name: name.into(),
             optional: None,
             features: None,
@@ -46,7 +46,7 @@ impl Dependency {
     }
 
     /// Set dependency to a given version
-    pub fn set_version(mut self, version: &str) -> Dependency {
+    pub fn set_version(mut self, version: &str) -> Self {
         // versions might have semver metadata appended which we do not want to
         // store in the cargo toml files.  This would cause a warning upon compilation
         // ("version requirement […] includes semver metadata which will be ignored")
@@ -64,7 +64,7 @@ impl Dependency {
     }
 
     /// Remove the existing version requirement
-    pub fn clear_version(mut self) -> Dependency {
+    pub fn clear_version(mut self) -> Self {
         if let DependencySource::Version {
             version, registry, ..
         } = &mut self.source
@@ -79,7 +79,7 @@ impl Dependency {
     pub fn set_available_features(
         mut self,
         available_features: BTreeMap<String, Vec<String>>,
-    ) -> Dependency {
+    ) -> Self {
         self.available_features = available_features;
         self
     }
@@ -91,7 +91,7 @@ impl Dependency {
         branch: Option<String>,
         tag: Option<String>,
         rev: Option<String>,
-    ) -> Dependency {
+    ) -> Self {
         self.source = DependencySource::Git {
             repo: repo.into(),
             branch,
@@ -106,7 +106,7 @@ impl Dependency {
     /// # Panic
     ///
     /// Panics if the path is relative
-    pub fn set_path(mut self, path: PathBuf) -> Dependency {
+    pub fn set_path(mut self, path: PathBuf) -> Self {
         assert!(
             path.is_absolute(),
             "Absolute path needed, got: {}",
@@ -127,30 +127,30 @@ impl Dependency {
     }
 
     /// Set whether the dependency is optional
-    pub fn set_optional(mut self, opt: Option<bool>) -> Dependency {
+    pub fn set_optional(mut self, opt: Option<bool>) -> Self {
         self.optional = opt;
         self
     }
     /// Set features as an array of string (does some basic parsing)
-    pub fn set_features(mut self, features: Option<Vec<String>>) -> Dependency {
+    pub fn set_features(mut self, features: Option<Vec<String>>) -> Self {
         self.features = features;
         self
     }
 
     /// Set the value of default-features for the dependency
-    pub fn set_default_features(mut self, default_features: Option<bool>) -> Dependency {
+    pub fn set_default_features(mut self, default_features: Option<bool>) -> Self {
         self.default_features = default_features;
         self
     }
 
     /// Set the alias for the dependency
-    pub fn set_rename(mut self, rename: &str) -> Dependency {
+    pub fn set_rename(mut self, rename: &str) -> Self {
         self.rename = Some(rename.into());
         self
     }
 
     /// Set the value of registry for the dependency
-    pub fn set_registry(mut self, registry: &str) -> Dependency {
+    pub fn set_registry(mut self, registry: &str) -> Self {
         let (old_version, old_path) = match self.source {
             DependencySource::Version { version, path, .. } => (version, path),
             _ => (None, None),
@@ -231,7 +231,7 @@ impl Dependency {
     /// Create a dependency from a TOML table entry
     pub fn from_toml(crate_root: &Path, key: &str, item: &toml_edit::Item) -> Option<Self> {
         if let Some(version) = item.as_str() {
-            let dep = Dependency::new(key).set_version(version);
+            let dep = Self::new(key).set_version(version);
             Some(dep)
         } else if let Some(table) = item.as_table_like() {
             let (name, rename) = if let Some(value) = table.get("package") {
@@ -316,7 +316,7 @@ impl Dependency {
             };
             let optional = Some(optional);
 
-            let dep = Dependency {
+            let dep = Self {
                 name,
                 rename,
                 source,
