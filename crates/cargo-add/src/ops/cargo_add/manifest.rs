@@ -25,6 +25,15 @@ impl Manifest {
             .ok_or_else(parse_manifest_err)
     }
 
+    /// Get the package version
+    pub fn package_version(&self) -> CargoResult<&str> {
+        self.data
+            .as_table()
+            .get("package")
+            .and_then(|m| m["version"].as_str())
+            .ok_or_else(parse_manifest_err)
+    }
+
     /// Get the specified table from the manifest.
     pub fn get_table<'a>(&'a self, table_path: &[String]) -> CargoResult<&'a toml_edit::Item> {
         /// Descend into a manifest until the required table is found.

@@ -4,7 +4,7 @@ status = "success"
 stdout = ""
 stderr = """
     Updating 'https://github.com/rust-lang/crates.io-index' index
-      Adding cargo-edit to dependencies.
+      Adding cargo-edit (git) to dependencies.
              Features:
              + add
              + clap

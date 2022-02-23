@@ -7,7 +7,7 @@ const CRATES_IO_INDEX: &str = "https://github.com/rust-lang/crates.io-index";
 const CRATES_IO_REGISTRY: &str = "crates-io";
 
 /// Find the URL of a registry
-pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> CargoResult<Url> {
+pub fn registry_url(work_dir: &Path, registry: Option<&str>) -> CargoResult<Url> {
     // TODO support local registry sources, directory sources, git sources: https://doc.rust-lang.org/cargo/reference/source-replacement.html?highlight=replace-with#source-replacement
     fn read_config(
         registries: &mut HashMap<String, Source>,
@@ -33,11 +33,7 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> CargoResult
     // put relations in this map.
     let mut registries: HashMap<String, Source> = HashMap::new();
     // ref: https://doc.rust-lang.org/cargo/reference/config.html#hierarchical-structure
-    for work_dir in manifest_path
-        .parent()
-        .expect("there must be a parent directory")
-        .ancestors()
-    {
+    for work_dir in work_dir.ancestors() {
         let work_cargo_dir = work_dir.join(".cargo");
         let config_path = work_cargo_dir.join("config");
         if config_path.is_file() {

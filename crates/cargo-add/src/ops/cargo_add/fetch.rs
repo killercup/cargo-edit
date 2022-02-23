@@ -10,6 +10,7 @@ use url::Url;
 
 use super::errors::*;
 use super::registry::registry_url;
+use super::RegistrySource;
 use super::VersionExt;
 use super::{Dependency, LocalManifest, Manifest};
 
@@ -26,10 +27,14 @@ use super::{Dependency, LocalManifest, Manifest};
 pub fn get_latest_dependency(
     crate_name: &str,
     flag_allow_prerelease: bool,
-    manifest_path: &Path,
-    registry: Option<&Url>,
+    work_dir: &Path,
+    registry: Option<&str>,
 ) -> CargoResult<Dependency> {
-    if env::var("CARGO_IS_TEST").is_ok() {
+    if crate_name.is_empty() {
+        anyhow::bail!("Found empty crate name");
+    }
+
+    let mut dep = if env::var("CARGO_IS_TEST").is_ok() {
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
         let new_version = if flag_allow_prerelease {
@@ -55,23 +60,18 @@ pub fn get_latest_dependency(
             BTreeMap::default()
         };
 
-        return Ok(Dependency::new(crate_name)
-            .set_version(&new_version)
-            .set_available_features(features));
-    }
-
-    if crate_name.is_empty() {
-        anyhow::bail!("Found empty crate name");
-    }
-
-    let registry = match registry {
-        Some(url) => url.clone(),
-        None => registry_url(manifest_path, None)?,
+        Dependency::new(crate_name)
+            .set_source(RegistrySource::new(new_version))
+            .set_available_features(features)
+    } else {
+        let registry_url = registry_url(work_dir, registry)?;
+        let crate_versions = fuzzy_query_registry_index(crate_name, &registry_url)?;
+        read_latest_version(&crate_versions, flag_allow_prerelease)?
     };
 
-    let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
-
-    let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
+    if let Some(registry) = registry {
+        dep = dep.set_registry(registry);
+    }
 
     if dep.name != crate_name {
         eprintln!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
@@ -188,7 +188,7 @@ fn read_latest_version(
     let name = &latest.name;
     let version = latest.version.to_string();
     Ok(Dependency::new(name)
-        .set_version(&version)
+        .set_source(RegistrySource::new(version))
         .set_available_features(latest.available_features.clone()))
 }
 
