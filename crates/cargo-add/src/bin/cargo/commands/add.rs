@@ -576,26 +576,11 @@ fn resolve_dependency(
         }
         CrateSpec::Path(_) => {
             let mut dependency = crate_spec.to_dependency()?;
-            dependency = populate_dependency(dependency, arg);
-
-            if let Some(old) = get_existing_dependency(arg, manifest, dependency.toml_key()) {
-                if old.path() == dependency.path() {
-                    if let Some(version) = old.version() {
-                        dependency = dependency.set_version(version);
-                    }
-                }
-            } else if arg.section != Section::DevDep {
+            if arg.section == Section::DevDep {
                 // dev-dependencies do not need the version populated
-                let dep_path = dependency.path().map(ToOwned::to_owned);
-                if let Some(dep_path) = dep_path {
-                    if let Some(package) = ws.members().find(|p| p.root() == dep_path.as_path()) {
-                        let op = "";
-                        let v = format!("{op}{version}", op = op, version = package.version());
-
-                        dependency = dependency.set_version(&v);
-                    }
-                }
+                dependency = dependency.clear_version();
             }
+            dependency = populate_dependency(dependency, arg);
 
             dependency
         }

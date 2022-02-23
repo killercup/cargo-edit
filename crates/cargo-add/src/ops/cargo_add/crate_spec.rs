@@ -89,10 +89,12 @@ impl CrateSpec {
             Self::Path(path) => {
                 let manifest = get_manifest_from_path(path)?;
                 let crate_name = manifest.package_name()?;
+                let version = manifest.package_version()?;
                 let path = dunce::canonicalize(path)?;
                 let available_features = manifest.features()?;
                 Dependency::new(crate_name)
                     .set_path(path)
+                    .set_version(version)
                     .set_available_features(available_features)
             }
         };
