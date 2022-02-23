@@ -646,17 +646,15 @@ fn get_existing_dependency(
             (key, dep)
         })
         .collect();
-    if possible.is_empty() {
-        return None;
-    }
-
     possible.sort_by_key(|(key, _)| *key);
-    let (key, mut dep) = possible.pop().expect("checked for empty earlier");
+    let (key, mut dep) = possible.pop()?;
+
     // dev-dependencies do not need the version populated when path is set though we
     // should preserve it if the user chose to populate it.
     if dep.path().is_some() && arg.section == Section::DevDep && key != Key::Existing {
         dep = dep.clear_version();
     }
+
     Some(dep)
 }
 
