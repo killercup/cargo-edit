@@ -267,13 +267,14 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
     };
     let manifest_path = package.manifest_path();
     let manifest_path = manifest_path.to_path_buf();
+    let work_dir = manifest_path.parent().expect("always a parent directory");
     let mut manifest = LocalManifest::try_new(&manifest_path)?;
 
     let raw_deps = parse_dependencies(args, &unstable_features)?;
 
     let registry = args.registry(config)?;
     if !config.offline() && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(&manifest_path, registry.as_deref())?;
+        let url = registry_url(&work_dir, registry.as_deref())?;
         update_registry_index(&url, quiet)?;
     }
 
@@ -553,9 +554,8 @@ fn resolve_dependency(
                     dependency = dependency.set_version(&v);
                 }
             } else {
-                let registry_url = registry_url(manifest_path, arg.registry)?;
-                let latest =
-                    get_latest_dependency(name, false, manifest_path, Some(&registry_url))?;
+                let work_dir = manifest_path.parent().expect("always a parent directory");
+                let latest = get_latest_dependency(name, false, work_dir, arg.registry)?;
 
                 let op = "";
                 let v = format!(
@@ -697,7 +697,8 @@ fn populate_available_features(
             .transpose()?
             .unwrap_or_default()
     } else if let Some(version) = dependency.version() {
-        let registry_url = registry_url(manifest_path, arg.registry.as_deref())?;
+        let work_dir = manifest_path.parent().expect("always a parent directory");
+        let registry_url = registry_url(work_dir, arg.registry.as_deref())?;
         get_features_from_registry(&dependency.name, version, &registry_url)?
     } else {
         BTreeMap::new()
