@@ -11,6 +11,10 @@ mod version;
 
 pub use crate_spec::CrateSpec;
 pub use dependency::Dependency;
+pub use dependency::GitSource;
+pub use dependency::PathSource;
+pub use dependency::RegistrySource;
+pub use dependency::Source;
 pub use errors::*;
 pub use fetch::{
     get_features_from_registry, get_latest_dependency, get_manifest_from_path,

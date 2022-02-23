@@ -10,6 +10,7 @@ use url::Url;
 
 use super::errors::*;
 use super::registry::registry_url;
+use super::RegistrySource;
 use super::VersionExt;
 use super::{Dependency, LocalManifest, Manifest};
 
@@ -60,7 +61,7 @@ pub fn get_latest_dependency(
         };
 
         Dependency::new(crate_name)
-            .set_version(&new_version)
+            .set_source(RegistrySource::new(new_version))
             .set_available_features(features)
     } else {
         let registry_url = registry_url(work_dir, registry)?;
@@ -187,7 +188,7 @@ fn read_latest_version(
     let name = &latest.name;
     let version = latest.version.to_string();
     Ok(Dependency::new(name)
-        .set_version(&version)
+        .set_source(RegistrySource::new(version))
         .set_available_features(latest.available_features.clone()))
 }
 

@@ -2,6 +2,8 @@
 use super::errors::*;
 use super::get_manifest_from_path;
 use super::Dependency;
+use super::PathSource;
+use super::RegistrySource;
 
 /// User-specified crate
 ///
@@ -82,7 +84,7 @@ impl CrateSpec {
             Self::PkgId { name, version_req } => {
                 let mut dep = Dependency::new(name);
                 if let Some(version_req) = version_req {
-                    dep = dep.set_version(version_req);
+                    dep = dep.set_source(RegistrySource::new(version_req));
                 }
                 dep
             }
@@ -93,8 +95,7 @@ impl CrateSpec {
                 let path = dunce::canonicalize(path)?;
                 let available_features = manifest.features()?;
                 Dependency::new(crate_name)
-                    .set_path(path)
-                    .set_version(version)
+                    .set_source(PathSource::new(path).set_version(version))
                     .set_available_features(available_features)
             }
         };

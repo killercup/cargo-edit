@@ -10,6 +10,9 @@ use cargo::util::command_prelude::*;
 use cargo_add::ops::cargo_add::CargoResult;
 use cargo_add::ops::cargo_add::Context;
 use cargo_add::ops::cargo_add::Dependency;
+use cargo_add::ops::cargo_add::GitSource;
+use cargo_add::ops::cargo_add::PathSource;
+use cargo_add::ops::cargo_add::Source;
 use cargo_add::ops::cargo_add::{
     colorize_stderr, registry_url, update_registry_index, LocalManifest,
 };
@@ -314,8 +317,8 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
         if !quiet {
             print_msg(&dep, &dep_table)?;
         }
-        if let Some(path) = dep.path() {
-            if path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
+        if let Some(Source::Path(src)) = dep.source() {
+            if src.path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
                 anyhow::bail!(
                     "Cannot add `{}` as a dependency to itself",
                     manifest.package_name()?
@@ -534,41 +537,38 @@ fn resolve_dependency(
 
             if let Some(repo) = arg.git {
                 assert!(arg.registry.is_none());
-                dependency = dependency.set_git(
-                    repo,
-                    arg.branch.map(String::from),
-                    arg.tag.map(String::from),
-                    arg.rev.map(String::from),
-                );
+                let mut src = GitSource::new(repo);
+                if let Some(branch) = arg.branch {
+                    src = src.set_branch(branch);
+                }
+                if let Some(tag) = arg.tag {
+                    src = src.set_tag(tag);
+                }
+                if let Some(rev) = arg.rev {
+                    src = src.set_rev(rev);
+                }
+                dependency = dependency.set_source(src);
             } else if let Some(old) = get_existing_dependency(arg, manifest, dependency.toml_key())
             {
                 dependency = populate_dependency(old, arg);
             } else if let Some(package) = ws.members().find(|p| p.name().as_str() == *name) {
                 // Only special-case workspaces when the user doesn't provide any extra
                 // information, otherwise, trust the user.
-                dependency = dependency.set_path(package.root().to_owned());
+                let mut src = PathSource::new(package.root());
                 // dev-dependencies do not need the version populated
                 if arg.section != Section::DevDep {
                     let op = "";
                     let v = format!("{op}{version}", op = op, version = package.version());
-                    dependency = dependency.set_version(&v);
+                    src = src.set_version(v);
                 }
+                dependency = dependency.set_source(src);
             } else {
                 let work_dir = manifest_path.parent().expect("always a parent directory");
                 let latest = get_latest_dependency(name, false, work_dir, arg.registry)?;
 
-                let op = "";
-                let v = format!(
-                    "{op}{version}",
-                    op = op,
-                    // If version is unavailable `get_latest_dependency` must have
-                    // returned `Err(FetchVersionError::GetVersion)`
-                    version = latest.version().unwrap_or_else(|| unreachable!())
-                );
-
                 dependency.name = latest.name; // Normalize the name
                 dependency = dependency
-                    .set_version(&v)
+                    .set_source(latest.source.expect("latest always has a source"))
                     .set_available_features(latest.available_features);
             }
 
@@ -589,7 +589,7 @@ fn resolve_dependency(
     if let Some(registry) = arg.registry {
         dependency = dependency.set_registry(registry);
     }
-    dependency = populate_available_features(dependency, manifest_path, arg)?;
+    dependency = populate_available_features(dependency, manifest_path)?;
 
     Ok(dependency)
 }
@@ -636,7 +636,10 @@ fn get_existing_dependency(
 
     // dev-dependencies do not need the version populated when path is set though we
     // should preserve it if the user chose to populate it.
-    if dep.path().is_some() && arg.section == Section::DevDep && key != Key::Existing {
+    if dep.source().map(|s| s.as_path().is_some()).unwrap_or(false)
+        && arg.section == Section::DevDep
+        && key != Key::Existing
+    {
         dep = dep.clear_version();
     }
 
@@ -667,26 +670,26 @@ fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> D
 fn populate_available_features(
     dependency: Dependency,
     manifest_path: &Path,
-    arg: &RawDependency<'_>,
 ) -> CargoResult<Dependency> {
     if !dependency.available_features.is_empty() {
         return Ok(dependency);
     }
 
-    let available_features = if let Some(path) = dependency.path() {
-        let manifest = get_manifest_from_path(path)?;
-        manifest.features()?
-    } else if let Some(repo) = dependency.git() {
-        get_manifest_from_url(repo)?
+    let available_features = match dependency.source() {
+        Some(Source::Registry(src)) => {
+            let work_dir = manifest_path.parent().expect("always a parent directory");
+            let registry_url = registry_url(work_dir, src.registry.as_deref())?;
+            get_features_from_registry(&dependency.name, &src.version, &registry_url)?
+        }
+        Some(Source::Path(src)) => {
+            let manifest = get_manifest_from_path(&src.path)?;
+            manifest.features()?
+        }
+        Some(Source::Git(git)) => get_manifest_from_url(&git.git)?
             .map(|m| m.features())
             .transpose()?
-            .unwrap_or_default()
-    } else if let Some(version) = dependency.version() {
-        let work_dir = manifest_path.parent().expect("always a parent directory");
-        let registry_url = registry_url(work_dir, arg.registry.as_deref())?;
-        get_features_from_registry(&dependency.name, version, &registry_url)?
-    } else {
-        BTreeMap::new()
+            .unwrap_or_default(),
+        None => BTreeMap::new(),
     };
 
     let dependency = dependency.set_available_features(available_features);
@@ -700,14 +703,21 @@ fn print_msg(dep: &Dependency, section: &[String]) -> CargoResult<()> {
     write!(output, "{:>12}", "Adding")?;
     output.reset()?;
     write!(output, " {}", dep.name)?;
-    if dep.path().is_some() {
-        write!(output, " (local)")?;
-    } else if let Some(version) = dep.version() {
-        if version.chars().next().unwrap_or('0').is_ascii_digit() {
-            write!(output, " v{}", version)?;
-        } else {
-            write!(output, " {}", version)?;
+    match dep.source() {
+        Some(Source::Registry(src)) => {
+            if src.version.chars().next().unwrap_or('0').is_ascii_digit() {
+                write!(output, " v{}", src.version)?;
+            } else {
+                write!(output, " {}", src.version)?;
+            }
         }
+        Some(Source::Path(_)) => {
+            write!(output, " (local)")?;
+        }
+        Some(Source::Git(_)) => {
+            write!(output, " (git)")?;
+        }
+        None => {}
     }
     write!(output, " to")?;
     if dep.optional().unwrap_or(false) {
