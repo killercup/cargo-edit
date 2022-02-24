@@ -639,11 +639,12 @@ fn get_existing_dependency(
         // of the other fields, like `features`
         let unrelated = dep;
         dep = Dependency::new(&unrelated.name);
-        if let Some(source) = unrelated.source() {
-            dep = dep.set_source(source);
+        dep.source = unrelated.source.clone();
+        dep.registry = unrelated.registry.clone();
 
-            // dev-dependencies do not need the version populated when path is set though we
-            // should preserve it if the user chose to populate it.
+        // dev-dependencies do not need the version populated when path is set though we
+        // should preserve it if the user chose to populate it.
+        if let Some(source) = unrelated.source() {
             if source.as_path().is_some() && arg.section == Section::DevDep {
                 dep = dep.clear_version();
             }
@@ -690,7 +691,7 @@ fn populate_available_features(
     let available_features = match dependency.source() {
         Some(Source::Registry(src)) => {
             let work_dir = manifest_path.parent().expect("always a parent directory");
-            let registry_url = registry_url(work_dir, src.registry.as_deref())?;
+            let registry_url = registry_url(work_dir, dependency.registry())?;
             get_features_from_registry(&dependency.name, &src.version, &registry_url)?
         }
         Some(Source::Path(src)) => {
