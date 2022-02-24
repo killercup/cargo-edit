@@ -6,6 +6,8 @@ use indexmap::IndexSet;
 use super::manifest::str_or_1_len_table;
 
 /// A dependency handled by Cargo
+///
+/// `None` means the field will be blank in TOML
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct Dependency {
@@ -193,12 +195,7 @@ impl Dependency {
                 None
             };
 
-            let default_features = if let Some(value) = table.get("default-features") {
-                value.as_bool()?
-            } else {
-                true
-            };
-            let default_features = Some(default_features);
+            let default_features = table.get("default-features").and_then(|v| v.as_bool());
 
             let features = if let Some(value) = table.get("features") {
                 Some(
@@ -214,12 +211,7 @@ impl Dependency {
 
             let available_features = BTreeMap::default();
 
-            let optional = if let Some(value) = table.get("optional") {
-                value.as_bool()?
-            } else {
-                false
-            };
-            let optional = Some(optional);
+            let optional = table.get("optional").and_then(|v| v.as_bool());
 
             let dep = Self {
                 name,
@@ -315,21 +307,15 @@ impl Dependency {
                 if self.rename.is_some() {
                     table.insert("package", self.name.as_str().into());
                 }
-                match self.default_features {
-                    Some(true) | None => {}
-                    Some(false) => {
-                        table.insert("default-features", false.into());
-                    }
+                if let Some(v) = self.default_features {
+                    table.insert("default-features", v.into());
                 }
                 if let Some(features) = self.features.as_ref() {
                     let features: toml_edit::Value = features.iter().cloned().collect();
                     table.insert("features", features);
                 }
-                match self.optional {
-                    Some(false) | None => {}
-                    Some(true) => {
-                        table.insert("optional", true.into());
-                    }
+                if let Some(v) = self.optional {
+                    table.insert("optional", v.into());
                 }
 
                 toml_edit::value(toml_edit::Value::InlineTable(table))
@@ -360,6 +346,8 @@ impl Dependency {
                     let relpath = path_field(crate_root, &src.path);
                     if let Some(r) = src.version.as_deref() {
                         table.insert("version", toml_edit::value(r));
+                    } else {
+                        table.remove("version");
                     }
                     table.insert("path", toml_edit::value(relpath));
                     for key in ["git", "branch", "tag", "rev"] {
@@ -392,6 +380,8 @@ impl Dependency {
             if table.contains_key("version") {
                 if let Some(r) = self.registry.as_deref() {
                     table.insert("registry", toml_edit::value(r));
+                } else {
+                    table.remove("registry");
                 }
             } else {
                 table.remove("registry");
@@ -401,13 +391,12 @@ impl Dependency {
                 table.insert("package", toml_edit::value(self.name.as_str()));
             }
             match self.default_features {
-                Some(true) => {
+                Some(v) => {
+                    table.insert("default-features", toml_edit::value(v));
+                }
+                None => {
                     table.remove("default-features");
                 }
-                Some(false) => {
-                    table.insert("default-features", toml_edit::value(false));
-                }
-                None => {}
             }
             if let Some(new_features) = self.features.as_ref() {
                 let mut features = table
@@ -423,15 +412,16 @@ impl Dependency {
                 features.extend(new_features.iter().map(|s| s.as_str()));
                 let features = toml_edit::value(features.into_iter().collect::<toml_edit::Value>());
                 table.insert("features", features);
+            } else {
+                table.remove("features");
             }
             match self.optional {
-                Some(true) => {
-                    table.insert("optional", toml_edit::value(true));
+                Some(v) => {
+                    table.insert("optional", toml_edit::value(v));
                 }
-                Some(false) => {
+                None => {
                     table.remove("optional");
                 }
-                None => {}
             }
 
             table.fmt();

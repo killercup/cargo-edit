@@ -511,17 +511,18 @@ fn resolve_dependency(
     let mut spec_dep = crate_spec.to_dependency()?;
     spec_dep = populate_dependency(spec_dep, arg);
 
-    let mut dependency =
-        if let Some(mut old_dep) = get_existing_dependency(arg, manifest, spec_dep.toml_key()) {
-            if spec_dep.source().is_some() {
-                // Overwrite with `crate_spec`
-                old_dep.source = spec_dep.source.clone();
-            }
-            old_dep = populate_dependency(old_dep, arg);
-            old_dep
-        } else {
-            spec_dep
-        };
+    let old_dep = get_existing_dependency(arg, manifest, spec_dep.toml_key());
+
+    let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
+        if spec_dep.source().is_some() {
+            // Overwrite with `crate_spec`
+            old_dep.source = spec_dep.source.clone();
+        }
+        old_dep = populate_dependency(old_dep, arg);
+        old_dep
+    } else {
+        spec_dep
+    };
 
     if let Some(url) = arg.git {
         match &crate_spec {
@@ -591,8 +592,13 @@ fn resolve_dependency(
         }
     }
 
-    if dependency.source().and_then(|s| s.as_registry()).is_none() && arg.section == Section::DevDep
-    {
+    let version_required = dependency.source().and_then(|s| s.as_registry()).is_some();
+    let version_optional_in_section = arg.section == Section::DevDep;
+    let preserve_existing_version = old_dep
+        .as_ref()
+        .map(|d| d.version().is_some())
+        .unwrap_or(false);
+    if !version_required && !preserve_existing_version && version_optional_in_section {
         // dev-dependencies do not need the version populated
         dependency = dependency.clear_version();
     }
@@ -649,6 +655,14 @@ fn get_existing_dependency(
         dep = Dependency::new(&unrelated.name);
         dep.source = unrelated.source.clone();
         dep.registry = unrelated.registry.clone();
+
+        // dev-dependencies do not need the version populated when path is set though we
+        // should preserve it if the user chose to populate it.
+        let version_required = unrelated.source().and_then(|s| s.as_registry()).is_some();
+        let version_optional_in_section = arg.section == Section::DevDep;
+        if !version_required && version_optional_in_section {
+            dep = dep.clear_version();
+        }
     }
 
     Some(dep)
@@ -663,13 +677,25 @@ fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> D
     });
 
     if let Some(registry) = arg.registry {
-        dependency = dependency.set_registry(registry);
+        if registry.is_empty() {
+            dependency.registry = None;
+        } else {
+            dependency.registry = Some(registry.to_owned());
+        }
     }
     if let Some(value) = arg.optional {
-        dependency = dependency.set_optional(value);
+        if value {
+            dependency.optional = Some(true);
+        } else {
+            dependency.optional = None;
+        }
     }
     if let Some(value) = arg.default_features {
-        dependency = dependency.set_default_features(value);
+        if value {
+            dependency.default_features = None;
+        } else {
+            dependency.default_features = Some(false);
+        }
     }
     if let Some(value) = requested_features {
         dependency = dependency.extend_features(value);
