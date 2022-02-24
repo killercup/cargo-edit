@@ -3,7 +3,11 @@ args = ["add", "cargo-list-test-fixture-dependency", "--dev"]
 status = "success"
 stdout = ""
 stderr = """
+    Warning: Unrecognized features: [\"one\", \"two\"]
       Adding cargo-list-test-fixture-dependency (local) to dev-dependencies.
+             Features:
+             + one
+             + two
 """
 fs.sandbox = true
 

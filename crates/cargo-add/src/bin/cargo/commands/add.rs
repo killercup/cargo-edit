@@ -661,10 +661,15 @@ fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> D
             .collect()
     });
 
-    dependency = dependency
-        .set_optional(arg.optional)
-        .set_default_features(arg.default_features)
-        .set_features(requested_features);
+    if let Some(value) = arg.optional {
+        dependency = dependency.set_optional(value);
+    }
+    if let Some(value) = arg.default_features {
+        dependency = dependency.set_default_features(value);
+    }
+    if let Some(value) = requested_features {
+        dependency = dependency.set_features(value);
+    }
 
     if let Some(ref rename) = arg.rename {
         dependency = dependency.set_rename(rename);
