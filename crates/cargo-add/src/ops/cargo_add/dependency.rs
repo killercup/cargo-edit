@@ -493,6 +493,12 @@ impl Source {
     }
 }
 
+impl<'s> From<&'s Source> for Source {
+    fn from(inner: &'s Source) -> Self {
+        inner.clone()
+    }
+}
+
 impl From<RegistrySource> for Source {
     fn from(inner: RegistrySource) -> Self {
         Self::Registry(inner)

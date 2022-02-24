@@ -634,13 +634,20 @@ fn get_existing_dependency(
     possible.sort_by_key(|(key, _)| *key);
     let (key, mut dep) = possible.pop()?;
 
-    // dev-dependencies do not need the version populated when path is set though we
-    // should preserve it if the user chose to populate it.
-    if dep.source().map(|s| s.as_path().is_some()).unwrap_or(false)
-        && arg.section == Section::DevDep
-        && key != Key::Existing
-    {
-        dep = dep.clear_version();
+    if key != Key::Existing {
+        // When the dep comes from a different section, we only care about the source and not any
+        // of the other fields, like `features`
+        let unrelated = dep;
+        dep = Dependency::new(&unrelated.name);
+        if let Some(source) = unrelated.source() {
+            dep = dep.set_source(source);
+
+            // dev-dependencies do not need the version populated when path is set though we
+            // should preserve it if the user chose to populate it.
+            if source.as_path().is_some() && arg.section == Section::DevDep {
+                dep = dep.clear_version();
+            }
+        }
     }
 
     Some(dep)
