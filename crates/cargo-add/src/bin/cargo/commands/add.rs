@@ -277,7 +277,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
 
     let registry = args.registry(config)?;
     if !config.offline() && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(&work_dir, registry.as_deref())?;
+        let url = registry_url(work_dir, registry.as_deref())?;
         update_registry_index(&url, quiet)?;
     }
 
@@ -360,7 +360,7 @@ struct RawDependency<'m> {
 
     registry: Option<&'m str>,
 
-    section: Section<'m>,
+    section: DepKind<'m>,
 
     git: Option<&'m str>,
     branch: Option<&'m str>,
@@ -429,7 +429,7 @@ fn parse_dependencies<'m>(
                 default_features,
                 optional,
                 registry,
-                section: section.clone(),
+                section,
                 git,
                 branch,
                 rev,
@@ -469,34 +469,34 @@ fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Section<'m> {
-    Dep,
-    DevDep,
-    BuildDep,
-    TargetDep(&'m str),
+enum DepKind<'m> {
+    Normal,
+    Development,
+    Build,
+    Target(&'m str),
 }
 
-impl<'m> Section<'m> {
-    fn to_table(&self) -> Vec<&str> {
+impl<'m> DepKind<'m> {
+    fn to_table(self) -> Vec<&'m str> {
         match self {
-            Self::Dep => vec!["dependencies"],
-            Self::DevDep => vec!["dev-dependencies"],
-            Self::BuildDep => vec!["build-dependencies"],
-            Self::TargetDep(target) => vec!["target", target, "dependencies"],
+            Self::Normal => vec!["dependencies"],
+            Self::Development => vec!["dev-dependencies"],
+            Self::Build => vec!["build-dependencies"],
+            Self::Target(target) => vec!["target", target, "dependencies"],
         }
     }
 }
 
-fn parse_section(matches: &ArgMatches) -> Section<'_> {
+fn parse_section(matches: &ArgMatches) -> DepKind<'_> {
     if matches.is_present("dev") {
-        Section::DevDep
+        DepKind::Development
     } else if matches.is_present("build") {
-        Section::BuildDep
+        DepKind::Build
     } else if let Some(target) = matches.value_of("target") {
         assert!(!target.is_empty(), "Target specification may not be empty");
-        Section::TargetDep(target)
+        DepKind::Target(target)
     } else {
-        Section::Dep
+        DepKind::Normal
     }
 }
 
@@ -516,7 +516,7 @@ fn resolve_dependency(
     let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
         if spec_dep.source().is_some() {
             // Overwrite with `crate_spec`
-            old_dep.source = spec_dep.source.clone();
+            old_dep.source = spec_dep.source;
         }
         old_dep = populate_dependency(old_dep, arg);
         old_dep
@@ -570,7 +570,7 @@ fn resolve_dependency(
             // information, otherwise, trust the user.
             let mut src = PathSource::new(package.root());
             // dev-dependencies do not need the version populated
-            if arg.section != Section::DevDep {
+            if arg.section != DepKind::Development {
                 let op = "";
                 let v = format!("{op}{version}", op = op, version = package.version());
                 src = src.set_version(v);
@@ -593,7 +593,7 @@ fn resolve_dependency(
     }
 
     let version_required = dependency.source().and_then(|s| s.as_registry()).is_some();
-    let version_optional_in_section = arg.section == Section::DevDep;
+    let version_optional_in_section = arg.section == DepKind::Development;
     let preserve_existing_version = old_dep
         .as_ref()
         .map(|d| d.version().is_some())
@@ -659,7 +659,7 @@ fn get_existing_dependency(
         // dev-dependencies do not need the version populated when path is set though we
         // should preserve it if the user chose to populate it.
         let version_required = unrelated.source().and_then(|s| s.as_registry()).is_some();
-        let version_optional_in_section = arg.section == Section::DevDep;
+        let version_optional_in_section = arg.section == DepKind::Development;
         if !version_required && version_optional_in_section {
             dep = dep.clear_version();
         }
@@ -701,7 +701,7 @@ fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> D
         dependency = dependency.extend_features(value);
     }
 
-    if let Some(ref rename) = arg.rename {
+    if let Some(rename) = arg.rename {
         dependency = dependency.set_rename(rename);
     }
 
