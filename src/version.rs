@@ -128,7 +128,7 @@ static VERSION_RC: &str = "rc";
 
 fn prerelease_id_version(version: &semver::Version) -> CargoResult<Option<(String, Option<u64>)>> {
     if !version.pre.is_empty() {
-        if let Some((alpha, numeric)) = version.pre.as_str().split_once(".") {
+        if let Some((alpha, numeric)) = version.pre.as_str().split_once('.') {
             let alpha = alpha.to_owned();
             let numeric = u64::from_str(numeric)
                 .map_err(|_| anyhow::format_err!("This version scheme is not supported. Use format like `pre`, `dev` or `alpha.1` for prerelease symbol"))?;
