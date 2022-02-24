@@ -293,7 +293,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
             table_option.map_or(true, |table| is_sorted(table.iter().map(|(name, _)| name)))
         });
     for dep in deps {
-        if let Some(req_feats) = dep.features.as_deref() {
+        if let Some(req_feats) = dep.features.as_ref() {
             let req_feats: BTreeSet<_> = req_feats.iter().map(|s| s.as_str()).collect();
 
             let available_features = dep
@@ -655,7 +655,7 @@ fn get_existing_dependency(
 }
 
 fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> Dependency {
-    let requested_features: Option<Vec<_>> = arg.features.as_ref().map(|v| {
+    let requested_features: Option<IndexSet<_>> = arg.features.as_ref().map(|v| {
         v.iter()
             .flat_map(|s| parse_feature(s))
             .map(|f| f.to_owned())

@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use indexmap::IndexSet;
+
 use super::manifest::str_or_1_len_table;
 
 /// A dependency handled by Cargo
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct Dependency {
     /// The name of the dependency (as it is set in its `Cargo.toml` and known to crates.io)
@@ -13,7 +15,7 @@ pub struct Dependency {
     pub optional: Option<bool>,
 
     /// List of features to add (or None to keep features unchanged).
-    pub features: Option<Vec<String>>,
+    pub features: Option<IndexSet<String>>,
     /// Whether default features are enabled
     pub default_features: Option<bool>,
 
@@ -81,7 +83,7 @@ impl Dependency {
         self
     }
     /// Set features as an array of string (does some basic parsing)
-    pub fn set_features(mut self, features: Vec<String>) -> Self {
+    pub fn set_features(mut self, features: IndexSet<String>) -> Self {
         self.features = Some(features);
         self
     }
@@ -196,7 +198,7 @@ impl Dependency {
                         .as_array()?
                         .iter()
                         .map(|v| v.as_str().map(|s| s.to_owned()))
-                        .collect::<Option<Vec<String>>>()?,
+                        .collect::<Option<IndexSet<String>>>()?,
                 )
             } else {
                 None
@@ -311,7 +313,7 @@ impl Dependency {
                         table.insert("default-features", false.into());
                     }
                 }
-                if let Some(features) = self.features.as_deref() {
+                if let Some(features) = self.features.as_ref() {
                     let features: toml_edit::Value = features.iter().cloned().collect();
                     table.insert("features", features);
                 }
@@ -399,7 +401,7 @@ impl Dependency {
                 }
                 None => {}
             }
-            if let Some(new_features) = self.features.as_deref() {
+            if let Some(new_features) = self.features.as_ref() {
                 let mut features = table
                     .get("features")
                     .and_then(|i| i.as_value())
@@ -407,7 +409,7 @@ impl Dependency {
                     .and_then(|a| {
                         a.iter()
                             .map(|v| v.as_str())
-                            .collect::<Option<indexmap::IndexSet<_>>>()
+                            .collect::<Option<IndexSet<_>>>()
                     })
                     .unwrap_or_default();
                 features.extend(new_features.iter().map(|s| s.as_str()));
@@ -448,7 +450,7 @@ fn is_package_eq(item: &mut toml_edit::Item, name: &str, rename: Option<&str>) -
 }
 
 /// Primary location of a dependency
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub enum Source {
     /// Dependency from a registry
     Registry(RegistrySource),
@@ -509,7 +511,7 @@ impl From<GitSource> for Source {
 }
 
 /// Dependency from a registry
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct RegistrySource {
     /// Version requirement
@@ -530,7 +532,7 @@ impl RegistrySource {
 }
 
 /// Dependency from a local path
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct PathSource {
     /// Local, absolute path
@@ -560,7 +562,7 @@ impl PathSource {
 }
 
 /// Dependency from a git repo
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct GitSource {
     /// Repo URL
