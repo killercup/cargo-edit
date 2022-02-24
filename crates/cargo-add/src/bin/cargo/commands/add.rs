@@ -277,7 +277,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
 
     let registry = args.registry(config)?;
     if !config.offline() && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(&work_dir, registry.as_deref())?;
+        let url = registry_url(work_dir, registry.as_deref())?;
         update_registry_index(&url, quiet)?;
     }
 
@@ -293,7 +293,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
             table_option.map_or(true, |table| is_sorted(table.iter().map(|(name, _)| name)))
         });
     for dep in deps {
-        if let Some(req_feats) = dep.features.as_deref() {
+        if let Some(req_feats) = dep.features.as_ref() {
             let req_feats: BTreeSet<_> = req_feats.iter().map(|s| s.as_str()).collect();
 
             let available_features = dep
@@ -360,7 +360,7 @@ struct RawDependency<'m> {
 
     registry: Option<&'m str>,
 
-    section: Section<'m>,
+    section: DepKind<'m>,
 
     git: Option<&'m str>,
     branch: Option<&'m str>,
@@ -429,7 +429,7 @@ fn parse_dependencies<'m>(
                 default_features,
                 optional,
                 registry,
-                section: section.clone(),
+                section,
                 git,
                 branch,
                 rev,
@@ -469,34 +469,34 @@ fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Section<'m> {
-    Dep,
-    DevDep,
-    BuildDep,
-    TargetDep(&'m str),
+enum DepKind<'m> {
+    Normal,
+    Development,
+    Build,
+    Target(&'m str),
 }
 
-impl<'m> Section<'m> {
-    fn to_table(&self) -> Vec<&str> {
+impl<'m> DepKind<'m> {
+    fn to_table(self) -> Vec<&'m str> {
         match self {
-            Self::Dep => vec!["dependencies"],
-            Self::DevDep => vec!["dev-dependencies"],
-            Self::BuildDep => vec!["build-dependencies"],
-            Self::TargetDep(target) => vec!["target", target, "dependencies"],
+            Self::Normal => vec!["dependencies"],
+            Self::Development => vec!["dev-dependencies"],
+            Self::Build => vec!["build-dependencies"],
+            Self::Target(target) => vec!["target", target, "dependencies"],
         }
     }
 }
 
-fn parse_section(matches: &ArgMatches) -> Section<'_> {
+fn parse_section(matches: &ArgMatches) -> DepKind<'_> {
     if matches.is_present("dev") {
-        Section::DevDep
+        DepKind::Development
     } else if matches.is_present("build") {
-        Section::BuildDep
+        DepKind::Build
     } else if let Some(target) = matches.value_of("target") {
         assert!(!target.is_empty(), "Target specification may not be empty");
-        Section::TargetDep(target)
+        DepKind::Target(target)
     } else {
-        Section::Dep
+        DepKind::Normal
     }
 }
 
@@ -508,36 +508,48 @@ fn resolve_dependency(
     let crate_spec = CrateSpec::resolve(arg.crate_spec)?;
     let manifest_path = manifest.path.as_path();
 
-    let mut dependency = match &crate_spec {
-        CrateSpec::PkgId {
-            name: _,
-            version_req: Some(_),
-        } => {
-            let mut dependency = crate_spec.to_dependency()?;
-            dependency = populate_dependency(dependency, arg);
-            // crate specifier includes a version (e.g. `docopt@0.8`)
-            if let Some(url) = arg.git {
-                let url = url.clone();
-                let version = dependency.version().unwrap().to_string();
+    let mut spec_dep = crate_spec.to_dependency()?;
+    spec_dep = populate_dependency(spec_dep, arg);
+
+    let old_dep = get_existing_dependency(arg, manifest, spec_dep.toml_key());
+
+    let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
+        if spec_dep.source().is_some() {
+            // Overwrite with `crate_spec`
+            old_dep.source = spec_dep.source;
+        }
+        old_dep = populate_dependency(old_dep, arg);
+        old_dep
+    } else {
+        spec_dep
+    };
+
+    if let Some(url) = arg.git {
+        match &crate_spec {
+            CrateSpec::Path(path) => {
+                anyhow::bail!(
+                    "Cannot specify a git URL (`{}`) with a path (`{}`).",
+                    url,
+                    path.display()
+                )
+            }
+            CrateSpec::PkgId {
+                name: _,
+                version_req: Some(v),
+            } => {
+                // crate specifier includes a version (e.g. `docopt@0.8`)
                 anyhow::bail!(
                     "Cannot specify a git URL (`{}`) with a version (`{}`).",
                     url,
-                    version
+                    v
                 )
             }
-
-            dependency
-        }
-        CrateSpec::PkgId {
-            name,
-            version_req: None,
-        } => {
-            let mut dependency = crate_spec.to_dependency()?;
-            dependency = populate_dependency(dependency, arg);
-
-            if let Some(repo) = arg.git {
+            CrateSpec::PkgId {
+                name: _,
+                version_req: None,
+            } => {
                 assert!(arg.registry.is_none());
-                let mut src = GitSource::new(repo);
+                let mut src = GitSource::new(url);
                 if let Some(branch) = arg.branch {
                     src = src.set_branch(branch);
                 }
@@ -548,47 +560,49 @@ fn resolve_dependency(
                     src = src.set_rev(rev);
                 }
                 dependency = dependency.set_source(src);
-            } else if let Some(old) = get_existing_dependency(arg, manifest, dependency.toml_key())
-            {
-                dependency = populate_dependency(old, arg);
-            } else if let Some(package) = ws.members().find(|p| p.name().as_str() == *name) {
-                // Only special-case workspaces when the user doesn't provide any extra
-                // information, otherwise, trust the user.
-                let mut src = PathSource::new(package.root());
-                // dev-dependencies do not need the version populated
-                if arg.section != Section::DevDep {
-                    let op = "";
-                    let v = format!("{op}{version}", op = op, version = package.version());
-                    src = src.set_version(v);
-                }
-                dependency = dependency.set_source(src);
-            } else {
-                let work_dir = manifest_path.parent().expect("always a parent directory");
-                let latest = get_latest_dependency(name, false, work_dir, arg.registry)?;
-
-                dependency.name = latest.name; // Normalize the name
-                dependency = dependency
-                    .set_source(latest.source.expect("latest always has a source"))
-                    .set_available_features(latest.available_features);
             }
-
-            dependency
         }
-        CrateSpec::Path(_) => {
-            let mut dependency = crate_spec.to_dependency()?;
-            if arg.section == Section::DevDep {
-                // dev-dependencies do not need the version populated
-                dependency = dependency.clear_version();
-            }
-            dependency = populate_dependency(dependency, arg);
-
-            dependency
-        }
-    };
-
-    if let Some(registry) = arg.registry {
-        dependency = dependency.set_registry(registry);
     }
+
+    if dependency.source().is_none() {
+        if let Some(package) = ws.members().find(|p| p.name().as_str() == dependency.name) {
+            // Only special-case workspaces when the user doesn't provide any extra
+            // information, otherwise, trust the user.
+            let mut src = PathSource::new(package.root());
+            // dev-dependencies do not need the version populated
+            if arg.section != DepKind::Development {
+                let op = "";
+                let v = format!("{op}{version}", op = op, version = package.version());
+                src = src.set_version(v);
+            }
+            dependency = dependency.set_source(src);
+        } else {
+            let work_dir = manifest_path.parent().expect("always a parent directory");
+            let latest = get_latest_dependency(
+                dependency.name.as_str(),
+                false,
+                work_dir,
+                dependency.registry(),
+            )?;
+
+            dependency.name = latest.name; // Normalize the name
+            dependency = dependency
+                .set_source(latest.source.expect("latest always has a source"))
+                .set_available_features(latest.available_features);
+        }
+    }
+
+    let version_required = dependency.source().and_then(|s| s.as_registry()).is_some();
+    let version_optional_in_section = arg.section == DepKind::Development;
+    let preserve_existing_version = old_dep
+        .as_ref()
+        .map(|d| d.version().is_some())
+        .unwrap_or(false);
+    if !version_required && !preserve_existing_version && version_optional_in_section {
+        // dev-dependencies do not need the version populated
+        dependency = dependency.clear_version();
+    }
+
     dependency = populate_available_features(dependency, manifest_path)?;
 
     Ok(dependency)
@@ -639,14 +653,15 @@ fn get_existing_dependency(
         // of the other fields, like `features`
         let unrelated = dep;
         dep = Dependency::new(&unrelated.name);
-        if let Some(source) = unrelated.source() {
-            dep = dep.set_source(source);
+        dep.source = unrelated.source.clone();
+        dep.registry = unrelated.registry.clone();
 
-            // dev-dependencies do not need the version populated when path is set though we
-            // should preserve it if the user chose to populate it.
-            if source.as_path().is_some() && arg.section == Section::DevDep {
-                dep = dep.clear_version();
-            }
+        // dev-dependencies do not need the version populated when path is set though we
+        // should preserve it if the user chose to populate it.
+        let version_required = unrelated.source().and_then(|s| s.as_registry()).is_some();
+        let version_optional_in_section = arg.section == DepKind::Development;
+        if !version_required && version_optional_in_section {
+            dep = dep.clear_version();
         }
     }
 
@@ -654,24 +669,39 @@ fn get_existing_dependency(
 }
 
 fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> Dependency {
-    let requested_features: Option<Vec<_>> = arg.features.as_ref().map(|v| {
+    let requested_features: Option<IndexSet<_>> = arg.features.as_ref().map(|v| {
         v.iter()
             .flat_map(|s| parse_feature(s))
             .map(|f| f.to_owned())
             .collect()
     });
 
+    if let Some(registry) = arg.registry {
+        if registry.is_empty() {
+            dependency.registry = None;
+        } else {
+            dependency.registry = Some(registry.to_owned());
+        }
+    }
     if let Some(value) = arg.optional {
-        dependency = dependency.set_optional(value);
+        if value {
+            dependency.optional = Some(true);
+        } else {
+            dependency.optional = None;
+        }
     }
     if let Some(value) = arg.default_features {
-        dependency = dependency.set_default_features(value);
+        if value {
+            dependency.default_features = None;
+        } else {
+            dependency.default_features = Some(false);
+        }
     }
     if let Some(value) = requested_features {
-        dependency = dependency.set_features(value);
+        dependency = dependency.extend_features(value);
     }
 
-    if let Some(ref rename) = arg.rename {
+    if let Some(rename) = arg.rename {
         dependency = dependency.set_rename(rename);
     }
 
@@ -690,7 +720,7 @@ fn populate_available_features(
     let available_features = match dependency.source() {
         Some(Source::Registry(src)) => {
             let work_dir = manifest_path.parent().expect("always a parent directory");
-            let registry_url = registry_url(work_dir, src.registry.as_deref())?;
+            let registry_url = registry_url(work_dir, dependency.registry())?;
             get_features_from_registry(&dependency.name, &src.version, &registry_url)?
         }
         Some(Source::Path(src)) => {

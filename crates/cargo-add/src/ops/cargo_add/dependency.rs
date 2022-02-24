@@ -1,10 +1,14 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use indexmap::IndexSet;
+
 use super::manifest::str_or_1_len_table;
 
 /// A dependency handled by Cargo
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+///
+/// `None` means the field will be blank in TOML
+#[derive(Debug, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct Dependency {
     /// The name of the dependency (as it is set in its `Cargo.toml` and known to crates.io)
@@ -13,12 +17,15 @@ pub struct Dependency {
     pub optional: Option<bool>,
 
     /// List of features to add (or None to keep features unchanged).
-    pub features: Option<Vec<String>>,
+    pub features: Option<IndexSet<String>>,
     /// Whether default features are enabled
     pub default_features: Option<bool>,
 
     /// Where the dependency comes from
     pub source: Option<Source>,
+    /// Non-default registry
+    pub registry: Option<String>,
+
     /// If the dependency is renamed, this is the new name for the dependency
     /// as a string.  None if it is not renamed.
     pub rename: Option<String>,
@@ -36,6 +43,7 @@ impl Dependency {
             features: None,
             default_features: None,
             source: None,
+            registry: None,
             rename: None,
             available_features: Default::default(),
         }
@@ -55,7 +63,6 @@ impl Dependency {
             }
             Some(Source::Path(path)) => {
                 path.version = None;
-                path.registry = None;
             }
             Some(Source::Git(_)) => {}
             None => {}
@@ -77,9 +84,17 @@ impl Dependency {
         self.optional = Some(opt);
         self
     }
+
     /// Set features as an array of string (does some basic parsing)
-    pub fn set_features(mut self, features: Vec<String>) -> Self {
+    pub fn set_features(mut self, features: IndexSet<String>) -> Self {
         self.features = Some(features);
+        self
+    }
+    /// Set features as an array of string (does some basic parsing)
+    pub fn extend_features(mut self, features: impl IntoIterator<Item = String>) -> Self {
+        self.features
+            .get_or_insert_with(Default::default)
+            .extend(features);
         self
     }
 
@@ -97,16 +112,7 @@ impl Dependency {
 
     /// Set the value of registry for the dependency
     pub fn set_registry(mut self, registry: impl Into<String>) -> Self {
-        match &mut self.source {
-            Some(Source::Registry(src)) => {
-                src.registry = Some(registry.into());
-            }
-            Some(Source::Path(src)) => {
-                src.registry = Some(registry.into());
-            }
-            Some(Source::Git(_)) => {}
-            None => {}
-        }
+        self.registry = Some(registry.into());
         self
     }
 
@@ -126,11 +132,7 @@ impl Dependency {
 
     /// Get registry of the dependency
     pub fn registry(&self) -> Option<&str> {
-        match self.source()? {
-            Source::Registry(src) => src.registry.as_deref(),
-            Source::Path(src) => src.registry.as_deref(),
-            Source::Git(_) => None,
-        }
+        self.registry.as_deref()
     }
 
     /// Get the alias for the dependency (if any)
@@ -180,26 +182,20 @@ impl Dependency {
                 if let Some(value) = table.get("version") {
                     src = src.set_version(value.as_str()?);
                 }
-                if let Some(value) = table.get("registry") {
-                    src = src.set_registry(value.as_str()?);
-                }
                 src.into()
             } else if let Some(version) = table.get("version") {
-                let mut src = RegistrySource::new(version.as_str()?);
-                if let Some(value) = table.get("registry") {
-                    src = src.set_registry(value.as_str()?);
-                }
+                let src = RegistrySource::new(version.as_str()?);
                 src.into()
             } else {
                 return None;
             };
-
-            let default_features = if let Some(value) = table.get("default-features") {
-                value.as_bool()?
+            let registry = if let Some(value) = table.get("registry") {
+                Some(value.as_str()?.to_owned())
             } else {
-                true
+                None
             };
-            let default_features = Some(default_features);
+
+            let default_features = table.get("default-features").and_then(|v| v.as_bool());
 
             let features = if let Some(value) = table.get("features") {
                 Some(
@@ -207,7 +203,7 @@ impl Dependency {
                         .as_array()?
                         .iter()
                         .map(|v| v.as_str().map(|s| s.to_owned()))
-                        .collect::<Option<Vec<String>>>()?,
+                        .collect::<Option<IndexSet<String>>>()?,
                 )
             } else {
                 None
@@ -215,17 +211,13 @@ impl Dependency {
 
             let available_features = BTreeMap::default();
 
-            let optional = if let Some(value) = table.get("optional") {
-                value.as_bool()?
-            } else {
-                false
-            };
-            let optional = Some(optional);
+            let optional = table.get("optional").and_then(|v| v.as_bool());
 
             let dep = Self {
                 name,
                 rename,
                 source: Some(source),
+                registry,
                 default_features,
                 features,
                 available_features,
@@ -265,6 +257,7 @@ impl Dependency {
             self.features.as_ref(),
             self.default_features.unwrap_or(true),
             self.source.as_ref(),
+            self.registry.as_ref(),
             self.rename.as_ref(),
         ) {
             // Extra short when version flag only
@@ -272,22 +265,17 @@ impl Dependency {
                 false,
                 None,
                 true,
-                Some(Source::Registry(RegistrySource {
-                    version: v,
-                    registry: None,
-                })),
+                Some(Source::Registry(RegistrySource { version: v })),
+                None,
                 None,
             ) => toml_edit::value(v),
             // Other cases are represented as an inline table
-            (_, _, _, _, _) => {
+            (_, _, _, _, _, _) => {
                 let mut table = toml_edit::InlineTable::default();
 
                 match &self.source {
                     Some(Source::Registry(src)) => {
                         table.insert("version", src.version.as_str().into());
-                        if let Some(r) = src.registry.as_deref() {
-                            table.insert("registry", r.into());
-                        }
                     }
                     Some(Source::Path(src)) => {
                         let relpath = path_field(crate_root, &src.path);
@@ -295,9 +283,6 @@ impl Dependency {
                             table.insert("version", r.into());
                         }
                         table.insert("path", relpath.into());
-                        if let Some(r) = src.registry.as_deref() {
-                            table.insert("registry", r.into());
-                        }
                     }
                     Some(Source::Git(src)) => {
                         table.insert("git", src.git.as_str().into());
@@ -313,24 +298,24 @@ impl Dependency {
                     }
                     None => {}
                 }
+                if table.contains_key("version") {
+                    if let Some(r) = self.registry.as_deref() {
+                        table.insert("registry", r.into());
+                    }
+                }
+
                 if self.rename.is_some() {
                     table.insert("package", self.name.as_str().into());
                 }
-                match self.default_features {
-                    Some(true) | None => {}
-                    Some(false) => {
-                        table.insert("default-features", false.into());
-                    }
+                if let Some(v) = self.default_features {
+                    table.insert("default-features", v.into());
                 }
-                if let Some(features) = self.features.as_deref() {
+                if let Some(features) = self.features.as_ref() {
                     let features: toml_edit::Value = features.iter().cloned().collect();
                     table.insert("features", features);
                 }
-                match self.optional {
-                    Some(false) | None => {}
-                    Some(true) => {
-                        table.insert("optional", true.into());
-                    }
+                if let Some(v) = self.optional {
+                    table.insert("optional", v.into());
                 }
 
                 toml_edit::value(toml_edit::Value::InlineTable(table))
@@ -353,9 +338,6 @@ impl Dependency {
             match &self.source {
                 Some(Source::Registry(src)) => {
                     table.insert("version", toml_edit::value(src.version.as_str()));
-                    if let Some(r) = src.registry.as_deref() {
-                        table.insert("registry", toml_edit::value(r));
-                    }
                     for key in ["path", "git", "branch", "tag", "rev"] {
                         table.remove(key);
                     }
@@ -364,11 +346,10 @@ impl Dependency {
                     let relpath = path_field(crate_root, &src.path);
                     if let Some(r) = src.version.as_deref() {
                         table.insert("version", toml_edit::value(r));
+                    } else {
+                        table.remove("version");
                     }
                     table.insert("path", toml_edit::value(relpath));
-                    if let Some(r) = src.registry.as_deref() {
-                        table.insert("registry", toml_edit::value(r));
-                    }
                     for key in ["git", "branch", "tag", "rev"] {
                         table.remove(key);
                     }
@@ -390,25 +371,34 @@ impl Dependency {
                     } else {
                         table.remove("rev");
                     }
-                    for key in ["version", "path", "registry"] {
+                    for key in ["version", "path"] {
                         table.remove(key);
                     }
                 }
                 None => {}
             }
+            if table.contains_key("version") {
+                if let Some(r) = self.registry.as_deref() {
+                    table.insert("registry", toml_edit::value(r));
+                } else {
+                    table.remove("registry");
+                }
+            } else {
+                table.remove("registry");
+            }
+
             if self.rename.is_some() {
                 table.insert("package", toml_edit::value(self.name.as_str()));
             }
             match self.default_features {
-                Some(true) => {
+                Some(v) => {
+                    table.insert("default-features", toml_edit::value(v));
+                }
+                None => {
                     table.remove("default-features");
                 }
-                Some(false) => {
-                    table.insert("default-features", toml_edit::value(false));
-                }
-                None => {}
             }
-            if let Some(new_features) = self.features.as_deref() {
+            if let Some(new_features) = self.features.as_ref() {
                 let mut features = table
                     .get("features")
                     .and_then(|i| i.as_value())
@@ -416,21 +406,22 @@ impl Dependency {
                     .and_then(|a| {
                         a.iter()
                             .map(|v| v.as_str())
-                            .collect::<Option<indexmap::IndexSet<_>>>()
+                            .collect::<Option<IndexSet<_>>>()
                     })
                     .unwrap_or_default();
                 features.extend(new_features.iter().map(|s| s.as_str()));
                 let features = toml_edit::value(features.into_iter().collect::<toml_edit::Value>());
                 table.insert("features", features);
+            } else {
+                table.remove("features");
             }
             match self.optional {
-                Some(true) => {
-                    table.insert("optional", toml_edit::value(true));
+                Some(v) => {
+                    table.insert("optional", toml_edit::value(v));
                 }
-                Some(false) => {
+                None => {
                     table.remove("optional");
                 }
-                None => {}
             }
 
             table.fmt();
@@ -457,7 +448,7 @@ fn is_package_eq(item: &mut toml_edit::Item, name: &str, rename: Option<&str>) -
 }
 
 /// Primary location of a dependency
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub enum Source {
     /// Dependency from a registry
     Registry(RegistrySource),
@@ -518,13 +509,11 @@ impl From<GitSource> for Source {
 }
 
 /// Dependency from a registry
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct RegistrySource {
     /// Version requirement
     pub version: String,
-    /// Non-default registry
-    pub registry: Option<String>,
 }
 
 impl RegistrySource {
@@ -536,27 +525,18 @@ impl RegistrySource {
         let version = version.as_ref().split('+').next().unwrap();
         Self {
             version: version.to_owned(),
-            registry: None,
         }
-    }
-
-    /// Set an optional registry
-    pub fn set_registry(mut self, registry: impl Into<String>) -> Self {
-        self.registry = Some(registry.into());
-        self
     }
 }
 
 /// Dependency from a local path
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct PathSource {
     /// Local, absolute path
     pub path: PathBuf,
     /// Version requirement for when published
     pub version: Option<String>,
-    /// Non-default registry
-    pub registry: Option<String>,
 }
 
 impl PathSource {
@@ -565,7 +545,6 @@ impl PathSource {
         Self {
             path: path.into(),
             version: None,
-            registry: None,
         }
     }
 
@@ -578,16 +557,10 @@ impl PathSource {
         self.version = Some(version.to_owned());
         self
     }
-
-    /// Set an optional registry
-    pub fn set_registry(mut self, registry: impl Into<String>) -> Self {
-        self.registry = Some(registry.into());
-        self
-    }
 }
 
 /// Dependency from a git repo
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub struct GitSource {
     /// Repo URL
