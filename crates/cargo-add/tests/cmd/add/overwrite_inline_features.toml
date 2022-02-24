@@ -7,9 +7,9 @@ stderr = """
       Adding your-face v99999.0.0 to dependencies.
              Features:
              + ears
+             + eyes
              + mouth
              + nose
-             - eyes
 """
 fs.sandbox = true
 

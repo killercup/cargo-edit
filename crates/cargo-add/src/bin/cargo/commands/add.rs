@@ -672,7 +672,7 @@ fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> D
         dependency = dependency.set_default_features(value);
     }
     if let Some(value) = requested_features {
-        dependency = dependency.set_features(value);
+        dependency = dependency.extend_features(value);
     }
 
     if let Some(ref rename) = arg.rename {

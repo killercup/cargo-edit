@@ -82,9 +82,17 @@ impl Dependency {
         self.optional = Some(opt);
         self
     }
+
     /// Set features as an array of string (does some basic parsing)
     pub fn set_features(mut self, features: IndexSet<String>) -> Self {
         self.features = Some(features);
+        self
+    }
+    /// Set features as an array of string (does some basic parsing)
+    pub fn extend_features(mut self, features: impl IntoIterator<Item = String>) -> Self {
+        self.features
+            .get_or_insert_with(Default::default)
+            .extend(features);
         self
     }
 
