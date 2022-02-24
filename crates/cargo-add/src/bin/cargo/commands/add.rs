@@ -508,36 +508,47 @@ fn resolve_dependency(
     let crate_spec = CrateSpec::resolve(arg.crate_spec)?;
     let manifest_path = manifest.path.as_path();
 
-    let mut dependency = match &crate_spec {
-        CrateSpec::PkgId {
-            name: _,
-            version_req: Some(_),
-        } => {
-            let mut dependency = crate_spec.to_dependency()?;
-            dependency = populate_dependency(dependency, arg);
-            // crate specifier includes a version (e.g. `docopt@0.8`)
-            if let Some(url) = arg.git {
-                let url = url.clone();
-                let version = dependency.version().unwrap().to_string();
+    let mut spec_dep = crate_spec.to_dependency()?;
+    spec_dep = populate_dependency(spec_dep, arg);
+
+    let mut dependency =
+        if let Some(mut old_dep) = get_existing_dependency(arg, manifest, spec_dep.toml_key()) {
+            if spec_dep.source().is_some() {
+                // Overwrite with `crate_spec`
+                old_dep.source = spec_dep.source.clone();
+            }
+            old_dep = populate_dependency(old_dep, arg);
+            old_dep
+        } else {
+            spec_dep
+        };
+
+    if let Some(url) = arg.git {
+        match &crate_spec {
+            CrateSpec::Path(path) => {
+                anyhow::bail!(
+                    "Cannot specify a git URL (`{}`) with a path (`{}`).",
+                    url,
+                    path.display()
+                )
+            }
+            CrateSpec::PkgId {
+                name: _,
+                version_req: Some(v),
+            } => {
+                // crate specifier includes a version (e.g. `docopt@0.8`)
                 anyhow::bail!(
                     "Cannot specify a git URL (`{}`) with a version (`{}`).",
                     url,
-                    version
+                    v
                 )
             }
-
-            dependency
-        }
-        CrateSpec::PkgId {
-            name,
-            version_req: None,
-        } => {
-            let mut dependency = crate_spec.to_dependency()?;
-            dependency = populate_dependency(dependency, arg);
-
-            if let Some(repo) = arg.git {
+            CrateSpec::PkgId {
+                name: _,
+                version_req: None,
+            } => {
                 assert!(arg.registry.is_none());
-                let mut src = GitSource::new(repo);
+                let mut src = GitSource::new(url);
                 if let Some(branch) = arg.branch {
                     src = src.set_branch(branch);
                 }
@@ -548,43 +559,43 @@ fn resolve_dependency(
                     src = src.set_rev(rev);
                 }
                 dependency = dependency.set_source(src);
-            } else if let Some(old) = get_existing_dependency(arg, manifest, dependency.toml_key())
-            {
-                dependency = populate_dependency(old, arg);
-            } else if let Some(package) = ws.members().find(|p| p.name().as_str() == *name) {
-                // Only special-case workspaces when the user doesn't provide any extra
-                // information, otherwise, trust the user.
-                let mut src = PathSource::new(package.root());
-                // dev-dependencies do not need the version populated
-                if arg.section != Section::DevDep {
-                    let op = "";
-                    let v = format!("{op}{version}", op = op, version = package.version());
-                    src = src.set_version(v);
-                }
-                dependency = dependency.set_source(src);
-            } else {
-                let work_dir = manifest_path.parent().expect("always a parent directory");
-                let latest = get_latest_dependency(name, false, work_dir, arg.registry)?;
-
-                dependency.name = latest.name; // Normalize the name
-                dependency = dependency
-                    .set_source(latest.source.expect("latest always has a source"))
-                    .set_available_features(latest.available_features);
             }
-
-            dependency
         }
-        CrateSpec::Path(_) => {
-            let mut dependency = crate_spec.to_dependency()?;
-            if arg.section == Section::DevDep {
-                // dev-dependencies do not need the version populated
-                dependency = dependency.clear_version();
+    }
+
+    if dependency.source().is_none() {
+        if let Some(package) = ws.members().find(|p| p.name().as_str() == dependency.name) {
+            // Only special-case workspaces when the user doesn't provide any extra
+            // information, otherwise, trust the user.
+            let mut src = PathSource::new(package.root());
+            // dev-dependencies do not need the version populated
+            if arg.section != Section::DevDep {
+                let op = "";
+                let v = format!("{op}{version}", op = op, version = package.version());
+                src = src.set_version(v);
             }
-            dependency = populate_dependency(dependency, arg);
+            dependency = dependency.set_source(src);
+        } else {
+            let work_dir = manifest_path.parent().expect("always a parent directory");
+            let latest = get_latest_dependency(
+                dependency.name.as_str(),
+                false,
+                work_dir,
+                dependency.registry(),
+            )?;
 
-            dependency
+            dependency.name = latest.name; // Normalize the name
+            dependency = dependency
+                .set_source(latest.source.expect("latest always has a source"))
+                .set_available_features(latest.available_features);
         }
-    };
+    }
+
+    if dependency.source().and_then(|s| s.as_registry()).is_none() && arg.section == Section::DevDep
+    {
+        // dev-dependencies do not need the version populated
+        dependency = dependency.clear_version();
+    }
 
     dependency = populate_available_features(dependency, manifest_path)?;
 
@@ -638,14 +649,6 @@ fn get_existing_dependency(
         dep = Dependency::new(&unrelated.name);
         dep.source = unrelated.source.clone();
         dep.registry = unrelated.registry.clone();
-
-        // dev-dependencies do not need the version populated when path is set though we
-        // should preserve it if the user chose to populate it.
-        if let Some(source) = unrelated.source() {
-            if source.as_path().is_some() && arg.section == Section::DevDep {
-                dep = dep.clear_version();
-            }
-        }
     }
 
     Some(dep)

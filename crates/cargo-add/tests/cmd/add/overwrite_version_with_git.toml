@@ -3,7 +3,7 @@ args = ["add", "versioned-package", "--git", "git://git.git", "-Zgit"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding versioned-package (git) to dependencies.
+      Adding versioned-package (git) to optional dependencies.
 """
 fs.sandbox = true
 
