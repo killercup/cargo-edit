@@ -3,7 +3,7 @@ args = ["add", "versioned-package", "--rename", "a1"]
 status = "success"
 stdout = ""
 stderr = """
-      Adding versioned-package v0.1.1 to dependencies.
+      Adding versioned-package v0.1.1 to optional dependencies.
 """
 fs.sandbox = true
 

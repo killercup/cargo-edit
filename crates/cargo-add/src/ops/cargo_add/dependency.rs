@@ -73,19 +73,19 @@ impl Dependency {
     }
 
     /// Set whether the dependency is optional
-    pub fn set_optional(mut self, opt: Option<bool>) -> Self {
-        self.optional = opt;
+    pub fn set_optional(mut self, opt: bool) -> Self {
+        self.optional = Some(opt);
         self
     }
     /// Set features as an array of string (does some basic parsing)
-    pub fn set_features(mut self, features: Option<Vec<String>>) -> Self {
-        self.features = features;
+    pub fn set_features(mut self, features: Vec<String>) -> Self {
+        self.features = Some(features);
         self
     }
 
     /// Set the value of default-features for the dependency
-    pub fn set_default_features(mut self, default_features: Option<bool>) -> Self {
-        self.default_features = default_features;
+    pub fn set_default_features(mut self, default_features: bool) -> Self {
+        self.default_features = Some(default_features);
         self
     }
 
@@ -493,6 +493,12 @@ impl Source {
     }
 }
 
+impl<'s> From<&'s Source> for Source {
+    fn from(inner: &'s Source) -> Self {
+        inner.clone()
+    }
+}
+
 impl From<RegistrySource> for Source {
     fn from(inner: RegistrySource) -> Self {
         Self::Registry(inner)
@@ -666,7 +672,7 @@ mod tests {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep")
             .set_source(RegistrySource::new("1.0"))
-            .set_optional(Some(true));
+            .set_optional(true);
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -684,7 +690,7 @@ mod tests {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep")
             .set_source(RegistrySource::new("1.0"))
-            .set_default_features(Some(false));
+            .set_default_features(false);
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -774,7 +780,7 @@ mod tests {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let dep = Dependency::new("dep")
             .set_source(RegistrySource::new("1.0"))
-            .set_default_features(Some(false))
+            .set_default_features(false)
             .set_rename("d");
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
