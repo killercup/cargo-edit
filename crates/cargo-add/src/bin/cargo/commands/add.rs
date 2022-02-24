@@ -586,9 +586,6 @@ fn resolve_dependency(
         }
     };
 
-    if let Some(registry) = arg.registry {
-        dependency = dependency.set_registry(registry);
-    }
     dependency = populate_available_features(dependency, manifest_path)?;
 
     Ok(dependency)
@@ -662,6 +659,9 @@ fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> D
             .collect()
     });
 
+    if let Some(registry) = arg.registry {
+        dependency = dependency.set_registry(registry);
+    }
     if let Some(value) = arg.optional {
         dependency = dependency.set_optional(value);
     }
