@@ -3,6 +3,9 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str;
 
+use anyhow::Context;
+use cargo::CargoResult;
+
 use super::dependency::Dependency;
 use super::errors::*;
 
@@ -181,7 +184,7 @@ impl Manifest {
 }
 
 impl str::FromStr for Manifest {
-    type Err = Error;
+    type Err = anyhow::Error;
 
     /// Read manifest data from string
     fn from_str(input: &str) -> ::std::result::Result<Self, Self::Err> {

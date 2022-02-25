@@ -1,5 +1,8 @@
 //! Crate name parsing.
-use super::errors::*;
+
+use anyhow::Context;
+use cargo::CargoResult;
+
 use super::get_manifest_from_path;
 use super::Dependency;
 use super::PathSource;
@@ -64,20 +67,6 @@ impl CrateSpec {
         Ok(id)
     }
 
-    /// Whether the version req is known or not
-    pub fn has_version(&self) -> bool {
-        match self {
-            Self::PkgId {
-                name: _,
-                version_req,
-            } => version_req.is_some(),
-            Self::Path(_path) => {
-                // We'll get it from the manifest
-                true
-            }
-        }
-    }
-
     /// Generate a dependency entry for this crate specifier
     pub fn to_dependency(&self) -> CargoResult<Dependency> {
         let dep = match self {
@@ -105,7 +94,7 @@ impl CrateSpec {
 }
 
 impl std::str::FromStr for CrateSpec {
-    type Err = Error;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> CargoResult<Self> {
         Self::resolve(s)
