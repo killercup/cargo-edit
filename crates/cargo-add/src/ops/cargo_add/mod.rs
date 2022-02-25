@@ -6,20 +6,16 @@ mod errors;
 mod fetch;
 mod manifest;
 mod registry;
-mod util;
 mod version;
 
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
-use std::io::Write;
 use std::path::Path;
 
-use anyhow::Context;
 use cargo::CargoResult;
 use cargo::Config;
 use indexmap::IndexSet;
-use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use toml_edit::Item as TomlItem;
 
 use crate_spec::CrateSpec;
@@ -35,7 +31,6 @@ use fetch::{
 use manifest::LocalManifest;
 use manifest::Manifest;
 use registry::registry_url;
-use util::colorize_stderr;
 use version::VersionExt;
 
 /// Information on what dependencies should be added
@@ -104,16 +99,14 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
             unknown_features.sort();
 
             if !unknown_features.is_empty() {
-                unrecognized_features_message(&format!(
-                    "Unrecognized features: {:?}",
-                    unknown_features
-                ))?;
+                options
+                    .config
+                    .shell()
+                    .warn(format!("Unrecognized features: {:?}", unknown_features))?;
             };
         }
 
-        if !options.quiet {
-            print_msg(&dep, &dep_table)?;
-        }
+        print_msg(&mut options.config.shell(), &dep, &dep_table)?;
         if let Some(Source::Path(src)) = dep.source() {
             if src.path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
                 anyhow::bail!(
@@ -137,7 +130,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
     }
 
     if options.dry_run {
-        dry_run_message()?;
+        options.config.shell().warn("aborting add due to dry run")?;
     } else {
         manifest.write()?;
     }
@@ -442,40 +435,42 @@ fn populate_available_features(
     Ok(dependency)
 }
 
-fn print_msg(dep: &Dependency, section: &[String]) -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
-    write!(output, "{:>12}", "Adding")?;
-    output.reset()?;
-    write!(output, " {}", dep.name)?;
+fn print_msg(
+    shell: &mut cargo::core::Shell,
+    dep: &Dependency,
+    section: &[String],
+) -> CargoResult<()> {
+    use std::fmt::Write;
+
+    let mut message = String::new();
+    write!(message, "{}", dep.name)?;
     match dep.source() {
         Some(Source::Registry(src)) => {
             if src.version.chars().next().unwrap_or('0').is_ascii_digit() {
-                write!(output, " v{}", src.version)?;
+                write!(message, " v{}", src.version)?;
             } else {
-                write!(output, " {}", src.version)?;
+                write!(message, " {}", src.version)?;
             }
         }
         Some(Source::Path(_)) => {
-            write!(output, " (local)")?;
+            write!(message, " (local)")?;
         }
         Some(Source::Git(_)) => {
-            write!(output, " (git)")?;
+            write!(message, " (git)")?;
         }
         None => {}
     }
-    write!(output, " to")?;
+    write!(message, " to")?;
     if dep.optional().unwrap_or(false) {
-        write!(output, " optional")?;
+        write!(message, " optional")?;
     }
     let section = if section.len() == 1 {
         section[0].clone()
     } else {
         format!("{} for target `{}`", &section[2], &section[1])
     };
-    write!(output, " {}", section)?;
-    writeln!(output, ".")?;
+    write!(message, " {}", section)?;
+    write!(message, ".")?;
 
     let mut activated: IndexSet<_> = dep.features.iter().flatten().map(|s| s.as_str()).collect();
     if dep.default_features().unwrap_or(true) {
@@ -507,20 +502,19 @@ fn print_msg(dep: &Dependency, section: &[String]) -> CargoResult<()> {
         .collect::<Vec<_>>();
     deactivated.sort();
     if !activated.is_empty() || !deactivated.is_empty() {
-        writeln!(output, "{:>13}Features:", " ")?;
+        writeln!(message)?;
+        write!(message, "{:>13}Features:", " ")?;
         for feat in activated {
-            output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
-            write!(output, "{:>13}+ ", " ")?;
-            output.reset()?;
-            writeln!(output, "{}", feat)?;
+            writeln!(message)?;
+            write!(message, "{:>13}+ {}", " ", feat)?;
         }
         for feat in deactivated {
-            output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
-            write!(output, "{:>13}- ", " ")?;
-            output.reset()?;
-            writeln!(output, "{}", feat)?;
+            writeln!(message)?;
+            write!(message, "{:>13}- {}", " ", feat)?;
         }
     }
+
+    shell.status("Adding", message)?;
 
     Ok(())
 }
@@ -540,26 +534,4 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
     }
 
     true
-}
-
-fn unrecognized_features_message(message: &str) -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
-    write!(output, "{:>12}", "Warning:")?;
-    output.reset()?;
-    writeln!(output, " {}", message)
-        .with_context(|| "Failed to write unrecognized features message")?;
-    Ok(())
-}
-
-fn dry_run_message() -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
-    write!(output, "{:>12}", "Warning:")?;
-    output.reset()?;
-    writeln!(output, " aborting add due to dry run")
-        .with_context(|| "Failed to write unrecognized features message")?;
-    Ok(())
 }

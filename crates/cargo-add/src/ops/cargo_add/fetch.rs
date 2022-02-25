@@ -252,7 +252,7 @@ fn registry_features(v: &crates_index::Version) -> BTreeMap<String, Vec<String>>
 
 /// update registry index for given project
 pub fn update_registry_index(registry: &Url, quiet: bool) -> CargoResult<()> {
-    let colorchoice = super::colorize_stderr();
+    let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
 
     let mut index = crates_index::Index::from_url(registry.as_str())?;
@@ -269,6 +269,14 @@ pub fn update_registry_index(registry: &Url, quiet: bool) -> CargoResult<()> {
     }
 
     Ok(())
+}
+
+fn colorize_stderr() -> termcolor::ColorChoice {
+    if concolor_control::get(concolor_control::Stream::Stderr).color() {
+        termcolor::ColorChoice::Always
+    } else {
+        termcolor::ColorChoice::Never
+    }
 }
 
 /// Time between retries for retrieving the registry.

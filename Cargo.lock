@@ -216,7 +216,6 @@ version = "0.8.0"
 dependencies = [
  "anyhow",
  "cargo",
- "cargo_metadata",
  "clap",
  "concolor-control",
  "crates-index",
@@ -224,7 +223,6 @@ dependencies = [
  "dunce",
  "env_proxy",
  "git2",
- "hex 0.4.3",
  "indexmap",
  "native-tls",
  "pathdiff",
@@ -233,7 +231,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "subprocess",
  "termcolor",
  "toml_edit 0.13.4",
  "trycmd",
