@@ -15,6 +15,8 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::path::Path;
 
+use anyhow::Context;
+use cargo::CargoResult;
 use cargo::Config;
 use indexmap::IndexSet;
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
@@ -35,8 +37,6 @@ use manifest::Manifest;
 use registry::registry_url;
 use util::colorize_stderr;
 use version::VersionExt;
-
-pub use errors::*;
 
 /// Information on what dependencies should be added
 #[derive(Clone, Debug)]

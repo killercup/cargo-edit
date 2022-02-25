@@ -1,7 +1,11 @@
-use super::errors::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+use anyhow::Context;
+use cargo::CargoResult;
 use url::Url;
+
+use super::errors::*;
 
 const CRATES_IO_INDEX: &str = "https://github.com/rust-lang/crates.io-index";
 const CRATES_IO_REGISTRY: &str = "crates-io";

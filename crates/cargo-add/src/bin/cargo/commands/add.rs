@@ -1,9 +1,9 @@
 #![allow(clippy::bool_assert_comparison)]
 
 use cargo::util::command_prelude::*;
+use cargo::CargoResult;
 use cargo_add::ops::add;
 use cargo_add::ops::cargo_add::parse_feature;
-use cargo_add::ops::cargo_add::CargoResult;
 use cargo_add::ops::AddOptions;
 use cargo_add::ops::DepOp;
 use cargo_add::ops::DepTable;

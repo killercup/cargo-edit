@@ -1,5 +1,8 @@
 //! Crate name parsing.
-use super::errors::*;
+
+use anyhow::Context;
+use cargo::CargoResult;
+
 use super::get_manifest_from_path;
 use super::Dependency;
 use super::PathSource;
@@ -91,7 +94,7 @@ impl CrateSpec {
 }
 
 impl std::str::FromStr for CrateSpec {
-    type Err = Error;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> CargoResult<Self> {
         Self::resolve(s)

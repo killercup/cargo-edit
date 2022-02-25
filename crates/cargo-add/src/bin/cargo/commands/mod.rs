@@ -1,4 +1,4 @@
-use cargo_add::ops::cargo_add::CargoResult;
+use cargo::CargoResult;
 
 pub mod add;
 
