@@ -6,7 +6,6 @@ mod errors;
 mod fetch;
 mod manifest;
 mod registry;
-mod util;
 mod version;
 
 use std::collections::BTreeMap;
@@ -32,7 +31,6 @@ use fetch::{
 use manifest::LocalManifest;
 use manifest::Manifest;
 use registry::registry_url;
-use util::colorize_stderr;
 use version::VersionExt;
 
 /// Information on what dependencies should be added
