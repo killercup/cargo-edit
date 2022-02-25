@@ -283,7 +283,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
 
     let deps = raw_deps
         .iter()
-        .map(|raw| resolve_dependency(&manifest, raw, &ws))
+        .map(|raw| resolve_dependency(&manifest, raw, &ws, section))
         .collect::<CargoResult<Vec<_>>>()?;
 
     let was_sorted = manifest
@@ -360,8 +360,6 @@ struct RawDependency<'m> {
 
     registry: Option<&'m str>,
 
-    section: DepKind<'m>,
-
     git: Option<&'m str>,
     branch: Option<&'m str>,
     rev: Option<&'m str>,
@@ -388,7 +386,6 @@ fn parse_dependencies<'m>(
         .values_of("features")
         .map(|f| f.flat_map(parse_feature).collect::<IndexSet<_>>());
     let optional = optional(matches);
-    let section = parse_section(matches);
 
     if crates.len() > 1 && git.is_some() {
         anyhow::bail!("Cannot specify multiple crates with path or git or vers");
@@ -429,7 +426,6 @@ fn parse_dependencies<'m>(
                 default_features,
                 optional,
                 registry,
-                section,
                 git,
                 branch,
                 rev,
@@ -504,6 +500,7 @@ fn resolve_dependency(
     manifest: &LocalManifest,
     arg: &RawDependency<'_>,
     ws: &cargo::core::Workspace,
+    section: DepKind<'_>,
 ) -> CargoResult<Dependency> {
     let crate_spec = CrateSpec::resolve(arg.crate_spec)?;
     let manifest_path = manifest.path.as_path();
@@ -511,7 +508,7 @@ fn resolve_dependency(
     let mut spec_dep = crate_spec.to_dependency()?;
     spec_dep = populate_dependency(spec_dep, arg);
 
-    let old_dep = get_existing_dependency(arg, manifest, spec_dep.toml_key());
+    let old_dep = get_existing_dependency(manifest, spec_dep.toml_key(), section);
 
     let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
         if spec_dep.source().is_some() {
@@ -570,7 +567,7 @@ fn resolve_dependency(
             // information, otherwise, trust the user.
             let mut src = PathSource::new(package.root());
             // dev-dependencies do not need the version populated
-            if arg.section != DepKind::Development {
+            if section != DepKind::Development {
                 let op = "";
                 let v = format!("{op}{version}", op = op, version = package.version());
                 src = src.set_version(v);
@@ -593,7 +590,7 @@ fn resolve_dependency(
     }
 
     let version_required = dependency.source().and_then(|s| s.as_registry()).is_some();
-    let version_optional_in_section = arg.section == DepKind::Development;
+    let version_optional_in_section = section == DepKind::Development;
     let preserve_existing_version = old_dep
         .as_ref()
         .map(|d| d.version().is_some())
@@ -613,9 +610,9 @@ fn resolve_dependency(
 /// If it doesn't exist but exists in another table, let's use that as most likely users
 /// want to use the same version across all tables unless they are renaming.
 fn get_existing_dependency(
-    arg: &RawDependency<'_>,
     manifest: &LocalManifest,
     dep_key: &str,
+    section: DepKind<'_>,
 ) -> Option<Dependency> {
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
     enum Key {
@@ -626,7 +623,7 @@ fn get_existing_dependency(
         Existing,
     }
 
-    let target_section = arg.section.to_table();
+    let target_section = section.to_table();
     let mut possible: Vec<_> = manifest
         .get_dependency_versions(dep_key)
         .filter_map(|(path, dep)| dep.ok().map(|dep| (path, dep)))
@@ -659,7 +656,7 @@ fn get_existing_dependency(
         // dev-dependencies do not need the version populated when path is set though we
         // should preserve it if the user chose to populate it.
         let version_required = unrelated.source().and_then(|s| s.as_registry()).is_some();
-        let version_optional_in_section = arg.section == DepKind::Development;
+        let version_optional_in_section = section == DepKind::Development;
         if !version_required && version_optional_in_section {
             dep = dep.clear_version();
         }
