@@ -15,7 +15,6 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::path::Path;
 
-use anyhow::Context;
 use cargo::CargoResult;
 use cargo::Config;
 use indexmap::IndexSet;
@@ -104,10 +103,10 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
             unknown_features.sort();
 
             if !unknown_features.is_empty() {
-                unrecognized_features_message(&format!(
-                    "Unrecognized features: {:?}",
-                    unknown_features
-                ))?;
+                options
+                    .config
+                    .shell()
+                    .warn(format!("Unrecognized features: {:?}", unknown_features))?;
             };
         }
 
@@ -137,7 +136,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
     }
 
     if options.dry_run {
-        dry_run_message()?;
+        options.config.shell().warn("aborting add due to dry run")?;
     } else {
         manifest.write()?;
     }
@@ -540,26 +539,4 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
     }
 
     true
-}
-
-fn unrecognized_features_message(message: &str) -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
-    write!(output, "{:>12}", "Warning:")?;
-    output.reset()?;
-    writeln!(output, " {}", message)
-        .with_context(|| "Failed to write unrecognized features message")?;
-    Ok(())
-}
-
-fn dry_run_message() -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
-    write!(output, "{:>12}", "Warning:")?;
-    output.reset()?;
-    writeln!(output, " aborting add due to dry run")
-        .with_context(|| "Failed to write unrecognized features message")?;
-    Ok(())
 }
