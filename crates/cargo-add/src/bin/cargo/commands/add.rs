@@ -246,21 +246,15 @@ impl std::str::FromStr for UnstableOptions {
 }
 
 pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
-    let unstable_features: Vec<UnstableOptions> =
-        args.values_of_t("unstable-features").unwrap_or_default();
     let quiet = args.is_present("quiet");
     let dry_run = args.is_present("dry-run");
     let section = parse_section(args);
-    let dep_table = section
-        .to_table()
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
+    let registry = args.registry(config)?;
 
     let ws = args.workspace(config)?;
     let packages = args.packages_from_flags()?;
     let packages = packages.get_packages(&ws)?;
-    let package = match packages.len() {
+    let spec = match packages.len() {
         0 => anyhow::bail!("No packages selected.  Please specify one with `-p <PKGID>`"),
         1 => packages[0],
         len => anyhow::bail!(
@@ -268,22 +262,58 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
             len
         ),
     };
-    let manifest_path = package.manifest_path();
+
+    let unstable_features: Vec<UnstableOptions> =
+        args.values_of_t("unstable-features").unwrap_or_default();
+    let dependencies = parse_dependencies(args, &unstable_features)?;
+
+    let options = AddOptions {
+        config,
+        spec,
+        dependencies,
+        section,
+        dry_run,
+        quiet,
+        registry: registry.as_deref(),
+    };
+    add(&ws, &options)?;
+
+    Ok(())
+}
+
+struct AddOptions<'a> {
+    pub config: &'a Config,
+    pub spec: &'a cargo::core::Package,
+    pub dependencies: Vec<RawDependency<'a>>,
+    pub section: DepKind<'a>,
+    pub dry_run: bool,
+
+    pub quiet: bool,
+    pub registry: Option<&'a str>,
+}
+
+fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> CargoResult<()> {
+    let dep_table = options
+        .section
+        .to_table()
+        .into_iter()
+        .map(String::from)
+        .collect::<Vec<_>>();
+
+    let manifest_path = options.spec.manifest_path();
     let manifest_path = manifest_path.to_path_buf();
     let work_dir = manifest_path.parent().expect("always a parent directory");
     let mut manifest = LocalManifest::try_new(&manifest_path)?;
 
-    let raw_deps = parse_dependencies(args, &unstable_features)?;
-
-    let registry = args.registry(config)?;
-    if !config.offline() && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(work_dir, registry.as_deref())?;
-        update_registry_index(&url, quiet)?;
+    if !options.config.offline() && std::env::var("CARGO_IS_TEST").is_err() {
+        let url = registry_url(work_dir, options.registry)?;
+        update_registry_index(&url, options.quiet)?;
     }
 
-    let deps = raw_deps
+    let deps = options
+        .dependencies
         .iter()
-        .map(|raw| resolve_dependency(&manifest, raw, &ws, section))
+        .map(|raw| resolve_dependency(&manifest, raw, workspace, options.section))
         .collect::<CargoResult<Vec<_>>>()?;
 
     let was_sorted = manifest
@@ -314,7 +344,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
             };
         }
 
-        if !quiet {
+        if !options.quiet {
             print_msg(&dep, &dep_table)?;
         }
         if let Some(Source::Path(src)) = dep.source() {
@@ -339,7 +369,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
         }
     }
 
-    if dry_run {
+    if options.dry_run {
         dry_run_message()?;
     } else {
         manifest.write()?;
