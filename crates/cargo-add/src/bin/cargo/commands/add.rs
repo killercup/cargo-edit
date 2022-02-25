@@ -1,28 +1,13 @@
 #![allow(clippy::bool_assert_comparison)]
 
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
-use std::collections::VecDeque;
-use std::io::Write;
-use std::path::Path;
-
 use cargo::util::command_prelude::*;
+use cargo_add::ops::add;
+use cargo_add::ops::cargo_add::parse_feature;
 use cargo_add::ops::cargo_add::CargoResult;
-use cargo_add::ops::cargo_add::Context;
-use cargo_add::ops::cargo_add::Dependency;
-use cargo_add::ops::cargo_add::GitSource;
-use cargo_add::ops::cargo_add::PathSource;
-use cargo_add::ops::cargo_add::Source;
-use cargo_add::ops::cargo_add::{
-    colorize_stderr, registry_url, update_registry_index, LocalManifest,
-};
-use cargo_add::ops::cargo_add::{
-    get_features_from_registry, get_manifest_from_path, get_manifest_from_url,
-};
-use cargo_add::ops::cargo_add::{get_latest_dependency, CrateSpec};
+use cargo_add::ops::AddOptions;
+use cargo_add::ops::DepOp;
+use cargo_add::ops::DepTable;
 use indexmap::IndexSet;
-use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
-use toml_edit::Item as TomlItem;
 
 pub fn cli() -> clap::Command<'static> {
     clap::Command::new("add")
@@ -205,6 +190,42 @@ This is the catch all, handling hashes to named references in remote repositorie
         ])
 }
 
+pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
+    let quiet = args.is_present("quiet");
+    let dry_run = args.is_present("dry-run");
+    let section = parse_section(args);
+    let registry = args.registry(config)?;
+
+    let ws = args.workspace(config)?;
+    let packages = args.packages_from_flags()?;
+    let packages = packages.get_packages(&ws)?;
+    let spec = match packages.len() {
+        0 => anyhow::bail!("No packages selected.  Please specify one with `-p <PKGID>`"),
+        1 => packages[0],
+        len => anyhow::bail!(
+            "{} packages selected.  Please specify one with `-p <PKGID>`",
+            len
+        ),
+    };
+
+    let unstable_features: Vec<UnstableOptions> =
+        args.values_of_t("unstable-features").unwrap_or_default();
+    let dependencies = parse_dependencies(args, &unstable_features)?;
+
+    let options = AddOptions {
+        config,
+        spec,
+        dependencies,
+        section,
+        dry_run,
+        quiet,
+        registry: registry.as_deref(),
+    };
+    add(&ws, &options)?;
+
+    Ok(())
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 pub enum UnstableOptions {
     Git,
@@ -245,161 +266,10 @@ impl std::str::FromStr for UnstableOptions {
     }
 }
 
-pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
-    let quiet = args.is_present("quiet");
-    let dry_run = args.is_present("dry-run");
-    let section = parse_section(args);
-    let registry = args.registry(config)?;
-
-    let ws = args.workspace(config)?;
-    let packages = args.packages_from_flags()?;
-    let packages = packages.get_packages(&ws)?;
-    let spec = match packages.len() {
-        0 => anyhow::bail!("No packages selected.  Please specify one with `-p <PKGID>`"),
-        1 => packages[0],
-        len => anyhow::bail!(
-            "{} packages selected.  Please specify one with `-p <PKGID>`",
-            len
-        ),
-    };
-
-    let unstable_features: Vec<UnstableOptions> =
-        args.values_of_t("unstable-features").unwrap_or_default();
-    let dependencies = parse_dependencies(args, &unstable_features)?;
-
-    let options = AddOptions {
-        config,
-        spec,
-        dependencies,
-        section,
-        dry_run,
-        quiet,
-        registry: registry.as_deref(),
-    };
-    add(&ws, &options)?;
-
-    Ok(())
-}
-
-struct AddOptions<'a> {
-    pub config: &'a Config,
-    pub spec: &'a cargo::core::Package,
-    pub dependencies: Vec<RawDependency<'a>>,
-    pub section: DepKind<'a>,
-    pub dry_run: bool,
-
-    pub quiet: bool,
-    pub registry: Option<&'a str>,
-}
-
-fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> CargoResult<()> {
-    let dep_table = options
-        .section
-        .to_table()
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
-
-    let manifest_path = options.spec.manifest_path();
-    let manifest_path = manifest_path.to_path_buf();
-    let work_dir = manifest_path.parent().expect("always a parent directory");
-    let mut manifest = LocalManifest::try_new(&manifest_path)?;
-
-    if !options.config.offline() && std::env::var("CARGO_IS_TEST").is_err() {
-        let url = registry_url(work_dir, options.registry)?;
-        update_registry_index(&url, options.quiet)?;
-    }
-
-    let deps = options
-        .dependencies
-        .iter()
-        .map(|raw| resolve_dependency(&manifest, raw, workspace, options.section))
-        .collect::<CargoResult<Vec<_>>>()?;
-
-    let was_sorted = manifest
-        .get_table(&dep_table)
-        .map(TomlItem::as_table)
-        .map_or(true, |table_option| {
-            table_option.map_or(true, |table| is_sorted(table.iter().map(|(name, _)| name)))
-        });
-    for dep in deps {
-        if let Some(req_feats) = dep.features.as_ref() {
-            let req_feats: BTreeSet<_> = req_feats.iter().map(|s| s.as_str()).collect();
-
-            let available_features = dep
-                .available_features
-                .keys()
-                .map(|s| s.as_ref())
-                .collect::<BTreeSet<&str>>();
-
-            let mut unknown_features: Vec<&&str> =
-                req_feats.difference(&available_features).collect();
-            unknown_features.sort();
-
-            if !unknown_features.is_empty() {
-                unrecognized_features_message(&format!(
-                    "Unrecognized features: {:?}",
-                    unknown_features
-                ))?;
-            };
-        }
-
-        if !options.quiet {
-            print_msg(&dep, &dep_table)?;
-        }
-        if let Some(Source::Path(src)) = dep.source() {
-            if src.path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
-                anyhow::bail!(
-                    "Cannot add `{}` as a dependency to itself",
-                    manifest.package_name()?
-                )
-            }
-        }
-        manifest.insert_into_table(&dep_table, &dep)?;
-        manifest.gc_dep(dep.toml_key());
-    }
-
-    if was_sorted {
-        if let Some(table) = manifest
-            .get_table_mut(&dep_table)
-            .ok()
-            .and_then(TomlItem::as_table_like_mut)
-        {
-            table.sort_values();
-        }
-    }
-
-    if options.dry_run {
-        dry_run_message()?;
-    } else {
-        manifest.write()?;
-    }
-
-    Ok(())
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct RawDependency<'m> {
-    crate_spec: &'m str,
-    rename: Option<&'m str>,
-
-    features: Option<IndexSet<&'m str>>,
-    default_features: Option<bool>,
-
-    optional: Option<bool>,
-
-    registry: Option<&'m str>,
-
-    git: Option<&'m str>,
-    branch: Option<&'m str>,
-    rev: Option<&'m str>,
-    tag: Option<&'m str>,
-}
-
 fn parse_dependencies<'m>(
     matches: &'m ArgMatches,
     unstable_features: &[UnstableOptions],
-) -> CargoResult<Vec<RawDependency<'m>>> {
+) -> CargoResult<Vec<DepOp<'m>>> {
     let crates = matches
         .values_of("crates")
         .into_iter()
@@ -432,7 +302,7 @@ fn parse_dependencies<'m>(
         anyhow::bail!("Cannot specify multiple crates with features");
     }
 
-    let mut deps: Vec<RawDependency> = Vec::new();
+    let mut deps: Vec<DepOp> = Vec::new();
     for crate_spec in crates {
         if let Some(features) = crate_spec.strip_prefix('+') {
             if !unstable_features.contains(&UnstableOptions::InlineAdd) {
@@ -449,7 +319,7 @@ fn parse_dependencies<'m>(
                 anyhow::bail!("`+<feature>` must be preceded by a pkgid");
             }
         } else {
-            let dep = RawDependency {
+            let dep = DepOp {
                 crate_spec,
                 rename,
                 features: features.clone(),
@@ -465,10 +335,6 @@ fn parse_dependencies<'m>(
         }
     }
     Ok(deps)
-}
-
-fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
-    feature.split([' ', ',']).filter(|s| !s.is_empty())
 }
 
 fn default_features(matches: &ArgMatches) -> Option<bool> {
@@ -494,395 +360,15 @@ fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum DepKind<'m> {
-    Normal,
-    Development,
-    Build,
-    Target(&'m str),
-}
-
-impl<'m> DepKind<'m> {
-    fn to_table(self) -> Vec<&'m str> {
-        match self {
-            Self::Normal => vec!["dependencies"],
-            Self::Development => vec!["dev-dependencies"],
-            Self::Build => vec!["build-dependencies"],
-            Self::Target(target) => vec!["target", target, "dependencies"],
-        }
-    }
-}
-
-fn parse_section(matches: &ArgMatches) -> DepKind<'_> {
+fn parse_section(matches: &ArgMatches) -> DepTable<'_> {
     if matches.is_present("dev") {
-        DepKind::Development
+        DepTable::Development
     } else if matches.is_present("build") {
-        DepKind::Build
+        DepTable::Build
     } else if let Some(target) = matches.value_of("target") {
         assert!(!target.is_empty(), "Target specification may not be empty");
-        DepKind::Target(target)
+        DepTable::Target(target)
     } else {
-        DepKind::Normal
+        DepTable::Normal
     }
-}
-
-fn resolve_dependency(
-    manifest: &LocalManifest,
-    arg: &RawDependency<'_>,
-    ws: &cargo::core::Workspace,
-    section: DepKind<'_>,
-) -> CargoResult<Dependency> {
-    let crate_spec = CrateSpec::resolve(arg.crate_spec)?;
-    let manifest_path = manifest.path.as_path();
-
-    let mut spec_dep = crate_spec.to_dependency()?;
-    spec_dep = populate_dependency(spec_dep, arg);
-
-    let old_dep = get_existing_dependency(manifest, spec_dep.toml_key(), section);
-
-    let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
-        if spec_dep.source().is_some() {
-            // Overwrite with `crate_spec`
-            old_dep.source = spec_dep.source;
-        }
-        old_dep = populate_dependency(old_dep, arg);
-        old_dep
-    } else {
-        spec_dep
-    };
-
-    if let Some(url) = arg.git {
-        match &crate_spec {
-            CrateSpec::Path(path) => {
-                anyhow::bail!(
-                    "Cannot specify a git URL (`{}`) with a path (`{}`).",
-                    url,
-                    path.display()
-                )
-            }
-            CrateSpec::PkgId {
-                name: _,
-                version_req: Some(v),
-            } => {
-                // crate specifier includes a version (e.g. `docopt@0.8`)
-                anyhow::bail!(
-                    "Cannot specify a git URL (`{}`) with a version (`{}`).",
-                    url,
-                    v
-                )
-            }
-            CrateSpec::PkgId {
-                name: _,
-                version_req: None,
-            } => {
-                assert!(arg.registry.is_none());
-                let mut src = GitSource::new(url);
-                if let Some(branch) = arg.branch {
-                    src = src.set_branch(branch);
-                }
-                if let Some(tag) = arg.tag {
-                    src = src.set_tag(tag);
-                }
-                if let Some(rev) = arg.rev {
-                    src = src.set_rev(rev);
-                }
-                dependency = dependency.set_source(src);
-            }
-        }
-    }
-
-    if dependency.source().is_none() {
-        if let Some(package) = ws.members().find(|p| p.name().as_str() == dependency.name) {
-            // Only special-case workspaces when the user doesn't provide any extra
-            // information, otherwise, trust the user.
-            let mut src = PathSource::new(package.root());
-            // dev-dependencies do not need the version populated
-            if section != DepKind::Development {
-                let op = "";
-                let v = format!("{op}{version}", op = op, version = package.version());
-                src = src.set_version(v);
-            }
-            dependency = dependency.set_source(src);
-        } else {
-            let work_dir = manifest_path.parent().expect("always a parent directory");
-            let latest = get_latest_dependency(
-                dependency.name.as_str(),
-                false,
-                work_dir,
-                dependency.registry(),
-            )?;
-
-            dependency.name = latest.name; // Normalize the name
-            dependency = dependency
-                .set_source(latest.source.expect("latest always has a source"))
-                .set_available_features(latest.available_features);
-        }
-    }
-
-    let version_required = dependency.source().and_then(|s| s.as_registry()).is_some();
-    let version_optional_in_section = section == DepKind::Development;
-    let preserve_existing_version = old_dep
-        .as_ref()
-        .map(|d| d.version().is_some())
-        .unwrap_or(false);
-    if !version_required && !preserve_existing_version && version_optional_in_section {
-        // dev-dependencies do not need the version populated
-        dependency = dependency.clear_version();
-    }
-
-    dependency = populate_available_features(dependency, manifest_path)?;
-
-    Ok(dependency)
-}
-
-/// Provide the existing dependency for the target table
-///
-/// If it doesn't exist but exists in another table, let's use that as most likely users
-/// want to use the same version across all tables unless they are renaming.
-fn get_existing_dependency(
-    manifest: &LocalManifest,
-    dep_key: &str,
-    section: DepKind<'_>,
-) -> Option<Dependency> {
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-    enum Key {
-        Dev,
-        Build,
-        Target,
-        Runtime,
-        Existing,
-    }
-
-    let target_section = section.to_table();
-    let mut possible: Vec<_> = manifest
-        .get_dependency_versions(dep_key)
-        .filter_map(|(path, dep)| dep.ok().map(|dep| (path, dep)))
-        .map(|(path, dep)| {
-            let key = if path == target_section {
-                Key::Existing
-            } else {
-                match path[0].as_str() {
-                    "dependencies" => Key::Runtime,
-                    "target" => Key::Target,
-                    "build-dependencies" => Key::Build,
-                    "dev-dependencies" => Key::Dev,
-                    other => unreachable!("Unknown dependency section: {}", other),
-                }
-            };
-            (key, dep)
-        })
-        .collect();
-    possible.sort_by_key(|(key, _)| *key);
-    let (key, mut dep) = possible.pop()?;
-
-    if key != Key::Existing {
-        // When the dep comes from a different section, we only care about the source and not any
-        // of the other fields, like `features`
-        let unrelated = dep;
-        dep = Dependency::new(&unrelated.name);
-        dep.source = unrelated.source.clone();
-        dep.registry = unrelated.registry.clone();
-
-        // dev-dependencies do not need the version populated when path is set though we
-        // should preserve it if the user chose to populate it.
-        let version_required = unrelated.source().and_then(|s| s.as_registry()).is_some();
-        let version_optional_in_section = section == DepKind::Development;
-        if !version_required && version_optional_in_section {
-            dep = dep.clear_version();
-        }
-    }
-
-    Some(dep)
-}
-
-fn populate_dependency(mut dependency: Dependency, arg: &RawDependency<'_>) -> Dependency {
-    let requested_features: Option<IndexSet<_>> = arg.features.as_ref().map(|v| {
-        v.iter()
-            .flat_map(|s| parse_feature(s))
-            .map(|f| f.to_owned())
-            .collect()
-    });
-
-    if let Some(registry) = arg.registry {
-        if registry.is_empty() {
-            dependency.registry = None;
-        } else {
-            dependency.registry = Some(registry.to_owned());
-        }
-    }
-    if let Some(value) = arg.optional {
-        if value {
-            dependency.optional = Some(true);
-        } else {
-            dependency.optional = None;
-        }
-    }
-    if let Some(value) = arg.default_features {
-        if value {
-            dependency.default_features = None;
-        } else {
-            dependency.default_features = Some(false);
-        }
-    }
-    if let Some(value) = requested_features {
-        dependency = dependency.extend_features(value);
-    }
-
-    if let Some(rename) = arg.rename {
-        dependency = dependency.set_rename(rename);
-    }
-
-    dependency
-}
-
-/// Lookup available features
-fn populate_available_features(
-    dependency: Dependency,
-    manifest_path: &Path,
-) -> CargoResult<Dependency> {
-    if !dependency.available_features.is_empty() {
-        return Ok(dependency);
-    }
-
-    let available_features = match dependency.source() {
-        Some(Source::Registry(src)) => {
-            let work_dir = manifest_path.parent().expect("always a parent directory");
-            let registry_url = registry_url(work_dir, dependency.registry())?;
-            get_features_from_registry(&dependency.name, &src.version, &registry_url)?
-        }
-        Some(Source::Path(src)) => {
-            let manifest = get_manifest_from_path(&src.path)?;
-            manifest.features()?
-        }
-        Some(Source::Git(git)) => get_manifest_from_url(&git.git)?
-            .map(|m| m.features())
-            .transpose()?
-            .unwrap_or_default(),
-        None => BTreeMap::new(),
-    };
-
-    let dependency = dependency.set_available_features(available_features);
-    Ok(dependency)
-}
-
-fn print_msg(dep: &Dependency, section: &[String]) -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
-    write!(output, "{:>12}", "Adding")?;
-    output.reset()?;
-    write!(output, " {}", dep.name)?;
-    match dep.source() {
-        Some(Source::Registry(src)) => {
-            if src.version.chars().next().unwrap_or('0').is_ascii_digit() {
-                write!(output, " v{}", src.version)?;
-            } else {
-                write!(output, " {}", src.version)?;
-            }
-        }
-        Some(Source::Path(_)) => {
-            write!(output, " (local)")?;
-        }
-        Some(Source::Git(_)) => {
-            write!(output, " (git)")?;
-        }
-        None => {}
-    }
-    write!(output, " to")?;
-    if dep.optional().unwrap_or(false) {
-        write!(output, " optional")?;
-    }
-    let section = if section.len() == 1 {
-        section[0].clone()
-    } else {
-        format!("{} for target `{}`", &section[2], &section[1])
-    };
-    write!(output, " {}", section)?;
-    writeln!(output, ".")?;
-
-    let mut activated: IndexSet<_> = dep.features.iter().flatten().map(|s| s.as_str()).collect();
-    if dep.default_features().unwrap_or(true) {
-        activated.insert("default");
-    }
-    let mut walk: VecDeque<_> = activated.iter().cloned().collect();
-    while let Some(next) = walk.pop_front() {
-        walk.extend(
-            dep.available_features
-                .get(next)
-                .into_iter()
-                .flatten()
-                .map(|s| s.as_str()),
-        );
-        activated.extend(
-            dep.available_features
-                .get(next)
-                .into_iter()
-                .flatten()
-                .map(|s| s.as_str()),
-        );
-    }
-    activated.remove("default");
-    activated.sort();
-    let mut deactivated = dep
-        .available_features
-        .keys()
-        .filter(|f| !activated.contains(f.as_str()) && *f != "default")
-        .collect::<Vec<_>>();
-    deactivated.sort();
-    if !activated.is_empty() || !deactivated.is_empty() {
-        writeln!(output, "{:>13}Features:", " ")?;
-        for feat in activated {
-            output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
-            write!(output, "{:>13}+ ", " ")?;
-            output.reset()?;
-            writeln!(output, "{}", feat)?;
-        }
-        for feat in deactivated {
-            output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
-            write!(output, "{:>13}- ", " ")?;
-            output.reset()?;
-            writeln!(output, "{}", feat)?;
-        }
-    }
-
-    Ok(())
-}
-
-// Based on Iterator::is_sorted from nightly std; remove in favor of that when stabilized.
-fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
-    let mut last = match it.next() {
-        Some(e) => e,
-        None => return true,
-    };
-
-    for curr in it {
-        if curr < last {
-            return false;
-        }
-        last = curr;
-    }
-
-    true
-}
-
-fn unrecognized_features_message(message: &str) -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
-    write!(output, "{:>12}", "Warning:")?;
-    output.reset()?;
-    writeln!(output, " {}", message)
-        .with_context(|| "Failed to write unrecognized features message")?;
-    Ok(())
-}
-
-fn dry_run_message() -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
-    write!(output, "{:>12}", "Warning:")?;
-    output.reset()?;
-    writeln!(output, " aborting add due to dry run")
-        .with_context(|| "Failed to write unrecognized features message")?;
-    Ok(())
 }

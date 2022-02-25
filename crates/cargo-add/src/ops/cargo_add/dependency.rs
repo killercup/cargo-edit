@@ -80,12 +80,14 @@ impl Dependency {
     }
 
     /// Set whether the dependency is optional
+    #[allow(dead_code)]
     pub fn set_optional(mut self, opt: bool) -> Self {
         self.optional = Some(opt);
         self
     }
 
     /// Set features as an array of string (does some basic parsing)
+    #[allow(dead_code)]
     pub fn set_features(mut self, features: IndexSet<String>) -> Self {
         self.features = Some(features);
         self
@@ -99,6 +101,7 @@ impl Dependency {
     }
 
     /// Set the value of default-features for the dependency
+    #[allow(dead_code)]
     pub fn set_default_features(mut self, default_features: bool) -> Self {
         self.default_features = Some(default_features);
         self
@@ -468,6 +471,7 @@ impl Source {
     }
 
     /// Access the path source, if present
+    #[allow(dead_code)]
     pub fn as_path(&self) -> Option<&PathSource> {
         match self {
             Self::Path(src) => Some(src),
@@ -476,6 +480,7 @@ impl Source {
     }
 
     /// Access the git source, if present
+    #[allow(dead_code)]
     pub fn as_git(&self) -> Option<&GitSource> {
         match self {
             Self::Git(src) => Some(src),
