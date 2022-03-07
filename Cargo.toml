@@ -52,12 +52,12 @@ required-features = ["set-version"]
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
 cargo_metadata = "0.14.0"
-crates-index = "0.18.1"
+crates-index = "0.18.6"
 dunce = "1.0"
 dirs-next = "2.0.0"
 env_proxy = "0.4.1"
 anyhow = "1.0"
-git2 = "0.13.22"
+git2 = "0.14"
 hex = "0.4.2"
 regex = "1.3.9"
 serde = "1.0.116"
@@ -87,8 +87,7 @@ ureq = { version = "2.4.0", default-features = false, features = ["native-tls", 
 predicates = { version = "2.0.3", features = ["color-auto"] }
 assert_cmd = { version = "2.0.2", features = ["color-auto"] }
 assert_fs = { version = "1.0.6", features = ["color-auto"] }
-pretty_assertions = "0.6.1"
-trycmd = "0.12.1"
+trycmd = "0.13.1"
 
 [features]
 default = [
