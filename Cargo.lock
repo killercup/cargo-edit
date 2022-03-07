@@ -12,15 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ansi_term"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "anyhow"
 version = "1.0.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -145,7 +136,6 @@ dependencies = [
  "native-tls",
  "pathdiff",
  "predicates",
- "pretty_assertions",
  "regex",
  "semver",
  "serde",
@@ -153,7 +143,7 @@ dependencies = [
  "serde_json",
  "subprocess",
  "termcolor",
- "toml_edit 0.13.4",
+ "toml_edit",
  "trycmd",
  "ureq",
  "url",
@@ -365,22 +355,6 @@ dependencies = [
  "cfg-if",
  "lazy_static",
 ]
-
-[[package]]
-name = "ctor"
-version = "0.1.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccc0a48a9b826acdf4028595adc9db92caea352f7af011a3034acd172a52a0aa"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
-name = "diff"
-version = "0.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e25ea47919b1560c4e3b7fe0aaab9becf5b84a10325ddf7db0f0ba5e1026499"
 
 [[package]]
 name = "difflib"
@@ -881,15 +855,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "output_vt100"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "628223faebab4e3e40667ee0b2336d34a5b960ff60ea743ddfdbcf7770bcfb66"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "pathdiff"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -937,18 +902,6 @@ checksum = "4d86de6de25020a36c6d3643a86d9a6a9f552107c0559c60ea03551b5e16c032"
 dependencies = [
  "predicates-core",
  "termtree",
-]
-
-[[package]]
-name = "pretty_assertions"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76d5b548b725018ab5496482b45cb8bef21e9fed1858a6d674e3a8a0f0bb5d50"
-dependencies = [
- "ansi_term",
- "ctor",
- "diff",
- "output_vt100",
 ]
 
 [[package]]
@@ -1213,6 +1166,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
 
 [[package]]
+name = "similar"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e24979f63a11545f5f2c60141afe249d4f19f84581ea2138065e400941d83d3"
+
+[[package]]
 name = "smartstring"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1221,6 +1180,31 @@ dependencies = [
  "serde",
  "static_assertions",
 ]
+
+[[package]]
+name = "snapbox"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33a2ea63c8a4807090a28b68f60b5f1865f209a2338360fbf5a333d5d5660dc5"
+dependencies = [
+ "concolor",
+ "content_inspector",
+ "dunce",
+ "normalize-line-endings",
+ "os_pipe",
+ "similar",
+ "snapbox-macros",
+ "tempfile",
+ "wait-timeout",
+ "walkdir",
+ "yansi",
+]
+
+[[package]]
+name = "snapbox-macros"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0610ac343332c8f59b7b97a6b7c28bd7dd8cd4e82764d78cc8da98ecd3f7d48"
 
 [[package]]
 name = "socks"
@@ -1346,19 +1330,6 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "toml_edit"
-version = "0.12.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94217a6d6a89fb646cbc9f28283cf4745f77eb0b04c4f680c4b3ae4450e3a473"
-dependencies = [
- "combine",
- "indexmap",
- "itertools",
- "kstring",
- "serde",
-]
-
-[[package]]
-name = "toml_edit"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "744e9ed5b352340aa47ce033716991b5589e23781acb97cad37d4ea70560f55b"
@@ -1372,27 +1343,18 @@ dependencies = [
 
 [[package]]
 name = "trycmd"
-version = "0.12.2"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "170d4db4fe81231f42ba55a50675f72590153d3c6ede8ae979bf3084bf2d8ae7"
+checksum = "ba2397a4c6c098e3237dbcf7acab1d4151af36e7be1d59d7caeee5d489c7eb01"
 dependencies = [
- "concolor",
- "content_inspector",
- "difflib",
- "dunce",
  "glob",
  "humantime",
  "humantime-serde",
- "normalize-line-endings",
- "os_pipe",
  "rayon",
  "serde",
  "shlex",
- "tempfile",
- "toml_edit 0.12.6",
- "wait-timeout",
- "walkdir",
- "yansi",
+ "snapbox",
+ "toml_edit",
 ]
 
 [[package]]
