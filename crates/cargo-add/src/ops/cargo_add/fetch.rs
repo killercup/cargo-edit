@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::env;
 use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
@@ -36,40 +35,9 @@ pub fn get_latest_dependency(
         anyhow::bail!("Found empty crate name");
     }
 
-    let mut dep = if env::var("CARGO_IS_TEST").is_ok() {
-        // We are in a simulated reality. Nothing is real here.
-        // FIXME: Use actual test handling code.
-        let new_version = if flag_allow_prerelease {
-            format!("99999.0.0-alpha.1+{}", crate_name)
-        } else {
-            match crate_name {
-                "test_breaking" => "0.2.0".to_string(),
-                "test_nonbreaking" => "0.1.1".to_string(),
-                other => format!("99999.0.0+{}", other),
-            }
-        };
-
-        let features = if crate_name == "your-face" {
-            [
-                ("nose".to_string(), vec![]),
-                ("mouth".to_string(), vec![]),
-                ("eyes".to_string(), vec![]),
-                ("ears".to_string(), vec![]),
-            ]
-            .into_iter()
-            .collect::<BTreeMap<_, _>>()
-        } else {
-            BTreeMap::default()
-        };
-
-        Dependency::new(crate_name)
-            .set_source(RegistrySource::new(new_version))
-            .set_available_features(features)
-    } else {
-        let registry_url = registry_url(work_dir, registry)?;
-        let crate_versions = fuzzy_query_registry_index(crate_name, &registry_url)?;
-        read_latest_version(&crate_versions, flag_allow_prerelease)?
-    };
+    let registry_url = registry_url(work_dir, registry)?;
+    let crate_versions = fuzzy_query_registry_index(crate_name, &registry_url)?;
+    let mut dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
 
     if let Some(registry) = registry {
         dep = dep.set_registry(registry);
@@ -200,22 +168,6 @@ pub fn get_features_from_registry(
     version: &str,
     registry: &Url,
 ) -> CargoResult<BTreeMap<String, Vec<String>>> {
-    if env::var("CARGO_IS_TEST").is_ok() {
-        let features = if crate_name == "your-face" {
-            [
-                ("nose".to_string(), vec![]),
-                ("mouth".to_string(), vec![]),
-                ("eyes".to_string(), vec![]),
-                ("ears".to_string(), vec![]),
-            ]
-            .into_iter()
-            .collect::<BTreeMap<_, _>>()
-        } else {
-            BTreeMap::default()
-        };
-        return Ok(features);
-    }
-
     let index = crates_index::Index::from_url(registry.as_str())?;
     let version =
         semver::VersionReq::parse(version).map_err(|_| parse_version_err(version, crate_name))?;
