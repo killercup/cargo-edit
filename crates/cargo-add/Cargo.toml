@@ -71,6 +71,7 @@ ureq = { version = "2.4.0", default-features = false, features = ["native-tls", 
 snapbox = { version = "0.2.8", features = ["diff", "path"] }
 cargo-test-macro.git = "https://github.com/rust-lang/cargo"
 cargo-test-support.git = "https://github.com/rust-lang/cargo"
+url = "2.2.2"
 
 [features]
 default = [

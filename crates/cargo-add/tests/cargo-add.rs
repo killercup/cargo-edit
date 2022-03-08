@@ -66,7 +66,11 @@ pub fn project_from_template(template_path: impl AsRef<std::path::Path>) -> std:
 }
 
 pub fn assert() -> snapbox::Assert {
-    let root = cargo_test_support::paths::root().display().to_string();
+    let root = cargo_test_support::paths::root();
+    // Use `from_file_path` instead of `from_dir_path` so the trailing slash is
+    // put in the users output, rather than hidden in the variable
+    let root_url = url::Url::from_file_path(&root).unwrap().to_string();
+    let root = root.display().to_string();
 
     let mut subs = snapbox::Substitutions::new();
     subs.extend([
@@ -74,7 +78,8 @@ pub fn assert() -> snapbox::Assert {
             "[EXE]",
             std::borrow::Cow::Borrowed(std::env::consts::EXE_SUFFIX),
         ),
-        ("[ROOT]", std::borrow::Cow::Owned(root.into())),
+        ("[ROOT]", std::borrow::Cow::Owned(root)),
+        ("[ROOTURL]", std::borrow::Cow::Owned(root_url)),
     ])
     .unwrap();
     snapbox::Assert::new()
@@ -82,15 +87,83 @@ pub fn assert() -> snapbox::Assert {
         .substitutions(subs)
 }
 
+fn init_registry() {
+    cargo_test_support::registry::init();
+    add_registry_packages(false);
+}
+
+fn init_alt_registry() {
+    cargo_test_support::registry::alt_init();
+    add_registry_packages(true);
+}
+
+fn add_registry_packages(alt: bool) {
+    for name in [
+        "my-package",
+        "my-package1",
+        "my-package2",
+        "my-dev-package1",
+        "my-dev-package2",
+        "my-build-package1",
+        "my-build-package2",
+        "toml",
+        "versioned-package",
+        "cargo-list-test-fixture-dependency",
+        "unrelateed-crate",
+    ] {
+        cargo_test_support::registry::Package::new(name, "99999.0.0+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "99999.0.0-alpha.1+my-package")
+            .alternative(alt)
+            .publish();
+    }
+
+    cargo_test_support::registry::Package::new("test_breaking", "0.2.0")
+        .alternative(alt)
+        .publish();
+    cargo_test_support::registry::Package::new("test_nonbreaking", "0.1.1")
+        .alternative(alt)
+        .publish();
+
+    // Normalization
+    cargo_test_support::registry::Package::new("linked-hash-map", "0.5.4")
+        .alternative(alt)
+        .feature("clippy", &[])
+        .feature("heapsize", &[])
+        .feature("heapsize_impl", &[])
+        .feature("nightly", &[])
+        .feature("serde", &[])
+        .feature("serde_impl", &[])
+        .feature("serde_test", &[])
+        .publish();
+    cargo_test_support::registry::Package::new("inflector", "0.11.4")
+        .alternative(alt)
+        .feature("default", &["heavyweight", "lazy_static", "regex"])
+        .feature("heavyweight", &[])
+        .feature("lazy_static", &[])
+        .feature("regex", &[])
+        .feature("unstable", &[])
+        .publish();
+
+    cargo_test_support::registry::Package::new("your-face", "99999.0.0+my-package")
+        .alternative(alt)
+        .feature("nose", &[])
+        .feature("mouth", &[])
+        .feature("eyes", &[])
+        .feature("ears", &[])
+        .publish();
+}
+
 #[cargo_test]
 fn add_basic() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/add_basic.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -102,13 +175,13 @@ fn add_basic() {
 
 #[cargo_test]
 fn add_multiple() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/add_multiple.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -119,8 +192,8 @@ fn add_multiple() {
 }
 
 #[cargo_test]
-#[cfg(feature = "test-external-apis")]
 fn add_normalized_name_external() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/add_normalized_name_external.in");
     let cwd = &project_root;
 
@@ -141,13 +214,13 @@ fn add_normalized_name_external() {
 
 #[cargo_test]
 fn build() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/build.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["--build", "my-build-package1", "my-build-package2"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -159,6 +232,7 @@ fn build() {
 
 #[cargo_test]
 fn build_prefer_existing_version() {
+    init_alt_registry();
     let project_root =
         project_from_template("tests/snapshots/add/build_prefer_existing_version.in");
     let cwd = &project_root;
@@ -166,7 +240,6 @@ fn build_prefer_existing_version() {
     cargo_command()
         .arg("add")
         .args(["cargo-list-test-fixture-dependency", "--build"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -180,35 +253,14 @@ fn build_prefer_existing_version() {
 }
 
 #[cargo_test]
-fn cargo_config_source_empty() {
-    let project_root = project_from_template("tests/snapshots/add/cargo_config_source_empty.in");
-    let cwd = &project_root;
-
-    cargo_command()
-        .arg("add")
-        .args(["my-package"])
-        .env("CARGO_IS_TEST", "1")
-        .current_dir(cwd)
-        .assert()
-        .success()
-        .stdout_matches_path("tests/snapshots/add/cargo_config_source_empty.stdout")
-        .stderr_matches_path("tests/snapshots/add/cargo_config_source_empty.stderr");
-
-    assert().subset_matches(
-        "tests/snapshots/add/cargo_config_source_empty.out",
-        &project_root,
-    );
-}
-
-#[cargo_test]
 fn default_features() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/default_features.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--default-features"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -220,13 +272,13 @@ fn default_features() {
 
 #[cargo_test]
 fn dev() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/dev.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["--dev", "my-dev-package1", "my-dev-package2"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -238,13 +290,13 @@ fn dev() {
 
 #[cargo_test]
 fn dev_build_conflict() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/dev_build_conflict.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package", "--dev", "--build"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(2)
@@ -256,13 +308,13 @@ fn dev_build_conflict() {
 
 #[cargo_test]
 fn dev_prefer_existing_version() {
+    init_alt_registry();
     let project_root = project_from_template("tests/snapshots/add/dev_prefer_existing_version.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["cargo-list-test-fixture-dependency", "--dev"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -277,13 +329,13 @@ fn dev_prefer_existing_version() {
 
 #[cargo_test]
 fn dry_run() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/dry_run.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package", "--dry-run"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -295,13 +347,13 @@ fn dry_run() {
 
 #[cargo_test]
 fn features() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/features.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["your-face", "--features", "eyes"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -313,13 +365,13 @@ fn features() {
 
 #[cargo_test]
 fn features_empty() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/features_empty.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["your-face", "--features", ""])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -331,6 +383,7 @@ fn features_empty() {
 
 #[cargo_test]
 fn features_multiple_occurrences() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/features_multiple_occurrences.in");
     let cwd = &project_root;
@@ -338,7 +391,6 @@ fn features_multiple_occurrences() {
     cargo_command()
         .arg("add")
         .args(["your-face", "--features", "eyes", "--features", "nose"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -353,13 +405,13 @@ fn features_multiple_occurrences() {
 
 #[cargo_test]
 fn features_preserve() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/features_preserve.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["your-face"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -371,13 +423,13 @@ fn features_preserve() {
 
 #[cargo_test]
 fn features_spaced_values() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/features_spaced_values.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["your-face", "--features", "eyes nose"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -392,13 +444,13 @@ fn features_spaced_values() {
 
 #[cargo_test]
 fn features_unknown() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/features_unknown.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["your-face", "--features", "noze"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -410,6 +462,7 @@ fn features_unknown() {
 
 #[cargo_test]
 fn git() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/git.in");
     let cwd = &project_root;
 
@@ -421,7 +474,6 @@ fn git() {
             "http://localhost/git-package.git",
             "-Zgit",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -433,6 +485,7 @@ fn git() {
 
 #[cargo_test]
 fn git_branch() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_branch.in");
     let cwd = &project_root;
 
@@ -446,7 +499,6 @@ fn git_branch() {
             "main",
             "-Zgit",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -458,6 +510,7 @@ fn git_branch() {
 
 #[cargo_test]
 fn git_conflicts_namever() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_conflicts_namever.in");
     let cwd = &project_root;
 
@@ -469,7 +522,6 @@ fn git_conflicts_namever() {
             "https://github.com/dcjanus/invalid",
             "-Zgit",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(1)
@@ -484,6 +536,7 @@ fn git_conflicts_namever() {
 
 #[cargo_test]
 fn git_conflicts_registry() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_conflicts_registry.in");
     let cwd = &project_root;
 
@@ -497,7 +550,6 @@ fn git_conflicts_registry() {
             "alternative",
             "-Zgit",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(2)
@@ -512,6 +564,7 @@ fn git_conflicts_registry() {
 
 #[cargo_test]
 fn git_dev() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_dev.in");
     let cwd = &project_root;
 
@@ -524,7 +577,6 @@ fn git_dev() {
             "--dev",
             "-Zgit",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -537,6 +589,7 @@ fn git_dev() {
 #[cargo_test]
 #[cfg(feature = "test-external-apis")]
 fn git_external() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_external.in");
     let cwd = &project_root;
 
@@ -561,6 +614,7 @@ fn git_external() {
 
 #[cargo_test]
 fn git_rev() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_rev.in");
     let cwd = &project_root;
 
@@ -574,7 +628,6 @@ fn git_rev() {
             "423a3",
             "-Zgit",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -586,6 +639,7 @@ fn git_rev() {
 
 #[cargo_test]
 fn git_tag() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_tag.in");
     let cwd = &project_root;
 
@@ -599,7 +653,6 @@ fn git_tag() {
             "v1.0.0",
             "-Zgit",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -611,13 +664,13 @@ fn git_tag() {
 
 #[cargo_test]
 fn inline_path() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/inline_path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
         .args(["../dependency"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()
@@ -629,13 +682,13 @@ fn inline_path() {
 
 #[cargo_test]
 fn inline_path_dev() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/inline_path_dev.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
         .args(["../dependency", "--dev"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()
@@ -647,13 +700,13 @@ fn inline_path_dev() {
 
 #[cargo_test]
 fn invalid_arg() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_arg.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package", "--flag"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(2)
@@ -666,6 +719,7 @@ fn invalid_arg() {
 #[cargo_test]
 #[cfg(feature = "test-external-apis")]
 fn invalid_git_external() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_git_external.in");
     let cwd = &project_root;
 
@@ -691,13 +745,13 @@ fn invalid_git_external() {
 
 #[cargo_test]
 fn invalid_git_no_unstable() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_git_no_unstable.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["git-package", "--git", "http://localhost/git-package.git"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(1)
@@ -712,13 +766,13 @@ fn invalid_git_no_unstable() {
 
 #[cargo_test]
 fn invalid_inline_path() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_inline_path.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["./tests/fixtures/local"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(1)
@@ -730,13 +784,13 @@ fn invalid_inline_path() {
 
 #[cargo_test]
 fn invalid_inline_path_self() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_inline_path_self.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["."])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(1)
@@ -751,13 +805,13 @@ fn invalid_inline_path_self() {
 
 #[cargo_test]
 fn invalid_manifest() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_manifest.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(1)
@@ -768,8 +822,8 @@ fn invalid_manifest() {
 }
 
 #[cargo_test]
-#[cfg(feature = "test-external-apis")]
 fn invalid_name_external() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_name_external.in");
     let cwd = &project_root;
 
@@ -790,13 +844,13 @@ fn invalid_name_external() {
 
 #[cargo_test]
 fn invalid_target_empty() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_target_empty.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package", "--target", ""])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(2)
@@ -811,13 +865,13 @@ fn invalid_target_empty() {
 
 #[cargo_test]
 fn invalid_vers() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_vers.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package@invalid version string"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(1)
@@ -829,13 +883,13 @@ fn invalid_vers() {
 
 #[cargo_test]
 fn list_features() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/list_features.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["your-face"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -847,13 +901,13 @@ fn list_features() {
 
 #[cargo_test]
 fn list_features_path() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/list_features_path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
         .args(["cargo-list-test-fixture-dependency", "../dependency"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()
@@ -865,6 +919,7 @@ fn list_features_path() {
 
 #[cargo_test]
 fn list_features_path_no_default() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/list_features_path_no_default.in");
     let cwd = project_root.join("primary");
@@ -876,7 +931,6 @@ fn list_features_path_no_default() {
             "../dependency",
             "--no-default-features",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()
@@ -891,6 +945,7 @@ fn list_features_path_no_default() {
 
 #[cargo_test]
 fn manifest_path_package() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/manifest_path_package.in");
     let cwd = &project_root;
 
@@ -903,7 +958,6 @@ fn manifest_path_package() {
             "cargo-list-test-fixture",
             "cargo-list-test-fixture-dependency",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -918,6 +972,7 @@ fn manifest_path_package() {
 
 #[cargo_test]
 fn multiple_conflicts_with_features() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/multiple_conflicts_with_features.in");
     let cwd = &project_root;
@@ -925,7 +980,6 @@ fn multiple_conflicts_with_features() {
     cargo_command()
         .arg("add")
         .args(["my-package1", "your-face", "--features", "nose"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(1)
@@ -940,6 +994,7 @@ fn multiple_conflicts_with_features() {
 
 #[cargo_test]
 fn multiple_conflicts_with_git() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/multiple_conflicts_with_git.in");
     let cwd = &project_root;
 
@@ -952,7 +1007,6 @@ fn multiple_conflicts_with_git() {
             "https://github.com/dcjanus/invalid",
             "-Zgit",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(1)
@@ -967,6 +1021,7 @@ fn multiple_conflicts_with_git() {
 
 #[cargo_test]
 fn multiple_conflicts_with_rename() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/multiple_conflicts_with_rename.in");
     let cwd = &project_root;
@@ -974,7 +1029,6 @@ fn multiple_conflicts_with_rename() {
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2", "--rename", "renamed"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(1)
@@ -989,13 +1043,13 @@ fn multiple_conflicts_with_rename() {
 
 #[cargo_test]
 fn namever() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/namever.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1@>=0.1.1", "my-package2@0.2.3", "my-package"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1007,12 +1061,12 @@ fn namever() {
 
 #[cargo_test]
 fn no_args() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/no_args.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .code(2)
@@ -1024,13 +1078,13 @@ fn no_args() {
 
 #[cargo_test]
 fn no_default_features() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/no_default_features.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--no-default-features"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1042,13 +1096,13 @@ fn no_default_features() {
 
 #[cargo_test]
 fn no_optional() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/no_optional.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--no-optional"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1060,13 +1114,13 @@ fn no_optional() {
 
 #[cargo_test]
 fn optional() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/optional.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--optional"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1078,13 +1132,13 @@ fn optional() {
 
 #[cargo_test]
 fn overwrite_default_features() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_default_features.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--default-features"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1099,6 +1153,7 @@ fn overwrite_default_features() {
 
 #[cargo_test]
 fn overwrite_default_features_with_no_default_features() {
+    init_registry();
     let project_root = project_from_template(
         "tests/snapshots/add/overwrite_default_features_with_no_default_features.in",
     );
@@ -1107,7 +1162,6 @@ fn overwrite_default_features_with_no_default_features() {
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--no-default-features"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1126,13 +1180,13 @@ fn overwrite_default_features_with_no_default_features() {
 
 #[cargo_test]
 fn overwrite_features() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_features.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["your-face", "--features", "nose"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1144,6 +1198,7 @@ fn overwrite_features() {
 
 #[cargo_test]
 fn overwrite_git_with_inline_path() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/overwrite_git_with_inline_path.in");
     let cwd = project_root.join("primary");
@@ -1151,7 +1206,6 @@ fn overwrite_git_with_inline_path() {
     cargo_command()
         .arg("add")
         .args(["../dependency"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()
@@ -1166,6 +1220,7 @@ fn overwrite_git_with_inline_path() {
 
 #[cargo_test]
 fn overwrite_inline_features() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_inline_features.in");
     let cwd = &project_root;
 
@@ -1178,7 +1233,6 @@ fn overwrite_inline_features() {
             "+ears",
             "-Zinline-add",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1193,13 +1247,13 @@ fn overwrite_inline_features() {
 
 #[cargo_test]
 fn overwrite_name_dev_noop() {
+    init_alt_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_name_dev_noop.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["cargo-list-test-fixture-dependency", "--dev"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1214,13 +1268,13 @@ fn overwrite_name_dev_noop() {
 
 #[cargo_test]
 fn overwrite_name_noop() {
+    init_alt_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_name_noop.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["cargo-list-test-fixture-dependency"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1232,6 +1286,7 @@ fn overwrite_name_noop() {
 
 #[cargo_test]
 fn overwrite_no_default_features() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/overwrite_no_default_features.in");
     let cwd = &project_root;
@@ -1239,7 +1294,6 @@ fn overwrite_no_default_features() {
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--no-default-features"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1254,6 +1308,7 @@ fn overwrite_no_default_features() {
 
 #[cargo_test]
 fn overwrite_no_default_features_with_default_features() {
+    init_registry();
     let project_root = project_from_template(
         "tests/snapshots/add/overwrite_no_default_features_with_default_features.in",
     );
@@ -1262,7 +1317,6 @@ fn overwrite_no_default_features_with_default_features() {
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--default-features"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1281,13 +1335,13 @@ fn overwrite_no_default_features_with_default_features() {
 
 #[cargo_test]
 fn overwrite_no_optional() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_no_optional.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--no-optional"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1302,6 +1356,7 @@ fn overwrite_no_optional() {
 
 #[cargo_test]
 fn overwrite_no_optional_with_optional() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/overwrite_no_optional_with_optional.in");
     let cwd = &project_root;
@@ -1309,7 +1364,6 @@ fn overwrite_no_optional_with_optional() {
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--optional"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1324,13 +1378,13 @@ fn overwrite_no_optional_with_optional() {
 
 #[cargo_test]
 fn overwrite_optional() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_optional.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--optional"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1342,6 +1396,7 @@ fn overwrite_optional() {
 
 #[cargo_test]
 fn overwrite_optional_with_no_optional() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/overwrite_optional_with_no_optional.in");
     let cwd = &project_root;
@@ -1349,7 +1404,6 @@ fn overwrite_optional_with_no_optional() {
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2@0.4.1", "--no-optional"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1364,13 +1418,13 @@ fn overwrite_optional_with_no_optional() {
 
 #[cargo_test]
 fn overwrite_path_noop() {
+    init_alt_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_path_noop.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["./dependency"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1382,13 +1436,13 @@ fn overwrite_path_noop() {
 
 #[cargo_test]
 fn overwrite_path_with_version() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_path_with_version.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
         .args(["cargo-list-test-fixture-dependency@20.0"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()
@@ -1403,6 +1457,7 @@ fn overwrite_path_with_version() {
 
 #[cargo_test]
 fn overwrite_rename_with_no_rename() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/overwrite_rename_with_no_rename.in");
     let cwd = &project_root;
@@ -1410,7 +1465,6 @@ fn overwrite_rename_with_no_rename() {
     cargo_command()
         .arg("add")
         .args(["versioned-package"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1425,13 +1479,13 @@ fn overwrite_rename_with_no_rename() {
 
 #[cargo_test]
 fn overwrite_rename_with_rename() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_rename_with_rename.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["versioned-package", "--rename", "a2"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1446,6 +1500,7 @@ fn overwrite_rename_with_rename() {
 
 #[cargo_test]
 fn overwrite_rename_with_rename_noop() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/overwrite_rename_with_rename_noop.in");
     let cwd = &project_root;
@@ -1453,7 +1508,6 @@ fn overwrite_rename_with_rename_noop() {
     cargo_command()
         .arg("add")
         .args(["versioned-package", "--rename", "a1"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1468,13 +1522,13 @@ fn overwrite_rename_with_rename_noop() {
 
 #[cargo_test]
 fn overwrite_version_with_git() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_version_with_git.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["versioned-package", "--git", "git://git.git", "-Zgit"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1489,6 +1543,7 @@ fn overwrite_version_with_git() {
 
 #[cargo_test]
 fn overwrite_version_with_inline_path() {
+    init_registry();
     let project_root =
         project_from_template("tests/snapshots/add/overwrite_version_with_inline_path.in");
     let cwd = project_root.join("primary");
@@ -1496,7 +1551,6 @@ fn overwrite_version_with_inline_path() {
     cargo_command()
         .arg("add")
         .args(["../dependency"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()
@@ -1511,13 +1565,13 @@ fn overwrite_version_with_inline_path() {
 
 #[cargo_test]
 fn overwrite_with_rename() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_with_rename.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["versioned-package", "--rename", "renamed"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1532,13 +1586,13 @@ fn overwrite_with_rename() {
 
 #[cargo_test]
 fn preserve_sorted() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/preserve_sorted.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["toml"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1550,13 +1604,13 @@ fn preserve_sorted() {
 
 #[cargo_test]
 fn preserve_unsorted() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/preserve_unsorted.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["toml"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1568,13 +1622,13 @@ fn preserve_unsorted() {
 
 #[cargo_test]
 fn registry() {
+    init_alt_registry();
     let project_root = project_from_template("tests/snapshots/add/registry.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2", "--registry", "alternative"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1586,13 +1640,13 @@ fn registry() {
 
 #[cargo_test]
 fn rename() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/rename.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package", "--rename", "renamed"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1604,6 +1658,7 @@ fn rename() {
 
 #[cargo_test]
 fn target() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/target.in");
     let cwd = &project_root;
 
@@ -1615,7 +1670,6 @@ fn target() {
             "--target",
             "i686-unknown-linux-gnu",
         ])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1627,13 +1681,13 @@ fn target() {
 
 #[cargo_test]
 fn target_cfg() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/target_cfg.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2", "--target", "cfg(unix)"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1645,13 +1699,13 @@ fn target_cfg() {
 
 #[cargo_test]
 fn vers() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/vers.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
         .args(["my-package@>=0.1.1"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(cwd)
         .assert()
         .success()
@@ -1663,13 +1717,13 @@ fn vers() {
 
 #[cargo_test]
 fn workspace_inline_path() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/workspace_inline_path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
         .args(["../dependency"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()
@@ -1684,13 +1738,13 @@ fn workspace_inline_path() {
 
 #[cargo_test]
 fn workspace_inline_path_dev() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/workspace_inline_path_dev.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
         .args(["../dependency", "--dev"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()
@@ -1705,13 +1759,13 @@ fn workspace_inline_path_dev() {
 
 #[cargo_test]
 fn workspace_name() {
+    init_registry();
     let project_root = project_from_template("tests/snapshots/add/workspace_name.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
         .args(["cargo-list-test-fixture-dependency"])
-        .env("CARGO_IS_TEST", "1")
         .current_dir(&cwd)
         .assert()
         .success()

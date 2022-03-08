@@ -1,5 +1,6 @@
-    Updating 'https://github.com/rust-lang/crates.io-index' index
+    Updating '[ROOTURL]/registry' index
 WARN: Added `linked-hash-map` instead of `linked_hash_map`
+WARN: Added `inflector` instead of `Inflector`
       Adding linked-hash-map v0.5.4 to dependencies.
              Features:
              - clippy
@@ -9,7 +10,7 @@ WARN: Added `linked-hash-map` instead of `linked_hash_map`
              - serde
              - serde_impl
              - serde_test
-      Adding Inflector v0.11.4 to dependencies.
+      Adding inflector v0.11.4 to dependencies.
              Features:
              + heavyweight
              + lazy_static
