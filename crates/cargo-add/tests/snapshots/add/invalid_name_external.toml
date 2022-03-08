@@ -1,9 +1,0 @@
-bin.name = "cargo-add"
-args = ["add", "lets_hope_nobody_ever_publishes_this_crate"]
-status.code = 1
-stdout = ""
-stderr = """
-    Updating 'https://github.com/rust-lang/crates.io-index' index
-Error: The crate `lets_hope_nobody_ever_publishes_this_crate` could not be found in registry index.
-"""
-fs.sandbox = true

@@ -68,7 +68,9 @@ native-tls = "^0.2"
 ureq = { version = "2.4.0", default-features = false, features = ["native-tls", "json", "socks", "socks-proxy"] }
 
 [dev-dependencies]
-trycmd = "0.13.1"
+snapbox = { version = "0.2.8", features = ["diff", "path"] }
+cargo-test-macro.git = "https://github.com/rust-lang/cargo"
+cargo-test-support.git = "https://github.com/rust-lang/cargo"
 
 [features]
 default = [

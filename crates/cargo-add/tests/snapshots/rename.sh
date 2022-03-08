@@ -10,7 +10,6 @@ if [ -z "${AFTER}" ]; then
     exit 1
 fi
 
-mv $1.toml $2.toml
 mv $1.in $2.in
 mv $1.out $2.out
 if [ -e "$1.stdout" ]; then

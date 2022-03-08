@@ -207,6 +207,8 @@ version = "0.8.0"
 dependencies = [
  "anyhow",
  "cargo",
+ "cargo-test-macro",
+ "cargo-test-support",
  "clap",
  "concolor-control",
  "crates-index",
@@ -222,9 +224,9 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
+ "snapbox",
  "termcolor",
  "toml_edit",
- "trycmd",
  "ureq",
  "url",
 ]
@@ -277,6 +279,33 @@ version = "0.1.2"
 source = "git+https://github.com/rust-lang/cargo#c5cdd25c14ca7bd3f1691ed59535adb4f6b2c8df"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "cargo-test-macro"
+version = "0.1.0"
+source = "git+https://github.com/rust-lang/cargo#c5cdd25c14ca7bd3f1691ed59535adb4f6b2c8df"
+
+[[package]]
+name = "cargo-test-support"
+version = "0.1.0"
+source = "git+https://github.com/rust-lang/cargo#c5cdd25c14ca7bd3f1691ed59535adb4f6b2c8df"
+dependencies = [
+ "anyhow",
+ "cargo-test-macro",
+ "cargo-util",
+ "filetime",
+ "flate2",
+ "git2",
+ "glob",
+ "itertools",
+ "lazy_static",
+ "remove_dir_all",
+ "serde_json",
+ "tar",
+ "termcolor",
+ "toml_edit",
+ "url",
 ]
 
 [[package]]
@@ -1602,9 +1631,9 @@ dependencies = [
 
 [[package]]
 name = "snapbox"
-version = "0.2.1"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39245697032574df764f27e9736fc318f52c1665be3672f791967a06ca84e4f6"
+checksum = "85460b140f9f7c9b8233566c566ad5dc225d61ac8a228cbd13823ebb08622743"
 dependencies = [
  "concolor",
  "content_inspector",
@@ -1621,9 +1650,9 @@ dependencies = [
 
 [[package]]
 name = "snapbox-macros"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0610ac343332c8f59b7b97a6b7c28bd7dd8cd4e82764d78cc8da98ecd3f7d48"
+checksum = "c01dea7e04cbb27ef4c86e9922184608185f7cd95c1763bc30d727cda4a5e930"
 
 [[package]]
 name = "socket2"

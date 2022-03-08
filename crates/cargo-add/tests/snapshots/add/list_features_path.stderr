@@ -1,0 +1,7 @@
+      Adding cargo-list-test-fixture-dependency v99999.0.0 to dependencies.
+      Adding your-face (local) to dependencies.
+             Features:
+             + mouth
+             + nose
+             - eyes
+             - optional-dependency

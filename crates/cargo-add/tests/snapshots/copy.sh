@@ -10,7 +10,6 @@ if [ -z "${AFTER}" ]; then
     exit 1
 fi
 
-cp -r $1.toml $2.toml
 IN_LINK=$(readlink $1.in)
 if [ -n "${IN_LINK}" ]; then
     ln -s ${IN_LINK} $2.in
