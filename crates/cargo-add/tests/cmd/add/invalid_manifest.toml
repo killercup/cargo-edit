@@ -7,9 +7,9 @@ Error: failed to parse manifest at `[CWD]/Cargo.toml`
 
 Caused by:
     0: could not parse input as TOML
-    1: TOML parse error at line 6, column 7
+    1: TOML parse error at line 8, column 7
          |
-       6 | key = invalid-value
+       8 | key = invalid-value
          |       ^
        Unexpected `v`
        
