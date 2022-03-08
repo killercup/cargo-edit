@@ -1,0 +1,6 @@
+    Updating '[ROOTURL]/registry' index
+warning: Unrecognized features: ["one", "two"]
+      Adding cargo-list-test-fixture-dependency (local) to dev-dependencies.
+             Features:
+             + one
+             + two

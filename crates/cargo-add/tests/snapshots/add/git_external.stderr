@@ -1,0 +1,15 @@
+    Updating 'https://github.com/rust-lang/crates.io-index' index
+      Adding cargo-edit (git) to dependencies.
+             Features:
+             + add
+             + clap
+             + cli
+             + color
+             + concolor-control/auto
+             + git2/vendored-libgit2
+             + rm
+             + set-version
+             + upgrade
+             + vendored-libgit2
+             - test-external-apis
+             - vendored-openssl

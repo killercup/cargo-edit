@@ -1,0 +1,2 @@
+    Updating 'https://github.com/rust-lang/crates.io-index' index
+Error: HTTP request `https://raw.githubusercontent.com/killercup/fake-git-repo/master/Cargo.toml` failed: https://raw.githubusercontent.com/killercup/fake-git-repo/master/Cargo.toml: status code 404

@@ -1,0 +1,3 @@
+    Updating '[ROOTURL]/registry' index
+      Adding cargo-list-test-fixture (local) to dependencies.
+Error: Cannot add `cargo-list-test-fixture` as a dependency to itself
