@@ -504,6 +504,20 @@ impl std::fmt::Display for Dependency {
     }
 }
 
+impl<'s> From<&'s cargo::core::Summary> for Dependency {
+    fn from(other: &'s cargo::core::Summary) -> Self {
+        Dependency::new(other.name().as_str())
+            .set_source(RegistrySource::new(other.version().to_string()))
+            .set_available_features_from_cargo(other.features())
+    }
+}
+
+impl From<cargo::core::Summary> for Dependency {
+    fn from(other: cargo::core::Summary) -> Self {
+        (&other).into()
+    }
+}
+
 fn path_field(crate_root: &Path, abs_path: &Path) -> String {
     let relpath = pathdiff::diff_paths(abs_path, crate_root).expect("both paths are absolute");
     let relpath = relpath.to_str().unwrap().replace('\\', "/");

@@ -384,9 +384,7 @@ fn get_latest_dependency(
                 dependency
             )
         })?;
-    let mut dep = Dependency::new(latest.name().as_str())
-        .set_source(RegistrySource::new(latest.version().to_string()))
-        .set_available_features_from_cargo(latest.features());
+    let mut dep = Dependency::from(latest);
     if let Some(reg_name) = dependency.registry.as_deref() {
         dep = dep.set_registry(reg_name);
     }
