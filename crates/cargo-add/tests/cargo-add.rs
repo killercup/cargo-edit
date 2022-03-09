@@ -477,15 +477,19 @@ fn git() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git.in");
     let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("versioned-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            "http://localhost/git-package.git",
-            "-Zgit",
-        ])
+        .args(["git-package", "--git", &git_url, "-Zgit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -500,15 +504,27 @@ fn git_branch() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_branch.in");
     let cwd = &project_root;
+    let (git_dep, git_repo) = cargo_test_support::git::new_repo("versioned-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let branch = "dev";
+    let find_head = || (git_repo.head().unwrap().peel_to_commit().unwrap());
+    git_repo.branch(branch, &find_head(), false).unwrap();
+    let git_url = git_dep.url().to_string();
 
     cargo_command()
         .arg("add")
         .args([
             "git-package",
             "--git",
-            "http://localhost/git-package.git",
+            &git_url,
             "--branch",
-            "main",
+            branch,
             "-Zgit",
         ])
         .current_dir(cwd)
@@ -579,16 +595,19 @@ fn git_dev() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_dev.in");
     let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("versioned-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            "http://localhost/git-package.git",
-            "--dev",
-            "-Zgit",
-        ])
+        .args(["git-package", "--git", &git_url, "--dev", "-Zgit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -629,17 +648,21 @@ fn git_rev() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_rev.in");
     let cwd = &project_root;
+    let (git_dep, git_repo) = cargo_test_support::git::new_repo("versioned-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let find_head = || (git_repo.head().unwrap().peel_to_commit().unwrap());
+    let head = find_head().id().to_string();
+    let git_url = git_dep.url().to_string();
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            "http://localhost/git-package.git",
-            "--rev",
-            "423a3",
-            "-Zgit",
-        ])
+        .args(["git-package", "--git", &git_url, "--rev", &head, "-Zgit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -654,17 +677,21 @@ fn git_tag() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_tag.in");
     let cwd = &project_root;
+    let (git_dep, git_repo) = cargo_test_support::git::new_repo("versioned-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let tag = "v1.0.0";
+    cargo_test_support::git::tag(&git_repo, tag);
+    let git_url = git_dep.url().to_string();
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            "http://localhost/git-package.git",
-            "--tag",
-            "v1.0.0",
-            "-Zgit",
-        ])
+        .args(["git-package", "--git", &git_url, "--tag", tag, "-Zgit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -1537,10 +1564,19 @@ fn overwrite_version_with_git() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/overwrite_version_with_git.in");
     let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("versioned-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
 
     cargo_command()
         .arg("add")
-        .args(["versioned-package", "--git", "git://git.git", "-Zgit"])
+        .args(["versioned-package", "--git", &git_url, "-Zgit"])
         .current_dir(cwd)
         .assert()
         .success()

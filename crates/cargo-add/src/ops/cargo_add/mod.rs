@@ -23,9 +23,8 @@ use dependency::GitSource;
 use dependency::PathSource;
 use dependency::RegistrySource;
 use dependency::Source;
-use fetch::{get_manifest_from_path, get_manifest_from_url};
+use fetch::get_manifest_from_path;
 use manifest::LocalManifest;
-use manifest::Manifest;
 
 /// Information on what dependencies should be added
 #[derive(Clone, Debug)]
@@ -384,9 +383,7 @@ fn get_latest_dependency(
                 dependency
             )
         })?;
-    let mut dep = Dependency::new(latest.name().as_str())
-        .set_source(RegistrySource::new(latest.version().to_string()))
-        .set_available_features_from_cargo(latest.features());
+    let mut dep = Dependency::from(latest);
     if let Some(reg_name) = dependency.registry.as_deref() {
         dep = dep.set_registry(reg_name);
     }
@@ -448,39 +445,21 @@ fn populate_available_features(
         return Ok(dependency);
     }
 
-    match dependency.source() {
-        Some(Source::Registry(_)) => {
-            let query = dependency.query(config)?;
-            let possibilities = registry.query_vec(&query, true)?;
-            let lowest_common_denominator = possibilities
-                .iter()
-                .min_by_key(|s| {
-                    let is_pre = !s.version().pre.is_empty();
-                    (is_pre, s.version())
-                })
-                .ok_or_else(|| {
-                    anyhow::format_err!(
-                        "The crate `{}` could not be found in registry index.",
-                        dependency
-                    )
-                })?;
-            dependency =
-                dependency.set_available_features_from_cargo(lowest_common_denominator.features());
-        }
-        Some(Source::Path(src)) => {
-            let manifest = get_manifest_from_path(&src.path)?;
-            let available_features = manifest.features()?;
-            dependency = dependency.set_available_features(available_features);
-        }
-        Some(Source::Git(git)) => {
-            let available_features = get_manifest_from_url(&git.git)?
-                .map(|m| m.features())
-                .transpose()?
-                .unwrap_or_default();
-            dependency = dependency.set_available_features(available_features);
-        }
-        None => {}
-    }
+    let query = dependency.query(config)?;
+    let possibilities = registry.query_vec(&query, true)?;
+    let lowest_common_denominator = possibilities
+        .iter()
+        .min_by_key(|s| {
+            let is_pre = !s.version().pre.is_empty();
+            (is_pre, s.version())
+        })
+        .ok_or_else(|| {
+            anyhow::format_err!(
+                "The crate `{}` could not be found in registry index.",
+                dependency
+            )
+        })?;
+    dependency = dependency.set_available_features_from_cargo(lowest_common_denominator.features());
 
     Ok(dependency)
 }
