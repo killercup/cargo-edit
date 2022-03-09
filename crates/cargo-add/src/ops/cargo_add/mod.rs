@@ -67,7 +67,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
     let work_dir = manifest_path.parent().expect("always a parent directory");
     let mut manifest = LocalManifest::try_new(&manifest_path)?;
 
-    if !options.config.offline() && std::env::var("CARGO_IS_TEST").is_err() {
+    if !options.config.offline() {
         let url = registry_url(work_dir, options.registry)?;
         update_registry_index(&url, options.quiet)?;
     }
