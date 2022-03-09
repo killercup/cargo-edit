@@ -212,16 +212,13 @@ dependencies = [
  "clap",
  "concolor-control",
  "dunce",
- "env_proxy",
  "git2",
  "indexmap",
- "native-tls",
  "pathdiff",
  "regex",
  "semver",
  "snapbox",
  "toml_edit",
- "ureq",
  "url",
 ]
 

@@ -5,4 +5,4 @@ name = "cargo-list-test-fixture"
 version = "0.0.0"
 
 [dependencies]
-git-package = { git = "http://localhost/git-package.git", rev = "423a3" }
+git-package = { git = "[ROOTURL]/versioned-package", rev = "[..]" }
