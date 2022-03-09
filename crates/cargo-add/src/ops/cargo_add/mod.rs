@@ -8,7 +8,6 @@ mod manifest;
 mod registry;
 mod version;
 
-use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::path::Path;
@@ -407,31 +406,36 @@ pub fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
 
 /// Lookup available features
 fn populate_available_features(
-    dependency: Dependency,
+    mut dependency: Dependency,
     manifest_path: &Path,
 ) -> CargoResult<Dependency> {
     if !dependency.available_features.is_empty() {
         return Ok(dependency);
     }
 
-    let available_features = match dependency.source() {
+    match dependency.source() {
         Some(Source::Registry(src)) => {
             let work_dir = manifest_path.parent().expect("always a parent directory");
             let registry_url = registry_url(work_dir, dependency.registry())?;
-            get_features_from_registry(&dependency.name, &src.version, &registry_url)?
+            let available_features =
+                get_features_from_registry(&dependency.name, &src.version, &registry_url)?;
+            dependency = dependency.set_available_features(available_features);
         }
         Some(Source::Path(src)) => {
             let manifest = get_manifest_from_path(&src.path)?;
-            manifest.features()?
+            let available_features = manifest.features()?;
+            dependency = dependency.set_available_features(available_features);
         }
-        Some(Source::Git(git)) => get_manifest_from_url(&git.git)?
-            .map(|m| m.features())
-            .transpose()?
-            .unwrap_or_default(),
-        None => BTreeMap::new(),
-    };
+        Some(Source::Git(git)) => {
+            let available_features = get_manifest_from_url(&git.git)?
+                .map(|m| m.features())
+                .transpose()?
+                .unwrap_or_default();
+            dependency = dependency.set_available_features(available_features);
+        }
+        None => {}
+    }
 
-    let dependency = dependency.set_available_features(available_features);
     Ok(dependency)
 }
 
