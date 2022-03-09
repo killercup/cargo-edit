@@ -52,6 +52,9 @@ impl CrateSpec {
                     invalid.join(", ")
                 );
             }
+            if name.is_empty() {
+                anyhow::bail!("pkg id has empty name: `{}`", pkg_id);
+            }
 
             if let Some(version) = version {
                 semver::VersionReq::parse(version)
