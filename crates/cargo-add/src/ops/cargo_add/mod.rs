@@ -2,15 +2,13 @@
 
 mod crate_spec;
 mod dependency;
-mod errors;
-mod fetch;
 mod manifest;
-mod version;
 
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::path::Path;
 
+use anyhow::Context;
 use cargo::core::Registry;
 use cargo::CargoResult;
 use cargo::Config;
@@ -23,7 +21,6 @@ use dependency::GitSource;
 use dependency::PathSource;
 use dependency::RegistrySource;
 use dependency::Source;
-use fetch::get_manifest_from_path;
 use manifest::LocalManifest;
 
 /// Information on what dependencies should be added
@@ -431,7 +428,7 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp<'_>) -> Dependenc
 }
 
 /// Split feature flag list
-pub fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
+fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
     feature.split([' ', ',']).filter(|s| !s.is_empty())
 }
 
@@ -563,4 +560,9 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
     }
 
     true
+}
+
+fn get_manifest_from_path(path: &Path) -> CargoResult<LocalManifest> {
+    let cargo_file = path.join("Cargo.toml");
+    LocalManifest::try_new(&cargo_file).with_context(|| "Unable to open local Cargo.toml")
 }
