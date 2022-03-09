@@ -5,13 +5,13 @@ mod dependency;
 mod errors;
 mod fetch;
 mod manifest;
-mod registry;
 mod version;
 
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::path::Path;
 
+use cargo::core::Registry;
 use cargo::CargoResult;
 use cargo::Config;
 use indexmap::IndexSet;
@@ -23,14 +23,9 @@ use dependency::GitSource;
 use dependency::PathSource;
 use dependency::RegistrySource;
 use dependency::Source;
-use fetch::{
-    get_features_from_registry, get_latest_dependency, get_manifest_from_path,
-    get_manifest_from_url, update_registry_index,
-};
+use fetch::{get_manifest_from_path, get_manifest_from_url};
 use manifest::LocalManifest;
 use manifest::Manifest;
-use registry::registry_url;
-use version::VersionExt;
 
 /// Information on what dependencies should be added
 #[derive(Clone, Debug)]
@@ -63,19 +58,28 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
 
     let manifest_path = options.spec.manifest_path();
     let manifest_path = manifest_path.to_path_buf();
-    let work_dir = manifest_path.parent().expect("always a parent directory");
     let mut manifest = LocalManifest::try_new(&manifest_path)?;
 
-    if !options.config.offline() {
-        let url = registry_url(work_dir, options.registry)?;
-        update_registry_index(&url, options.quiet)?;
-    }
+    let mut registry = cargo::core::registry::PackageRegistry::new(options.config)?;
 
-    let deps = options
-        .dependencies
-        .iter()
-        .map(|raw| resolve_dependency(&manifest, raw, workspace, options.section))
-        .collect::<CargoResult<Vec<_>>>()?;
+    let deps = {
+        let _lock = options.config.acquire_package_cache_lock()?;
+        registry.lock_patches();
+        options
+            .dependencies
+            .iter()
+            .map(|raw| {
+                resolve_dependency(
+                    &manifest,
+                    raw,
+                    workspace,
+                    options.section,
+                    options.config,
+                    &mut registry,
+                )
+            })
+            .collect::<CargoResult<Vec<_>>>()?
+    };
 
     let was_sorted = manifest
         .get_table(&dep_table)
@@ -195,9 +199,10 @@ fn resolve_dependency(
     arg: &DepOp<'_>,
     ws: &cargo::core::Workspace,
     section: DepTable<'_>,
+    config: &Config,
+    registry: &mut cargo::core::registry::PackageRegistry,
 ) -> CargoResult<Dependency> {
     let crate_spec = CrateSpec::resolve(arg.crate_spec)?;
-    let manifest_path = manifest.path.as_path();
 
     let mut spec_dep = crate_spec.to_dependency()?;
     spec_dep = populate_dependency(spec_dep, arg);
@@ -268,15 +273,15 @@ fn resolve_dependency(
             }
             dependency = dependency.set_source(src);
         } else {
-            let work_dir = manifest_path.parent().expect("always a parent directory");
-            let latest = get_latest_dependency(
-                dependency.name.as_str(),
-                false,
-                work_dir,
-                dependency.registry(),
-            )?;
+            let latest = get_latest_dependency(&dependency, false, config, registry)?;
 
-            dependency.name = latest.name; // Normalize the name
+            if dependency.name != latest.name {
+                config.shell().warn(format!(
+                    "Translating `{}` to `{}`",
+                    dependency.name, latest.name,
+                ))?;
+                dependency.name = latest.name; // Normalize the name
+            }
             dependency = dependency
                 .set_source(latest.source.expect("latest always has a source"))
                 .set_available_features(latest.available_features);
@@ -294,7 +299,7 @@ fn resolve_dependency(
         dependency = dependency.clear_version();
     }
 
-    dependency = populate_available_features(dependency, manifest_path)?;
+    dependency = populate_available_features(dependency, config, registry)?;
 
     Ok(dependency)
 }
@@ -359,6 +364,35 @@ fn get_existing_dependency(
     Some(dep)
 }
 
+fn get_latest_dependency(
+    dependency: &Dependency,
+    _flag_allow_prerelease: bool,
+    config: &Config,
+    registry: &mut cargo::core::registry::PackageRegistry,
+) -> CargoResult<Dependency> {
+    let query = dependency.query(config)?;
+    let possibilities = registry.query_vec(&query, true)?;
+    let latest = possibilities
+        .iter()
+        .max_by_key(|s| {
+            let stable = s.version().pre.is_empty();
+            (stable, s.version())
+        })
+        .ok_or_else(|| {
+            anyhow::format_err!(
+                "The crate `{}` could not be found in registry index.",
+                dependency
+            )
+        })?;
+    let mut dep = Dependency::new(latest.name().as_str())
+        .set_source(RegistrySource::new(latest.version().to_string()))
+        .set_available_features_from_cargo(latest.features());
+    if let Some(reg_name) = dependency.registry.as_deref() {
+        dep = dep.set_registry(reg_name);
+    }
+    Ok(dep)
+}
+
 fn populate_dependency(mut dependency: Dependency, arg: &DepOp<'_>) -> Dependency {
     let requested_features: Option<IndexSet<_>> = arg.features.as_ref().map(|v| {
         v.iter()
@@ -407,19 +441,31 @@ pub fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
 /// Lookup available features
 fn populate_available_features(
     mut dependency: Dependency,
-    manifest_path: &Path,
+    config: &Config,
+    registry: &mut cargo::core::registry::PackageRegistry,
 ) -> CargoResult<Dependency> {
     if !dependency.available_features.is_empty() {
         return Ok(dependency);
     }
 
     match dependency.source() {
-        Some(Source::Registry(src)) => {
-            let work_dir = manifest_path.parent().expect("always a parent directory");
-            let registry_url = registry_url(work_dir, dependency.registry())?;
-            let available_features =
-                get_features_from_registry(&dependency.name, &src.version, &registry_url)?;
-            dependency = dependency.set_available_features(available_features);
+        Some(Source::Registry(_)) => {
+            let query = dependency.query(config)?;
+            let possibilities = registry.query_vec(&query, true)?;
+            let lowest_common_denominator = possibilities
+                .iter()
+                .min_by_key(|s| {
+                    let is_pre = !s.version().pre.is_empty();
+                    (is_pre, s.version())
+                })
+                .ok_or_else(|| {
+                    anyhow::format_err!(
+                        "The crate `{}` could not be found in registry index.",
+                        dependency
+                    )
+                })?;
+            dependency =
+                dependency.set_available_features_from_cargo(lowest_common_denominator.features());
         }
         Some(Source::Path(src)) => {
             let manifest = get_manifest_from_path(&src.path)?;

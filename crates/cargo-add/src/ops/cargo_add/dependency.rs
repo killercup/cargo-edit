@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use cargo::CargoResult;
 use indexmap::IndexSet;
 
 use super::manifest::str_or_1_len_table;
@@ -79,6 +80,31 @@ impl Dependency {
         self
     }
 
+    /// Populate from cargo
+    pub fn set_available_features_from_cargo(
+        mut self,
+        available_features: &cargo::core::summary::FeatureMap,
+    ) -> Dependency {
+        self.available_features = available_features
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.as_str().to_owned(),
+                    v.iter()
+                        .filter_map(|v| match v {
+                            cargo::core::summary::FeatureValue::Feature(f) => {
+                                Some(f.as_str().to_owned())
+                            }
+                            cargo::core::summary::FeatureValue::Dep { .. }
+                            | cargo::core::summary::FeatureValue::DepFeature { .. } => None,
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect();
+        self
+    }
+
     /// Set whether the dependency is optional
     #[allow(dead_code)]
     pub fn set_optional(mut self, opt: bool) -> Self {
@@ -151,6 +177,40 @@ impl Dependency {
     /// Get whether the dep is optional
     pub fn optional(&self) -> Option<bool> {
         self.optional
+    }
+
+    /// Get the SourceID for this dependency
+    pub fn source_id(&self, config: &cargo::Config) -> CargoResult<cargo::core::SourceId> {
+        match &self.source.as_ref() {
+            Some(Source::Registry(_)) | None => {
+                if let Some(r) = self.registry() {
+                    let source_id = cargo::core::SourceId::alt_registry(config, r)?;
+                    Ok(source_id)
+                } else {
+                    let source_id = cargo::core::SourceId::crates_io(config)?;
+                    Ok(source_id)
+                }
+            }
+            Some(Source::Path(source)) => {
+                let source_id = cargo::core::SourceId::for_path(&source.path)?;
+                Ok(source_id)
+            }
+            Some(Source::Git(source)) => {
+                let git_url = source.git.parse::<url::Url>()?;
+                let git_ref = source.git_ref();
+                let source_id = cargo::core::SourceId::for_git(&git_url, git_ref)?;
+                Ok(source_id)
+            }
+        }
+    }
+
+    /// Query to find this dependency
+    pub fn query(
+        &self,
+        config: &cargo::Config,
+    ) -> CargoResult<cargo::core::dependency::Dependency> {
+        let source_id = self.source_id(config)?;
+        cargo::core::dependency::Dependency::parse(self.name.as_str(), self.version(), source_id)
     }
 }
 
@@ -434,6 +494,16 @@ impl Dependency {
     }
 }
 
+impl std::fmt::Display for Dependency {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(source) = self.source() {
+            write!(f, "{}@{}", self.name, source)
+        } else {
+            self.toml_key().fmt(f)
+        }
+    }
+}
+
 fn path_field(crate_root: &Path, abs_path: &Path) -> String {
     let relpath = pathdiff::diff_paths(abs_path, crate_root).expect("both paths are absolute");
     let relpath = relpath.to_str().unwrap().replace('\\', "/");
@@ -489,6 +559,16 @@ impl Source {
     }
 }
 
+impl std::fmt::Display for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Registry(src) => src.fmt(f),
+            Self::Path(src) => src.fmt(f),
+            Self::Git(src) => src.fmt(f),
+        }
+    }
+}
+
 impl<'s> From<&'s Source> for Source {
     fn from(inner: &'s Source) -> Self {
         inner.clone()
@@ -534,6 +614,12 @@ impl RegistrySource {
     }
 }
 
+impl std::fmt::Display for RegistrySource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.version.fmt(f)
+    }
+}
+
 /// Dependency from a local path
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 #[non_exhaustive]
@@ -561,6 +647,12 @@ impl PathSource {
         let version = version.as_ref().split('+').next().unwrap();
         self.version = Some(version.to_owned());
         self
+    }
+}
+
+impl std::fmt::Display for PathSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.path.display().fmt(f)
     }
 }
 
@@ -611,6 +703,30 @@ impl GitSource {
         self.tag = None;
         self.rev = Some(rev.into());
         self
+    }
+
+    fn git_ref(&self) -> cargo::core::GitReference {
+        match (
+            self.branch.as_deref(),
+            self.tag.as_deref(),
+            self.rev.as_deref(),
+        ) {
+            (Some(branch), _, _) => cargo::core::GitReference::Branch(branch.to_owned()),
+            (_, Some(tag), _) => cargo::core::GitReference::Tag(tag.to_owned()),
+            (_, _, Some(rev)) => cargo::core::GitReference::Rev(rev.to_owned()),
+            _ => cargo::core::GitReference::DefaultBranch,
+        }
+    }
+}
+
+impl std::fmt::Display for GitSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let git_ref = self.git_ref();
+        if let Some(pretty_ref) = git_ref.pretty_ref() {
+            write!(f, "{}?{}", self.git, pretty_ref)
+        } else {
+            write!(f, "{}", self.git)
+        }
     }
 }
 
