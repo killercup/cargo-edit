@@ -111,6 +111,18 @@ fn add_registry_packages(alt: bool) {
         "cargo-list-test-fixture-dependency",
         "unrelateed-crate",
     ] {
+        cargo_test_support::registry::Package::new(name, "0.1.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.2.3+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.4.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "20.0.0+my-package")
+            .alternative(alt)
+            .publish();
         cargo_test_support::registry::Package::new(name, "99999.0.0+my-package")
             .alternative(alt)
             .publish();

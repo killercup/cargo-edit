@@ -46,11 +46,14 @@ impl CrateSpec {
                 .map(|c| c.to_string())
                 .collect();
             if !invalid.is_empty() {
-                return Err(anyhow::format_err!(
-                    "Invalid name `{}`: {}",
+                anyhow::bail!(
+                    "Name `{}` contains invalid characters: {}",
                     name,
                     invalid.join(", ")
-                ));
+                );
+            }
+            if name.is_empty() {
+                anyhow::bail!("pkg id has empty name: `{}`", pkg_id);
             }
 
             if let Some(version) = version {
