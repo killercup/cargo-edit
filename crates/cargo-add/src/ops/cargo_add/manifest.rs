@@ -7,7 +7,6 @@ use anyhow::Context;
 use cargo::CargoResult;
 
 use super::dependency::Dependency;
-use super::errors::*;
 
 const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
 
@@ -415,4 +414,16 @@ fn remove_feature_activation(
 
 pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
     item.is_str() || item.as_table_like().map(|t| t.len() == 1).unwrap_or(false)
+}
+
+fn parse_manifest_err() -> anyhow::Error {
+    anyhow::format_err!("Unable to parse external Cargo.toml")
+}
+
+fn non_existent_table_err(table: impl std::fmt::Display) -> anyhow::Error {
+    anyhow::format_err!("The table `{}` could not be found.", table)
+}
+
+fn invalid_cargo_config() -> anyhow::Error {
+    anyhow::format_err!("Invalid cargo config")
 }
