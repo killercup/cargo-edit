@@ -1,2 +1,12 @@
-    Updating 'https://github.com/rust-lang/crates.io-index' index
-Error: HTTP request `https://raw.githubusercontent.com/killercup/fake-git-repo/master/Cargo.toml` failed: https://raw.githubusercontent.com/killercup/fake-git-repo/master/Cargo.toml: status code 404
+    Updating git repository `[ROOTURL]/case/does-not-exist/`
+...
+error: failed to load source for dependency `fake-git`
+
+Caused by:
+  Unable to update [ROOTURL]/case/does-not-exist/
+
+Caused by:
+  failed to clone into: [ROOT]/home/.cargo/git/db/does-not-exist-[..]
+
+Caused by:
+...

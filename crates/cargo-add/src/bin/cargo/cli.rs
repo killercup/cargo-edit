@@ -1,5 +1,6 @@
 use cargo::CargoResult;
 use cargo::CliResult;
+use clap::Arg;
 use clap::ArgMatches;
 use clap::Command;
 
@@ -16,6 +17,14 @@ pub fn main(config: &mut cargo::util::Config) -> CliResult {
 
 fn cli() -> Command<'static> {
     Command::new("cargo")
+        .arg(
+            Arg::new("unstable-features")
+                .help("Unstable (nightly-only) flags to Cargo, see 'cargo -Z help' for details")
+                .short('Z')
+                .value_name("FLAG")
+                .multiple_occurrences(true)
+                .global(true),
+        )
         .subcommands(crate::commands::builtin())
         .subcommand_required(true)
 }
@@ -45,7 +54,10 @@ fn config_configure(config: &mut cargo::Config, subcommand_args: &ArgMatches) ->
     let frozen = false;
     let locked = false;
     let offline = subcommand_args.is_present("offline");
-    let unstable_flags = [];
+    let mut unstable_flags = vec![];
+    if let Some(values) = subcommand_args.values_of("unstable-features") {
+        unstable_flags.extend(values.map(|s| s.to_string()));
+    }
     let config_args = [];
     config.configure(
         verbose,
