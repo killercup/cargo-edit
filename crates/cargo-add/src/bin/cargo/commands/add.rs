@@ -190,7 +190,7 @@ This is the catch all, handling hashes to named references in remote repositorie
         ])
 }
 
-pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
+pub fn exec(config: &mut Config, args: &ArgMatches) -> CargoResult<()> {
     let dry_run = args.is_present("dry-run");
     let section = parse_section(args);
 
