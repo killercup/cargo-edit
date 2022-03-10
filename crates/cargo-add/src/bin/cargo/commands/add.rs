@@ -145,7 +145,7 @@ Build-dependencies are the only dependencies available for use by build scripts 
         .next_help_heading("UNSTABLE")
         .args([
             clap::Arg::new("unstable-features")
-                .short('Z')
+                .short('U')
                 .value_name("FLAG")
                 .global(true)
                 .takes_value(true)
@@ -292,7 +292,7 @@ fn parse_dependencies<'m>(
         anyhow::bail!("Cannot specify multiple crates with path or git or vers");
     }
     if git.is_some() && !unstable_features.contains(&UnstableOptions::Git) {
-        anyhow::bail!("`--git` is unstable and requires `-Z git`");
+        anyhow::bail!("`--git` is unstable and requires `-U git`");
     }
 
     if crates.len() > 1 && rename.is_some() {
@@ -307,7 +307,7 @@ fn parse_dependencies<'m>(
     for crate_spec in crates {
         if let Some(features) = crate_spec.strip_prefix('+') {
             if !unstable_features.contains(&UnstableOptions::InlineAdd) {
-                anyhow::bail!("`+<feature>` is unstable and requires `-Z inline-add`");
+                anyhow::bail!("`+<feature>` is unstable and requires `-U inline-add`");
             }
 
             if let Some(prior) = deps.last_mut() {

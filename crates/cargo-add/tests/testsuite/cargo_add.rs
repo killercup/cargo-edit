@@ -481,7 +481,7 @@ fn git() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "-Zgit"])
+        .args(["git-package", "--git", &git_url, "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -517,7 +517,7 @@ fn git_branch() {
             &git_url,
             "--branch",
             branch,
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
@@ -540,7 +540,7 @@ fn git_conflicts_namever() {
             "my-package@0.4.3",
             "--git",
             "https://github.com/dcjanus/invalid",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
@@ -568,7 +568,7 @@ fn git_conflicts_registry() {
             "https://github.com/dcjanus/invalid",
             "--registry",
             "alternative",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
@@ -599,7 +599,7 @@ fn git_dev() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "--dev", "-Zgit"])
+        .args(["git-package", "--git", &git_url, "--dev", "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -624,7 +624,7 @@ fn git_external() {
             "https://github.com/killercup/cargo-edit.git",
             "--tag",
             "v0.8.0",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
@@ -654,7 +654,7 @@ fn git_rev() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "--rev", &head, "-Zgit"])
+        .args(["git-package", "--git", &git_url, "--rev", &head, "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -683,7 +683,7 @@ fn git_tag() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "--tag", tag, "-Zgit"])
+        .args(["git-package", "--git", &git_url, "--tag", tag, "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -760,7 +760,7 @@ fn invalid_git_external() {
             "fake-git",
             "--git",
             "https://github.com/killercup/fake-git-repo.git",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
@@ -1036,7 +1036,7 @@ fn multiple_conflicts_with_git() {
             "my-package2",
             "--git",
             "https://github.com/dcjanus/invalid",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
@@ -1262,7 +1262,7 @@ fn overwrite_inline_features() {
             "your-face",
             "+nose,mouth",
             "+ears",
-            "-Zinline-add",
+            "-Uinline-add",
         ])
         .current_dir(cwd)
         .assert()
@@ -1568,7 +1568,7 @@ fn overwrite_version_with_git() {
 
     cargo_command()
         .arg("add")
-        .args(["versioned-package", "--git", &git_url, "-Zgit"])
+        .args(["versioned-package", "--git", &git_url, "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()

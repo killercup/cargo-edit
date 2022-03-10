@@ -1,1 +1,1 @@
-error: `--git` is unstable and requires `-Z git`
+error: `--git` is unstable and requires `-U git`
