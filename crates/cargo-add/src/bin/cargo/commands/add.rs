@@ -208,7 +208,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
 
     let unstable_features: Vec<UnstableOptions> =
         args.values_of_t("unstable-features").unwrap_or_default();
-    let dependencies = parse_dependencies(&unstable_features, args)?;
+    let dependencies = parse_dependencies(config, &unstable_features, args)?;
 
     let options = AddOptions {
         config,
@@ -263,6 +263,7 @@ impl std::str::FromStr for UnstableOptions {
 }
 
 fn parse_dependencies<'m>(
+    config: &Config,
     unstable_features: &[UnstableOptions],
     matches: &'m ArgMatches,
 ) -> CargoResult<Vec<DepOp>> {
@@ -277,7 +278,7 @@ fn parse_dependencies<'m>(
     let rev = matches.value_of("rev");
     let tag = matches.value_of("tag");
     let rename = matches.value_of("rename");
-    let registry = matches.value_of("registry");
+    let registry = matches.registry(config)?;
     let default_features = default_features(matches);
     let features = matches.values_of("features").map(|f| {
         f.flat_map(parse_feature)
@@ -324,7 +325,7 @@ fn parse_dependencies<'m>(
                 features: features.clone(),
                 default_features,
                 optional,
-                registry: registry.map(String::from),
+                registry: registry.clone(),
                 git: git.map(String::from),
                 branch: branch.map(String::from),
                 rev: rev.map(String::from),
