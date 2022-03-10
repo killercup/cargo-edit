@@ -926,7 +926,7 @@ mod tests {
         let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
         let original = crate_root.join(r"sibling\crate");
         let should_be = "sibling/crate";
-        let dep = Dependency::new("dep").set_path(original);
+        let dep = Dependency::new("dep").set_source(PathSource::new(original));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
