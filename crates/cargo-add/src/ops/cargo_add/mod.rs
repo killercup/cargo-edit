@@ -362,7 +362,14 @@ fn get_latest_dependency(
     registry: &mut cargo::core::registry::PackageRegistry,
 ) -> CargoResult<Dependency> {
     let query = dependency.query(config)?;
-    let possibilities = registry.query_vec(&query, true)?;
+    let possibilities = loop {
+        match registry.query_vec(&query, true) {
+            std::task::Poll::Ready(res) => {
+                break res?;
+            }
+            std::task::Poll::Pending => registry.block_until_ready()?,
+        }
+    };
     let latest = possibilities
         .iter()
         .max_by_key(|s| {
@@ -442,7 +449,14 @@ fn populate_available_features(
     }
 
     let query = dependency.query(config)?;
-    let possibilities = registry.query_vec(&query, true)?;
+    let possibilities = loop {
+        match registry.query_vec(&query, true) {
+            std::task::Poll::Ready(res) => {
+                break res?;
+            }
+            std::task::Poll::Pending => registry.block_until_ready()?,
+        }
+    };
     let lowest_common_denominator = possibilities
         .iter()
         .min_by_key(|s| {
