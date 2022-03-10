@@ -222,43 +222,34 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
     Ok(())
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum UnstableOptions {
     Git,
     InlineAdd,
 }
 
 impl UnstableOptions {
-    /// Report all `possible_values`
     pub fn possible_values() -> impl Iterator<Item = clap::PossibleValue<'static>> {
-        use clap::ArgEnum;
-        Self::value_variants()
-            .iter()
-            .filter_map(ArgEnum::to_possible_value)
-    }
-}
-
-impl std::fmt::Display for UnstableOptions {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use clap::ArgEnum;
-        self.to_possible_value()
-            .expect("no values are skipped")
-            .get_name()
-            .fmt(f)
+        [
+            clap::PossibleValue::new("git"),
+            clap::PossibleValue::new("inline-add"),
+        ]
+        .into_iter()
     }
 }
 
 impl std::str::FromStr for UnstableOptions {
-    type Err = String;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use clap::ArgEnum;
-        for variant in Self::value_variants() {
-            if variant.to_possible_value().unwrap().matches(s, false) {
-                return Ok(*variant);
-            }
+        match s {
+            "git" => Ok(Self::Git),
+            "inline-add" => Ok(Self::InlineAdd),
+            _ => Err(anyhow::format_err!(
+                "Unknown option `{}`, expected one of `git`, `inline-add`",
+                s
+            )),
         }
-        Err(format!("Invalid variant: {}", s))
     }
 }
 
