@@ -21,8 +21,6 @@ jobs:
       run: cargo build --verbose --workspace
     - name: Run tests
       run: cargo test --verbose --workspace
-    - name: Run tests (vendored-openssl)
-      run: cargo test --verbose --workspace --features vendored-openssl
 
   clippy:
     name: clippy (ubuntu-latest, stable)

@@ -1,6 +1,5 @@
     Updating git repository `[ROOTURL]/case/does-not-exist/`
-warning: spurious network error (2 tries remaining): failed to resolve path '[ROOT]/case/does-not-exist/': No such file or directory; class=Os (2)
-warning: spurious network error (1 tries remaining): failed to resolve path '[ROOT]/case/does-not-exist/': No such file or directory; class=Os (2)
+...
 error: failed to load source for dependency `fake-git`
 
 Caused by:
@@ -10,4 +9,4 @@ Caused by:
   failed to clone into: [ROOT]/home/.cargo/git/db/does-not-exist-[..]
 
 Caused by:
-  failed to resolve path '[ROOT]/case/does-not-exist/': No such file or directory; class=Os (2)
+...
