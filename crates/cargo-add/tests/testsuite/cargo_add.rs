@@ -1,11 +1,3 @@
-#![warn(rust_2018_idioms)]
-#![allow(clippy::all)]
-#![warn(clippy::needless_borrow)]
-#![warn(clippy::redundant_clone)]
-
-#[macro_use]
-extern crate cargo_test_macro;
-
 pub fn cargo_exe() -> &'static std::path::Path {
     snapbox::cmd::cargo_bin!("cargo-add")
 }
@@ -311,7 +303,7 @@ fn dev_build_conflict() {
         .args(["my-package", "--dev", "--build"])
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/dev_build_conflict.stdout")
         .stderr_matches_path("tests/snapshots/add/dev_build_conflict.stderr");
 
@@ -489,7 +481,7 @@ fn git() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "-Zgit"])
+        .args(["git-package", "--git", &git_url, "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -525,7 +517,7 @@ fn git_branch() {
             &git_url,
             "--branch",
             branch,
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
@@ -548,11 +540,11 @@ fn git_conflicts_namever() {
             "my-package@0.4.3",
             "--git",
             "https://github.com/dcjanus/invalid",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/git_conflicts_namever.stdout")
         .stderr_matches_path("tests/snapshots/add/git_conflicts_namever.stderr");
 
@@ -576,11 +568,11 @@ fn git_conflicts_registry() {
             "https://github.com/dcjanus/invalid",
             "--registry",
             "alternative",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/git_conflicts_registry.stdout")
         .stderr_matches_path("tests/snapshots/add/git_conflicts_registry.stderr");
 
@@ -607,7 +599,7 @@ fn git_dev() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "--dev", "-Zgit"])
+        .args(["git-package", "--git", &git_url, "--dev", "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -632,7 +624,7 @@ fn git_external() {
             "https://github.com/killercup/cargo-edit.git",
             "--tag",
             "v0.8.0",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
@@ -662,7 +654,7 @@ fn git_rev() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "--rev", &head, "-Zgit"])
+        .args(["git-package", "--git", &git_url, "--rev", &head, "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -691,7 +683,7 @@ fn git_tag() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "--tag", tag, "-Zgit"])
+        .args(["git-package", "--git", &git_url, "--tag", tag, "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -748,7 +740,7 @@ fn invalid_arg() {
         .args(["my-package", "--flag"])
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/invalid_arg.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_arg.stderr");
 
@@ -768,11 +760,11 @@ fn invalid_git_external() {
             "fake-git",
             "--git",
             "https://github.com/killercup/fake-git-repo.git",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_git_external.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_git_external.stderr");
 
@@ -793,7 +785,7 @@ fn invalid_git_no_unstable() {
         .args(["git-package", "--git", "http://localhost/git-package.git"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_git_no_unstable.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_git_no_unstable.stderr");
 
@@ -814,7 +806,7 @@ fn invalid_inline_path() {
         .args(["./tests/fixtures/local"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_inline_path.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_inline_path.stderr");
 
@@ -832,7 +824,7 @@ fn invalid_inline_path_self() {
         .args(["."])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_inline_path_self.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_inline_path_self.stderr");
 
@@ -853,7 +845,7 @@ fn invalid_manifest() {
         .args(["my-package"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_manifest.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_manifest.stderr");
 
@@ -871,7 +863,7 @@ fn invalid_name_external() {
         .args(["lets_hope_nobody_ever_publishes_this_crate"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_name_external.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_name_external.stderr");
 
@@ -892,7 +884,7 @@ fn invalid_target_empty() {
         .args(["my-package", "--target", ""])
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/invalid_target_empty.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_target_empty.stderr");
 
@@ -913,7 +905,7 @@ fn invalid_vers() {
         .args(["my-package@invalid version string"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_vers.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_vers.stderr");
 
@@ -1021,7 +1013,7 @@ fn multiple_conflicts_with_features() {
         .args(["my-package1", "your-face", "--features", "nose"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/multiple_conflicts_with_features.stdout")
         .stderr_matches_path("tests/snapshots/add/multiple_conflicts_with_features.stderr");
 
@@ -1044,11 +1036,11 @@ fn multiple_conflicts_with_git() {
             "my-package2",
             "--git",
             "https://github.com/dcjanus/invalid",
-            "-Zgit",
+            "-Ugit",
         ])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/multiple_conflicts_with_git.stdout")
         .stderr_matches_path("tests/snapshots/add/multiple_conflicts_with_git.stderr");
 
@@ -1070,7 +1062,7 @@ fn multiple_conflicts_with_rename() {
         .args(["my-package1", "my-package2", "--rename", "renamed"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/multiple_conflicts_with_rename.stdout")
         .stderr_matches_path("tests/snapshots/add/multiple_conflicts_with_rename.stderr");
 
@@ -1108,7 +1100,7 @@ fn no_args() {
         .arg("add")
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/no_args.stdout")
         .stderr_matches_path("tests/snapshots/add/no_args.stderr");
 
@@ -1270,7 +1262,7 @@ fn overwrite_inline_features() {
             "your-face",
             "+nose,mouth",
             "+ears",
-            "-Zinline-add",
+            "-Uinline-add",
         ])
         .current_dir(cwd)
         .assert()
@@ -1576,7 +1568,7 @@ fn overwrite_version_with_git() {
 
     cargo_command()
         .arg("add")
-        .args(["versioned-package", "--git", &git_url, "-Zgit"])
+        .args(["versioned-package", "--git", &git_url, "-Ugit"])
         .current_dir(cwd)
         .assert()
         .success()

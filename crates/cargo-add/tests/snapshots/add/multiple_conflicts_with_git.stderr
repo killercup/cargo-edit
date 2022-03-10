@@ -1,1 +1,1 @@
-Error: Cannot specify multiple crates with path or git or vers
+error: Cannot specify multiple crates with path or git or vers

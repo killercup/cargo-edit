@@ -1,9 +1,15 @@
 use cargo::CargoResult;
+use cargo::CliResult;
 use clap::ArgMatches;
 use clap::Command;
 
-pub fn main(config: &mut cargo::util::Config) -> CargoResult<()> {
-    let args = cli().get_matches();
+pub fn main(config: &mut cargo::util::Config) -> CliResult {
+    let args = match cli().try_get_matches() {
+        Ok(args) => args,
+        Err(e) => {
+            return Err(e.into());
+        }
+    };
     let (cmd, subcommand_args) = args.subcommand().expect("subcommand_required(true)");
     execute_subcommand(config, cmd, subcommand_args)
 }
@@ -18,7 +24,7 @@ fn execute_subcommand(
     config: &mut cargo::Config,
     cmd: &str,
     subcommand_args: &ArgMatches,
-) -> CargoResult<()> {
+) -> CliResult {
     config_configure(config, subcommand_args)?;
     let exec = crate::commands::builtin_exec(cmd).expect("all of `builtin` supported");
     exec(config, subcommand_args)

@@ -1,4 +1,4 @@
-Error: Invalid version requirement `invalid version string`
+error: Invalid version requirement `invalid version string`
 
 Caused by:
-    unexpected character 'i' while parsing major version number
+  unexpected character 'i' while parsing major version number

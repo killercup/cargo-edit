@@ -1,5 +1,7 @@
-Error: Unable to open local Cargo.toml
+error: Unable to open local Cargo.toml
 
 Caused by:
-    0: Failed to read manifest contents
-    1: [..]
+  Failed to read manifest contents
+
+Caused by:
+  No such file or directory (os error 2)

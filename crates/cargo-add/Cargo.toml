@@ -34,6 +34,10 @@ name = "cargo-add"
 path = "src/bin/cargo/main.rs"
 required-features = ["add"]
 
+[lib]
+name = "cargo_add"
+path = "src/cargo/lib.rs"
+
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
 dunce = "1.0"
