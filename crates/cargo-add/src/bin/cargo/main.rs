@@ -14,13 +14,11 @@
 mod cli;
 mod commands;
 
-use std::process;
-
 fn main() {
     let mut config = cargo::Config::default().unwrap();
-    if let Err(err) = cli::main(&mut config) {
-        eprintln!("Error: {:?}", err);
-
-        process::exit(1);
+    let result = cli::main(&mut config);
+    match result {
+        Err(e) => cargo::exit_with_error(e, &mut *config.shell()),
+        Ok(()) => {}
     }
 }

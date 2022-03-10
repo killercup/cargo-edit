@@ -544,7 +544,7 @@ fn git_conflicts_namever() {
         ])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/git_conflicts_namever.stdout")
         .stderr_matches_path("tests/snapshots/add/git_conflicts_namever.stderr");
 
@@ -764,7 +764,7 @@ fn invalid_git_external() {
         ])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_git_external.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_git_external.stderr");
 
@@ -785,7 +785,7 @@ fn invalid_git_no_unstable() {
         .args(["git-package", "--git", "http://localhost/git-package.git"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_git_no_unstable.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_git_no_unstable.stderr");
 
@@ -806,7 +806,7 @@ fn invalid_inline_path() {
         .args(["./tests/fixtures/local"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_inline_path.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_inline_path.stderr");
 
@@ -824,7 +824,7 @@ fn invalid_inline_path_self() {
         .args(["."])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_inline_path_self.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_inline_path_self.stderr");
 
@@ -845,7 +845,7 @@ fn invalid_manifest() {
         .args(["my-package"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_manifest.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_manifest.stderr");
 
@@ -863,7 +863,7 @@ fn invalid_name_external() {
         .args(["lets_hope_nobody_ever_publishes_this_crate"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_name_external.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_name_external.stderr");
 
@@ -905,7 +905,7 @@ fn invalid_vers() {
         .args(["my-package@invalid version string"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/invalid_vers.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_vers.stderr");
 
@@ -1013,7 +1013,7 @@ fn multiple_conflicts_with_features() {
         .args(["my-package1", "your-face", "--features", "nose"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/multiple_conflicts_with_features.stdout")
         .stderr_matches_path("tests/snapshots/add/multiple_conflicts_with_features.stderr");
 
@@ -1040,7 +1040,7 @@ fn multiple_conflicts_with_git() {
         ])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/multiple_conflicts_with_git.stdout")
         .stderr_matches_path("tests/snapshots/add/multiple_conflicts_with_git.stderr");
 
@@ -1062,7 +1062,7 @@ fn multiple_conflicts_with_rename() {
         .args(["my-package1", "my-package2", "--rename", "renamed"])
         .current_dir(cwd)
         .assert()
-        .code(1)
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/multiple_conflicts_with_rename.stdout")
         .stderr_matches_path("tests/snapshots/add/multiple_conflicts_with_rename.stderr");
 

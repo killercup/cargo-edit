@@ -190,7 +190,7 @@ This is the catch all, handling hashes to named references in remote repositorie
         ])
 }
 
-pub fn exec(config: &mut Config, args: &ArgMatches) -> CargoResult<()> {
+pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     let dry_run = args.is_present("dry-run");
     let section = parse_section(args);
 
@@ -198,12 +198,22 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CargoResult<()> {
     let packages = args.packages_from_flags()?;
     let packages = packages.get_packages(&ws)?;
     let spec = match packages.len() {
-        0 => anyhow::bail!("No packages selected.  Please specify one with `-p <PKGID>`"),
+        0 => {
+            return Err(CliError::new(
+                anyhow::format_err!("No packages selected.  Please specify one with `-p <PKGID>`"),
+                101,
+            ));
+        }
         1 => packages[0],
-        len => anyhow::bail!(
-            "{} packages selected.  Please specify one with `-p <PKGID>`",
-            len
-        ),
+        len => {
+            return Err(CliError::new(
+                anyhow::format_err!(
+                    "{} packages selected.  Please specify one with `-p <PKGID>`",
+                    len
+                ),
+                101,
+            ));
+        }
     };
 
     let unstable_features: Vec<UnstableOptions> =
