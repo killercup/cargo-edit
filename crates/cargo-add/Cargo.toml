@@ -39,7 +39,6 @@ concolor-control = { version = "0.0.7", default-features = false }
 dunce = "1.0"
 anyhow = "1.0"
 git2 = "0.14"
-regex = "1.3.9"
 clap = { version = "3.1", features = ["derive", "wrap_help"], optional = true }
 #cargo = "0.59.0"
 cargo.git = "https://github.com/rust-lang/cargo"

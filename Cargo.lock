@@ -214,7 +214,6 @@ dependencies = [
  "git2",
  "indexmap",
  "pathdiff",
- "regex",
  "semver",
  "snapbox",
  "toml_edit",
