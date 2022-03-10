@@ -144,15 +144,6 @@ Build-dependencies are the only dependencies available for use by build scripts 
         ])
         .next_help_heading("UNSTABLE")
         .args([
-            clap::Arg::new("unstable-features")
-                .short('U')
-                .value_name("FLAG")
-                .global(true)
-                .takes_value(true)
-                .multiple_occurrences(true)
-                .possible_values(UnstableOptions::possible_values())
-                .help("Unstable (nightly-only) flags")
-                .long_help(None),
             clap::Arg::new("git")
                 .long("git")
                 .takes_value(true)
@@ -216,9 +207,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
         }
     };
 
-    let unstable_features: Vec<UnstableOptions> =
-        args.values_of_t("unstable-features").unwrap_or_default();
-    let dependencies = parse_dependencies(config, &unstable_features, args)?;
+    let dependencies = parse_dependencies(config, args)?;
 
     let options = AddOptions {
         config,
@@ -232,42 +221,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     Ok(())
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum UnstableOptions {
-    Git,
-    InlineAdd,
-}
-
-impl UnstableOptions {
-    pub fn possible_values() -> impl Iterator<Item = clap::PossibleValue<'static>> {
-        [
-            clap::PossibleValue::new("git"),
-            clap::PossibleValue::new("inline-add"),
-        ]
-        .into_iter()
-    }
-}
-
-impl std::str::FromStr for UnstableOptions {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "git" => Ok(Self::Git),
-            "inline-add" => Ok(Self::InlineAdd),
-            _ => Err(anyhow::format_err!(
-                "Unknown option `{}`, expected one of `git`, `inline-add`",
-                s
-            )),
-        }
-    }
-}
-
-fn parse_dependencies<'m>(
-    config: &Config,
-    unstable_features: &[UnstableOptions],
-    matches: &'m ArgMatches,
-) -> CargoResult<Vec<DepOp>> {
+fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResult<Vec<DepOp>> {
     let crates = matches
         .values_of("crates")
         .into_iter()
@@ -291,8 +245,8 @@ fn parse_dependencies<'m>(
     if crates.len() > 1 && git.is_some() {
         anyhow::bail!("Cannot specify multiple crates with path or git or vers");
     }
-    if git.is_some() && !unstable_features.contains(&UnstableOptions::Git) {
-        anyhow::bail!("`--git` is unstable and requires `-U git`");
+    if git.is_some() && !config.cli_unstable().unstable_options {
+        anyhow::bail!("`--git` is unstable and requires `-Z unstable-options`");
     }
 
     if crates.len() > 1 && rename.is_some() {
@@ -306,8 +260,8 @@ fn parse_dependencies<'m>(
     let mut deps: Vec<DepOp> = Vec::new();
     for crate_spec in crates {
         if let Some(features) = crate_spec.strip_prefix('+') {
-            if !unstable_features.contains(&UnstableOptions::InlineAdd) {
-                anyhow::bail!("`+<feature>` is unstable and requires `-U inline-add`");
+            if !config.cli_unstable().unstable_options {
+                anyhow::bail!("`+<feature>` is unstable and requires `-Z unstable-options`");
             }
 
             if let Some(prior) = deps.last_mut() {
