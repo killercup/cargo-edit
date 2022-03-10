@@ -31,16 +31,11 @@ pub struct AddOptions<'a> {
     /// Package to add dependencies to
     pub spec: &'a cargo::core::Package,
     /// Dependencies to add or modify
-    pub dependencies: Vec<DepOp<'a>>,
+    pub dependencies: Vec<DepOp>,
     /// Which dependency section to add these to
     pub section: DepTable<'a>,
     /// Act as if dependencies will be added
     pub dry_run: bool,
-
-    /// TODO: Remove this
-    pub quiet: bool,
-    /// TODO: Remove this
-    pub registry: Option<&'a str>,
 }
 
 /// Add dependencies to a manifest
@@ -139,14 +134,14 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
 
 /// Dependency entry operation
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DepOp<'m> {
+pub struct DepOp {
     /// Describes the crate
-    pub crate_spec: &'m str,
+    pub crate_spec: String,
     /// Dependency key, overriding the package name in crate_spec
-    pub rename: Option<&'m str>,
+    pub rename: Option<String>,
 
     /// Feature flags to activate
-    pub features: Option<IndexSet<&'m str>>,
+    pub features: Option<IndexSet<String>>,
     /// Whether the default feature should be activated
     pub default_features: Option<bool>,
 
@@ -154,16 +149,16 @@ pub struct DepOp<'m> {
     pub optional: Option<bool>,
 
     /// Registry for looking up dependency version
-    pub registry: Option<&'m str>,
+    pub registry: Option<String>,
 
     /// Git repo for dependency
-    pub git: Option<&'m str>,
+    pub git: Option<String>,
     /// Specify an alternative git branch
-    pub branch: Option<&'m str>,
+    pub branch: Option<String>,
     /// Specify a specific git rev
-    pub rev: Option<&'m str>,
+    pub rev: Option<String>,
     /// Specify a specific git tag
-    pub tag: Option<&'m str>,
+    pub tag: Option<String>,
 }
 
 /// Dependency table to add dep to
@@ -192,13 +187,13 @@ impl<'m> DepTable<'m> {
 
 fn resolve_dependency(
     manifest: &LocalManifest,
-    arg: &DepOp<'_>,
+    arg: &DepOp,
     ws: &cargo::core::Workspace,
     section: DepTable<'_>,
     config: &Config,
     registry: &mut cargo::core::registry::PackageRegistry,
 ) -> CargoResult<Dependency> {
-    let crate_spec = CrateSpec::resolve(arg.crate_spec)?;
+    let crate_spec = CrateSpec::resolve(&arg.crate_spec)?;
 
     let mut spec_dep = crate_spec.to_dependency()?;
     spec_dep = populate_dependency(spec_dep, arg);
@@ -216,7 +211,7 @@ fn resolve_dependency(
         spec_dep
     };
 
-    if let Some(url) = arg.git {
+    if let Some(url) = &arg.git {
         match &crate_spec {
             CrateSpec::Path(path) => {
                 anyhow::bail!(
@@ -242,13 +237,13 @@ fn resolve_dependency(
             } => {
                 assert!(arg.registry.is_none());
                 let mut src = GitSource::new(url);
-                if let Some(branch) = arg.branch {
+                if let Some(branch) = &arg.branch {
                     src = src.set_branch(branch);
                 }
-                if let Some(tag) = arg.tag {
+                if let Some(tag) = &arg.tag {
                     src = src.set_tag(tag);
                 }
-                if let Some(rev) = arg.rev {
+                if let Some(rev) = &arg.rev {
                     src = src.set_rev(rev);
                 }
                 dependency = dependency.set_source(src);
@@ -387,7 +382,7 @@ fn get_latest_dependency(
     Ok(dep)
 }
 
-fn populate_dependency(mut dependency: Dependency, arg: &DepOp<'_>) -> Dependency {
+fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
     let requested_features: Option<IndexSet<_>> = arg.features.as_ref().map(|v| {
         v.iter()
             .flat_map(|s| parse_feature(s))
@@ -395,7 +390,7 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp<'_>) -> Dependenc
             .collect()
     });
 
-    if let Some(registry) = arg.registry {
+    if let Some(registry) = &arg.registry {
         if registry.is_empty() {
             dependency.registry = None;
         } else {
@@ -420,7 +415,7 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp<'_>) -> Dependenc
         dependency = dependency.extend_features(value);
     }
 
-    if let Some(rename) = arg.rename {
+    if let Some(rename) = &arg.rename {
         dependency = dependency.set_rename(rename);
     }
 
@@ -428,8 +423,12 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp<'_>) -> Dependenc
 }
 
 /// Split feature flag list
-fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
-    feature.split([' ', ',']).filter(|s| !s.is_empty())
+pub fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
+    // Not re-using `CliFeatures` because it uses a BTreeSet and loses user's ordering
+    feature
+        .split_whitespace()
+        .flat_map(|s| s.split(','))
+        .filter(|s| !s.is_empty())
 }
 
 /// Lookup available features

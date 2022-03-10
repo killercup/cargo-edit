@@ -191,10 +191,8 @@ This is the catch all, handling hashes to named references in remote repositorie
 }
 
 pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
-    let quiet = args.is_present("quiet");
     let dry_run = args.is_present("dry-run");
     let section = parse_section(args);
-    let registry = args.registry(config)?;
 
     let ws = args.workspace(config)?;
     let packages = args.packages_from_flags()?;
@@ -210,7 +208,7 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
 
     let unstable_features: Vec<UnstableOptions> =
         args.values_of_t("unstable-features").unwrap_or_default();
-    let dependencies = parse_dependencies(args, &unstable_features)?;
+    let dependencies = parse_dependencies(config, &unstable_features, args)?;
 
     let options = AddOptions {
         config,
@@ -218,8 +216,6 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
         dependencies,
         section,
         dry_run,
-        quiet,
-        registry: registry.as_deref(),
     };
     add(&ws, &options)?;
 
@@ -267,24 +263,28 @@ impl std::str::FromStr for UnstableOptions {
 }
 
 fn parse_dependencies<'m>(
-    matches: &'m ArgMatches,
+    config: &Config,
     unstable_features: &[UnstableOptions],
-) -> CargoResult<Vec<DepOp<'m>>> {
+    matches: &'m ArgMatches,
+) -> CargoResult<Vec<DepOp>> {
     let crates = matches
         .values_of("crates")
         .into_iter()
         .flatten()
+        .map(String::from)
         .collect::<Vec<_>>();
     let git = matches.value_of("git");
     let branch = matches.value_of("branch");
     let rev = matches.value_of("rev");
     let tag = matches.value_of("tag");
     let rename = matches.value_of("rename");
-    let registry = matches.value_of("registry");
+    let registry = matches.registry(config)?;
     let default_features = default_features(matches);
-    let features = matches
-        .values_of("features")
-        .map(|f| f.flat_map(parse_feature).collect::<IndexSet<_>>());
+    let features = matches.values_of("features").map(|f| {
+        f.flat_map(parse_feature)
+            .map(String::from)
+            .collect::<IndexSet<_>>()
+    });
     let optional = optional(matches);
 
     if crates.len() > 1 && git.is_some() {
@@ -314,22 +314,22 @@ fn parse_dependencies<'m>(
                 prior
                     .features
                     .get_or_insert_with(Default::default)
-                    .extend(features);
+                    .extend(features.map(String::from));
             } else {
                 anyhow::bail!("`+<feature>` must be preceded by a pkgid");
             }
         } else {
             let dep = DepOp {
                 crate_spec,
-                rename,
+                rename: rename.map(String::from),
                 features: features.clone(),
                 default_features,
                 optional,
-                registry,
-                git,
-                branch,
-                rev,
-                tag,
+                registry: registry.clone(),
+                git: git.map(String::from),
+                branch: branch.map(String::from),
+                rev: rev.map(String::from),
+                tag: tag.map(String::from),
             };
             deps.push(dep);
         }
