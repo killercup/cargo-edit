@@ -610,32 +610,6 @@ fn git_dev() {
 }
 
 #[cargo_test]
-#[cfg(feature = "test-external-apis")]
-fn git_external() {
-    init_registry();
-    let project_root = project_from_template("tests/snapshots/add/git_external.in");
-    let cwd = &project_root;
-
-    cargo_command()
-        .arg("add")
-        .args([
-            "cargo-edit",
-            "--git",
-            "https://github.com/killercup/cargo-edit.git",
-            "--tag",
-            "v0.8.0",
-            "-Ugit",
-        ])
-        .current_dir(cwd)
-        .assert()
-        .success()
-        .stdout_matches_path("tests/snapshots/add/git_external.stdout")
-        .stderr_matches_path("tests/snapshots/add/git_external.stderr");
-
-    assert().subset_matches("tests/snapshots/add/git_external.out", &project_root);
-}
-
-#[cargo_test]
 fn git_rev() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_rev.in");
@@ -748,20 +722,17 @@ fn invalid_arg() {
 }
 
 #[cargo_test]
-#[cfg(feature = "test-external-apis")]
 fn invalid_git_external() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/invalid_git_external.in");
     let cwd = &project_root;
+    let git_url = url::Url::from_directory_path(cwd.join("does-not-exist"))
+        .unwrap()
+        .to_string();
 
     cargo_command()
         .arg("add")
-        .args([
-            "fake-git",
-            "--git",
-            "https://github.com/killercup/fake-git-repo.git",
-            "-Ugit",
-        ])
+        .args(["fake-git", "--git", &git_url, "-Ugit"])
         .current_dir(cwd)
         .assert()
         .code(101)

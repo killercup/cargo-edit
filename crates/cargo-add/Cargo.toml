@@ -65,6 +65,5 @@ default = [
 add = ["cli"]
 cli = ["color", "clap"]
 color = ["concolor-control/auto"]
-test-external-apis = []
 vendored-openssl = ["git2/vendored-openssl"]
 vendored-libgit2 = ["git2/vendored-libgit2"]
