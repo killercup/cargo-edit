@@ -424,7 +424,11 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
 
 /// Split feature flag list
 pub fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
-    feature.split([' ', ',']).filter(|s| !s.is_empty())
+    // Not re-using `CliFeatures` because it uses a BTreeSet and loses user's ordering
+    feature
+        .split_whitespace()
+        .flat_map(|s| s.split(','))
+        .filter(|s| !s.is_empty())
 }
 
 /// Lookup available features
