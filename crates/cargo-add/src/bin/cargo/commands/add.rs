@@ -191,10 +191,8 @@ This is the catch all, handling hashes to named references in remote repositorie
 }
 
 pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
-    let quiet = args.is_present("quiet");
     let dry_run = args.is_present("dry-run");
     let section = parse_section(args);
-    let registry = args.registry(config)?;
 
     let ws = args.workspace(config)?;
     let packages = args.packages_from_flags()?;
@@ -218,8 +216,6 @@ pub fn exec(config: &Config, args: &ArgMatches) -> CargoResult<()> {
         dependencies,
         section,
         dry_run,
-        quiet,
-        registry: registry.as_deref(),
     };
     add(&ws, &options)?;
 

@@ -36,11 +36,6 @@ pub struct AddOptions<'a> {
     pub section: DepTable<'a>,
     /// Act as if dependencies will be added
     pub dry_run: bool,
-
-    /// TODO: Remove this
-    pub quiet: bool,
-    /// TODO: Remove this
-    pub registry: Option<&'a str>,
 }
 
 /// Add dependencies to a manifest
@@ -428,7 +423,7 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp<'_>) -> Dependenc
 }
 
 /// Split feature flag list
-fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
+pub fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
     feature.split([' ', ',']).filter(|s| !s.is_empty())
 }
 
