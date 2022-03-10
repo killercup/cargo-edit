@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::str;
 
 use anyhow::Context;
+use cargo::util::interning::InternedString;
 use cargo::CargoResult;
 
 use super::dependency::Dependency;
@@ -338,23 +339,51 @@ impl LocalManifest {
 
     /// Remove references to `dep_key` if its no longer present
     pub fn gc_dep(&mut self, dep_key: &str) {
-        let status = self.dep_feature(dep_key);
-        if matches!(status, FeatureStatus::None | FeatureStatus::DepFeature) {
-            if let toml_edit::Item::Table(feature_table) = &mut self.data.as_table_mut()["features"]
-            {
-                for (_feature, mut activated_crates) in feature_table.iter_mut() {
-                    if let toml_edit::Item::Value(toml_edit::Value::Array(feature_activations)) =
-                        &mut activated_crates
-                    {
-                        remove_feature_activation(feature_activations, dep_key, status);
-                    }
+        let explicit_dep_activation = self.is_explicit_dep_activation(dep_key);
+        let status = self.dep_status(dep_key);
+
+        if let Some(toml_edit::Item::Table(feature_table)) =
+            self.data.as_table_mut().get_mut("features")
+        {
+            for (_feature, mut feature_values) in feature_table.iter_mut() {
+                if let toml_edit::Item::Value(toml_edit::Value::Array(feature_values)) =
+                    &mut feature_values
+                {
+                    remove_feature_activation(
+                        feature_values,
+                        dep_key,
+                        status,
+                        explicit_dep_activation,
+                    );
                 }
             }
         }
     }
 
-    fn dep_feature(&self, dep_key: &str) -> FeatureStatus {
-        let mut status = FeatureStatus::None;
+    fn is_explicit_dep_activation(&self, dep_key: &str) -> bool {
+        if let Some(toml_edit::Item::Table(feature_table)) = self.data.as_table().get("features") {
+            for values in feature_table
+                .iter()
+                .map(|(_, a)| a)
+                .filter_map(|i| i.as_value())
+                .filter_map(|v| v.as_array())
+            {
+                for value in values.iter().filter_map(|v| v.as_str()) {
+                    let value = cargo::core::FeatureValue::new(InternedString::new(value));
+                    if let cargo::core::FeatureValue::Dep { dep_name } = &value {
+                        if dep_name.as_str() == dep_key {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
+    fn dep_status(&self, dep_key: &str) -> DependencyStatus {
+        let mut status = DependencyStatus::None;
         for (_, tbl) in self.get_sections() {
             if let toml_edit::Item::Table(tbl) = tbl {
                 if let Some(dep_item) = tbl.get(dep_key) {
@@ -363,9 +392,9 @@ impl LocalManifest {
                     let optional = optional.and_then(|i| i.as_bool());
                     let optional = optional.unwrap_or(false);
                     if optional {
-                        return FeatureStatus::Feature;
+                        return DependencyStatus::Optional;
                     } else {
-                        status = FeatureStatus::DepFeature;
+                        status = DependencyStatus::Required;
                     }
                 }
             }
@@ -375,40 +404,55 @@ impl LocalManifest {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum FeatureStatus {
+enum DependencyStatus {
     None,
-    DepFeature,
-    Feature,
+    Optional,
+    Required,
 }
 
 fn remove_feature_activation(
-    feature_activations: &mut toml_edit::Array,
-    dep: &str,
-    status: FeatureStatus,
+    feature_values: &mut toml_edit::Array,
+    dep_key: &str,
+    status: DependencyStatus,
+    explicit_dep_activation: bool,
 ) {
-    let dep_feature: &str = &format!("{}/", dep);
-
-    let remove_list: Vec<usize> = feature_activations
+    let remove_list: Vec<usize> = feature_values
         .iter()
         .enumerate()
-        .filter_map(|(idx, feature_activation)| {
-            if let toml_edit::Value::String(feature_activation) = feature_activation {
-                let activation = feature_activation.value();
-                match status {
-                    FeatureStatus::None => activation == dep || activation.starts_with(dep_feature),
-                    FeatureStatus::DepFeature => activation == dep,
-                    FeatureStatus::Feature => false,
+        .filter_map(|(idx, value)| value.as_str().map(|s| (idx, s)))
+        .filter_map(|(idx, value)| {
+            let value = cargo::core::FeatureValue::new(InternedString::new(value));
+            match status {
+                DependencyStatus::None => {
+                    let dep_name = match (value, explicit_dep_activation) {
+                        (cargo::core::FeatureValue::Feature(dep_name), false)
+                        | (cargo::core::FeatureValue::Dep { dep_name }, _)
+                        | (cargo::core::FeatureValue::DepFeature { dep_name, .. }, _) => {
+                            Some(dep_name.as_str())
+                        }
+                        _ => None,
+                    };
+                    dep_name == Some(dep_key)
                 }
-                .then(|| idx)
-            } else {
-                None
+                DependencyStatus::Optional => false,
+                DependencyStatus::Required => {
+                    let dep_name = match (value, explicit_dep_activation) {
+                        (cargo::core::FeatureValue::Feature(dep_name), false)
+                        | (cargo::core::FeatureValue::Dep { dep_name }, _) => {
+                            Some(dep_name.as_str())
+                        }
+                        (cargo::core::FeatureValue::DepFeature { .. }, _) | _ => None,
+                    };
+                    dep_name == Some(dep_key)
+                }
             }
+            .then(|| idx)
         })
         .collect();
 
     // Remove found idx in revers order so we don't invalidate the idx.
     for idx in remove_list.iter().rev() {
-        feature_activations.remove(*idx);
+        feature_values.remove(*idx);
     }
 }
 
