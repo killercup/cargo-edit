@@ -303,7 +303,7 @@ fn dev_build_conflict() {
         .args(["my-package", "--dev", "--build"])
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/dev_build_conflict.stdout")
         .stderr_matches_path("tests/snapshots/add/dev_build_conflict.stderr");
 
@@ -572,7 +572,7 @@ fn git_conflicts_registry() {
         ])
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/git_conflicts_registry.stdout")
         .stderr_matches_path("tests/snapshots/add/git_conflicts_registry.stderr");
 
@@ -740,7 +740,7 @@ fn invalid_arg() {
         .args(["my-package", "--flag"])
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/invalid_arg.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_arg.stderr");
 
@@ -884,7 +884,7 @@ fn invalid_target_empty() {
         .args(["my-package", "--target", ""])
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/invalid_target_empty.stdout")
         .stderr_matches_path("tests/snapshots/add/invalid_target_empty.stderr");
 
@@ -1100,7 +1100,7 @@ fn no_args() {
         .arg("add")
         .current_dir(cwd)
         .assert()
-        .code(2)
+        .code(1)
         .stdout_matches_path("tests/snapshots/add/no_args.stdout")
         .stderr_matches_path("tests/snapshots/add/no_args.stderr");
 

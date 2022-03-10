@@ -4,7 +4,12 @@ use clap::ArgMatches;
 use clap::Command;
 
 pub fn main(config: &mut cargo::util::Config) -> CliResult {
-    let args = cli().get_matches();
+    let args = match cli().try_get_matches() {
+        Ok(args) => args,
+        Err(e) => {
+            return Err(e.into());
+        }
+    };
     let (cmd, subcommand_args) = args.subcommand().expect("subcommand_required(true)");
     execute_subcommand(config, cmd, subcommand_args)
 }
