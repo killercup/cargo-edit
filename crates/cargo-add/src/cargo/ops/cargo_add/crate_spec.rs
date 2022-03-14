@@ -40,20 +40,7 @@ impl CrateSpec {
                 .map(|(n, v)| (n, Some(v)))
                 .unwrap_or((pkg_id, None));
 
-            let invalid: Vec<_> = name
-                .chars()
-                .filter(|c| !is_name_char(*c))
-                .map(|c| c.to_string())
-                .collect();
-            if !invalid.is_empty() {
-                anyhow::bail!(
-                    "name `{name}` contains invalid characters: {}",
-                    invalid.join(", ")
-                );
-            }
-            if name.is_empty() {
-                anyhow::bail!("pkg id has empty name: `{pkg_id}`");
-            }
+            cargo::util::validate_package_name(name, "dependency name", "")?;
 
             if let Some(version) = version {
                 semver::VersionReq::parse(version)
@@ -101,10 +88,6 @@ impl std::str::FromStr for CrateSpec {
     fn from_str(s: &str) -> CargoResult<Self> {
         Self::resolve(s)
     }
-}
-
-fn is_name_char(c: char) -> bool {
-    c.is_alphanumeric() || ['-', '_'].contains(&c)
 }
 
 fn is_path_like(s: &str) -> bool {
