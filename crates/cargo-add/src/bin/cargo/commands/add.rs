@@ -46,12 +46,10 @@ Additionally, you can specify features for a dependency by following it with a `
             ),
             clap::Arg::new("no-default-features")
                 .long("no-default-features")
-                .help("Disable the default features")
-                .long_help(None),
+                .help("Disable the default features"),
             clap::Arg::new("default-features")
                 .long("default-features")
                 .help("Re-enable the default features")
-                .long_help(None)
                 .overrides_with("no-default-features"),
             clap::Arg::new("features")
                 .short('F')
@@ -94,7 +92,6 @@ Example uses:
                 .takes_value(true)
                 .value_name("NAME")
                 .help("Package registry for this dependency")
-                .long_help(None)
                 .conflicts_with("git"),
         ])
         .arg_manifest_path()
@@ -104,12 +101,10 @@ Example uses:
                 .long("package")
                 .takes_value(true)
                 .value_name("SPEC")
-                .help("Package to modify")
-                .long_help(None),
+                .help("Package to modify"),
             clap::Arg::new("offline")
                 .long("offline")
                 .help("Run without accessing the network")
-                .long_help(None),
         ])
         .arg_quiet()
         .arg_dry_run("Don't actually write the manifest")
@@ -139,7 +134,6 @@ Build-dependencies are the only dependencies available for use by build scripts 
                 .value_name("TARGET")
                 .forbid_empty_values(true)
                 .help("Add as dependency to the given target platform")
-                .long_help(None)
                 .group("section"),
         ])
         .next_help_heading("UNSTABLE")
@@ -157,7 +151,6 @@ Without any other information, cargo will use latest commit on the main branch."
                 .takes_value(true)
                 .value_name("BRANCH")
                 .help("Git branch to download the crate from")
-                .long_help(None)
                 .requires("git")
                 .group("git-ref"),
             clap::Arg::new("tag")
@@ -165,7 +158,6 @@ Without any other information, cargo will use latest commit on the main branch."
                 .takes_value(true)
                 .value_name("TAG")
                 .help("Git tag to download the crate from")
-                .long_help(None)
                 .requires("git")
                 .group("git-ref"),
             clap::Arg::new("rev")
