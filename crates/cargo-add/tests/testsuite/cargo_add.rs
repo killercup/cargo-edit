@@ -1828,7 +1828,7 @@ fn workspace_name() {
 }
 
 #[cargo_test]
-fn deprecated_default_feature() {
+fn deprecated_default_features() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/deprecated_default_features.in");
     let cwd = &project_root;
@@ -1846,4 +1846,22 @@ fn deprecated_default_feature() {
         "tests/snapshots/add/deprecated_default_features.out",
         &project_root,
     );
+}
+
+#[cargo_test]
+fn deprecated_section() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/deprecated_section.in");
+    let cwd = &project_root;
+
+    cargo_command()
+        .arg("add")
+        .args(["my-package"])
+        .current_dir(&cwd)
+        .assert()
+        .failure()
+        .stdout_matches_path("tests/snapshots/add/deprecated_section.stdout")
+        .stderr_matches_path("tests/snapshots/add/deprecated_section.stderr");
+
+    assert().subset_matches("tests/snapshots/add/deprecated_section.out", &project_root);
 }

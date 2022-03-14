@@ -135,6 +135,34 @@ impl Manifest {
         sections
     }
 
+    pub fn get_legacy_sections(&self) -> Vec<String> {
+        let mut result = Vec::new();
+
+        for dependency_type in ["dev_dependencies", "build_dependencies"] {
+            if self.data.contains_key(dependency_type) {
+                result.push(dependency_type.to_owned());
+            }
+
+            // ... and in `target.<target>.(build-/dev-)dependencies`.
+            result.extend(
+                self.data
+                    .as_table()
+                    .get("target")
+                    .and_then(toml_edit::Item::as_table_like)
+                    .into_iter()
+                    .flat_map(toml_edit::TableLike::iter)
+                    .filter_map(|(target_name, target_table)| {
+                        if target_table.as_table_like()?.contains_key(dependency_type) {
+                            Some(format!("target.{target_name}.{dependency_type}"))
+                        } else {
+                            None
+                        }
+                    }),
+            );
+        }
+        result
+    }
+
     /// returns features exposed by this manifest
     pub fn features(&self) -> CargoResult<BTreeMap<String, Vec<String>>> {
         let mut features: BTreeMap<String, Vec<String>> = match self.data.as_table().get("features")

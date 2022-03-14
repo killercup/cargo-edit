@@ -49,6 +49,13 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
 
     let manifest_path = options.spec.manifest_path().to_path_buf();
     let mut manifest = LocalManifest::try_new(&manifest_path)?;
+    let legacy = manifest.get_legacy_sections();
+    if !legacy.is_empty() {
+        anyhow::bail!(
+            "Deprecated dependency sections are unsupported: {}",
+            legacy.join(", ")
+        );
+    }
 
     let mut registry = cargo::core::registry::PackageRegistry::new(options.config)?;
 
