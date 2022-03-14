@@ -96,7 +96,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
                 options
                     .config
                     .shell()
-                    .warn(format!("Unrecognized features: {unknown_features:?}"))?;
+                    .warn(format!("unrecognized features: {unknown_features:?}"))?;
             };
         }
 
@@ -104,7 +104,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
         if let Some(Source::Path(src)) = dep.source() {
             if src.path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
                 anyhow::bail!(
-                    "Cannot add `{}` as a dependency to itself",
+                    "cannot add `{}` as a dependency to itself",
                     manifest.package_name()?
                 )
             }
@@ -215,7 +215,7 @@ fn resolve_dependency(
         match &crate_spec {
             CrateSpec::Path(path) => {
                 anyhow::bail!(
-                    "Cannot specify a git URL (`{url}`) with a path (`{}`).",
+                    "cannot specify a git URL (`{url}`) with a path (`{}`).",
                     path.display()
                 )
             }
@@ -224,7 +224,7 @@ fn resolve_dependency(
                 version_req: Some(v),
             } => {
                 // crate specifier includes a version (e.g. `docopt@0.8`)
-                anyhow::bail!("Cannot specify a git URL (`{url}`) with a version (`{v}`).",)
+                anyhow::bail!("cannot specify a git URL (`{url}`) with a version (`{v}`).",)
             }
             CrateSpec::PkgId {
                 name: _,
@@ -263,7 +263,7 @@ fn resolve_dependency(
 
             if dependency.name != latest.name {
                 config.shell().warn(format!(
-                    "Translating `{}` to `{}`",
+                    "translating `{}` to `{}`",
                     dependency.name, latest.name,
                 ))?;
                 dependency.name = latest.name; // Normalize the name
@@ -372,7 +372,7 @@ fn get_latest_dependency(
             (stable, s.version())
         })
         .ok_or_else(|| {
-            anyhow::format_err!("The crate `{dependency}` could not be found in registry index.")
+            anyhow::format_err!("the crate `{dependency}` could not be found in registry index.")
         })?;
     let mut dep = Dependency::from(latest);
     if let Some(reg_name) = dependency.registry.as_deref() {
@@ -456,7 +456,7 @@ fn populate_available_features(
             (is_pre, s.version())
         })
         .ok_or_else(|| {
-            anyhow::format_err!("The crate `{dependency}` could not be found in registry index.")
+            anyhow::format_err!("the crate `{dependency}` could not be found in registry index.")
         })?;
     dependency = dependency.set_available_features_from_cargo(lowest_common_denominator.features());
 

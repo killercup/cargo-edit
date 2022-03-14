@@ -241,13 +241,13 @@ impl LocalManifest {
         {
             if self.manifest.data.contains_key("workspace") {
                 anyhow::bail!(
-                    "Found virtual manifest at {}, but this command requires running against an \
+                    "found virtual manifest at {}, but this command requires running against an \
                          actual package in this workspace.",
                     self.path.display()
                 );
             } else {
                 anyhow::bail!(
-                    "Missing expected `package` or `project` fields in {}",
+                    "missing expected `package` or `project` fields in {}",
                     self.path.display()
                 );
             }
@@ -300,7 +300,7 @@ impl LocalManifest {
                     Some(dep) => (table_path, Ok(dep)),
                     None => {
                         let message = anyhow::format_err!(
-                            "Invalid dependency {}.{dep_key}",
+                            "invalid dependency {}.{dep_key}",
                             table_path.join("."),
                         );
                         (table_path, Err(message))
@@ -460,13 +460,13 @@ pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
 }
 
 fn parse_manifest_err() -> anyhow::Error {
-    anyhow::format_err!("Unable to parse external Cargo.toml")
+    anyhow::format_err!("unable to parse external Cargo.toml")
 }
 
 fn non_existent_table_err(table: impl std::fmt::Display) -> anyhow::Error {
-    anyhow::format_err!("The table `{table}` could not be found.")
+    anyhow::format_err!("the table `{table}` could not be found.")
 }
 
 fn invalid_cargo_config() -> anyhow::Error {
-    anyhow::format_err!("Invalid cargo config")
+    anyhow::format_err!("invalid cargo config")
 }

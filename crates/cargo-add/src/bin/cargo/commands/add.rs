@@ -191,7 +191,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     let spec = match packages.len() {
         0 => {
             return Err(CliError::new(
-                anyhow::format_err!("No packages selected.  Please specify one with `-p <PKGID>`"),
+                anyhow::format_err!("no packages selected.  Please specify one with `-p <PKGID>`"),
                 101,
             ));
         }
@@ -242,18 +242,18 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
     let optional = optional(matches);
 
     if crates.len() > 1 && git.is_some() {
-        anyhow::bail!("Cannot specify multiple crates with path or git or vers");
+        anyhow::bail!("cannot specify multiple crates with path or git or vers");
     }
     if git.is_some() && !config.cli_unstable().unstable_options {
         anyhow::bail!("`--git` is unstable and requires `-Z unstable-options`");
     }
 
     if crates.len() > 1 && rename.is_some() {
-        anyhow::bail!("Cannot specify multiple crates with rename");
+        anyhow::bail!("cannot specify multiple crates with rename");
     }
 
     if crates.len() > 1 && features.is_some() {
-        anyhow::bail!("Cannot specify multiple crates with features");
+        anyhow::bail!("cannot specify multiple crates with features");
     }
 
     let mut deps: Vec<DepOp> = Vec::new();

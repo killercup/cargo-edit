@@ -47,7 +47,7 @@ impl CrateSpec {
                 .collect();
             if !invalid.is_empty() {
                 anyhow::bail!(
-                    "Name `{name}` contains invalid characters: {}",
+                    "name `{name}` contains invalid characters: {}",
                     invalid.join(", ")
                 );
             }
@@ -57,7 +57,7 @@ impl CrateSpec {
 
             if let Some(version) = version {
                 semver::VersionReq::parse(version)
-                    .with_context(|| format!("Invalid version requirement `{version}`"))?;
+                    .with_context(|| format!("invalid version requirement `{version}`"))?;
             }
 
             Self::PkgId {
