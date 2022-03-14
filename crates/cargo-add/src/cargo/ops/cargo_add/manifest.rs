@@ -265,16 +265,6 @@ impl LocalManifest {
         &'s self,
         dep_key: &'s str,
     ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's {
-        self.filter_dependencies(move |key| key == dep_key)
-    }
-
-    fn filter_dependencies<'s, P>(
-        &'s self,
-        mut predicate: P,
-    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's
-    where
-        P: FnMut(&str) -> bool + 's,
-    {
         let crate_root = self.path.parent().expect("manifest path is absolute");
         self.get_sections()
             .into_iter()
@@ -284,7 +274,7 @@ impl LocalManifest {
                     table
                         .into_iter()
                         .filter_map(|(key, item)| {
-                            if predicate(&key) {
+                            if key.as_str() == dep_key {
                                 Some((table_path.clone(), key, item))
                             } else {
                                 None
