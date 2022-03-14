@@ -37,7 +37,7 @@ EXAMPLES:
                 .long_help(
                 "Reference to a package to add as a dependency
 
-You can reference a packages by:
+You can reference a package by:
 - `<name>`, like `cargo add serde` (latest version will be used)
 - `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`
 - `<path>`, like `cargo add ./crates/parser/`
