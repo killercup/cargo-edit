@@ -1,5 +1,3 @@
-#![allow(clippy::bool_assert_comparison)]
-
 use cargo::util::command_prelude::*;
 use cargo::CargoResult;
 use cargo_add::ops::add;

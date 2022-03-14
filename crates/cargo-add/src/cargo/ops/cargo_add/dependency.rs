@@ -390,7 +390,6 @@ impl Dependency {
 
     /// Modify existing entry to match this dependency
     pub fn update_toml(&self, crate_root: &Path, item: &mut toml_edit::Item) {
-        #[allow(clippy::if_same_then_else)]
         if str_or_1_len_table(item) {
             // Nothing to preserve
             *item = self.to_toml(crate_root);
