@@ -367,6 +367,8 @@ fn get_latest_dependency(
     let latest = possibilities
         .iter()
         .max_by_key(|s| {
+            // Fallback to a pre-release if no official release is available by sorting them as
+            // less.
             let stable = s.version().pre.is_empty();
             (stable, s.version())
         })
@@ -435,6 +437,8 @@ fn populate_available_features(
     let lowest_common_denominator = possibilities
         .iter()
         .min_by_key(|s| {
+            // Fallback to a pre-release if no official release is available by sorting them as
+            // more.
             let is_pre = !s.version().pre.is_empty();
             (is_pre, s.version())
         })
