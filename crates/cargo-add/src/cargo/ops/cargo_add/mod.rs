@@ -381,13 +381,6 @@ fn get_latest_dependency(
 }
 
 fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
-    let requested_features: Option<IndexSet<_>> = arg.features.as_ref().map(|v| {
-        v.iter()
-            .flat_map(|s| parse_feature(s))
-            .map(|f| f.to_owned())
-            .collect()
-    });
-
     if let Some(registry) = &arg.registry {
         if registry.is_empty() {
             dependency.registry = None;
@@ -409,8 +402,8 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
             dependency.default_features = Some(false);
         }
     }
-    if let Some(value) = requested_features {
-        dependency = dependency.extend_features(value);
+    if let Some(value) = arg.features.as_ref() {
+        dependency = dependency.extend_features(value.iter().cloned());
     }
 
     if let Some(rename) = &arg.rename {
