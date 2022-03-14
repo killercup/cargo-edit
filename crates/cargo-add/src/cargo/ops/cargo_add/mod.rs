@@ -47,8 +47,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
         .map(String::from)
         .collect::<Vec<_>>();
 
-    let manifest_path = options.spec.manifest_path();
-    let manifest_path = manifest_path.to_path_buf();
+    let manifest_path = options.spec.manifest_path().to_path_buf();
     let mut manifest = LocalManifest::try_new(&manifest_path)?;
 
     let mut registry = cargo::core::registry::PackageRegistry::new(options.config)?;
