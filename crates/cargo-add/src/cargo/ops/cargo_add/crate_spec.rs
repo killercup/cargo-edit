@@ -1,6 +1,6 @@
 //! Crate name parsing.
 
-use anyhow::Context;
+use anyhow::Context as _;
 use cargo::CargoResult;
 
 use super::get_manifest_from_path;

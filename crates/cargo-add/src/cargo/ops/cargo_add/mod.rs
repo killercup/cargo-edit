@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::path::Path;
 
-use anyhow::Context;
+use anyhow::Context as _;
 use cargo::core::Registry;
 use cargo::CargoResult;
 use cargo::Config;

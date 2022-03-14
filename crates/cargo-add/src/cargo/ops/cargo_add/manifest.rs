@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str;
 
-use anyhow::Context;
+use anyhow::Context as _;
 use cargo::util::interning::InternedString;
 use cargo::CargoResult;
 
