@@ -300,9 +300,8 @@ impl LocalManifest {
                     Some(dep) => (table_path, Ok(dep)),
                     None => {
                         let message = anyhow::format_err!(
-                            "Invalid dependency {}.{}",
+                            "Invalid dependency {}.{dep_key}",
                             table_path.join("."),
-                            dep_key
                         );
                         (table_path, Err(message))
                     }
@@ -465,7 +464,7 @@ fn parse_manifest_err() -> anyhow::Error {
 }
 
 fn non_existent_table_err(table: impl std::fmt::Display) -> anyhow::Error {
-    anyhow::format_err!("The table `{}` could not be found.", table)
+    anyhow::format_err!("The table `{table}` could not be found.")
 }
 
 fn invalid_cargo_config() -> anyhow::Error {

@@ -47,18 +47,17 @@ impl CrateSpec {
                 .collect();
             if !invalid.is_empty() {
                 anyhow::bail!(
-                    "Name `{}` contains invalid characters: {}",
-                    name,
+                    "Name `{name}` contains invalid characters: {}",
                     invalid.join(", ")
                 );
             }
             if name.is_empty() {
-                anyhow::bail!("pkg id has empty name: `{}`", pkg_id);
+                anyhow::bail!("pkg id has empty name: `{pkg_id}`");
             }
 
             if let Some(version) = version {
                 semver::VersionReq::parse(version)
-                    .with_context(|| format!("Invalid version requirement `{}`", version))?;
+                    .with_context(|| format!("Invalid version requirement `{version}`"))?;
             }
 
             Self::PkgId {

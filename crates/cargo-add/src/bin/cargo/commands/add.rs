@@ -199,8 +199,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
         len => {
             return Err(CliError::new(
                 anyhow::format_err!(
-                    "{} packages selected.  Please specify one with `-p <PKGID>`",
-                    len
+                    "{len} packages selected.  Please specify one with `-p <PKGID>`",
                 ),
                 101,
             ));

@@ -96,7 +96,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
                 options
                     .config
                     .shell()
-                    .warn(format!("Unrecognized features: {:?}", unknown_features))?;
+                    .warn(format!("Unrecognized features: {unknown_features:?}"))?;
             };
         }
 
@@ -215,8 +215,7 @@ fn resolve_dependency(
         match &crate_spec {
             CrateSpec::Path(path) => {
                 anyhow::bail!(
-                    "Cannot specify a git URL (`{}`) with a path (`{}`).",
-                    url,
+                    "Cannot specify a git URL (`{url}`) with a path (`{}`).",
                     path.display()
                 )
             }
@@ -225,11 +224,7 @@ fn resolve_dependency(
                 version_req: Some(v),
             } => {
                 // crate specifier includes a version (e.g. `docopt@0.8`)
-                anyhow::bail!(
-                    "Cannot specify a git URL (`{}`) with a version (`{}`).",
-                    url,
-                    v
-                )
+                anyhow::bail!("Cannot specify a git URL (`{url}`) with a version (`{v}`).",)
             }
             CrateSpec::PkgId {
                 name: _,
@@ -259,7 +254,7 @@ fn resolve_dependency(
             // dev-dependencies do not need the version populated
             if section != DepTable::Development {
                 let op = "";
-                let v = format!("{op}{version}", op = op, version = package.version());
+                let v = format!("{op}{version}", version = package.version());
                 src = src.set_version(v);
             }
             dependency = dependency.set_source(src);
@@ -377,10 +372,7 @@ fn get_latest_dependency(
             (stable, s.version())
         })
         .ok_or_else(|| {
-            anyhow::format_err!(
-                "The crate `{}` could not be found in registry index.",
-                dependency
-            )
+            anyhow::format_err!("The crate `{dependency}` could not be found in registry index.")
         })?;
     let mut dep = Dependency::from(latest);
     if let Some(reg_name) = dependency.registry.as_deref() {
@@ -464,10 +456,7 @@ fn populate_available_features(
             (is_pre, s.version())
         })
         .ok_or_else(|| {
-            anyhow::format_err!(
-                "The crate `{}` could not be found in registry index.",
-                dependency
-            )
+            anyhow::format_err!("The crate `{dependency}` could not be found in registry index.")
         })?;
     dependency = dependency.set_available_features_from_cargo(lowest_common_denominator.features());
 
@@ -508,7 +497,7 @@ fn print_msg(
     } else {
         format!("{} for target `{}`", &section[2], &section[1])
     };
-    write!(message, " {}", section)?;
+    write!(message, " {section}")?;
     write!(message, ".")?;
 
     let mut activated: IndexSet<_> = dep.features.iter().flatten().map(|s| s.as_str()).collect();
