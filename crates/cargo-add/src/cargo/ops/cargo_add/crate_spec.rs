@@ -82,14 +82,6 @@ impl CrateSpec {
     }
 }
 
-impl std::str::FromStr for CrateSpec {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> CargoResult<Self> {
-        Self::resolve(s)
-    }
-}
-
 fn is_path_like(s: &str) -> bool {
     s.contains('/') || s.contains('\\')
 }
