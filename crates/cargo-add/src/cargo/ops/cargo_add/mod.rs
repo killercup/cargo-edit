@@ -197,7 +197,7 @@ fn resolve_dependency(
     let mut spec_dep = crate_spec.to_dependency()?;
     spec_dep = populate_dependency(spec_dep, arg);
 
-    let old_dep = get_existing_dependency(manifest, spec_dep.toml_key(), section);
+    let old_dep = get_existing_dependency(manifest, spec_dep.toml_key(), section)?;
 
     let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
         if spec_dep.source().is_some() {
@@ -297,9 +297,10 @@ fn get_existing_dependency(
     manifest: &LocalManifest,
     dep_key: &str,
     section: DepTable<'_>,
-) -> Option<Dependency> {
+) -> CargoResult<Option<Dependency>> {
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
     enum Key {
+        Error,
         Dev,
         Build,
         Target,
@@ -310,10 +311,11 @@ fn get_existing_dependency(
     let target_section = section.to_table();
     let mut possible: Vec<_> = manifest
         .get_dependency_versions(dep_key)
-        .filter_map(|(path, dep)| dep.ok().map(|dep| (path, dep)))
         .map(|(path, dep)| {
             let key = if path == target_section {
                 Key::Existing
+            } else if dep.is_err() {
+                Key::Error
             } else {
                 match path[0].as_str() {
                     "dependencies" => Key::Runtime,
@@ -327,7 +329,12 @@ fn get_existing_dependency(
         })
         .collect();
     possible.sort_by_key(|(key, _)| *key);
-    let (key, mut dep) = possible.pop()?;
+    let (key, dep) = if let Some(item) = possible.pop() {
+        item
+    } else {
+        return Ok(None);
+    };
+    let mut dep = dep?;
 
     if key != Key::Existing {
         // When the dep comes from a different section, we only care about the source and not any
@@ -346,7 +353,7 @@ fn get_existing_dependency(
         }
     }
 
-    Some(dep)
+    Ok(Some(dep))
 }
 
 fn get_latest_dependency(
