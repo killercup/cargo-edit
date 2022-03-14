@@ -434,6 +434,8 @@ fn populate_available_features(
             std::task::Poll::Pending => registry.block_until_ready()?,
         }
     };
+    // Ensure widest feature flag compatibility by picking the earliest version that could show up
+    // in the lock file for a given version requirement.
     let lowest_common_denominator = possibilities
         .iter()
         .min_by_key(|s| {
