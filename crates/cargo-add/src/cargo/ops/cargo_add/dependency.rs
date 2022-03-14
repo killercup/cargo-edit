@@ -287,6 +287,9 @@ impl Dependency {
             };
 
             let default_features = table.get("default-features").and_then(|v| v.as_bool());
+            if table.contains_key("default_features") {
+                anyhow::bail!("Use of `default_features` in `{key}` is unsupported");
+            }
 
             let features = if let Some(value) = table.get("features") {
                 Some(
