@@ -286,16 +286,7 @@ impl LocalManifest {
             .flatten()
             .map(move |(table_path, dep_key, dep_item)| {
                 let dep = Dependency::from_toml(crate_root, &dep_key, &dep_item);
-                match dep {
-                    Some(dep) => (table_path, Ok(dep)),
-                    None => {
-                        let message = anyhow::format_err!(
-                            "invalid dependency {}.{dep_key}",
-                            table_path.join("."),
-                        );
-                        (table_path, Err(message))
-                    }
-                }
+                (table_path, dep)
             })
     }
 

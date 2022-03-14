@@ -216,44 +216,72 @@ impl Dependency {
 
 impl Dependency {
     /// Create a dependency from a TOML table entry
-    pub fn from_toml(crate_root: &Path, key: &str, item: &toml_edit::Item) -> Option<Self> {
+    pub fn from_toml(crate_root: &Path, key: &str, item: &toml_edit::Item) -> CargoResult<Self> {
         if let Some(version) = item.as_str() {
             let dep = Self::new(key).set_source(RegistrySource::new(version));
-            Some(dep)
+            Ok(dep)
         } else if let Some(table) = item.as_table_like() {
             let (name, rename) = if let Some(value) = table.get("package") {
-                (value.as_str()?.to_owned(), Some(key.to_owned()))
+                (
+                    value
+                        .as_str()
+                        .ok_or_else(|| invalid_type(key, "package", value.type_name(), "string"))?
+                        .to_owned(),
+                    Some(key.to_owned()),
+                )
             } else {
                 (key.to_owned(), None)
             };
 
-            let source: Source = if let Some(git) = table.get("git") {
-                let mut src = GitSource::new(git.as_str()?);
-                if let Some(value) = table.get("branch") {
-                    src = src.set_branch(value.as_str()?);
-                }
-                if let Some(value) = table.get("tag") {
-                    src = src.set_tag(value.as_str()?);
-                }
-                if let Some(value) = table.get("rev") {
-                    src = src.set_rev(value.as_str()?);
-                }
-                src.into()
-            } else if let Some(path) = table.get("path") {
-                let path = crate_root.join(path.as_str()?);
-                let mut src = PathSource::new(path);
-                if let Some(value) = table.get("version") {
-                    src = src.set_version(value.as_str()?);
-                }
-                src.into()
-            } else if let Some(version) = table.get("version") {
-                let src = RegistrySource::new(version.as_str()?);
-                src.into()
-            } else {
-                return None;
-            };
+            let source: Source =
+                if let Some(git) = table.get("git") {
+                    let mut src = GitSource::new(
+                        git.as_str()
+                            .ok_or_else(|| invalid_type(key, "git", git.type_name(), "string"))?,
+                    );
+                    if let Some(value) = table.get("branch") {
+                        src = src.set_branch(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "branch", value.type_name(), "string")
+                        })?);
+                    }
+                    if let Some(value) = table.get("tag") {
+                        src = src.set_tag(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "tag", value.type_name(), "string")
+                        })?);
+                    }
+                    if let Some(value) = table.get("rev") {
+                        src = src.set_rev(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "rev", value.type_name(), "string")
+                        })?);
+                    }
+                    src.into()
+                } else if let Some(path) = table.get("path") {
+                    let path = crate_root
+                        .join(path.as_str().ok_or_else(|| {
+                            invalid_type(key, "path", path.type_name(), "string")
+                        })?);
+                    let mut src = PathSource::new(path);
+                    if let Some(value) = table.get("version") {
+                        src = src.set_version(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "version", value.type_name(), "string")
+                        })?);
+                    }
+                    src.into()
+                } else if let Some(version) = table.get("version") {
+                    let src = RegistrySource::new(version.as_str().ok_or_else(|| {
+                        invalid_type(key, "version", version.type_name(), "string")
+                    })?);
+                    src.into()
+                } else {
+                    anyhow::bail!("Unrecognized dependency source for `{key}`");
+                };
             let registry = if let Some(value) = table.get("registry") {
-                Some(value.as_str()?.to_owned())
+                Some(
+                    value
+                        .as_str()
+                        .ok_or_else(|| invalid_type(key, "registry", value.type_name(), "string"))?
+                        .to_owned(),
+                )
             } else {
                 None
             };
@@ -263,10 +291,15 @@ impl Dependency {
             let features = if let Some(value) = table.get("features") {
                 Some(
                     value
-                        .as_array()?
+                        .as_array()
+                        .ok_or_else(|| invalid_type(key, "features", value.type_name(), "array"))?
                         .iter()
-                        .map(|v| v.as_str().map(|s| s.to_owned()))
-                        .collect::<Option<IndexSet<String>>>()?,
+                        .map(|v| {
+                            v.as_str().map(|s| s.to_owned()).ok_or_else(|| {
+                                invalid_type(key, "features", v.type_name(), "string")
+                            })
+                        })
+                        .collect::<CargoResult<IndexSet<String>>>()?,
                 )
             } else {
                 None
@@ -286,9 +319,9 @@ impl Dependency {
                 available_features,
                 optional,
             };
-            Some(dep)
+            Ok(dep)
         } else {
-            None
+            anyhow::bail!("Unrecognized` dependency entry format for `{key}");
         }
     }
 
@@ -491,6 +524,10 @@ impl Dependency {
             unreachable!("Invalid dependency type: {}", item.type_name());
         }
     }
+}
+
+fn invalid_type(dep: &str, key: &str, actual: &str, expected: &str) -> anyhow::Error {
+    anyhow::format_err!("Found {actual} for {key} when {expected} was expected for {dep}")
 }
 
 impl std::fmt::Display for Dependency {
