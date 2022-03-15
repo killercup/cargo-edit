@@ -23,6 +23,8 @@ use dependency::RegistrySource;
 use dependency::Source;
 use manifest::LocalManifest;
 
+pub use manifest::DepTable;
+
 /// Information on what dependencies should be added
 #[derive(Clone, Debug)]
 pub struct AddOptions<'a> {
@@ -165,30 +167,6 @@ pub struct DepOp {
     pub rev: Option<String>,
     /// Specify a specific git tag
     pub tag: Option<String>,
-}
-
-/// Dependency table to add dep to
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum DepTable {
-    /// Used for building final artifact
-    Normal,
-    /// Used for testing
-    Development,
-    /// Used for build.rs
-    Build,
-    /// Used for building final artifact only on specific target platforms
-    Target(String),
-}
-
-impl DepTable {
-    fn to_table(&self) -> Vec<&str> {
-        match self {
-            Self::Normal => vec!["dependencies"],
-            Self::Development => vec!["dev-dependencies"],
-            Self::Build => vec!["build-dependencies"],
-            Self::Target(target) => vec!["target", target, "dependencies"],
-        }
-    }
 }
 
 fn resolve_dependency(
