@@ -42,7 +42,7 @@ pub struct AddOptions<'a> {
 }
 
 /// Add dependencies to a manifest
-pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> CargoResult<()> {
+pub fn add(workspace: &cargo::core::Workspace<'_>, options: &AddOptions<'_>) -> CargoResult<()> {
     let dep_table = options
         .section
         .to_table()
@@ -173,10 +173,10 @@ pub struct DepOp {
 fn resolve_dependency(
     manifest: &LocalManifest,
     arg: &DepOp,
-    ws: &cargo::core::Workspace,
+    ws: &cargo::core::Workspace<'_>,
     section: &DepTable,
     config: &Config,
-    registry: &mut cargo::core::registry::PackageRegistry,
+    registry: &mut cargo::core::registry::PackageRegistry<'_>,
 ) -> CargoResult<Dependency> {
     let crate_spec = CrateSpec::resolve(&arg.crate_spec)?;
 
@@ -343,7 +343,7 @@ fn get_latest_dependency(
     dependency: &Dependency,
     _flag_allow_prerelease: bool,
     config: &Config,
-    registry: &mut cargo::core::registry::PackageRegistry,
+    registry: &mut cargo::core::registry::PackageRegistry<'_>,
 ) -> CargoResult<Dependency> {
     let query = dependency.query(config)?;
     let possibilities = loop {
@@ -409,7 +409,7 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
 fn populate_available_features(
     mut dependency: Dependency,
     config: &Config,
-    registry: &mut cargo::core::registry::PackageRegistry,
+    registry: &mut cargo::core::registry::PackageRegistry<'_>,
 ) -> CargoResult<Dependency> {
     if !dependency.available_features.is_empty() {
         return Ok(dependency);
