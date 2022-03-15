@@ -10,8 +10,6 @@ use cargo::CargoResult;
 
 use super::dependency::Dependency;
 
-const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
-
 /// Dependency table to add dep to
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DepTable {
@@ -20,8 +18,14 @@ pub struct DepTable {
 }
 
 impl DepTable {
+    const KINDS: &'static [Self] = &[
+        Self::new().set_kind(DepKind::Normal),
+        Self::new().set_kind(DepKind::Development),
+        Self::new().set_kind(DepKind::Build),
+    ];
+
     /// Reference to a Dependency Table
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             kind: DepKind::Normal,
             target: None,
@@ -29,7 +33,7 @@ impl DepTable {
     }
 
     /// Choose the type of dependency
-    pub fn set_kind(mut self, kind: DepKind) -> Self {
+    pub const fn set_kind(mut self, kind: DepKind) -> Self {
         self.kind = kind;
         self
     }
@@ -71,6 +75,12 @@ impl DepTable {
 impl Default for DepTable {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl From<DepKind> for DepTable {
+    fn from(other: DepKind) -> Self {
+        Self::new().set_kind(other)
     }
 }
 
@@ -156,7 +166,8 @@ impl Manifest {
     pub fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
         let mut sections = Vec::new();
 
-        for dependency_type in DEP_TABLES {
+        for table in DepTable::KINDS {
+            let dependency_type = table.kind_table();
             // Dependencies can be in the three standard sections...
             if self
                 .data
@@ -165,7 +176,7 @@ impl Manifest {
                 .unwrap_or(false)
             {
                 sections.push((
-                    vec![String::from(*dependency_type)],
+                    vec![String::from(dependency_type)],
                     self.data[dependency_type].clone(),
                 ))
             }
@@ -185,7 +196,7 @@ impl Manifest {
                             vec![
                                 "target".to_string(),
                                 target_name.to_string(),
-                                String::from(*dependency_type),
+                                String::from(dependency_type),
                             ],
                             dependency_table.clone(),
                         )
