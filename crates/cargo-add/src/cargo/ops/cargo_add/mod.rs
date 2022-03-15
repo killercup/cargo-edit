@@ -33,7 +33,7 @@ pub struct AddOptions<'a> {
     /// Dependencies to add or modify
     pub dependencies: Vec<DepOp>,
     /// Which dependency section to add these to
-    pub section: DepTable<'a>,
+    pub section: DepTable,
     /// Act as if dependencies will be added
     pub dry_run: bool,
 }
@@ -70,7 +70,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
                     &manifest,
                     raw,
                     workspace,
-                    options.section,
+                    &options.section,
                     options.config,
                     &mut registry,
                 )
@@ -168,8 +168,8 @@ pub struct DepOp {
 }
 
 /// Dependency table to add dep to
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DepTable<'m> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DepTable {
     /// Used for building final artifact
     Normal,
     /// Used for testing
@@ -177,11 +177,11 @@ pub enum DepTable<'m> {
     /// Used for build.rs
     Build,
     /// Used for building final artifact only on specific target platforms
-    Target(&'m str),
+    Target(String),
 }
 
-impl<'m> DepTable<'m> {
-    fn to_table(self) -> Vec<&'m str> {
+impl DepTable {
+    fn to_table(&self) -> Vec<&str> {
         match self {
             Self::Normal => vec!["dependencies"],
             Self::Development => vec!["dev-dependencies"],
@@ -195,7 +195,7 @@ fn resolve_dependency(
     manifest: &LocalManifest,
     arg: &DepOp,
     ws: &cargo::core::Workspace,
-    section: DepTable<'_>,
+    section: &DepTable,
     config: &Config,
     registry: &mut cargo::core::registry::PackageRegistry,
 ) -> CargoResult<Dependency> {
@@ -258,7 +258,7 @@ fn resolve_dependency(
             // information, otherwise, trust the user.
             let mut src = PathSource::new(package.root());
             // dev-dependencies do not need the version populated
-            if section != DepTable::Development {
+            if *section != DepTable::Development {
                 let op = "";
                 let v = format!("{op}{version}", version = package.version());
                 src = src.set_version(v);
@@ -281,7 +281,7 @@ fn resolve_dependency(
     }
 
     let version_required = dependency.source().and_then(|s| s.as_registry()).is_some();
-    let version_optional_in_section = section == DepTable::Development;
+    let version_optional_in_section = *section == DepTable::Development;
     let preserve_existing_version = old_dep
         .as_ref()
         .map(|d| d.version().is_some())
@@ -303,7 +303,7 @@ fn resolve_dependency(
 fn get_existing_dependency(
     manifest: &LocalManifest,
     dep_key: &str,
-    section: DepTable<'_>,
+    section: &DepTable,
 ) -> CargoResult<Option<Dependency>> {
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
     enum Key {
@@ -354,7 +354,7 @@ fn get_existing_dependency(
         // dev-dependencies do not need the version populated when path is set though we
         // should preserve it if the user chose to populate it.
         let version_required = unrelated.source().and_then(|s| s.as_registry()).is_some();
-        let version_optional_in_section = section == DepTable::Development;
+        let version_optional_in_section = *section == DepTable::Development;
         if !version_required && version_optional_in_section {
             dep = dep.clear_version();
         }

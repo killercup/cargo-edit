@@ -303,14 +303,14 @@ fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
     }
 }
 
-fn parse_section(matches: &ArgMatches) -> DepTable<'_> {
+fn parse_section(matches: &ArgMatches) -> DepTable {
     if matches.is_present("dev") {
         DepTable::Development
     } else if matches.is_present("build") {
         DepTable::Build
     } else if let Some(target) = matches.value_of("target") {
         assert!(!target.is_empty(), "Target specification may not be empty");
-        DepTable::Target(target)
+        DepTable::Target(target.to_owned())
     } else {
         DepTable::Normal
     }
