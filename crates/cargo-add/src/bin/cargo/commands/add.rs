@@ -1,9 +1,7 @@
-#![allow(clippy::bool_assert_comparison)]
-
+use cargo::core::dependency::DepKind;
 use cargo::util::command_prelude::*;
 use cargo::CargoResult;
 use cargo_add::ops::add;
-use cargo_add::ops::cargo_add::parse_feature;
 use cargo_add::ops::AddOptions;
 use cargo_add::ops::DepOp;
 use cargo_add::ops::DepTable;
@@ -37,7 +35,7 @@ EXAMPLES:
                 .long_help(
                 "Reference to a package to add as a dependency
 
-You can reference a packages by:
+You can reference a package by:
 - `<name>`, like `cargo add serde` (latest version will be used)
 - `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`
 - `<path>`, like `cargo add ./crates/parser/`
@@ -46,12 +44,10 @@ Additionally, you can specify features for a dependency by following it with a `
             ),
             clap::Arg::new("no-default-features")
                 .long("no-default-features")
-                .help("Disable the default features")
-                .long_help(None),
+                .help("Disable the default features"),
             clap::Arg::new("default-features")
                 .long("default-features")
                 .help("Re-enable the default features")
-                .long_help(None)
                 .overrides_with("no-default-features"),
             clap::Arg::new("features")
                 .short('F')
@@ -94,7 +90,6 @@ Example uses:
                 .takes_value(true)
                 .value_name("NAME")
                 .help("Package registry for this dependency")
-                .long_help(None)
                 .conflicts_with("git"),
         ])
         .arg_manifest_path()
@@ -104,12 +99,10 @@ Example uses:
                 .long("package")
                 .takes_value(true)
                 .value_name("SPEC")
-                .help("Package to modify")
-                .long_help(None),
+                .help("Package to modify"),
             clap::Arg::new("offline")
                 .long("offline")
                 .help("Run without accessing the network")
-                .long_help(None),
         ])
         .arg_quiet()
         .arg_dry_run("Don't actually write the manifest")
@@ -139,8 +132,6 @@ Build-dependencies are the only dependencies available for use by build scripts 
                 .value_name("TARGET")
                 .forbid_empty_values(true)
                 .help("Add as dependency to the given target platform")
-                .long_help(None)
-                .group("section"),
         ])
         .next_help_heading("UNSTABLE")
         .args([
@@ -157,7 +148,6 @@ Without any other information, cargo will use latest commit on the main branch."
                 .takes_value(true)
                 .value_name("BRANCH")
                 .help("Git branch to download the crate from")
-                .long_help(None)
                 .requires("git")
                 .group("git-ref"),
             clap::Arg::new("tag")
@@ -165,7 +155,6 @@ Without any other information, cargo will use latest commit on the main branch."
                 .takes_value(true)
                 .value_name("TAG")
                 .help("Git tag to download the crate from")
-                .long_help(None)
                 .requires("git")
                 .group("git-ref"),
             clap::Arg::new("rev")
@@ -191,7 +180,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     let spec = match packages.len() {
         0 => {
             return Err(CliError::new(
-                anyhow::format_err!("No packages selected.  Please specify one with `-p <PKGID>`"),
+                anyhow::format_err!("no packages selected.  Please specify one with `-p <PKGID>`"),
                 101,
             ));
         }
@@ -199,8 +188,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
         len => {
             return Err(CliError::new(
                 anyhow::format_err!(
-                    "{} packages selected.  Please specify one with `-p <PKGID>`",
-                    len
+                    "{len} packages selected.  Please specify one with `-p <PKGID>`",
                 ),
                 101,
             ));
@@ -243,18 +231,18 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
     let optional = optional(matches);
 
     if crates.len() > 1 && git.is_some() {
-        anyhow::bail!("Cannot specify multiple crates with path or git or vers");
+        anyhow::bail!("cannot specify multiple crates with path or git or vers");
     }
     if git.is_some() && !config.cli_unstable().unstable_options {
         anyhow::bail!("`--git` is unstable and requires `-Z unstable-options`");
     }
 
     if crates.len() > 1 && rename.is_some() {
-        anyhow::bail!("Cannot specify multiple crates with rename");
+        anyhow::bail!("cannot specify multiple crates with rename");
     }
 
     if crates.len() > 1 && features.is_some() {
-        anyhow::bail!("Cannot specify multiple crates with features");
+        anyhow::bail!("cannot specify multiple crates with features");
     }
 
     let mut deps: Vec<DepOp> = Vec::new();
@@ -315,15 +303,30 @@ fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
     }
 }
 
-fn parse_section(matches: &ArgMatches) -> DepTable<'_> {
-    if matches.is_present("dev") {
-        DepTable::Development
+fn parse_section(matches: &ArgMatches) -> DepTable {
+    let kind = if matches.is_present("dev") {
+        DepKind::Development
     } else if matches.is_present("build") {
-        DepTable::Build
-    } else if let Some(target) = matches.value_of("target") {
-        assert!(!target.is_empty(), "Target specification may not be empty");
-        DepTable::Target(target)
+        DepKind::Build
     } else {
-        DepTable::Normal
+        DepKind::Normal
+    };
+
+    let mut table = DepTable::new().set_kind(kind);
+
+    if let Some(target) = matches.value_of("target") {
+        assert!(!target.is_empty(), "Target specification may not be empty");
+        table = table.set_target(target);
     }
+
+    table
+}
+
+/// Split feature flag list
+fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
+    // Not re-using `CliFeatures` because it uses a BTreeSet and loses user's ordering
+    feature
+        .split_whitespace()
+        .flat_map(|s| s.split(','))
+        .filter(|s| !s.is_empty())
 }

@@ -133,6 +133,9 @@ fn add_registry_packages(alt: bool) {
             .publish();
     }
 
+    cargo_test_support::registry::Package::new("prerelease_only", "0.2.0-alpha.1")
+        .alternative(alt)
+        .publish();
     cargo_test_support::registry::Package::new("test_breaking", "0.2.0")
         .alternative(alt)
         .publish();
@@ -224,6 +227,24 @@ fn add_normalized_name_external() {
         "tests/snapshots/add/add_normalized_name_external.out",
         &project_root,
     );
+}
+
+#[cargo_test]
+fn infer_prerelease() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/infer_prerelease.in");
+    let cwd = &project_root;
+
+    cargo_command()
+        .arg("add")
+        .args(["prerelease_only"])
+        .current_dir(cwd)
+        .assert()
+        .success()
+        .stdout_matches_path("tests/snapshots/add/infer_prerelease.stdout")
+        .stderr_matches_path("tests/snapshots/add/infer_prerelease.stderr");
+
+    assert().subset_matches("tests/snapshots/add/infer_prerelease.out", &project_root);
 }
 
 #[cargo_test]
@@ -1825,4 +1846,43 @@ fn workspace_name() {
         .stderr_matches_path("tests/snapshots/add/workspace_name.stderr");
 
     assert().subset_matches("tests/snapshots/add/workspace_name.out", &project_root);
+}
+
+#[cargo_test]
+fn deprecated_default_features() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/deprecated_default_features.in");
+    let cwd = &project_root;
+
+    cargo_command()
+        .arg("add")
+        .args(["my-package"])
+        .current_dir(&cwd)
+        .assert()
+        .failure()
+        .stdout_matches_path("tests/snapshots/add/deprecated_default_features.stdout")
+        .stderr_matches_path("tests/snapshots/add/deprecated_default_features.stderr");
+
+    assert().subset_matches(
+        "tests/snapshots/add/deprecated_default_features.out",
+        &project_root,
+    );
+}
+
+#[cargo_test]
+fn deprecated_section() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/deprecated_section.in");
+    let cwd = &project_root;
+
+    cargo_command()
+        .arg("add")
+        .args(["my-package"])
+        .current_dir(&cwd)
+        .assert()
+        .failure()
+        .stdout_matches_path("tests/snapshots/add/deprecated_section.stdout")
+        .stderr_matches_path("tests/snapshots/add/deprecated_section.stderr");
+
+    assert().subset_matches("tests/snapshots/add/deprecated_section.out", &project_root);
 }

@@ -8,7 +8,8 @@ use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::path::Path;
 
-use anyhow::Context;
+use anyhow::Context as _;
+use cargo::core::dependency::DepKind;
 use cargo::core::Registry;
 use cargo::CargoResult;
 use cargo::Config;
@@ -23,6 +24,8 @@ use dependency::RegistrySource;
 use dependency::Source;
 use manifest::LocalManifest;
 
+pub use manifest::DepTable;
+
 /// Information on what dependencies should be added
 #[derive(Clone, Debug)]
 pub struct AddOptions<'a> {
@@ -33,7 +36,7 @@ pub struct AddOptions<'a> {
     /// Dependencies to add or modify
     pub dependencies: Vec<DepOp>,
     /// Which dependency section to add these to
-    pub section: DepTable<'a>,
+    pub section: DepTable,
     /// Act as if dependencies will be added
     pub dry_run: bool,
 }
@@ -47,9 +50,15 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
         .map(String::from)
         .collect::<Vec<_>>();
 
-    let manifest_path = options.spec.manifest_path();
-    let manifest_path = manifest_path.to_path_buf();
+    let manifest_path = options.spec.manifest_path().to_path_buf();
     let mut manifest = LocalManifest::try_new(&manifest_path)?;
+    let legacy = manifest.get_legacy_sections();
+    if !legacy.is_empty() {
+        anyhow::bail!(
+            "Deprecated dependency sections are unsupported: {}",
+            legacy.join(", ")
+        );
+    }
 
     let mut registry = cargo::core::registry::PackageRegistry::new(options.config)?;
 
@@ -64,7 +73,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
                     &manifest,
                     raw,
                     workspace,
-                    options.section,
+                    &options.section,
                     options.config,
                     &mut registry,
                 )
@@ -96,7 +105,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
                 options
                     .config
                     .shell()
-                    .warn(format!("Unrecognized features: {:?}", unknown_features))?;
+                    .warn(format!("unrecognized features: {unknown_features:?}"))?;
             };
         }
 
@@ -104,7 +113,7 @@ pub fn add(workspace: &cargo::core::Workspace, options: &AddOptions<'_>) -> Carg
         if let Some(Source::Path(src)) = dep.source() {
             if src.path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
                 anyhow::bail!(
-                    "Cannot add `{}` as a dependency to itself",
+                    "cannot add `{}` as a dependency to itself",
                     manifest.package_name()?
                 )
             }
@@ -161,35 +170,11 @@ pub struct DepOp {
     pub tag: Option<String>,
 }
 
-/// Dependency table to add dep to
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DepTable<'m> {
-    /// Used for building final artifact
-    Normal,
-    /// Used for testing
-    Development,
-    /// Used for build.rs
-    Build,
-    /// Used for building final artifact only on specific target platforms
-    Target(&'m str),
-}
-
-impl<'m> DepTable<'m> {
-    fn to_table(self) -> Vec<&'m str> {
-        match self {
-            Self::Normal => vec!["dependencies"],
-            Self::Development => vec!["dev-dependencies"],
-            Self::Build => vec!["build-dependencies"],
-            Self::Target(target) => vec!["target", target, "dependencies"],
-        }
-    }
-}
-
 fn resolve_dependency(
     manifest: &LocalManifest,
     arg: &DepOp,
     ws: &cargo::core::Workspace,
-    section: DepTable<'_>,
+    section: &DepTable,
     config: &Config,
     registry: &mut cargo::core::registry::PackageRegistry,
 ) -> CargoResult<Dependency> {
@@ -198,7 +183,7 @@ fn resolve_dependency(
     let mut spec_dep = crate_spec.to_dependency()?;
     spec_dep = populate_dependency(spec_dep, arg);
 
-    let old_dep = get_existing_dependency(manifest, spec_dep.toml_key(), section);
+    let old_dep = get_existing_dependency(manifest, spec_dep.toml_key(), section)?;
 
     let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
         if spec_dep.source().is_some() {
@@ -215,8 +200,7 @@ fn resolve_dependency(
         match &crate_spec {
             CrateSpec::Path(path) => {
                 anyhow::bail!(
-                    "Cannot specify a git URL (`{}`) with a path (`{}`).",
-                    url,
+                    "cannot specify a git URL (`{url}`) with a path (`{}`).",
                     path.display()
                 )
             }
@@ -225,11 +209,7 @@ fn resolve_dependency(
                 version_req: Some(v),
             } => {
                 // crate specifier includes a version (e.g. `docopt@0.8`)
-                anyhow::bail!(
-                    "Cannot specify a git URL (`{}`) with a version (`{}`).",
-                    url,
-                    v
-                )
+                anyhow::bail!("cannot specify a git URL (`{url}`) with a version (`{v}`).",)
             }
             CrateSpec::PkgId {
                 name: _,
@@ -257,9 +237,9 @@ fn resolve_dependency(
             // information, otherwise, trust the user.
             let mut src = PathSource::new(package.root());
             // dev-dependencies do not need the version populated
-            if section != DepTable::Development {
+            if section.kind() != DepKind::Development {
                 let op = "";
-                let v = format!("{op}{version}", op = op, version = package.version());
+                let v = format!("{op}{version}", version = package.version());
                 src = src.set_version(v);
             }
             dependency = dependency.set_source(src);
@@ -268,7 +248,7 @@ fn resolve_dependency(
 
             if dependency.name != latest.name {
                 config.shell().warn(format!(
-                    "Translating `{}` to `{}`",
+                    "translating `{}` to `{}`",
                     dependency.name, latest.name,
                 ))?;
                 dependency.name = latest.name; // Normalize the name
@@ -280,7 +260,7 @@ fn resolve_dependency(
     }
 
     let version_required = dependency.source().and_then(|s| s.as_registry()).is_some();
-    let version_optional_in_section = section == DepTable::Development;
+    let version_optional_in_section = section.kind() == DepKind::Development;
     let preserve_existing_version = old_dep
         .as_ref()
         .map(|d| d.version().is_some())
@@ -302,40 +282,44 @@ fn resolve_dependency(
 fn get_existing_dependency(
     manifest: &LocalManifest,
     dep_key: &str,
-    section: DepTable<'_>,
-) -> Option<Dependency> {
+    section: &DepTable,
+) -> CargoResult<Option<Dependency>> {
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
     enum Key {
+        Error,
         Dev,
         Build,
-        Target,
-        Runtime,
+        Normal,
         Existing,
     }
 
-    let target_section = section.to_table();
     let mut possible: Vec<_> = manifest
         .get_dependency_versions(dep_key)
-        .filter_map(|(path, dep)| dep.ok().map(|dep| (path, dep)))
         .map(|(path, dep)| {
-            let key = if path == target_section {
-                Key::Existing
+            let key = if path == *section {
+                (Key::Existing, true)
+            } else if dep.is_err() {
+                (Key::Error, path.target().is_some())
             } else {
-                match path[0].as_str() {
-                    "dependencies" => Key::Runtime,
-                    "target" => Key::Target,
-                    "build-dependencies" => Key::Build,
-                    "dev-dependencies" => Key::Dev,
-                    other => unreachable!("Unknown dependency section: {}", other),
-                }
+                let key = match path.kind() {
+                    DepKind::Normal => Key::Normal,
+                    DepKind::Build => Key::Build,
+                    DepKind::Development => Key::Dev,
+                };
+                (key, path.target().is_some())
             };
             (key, dep)
         })
         .collect();
     possible.sort_by_key(|(key, _)| *key);
-    let (key, mut dep) = possible.pop()?;
+    let (key, dep) = if let Some(item) = possible.pop() {
+        item
+    } else {
+        return Ok(None);
+    };
+    let mut dep = dep?;
 
-    if key != Key::Existing {
+    if key.0 != Key::Existing {
         // When the dep comes from a different section, we only care about the source and not any
         // of the other fields, like `features`
         let unrelated = dep;
@@ -346,13 +330,13 @@ fn get_existing_dependency(
         // dev-dependencies do not need the version populated when path is set though we
         // should preserve it if the user chose to populate it.
         let version_required = unrelated.source().and_then(|s| s.as_registry()).is_some();
-        let version_optional_in_section = section == DepTable::Development;
+        let version_optional_in_section = section.kind() == DepKind::Development;
         if !version_required && version_optional_in_section {
             dep = dep.clear_version();
         }
     }
 
-    Some(dep)
+    Ok(Some(dep))
 }
 
 fn get_latest_dependency(
@@ -373,14 +357,13 @@ fn get_latest_dependency(
     let latest = possibilities
         .iter()
         .max_by_key(|s| {
+            // Fallback to a pre-release if no official release is available by sorting them as
+            // less.
             let stable = s.version().pre.is_empty();
             (stable, s.version())
         })
         .ok_or_else(|| {
-            anyhow::format_err!(
-                "The crate `{}` could not be found in registry index.",
-                dependency
-            )
+            anyhow::format_err!("the crate `{dependency}` could not be found in registry index.")
         })?;
     let mut dep = Dependency::from(latest);
     if let Some(reg_name) = dependency.registry.as_deref() {
@@ -390,13 +373,6 @@ fn get_latest_dependency(
 }
 
 fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
-    let requested_features: Option<IndexSet<_>> = arg.features.as_ref().map(|v| {
-        v.iter()
-            .flat_map(|s| parse_feature(s))
-            .map(|f| f.to_owned())
-            .collect()
-    });
-
     if let Some(registry) = &arg.registry {
         if registry.is_empty() {
             dependency.registry = None;
@@ -418,8 +394,8 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
             dependency.default_features = Some(false);
         }
     }
-    if let Some(value) = requested_features {
-        dependency = dependency.extend_features(value);
+    if let Some(value) = arg.features.as_ref() {
+        dependency = dependency.extend_features(value.iter().cloned());
     }
 
     if let Some(rename) = &arg.rename {
@@ -427,15 +403,6 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
     }
 
     dependency
-}
-
-/// Split feature flag list
-pub fn parse_feature(feature: &str) -> impl Iterator<Item = &str> {
-    // Not re-using `CliFeatures` because it uses a BTreeSet and loses user's ordering
-    feature
-        .split_whitespace()
-        .flat_map(|s| s.split(','))
-        .filter(|s| !s.is_empty())
 }
 
 /// Lookup available features
@@ -457,17 +424,18 @@ fn populate_available_features(
             std::task::Poll::Pending => registry.block_until_ready()?,
         }
     };
+    // Ensure widest feature flag compatibility by picking the earliest version that could show up
+    // in the lock file for a given version requirement.
     let lowest_common_denominator = possibilities
         .iter()
         .min_by_key(|s| {
+            // Fallback to a pre-release if no official release is available by sorting them as
+            // more.
             let is_pre = !s.version().pre.is_empty();
             (is_pre, s.version())
         })
         .ok_or_else(|| {
-            anyhow::format_err!(
-                "The crate `{}` could not be found in registry index.",
-                dependency
-            )
+            anyhow::format_err!("the crate `{dependency}` could not be found in registry index.")
         })?;
     dependency = dependency.set_available_features_from_cargo(lowest_common_denominator.features());
 
@@ -508,7 +476,7 @@ fn print_msg(
     } else {
         format!("{} for target `{}`", &section[2], &section[1])
     };
-    write!(message, " {}", section)?;
+    write!(message, " {section}")?;
     write!(message, ".")?;
 
     let mut activated: IndexSet<_> = dep.features.iter().flatten().map(|s| s.as_str()).collect();

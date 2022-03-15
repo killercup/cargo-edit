@@ -3,13 +3,86 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str;
 
-use anyhow::Context;
+use anyhow::Context as _;
+use cargo::core::dependency::DepKind;
 use cargo::util::interning::InternedString;
 use cargo::CargoResult;
 
 use super::dependency::Dependency;
 
-const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
+/// Dependency table to add dep to
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DepTable {
+    kind: DepKind,
+    target: Option<String>,
+}
+
+impl DepTable {
+    const KINDS: &'static [Self] = &[
+        Self::new().set_kind(DepKind::Normal),
+        Self::new().set_kind(DepKind::Development),
+        Self::new().set_kind(DepKind::Build),
+    ];
+
+    /// Reference to a Dependency Table
+    pub const fn new() -> Self {
+        Self {
+            kind: DepKind::Normal,
+            target: None,
+        }
+    }
+
+    /// Choose the type of dependency
+    pub const fn set_kind(mut self, kind: DepKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    /// Choose the platform for the dependency
+    pub fn set_target(mut self, target: impl Into<String>) -> Self {
+        self.target = Some(target.into());
+        self
+    }
+
+    /// Type of dependency
+    pub fn kind(&self) -> DepKind {
+        self.kind
+    }
+
+    /// Platform for the dependency
+    pub fn target(&self) -> Option<&str> {
+        self.target.as_deref()
+    }
+
+    /// Keys to the table
+    pub fn to_table(&self) -> Vec<&str> {
+        if let Some(target) = &self.target {
+            vec!["target", target, self.kind_table()]
+        } else {
+            vec![self.kind_table()]
+        }
+    }
+
+    fn kind_table(&self) -> &str {
+        match self.kind {
+            DepKind::Normal => "dependencies",
+            DepKind::Development => "dev-dependencies",
+            DepKind::Build => "build-dependencies",
+        }
+    }
+}
+
+impl Default for DepTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl From<DepKind> for DepTable {
+    fn from(other: DepKind) -> Self {
+        Self::new().set_kind(other)
+    }
+}
 
 /// A Cargo manifest
 #[derive(Debug, Clone)]
@@ -90,10 +163,11 @@ impl Manifest {
 
     /// Get all sections in the manifest that exist and might contain dependencies.
     /// The returned items are always `Table` or `InlineTable`.
-    pub fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
+    pub fn get_sections(&self) -> Vec<(DepTable, toml_edit::Item)> {
         let mut sections = Vec::new();
 
-        for dependency_type in DEP_TABLES {
+        for table in DepTable::KINDS {
+            let dependency_type = table.kind_table();
             // Dependencies can be in the three standard sections...
             if self
                 .data
@@ -101,10 +175,7 @@ impl Manifest {
                 .map(|t| t.is_table_like())
                 .unwrap_or(false)
             {
-                sections.push((
-                    vec![String::from(*dependency_type)],
-                    self.data[dependency_type].clone(),
-                ))
+                sections.push((table.clone(), self.data[dependency_type].clone()))
             }
 
             // ... and in `target.<target>.(build-/dev-)dependencies`.
@@ -119,11 +190,7 @@ impl Manifest {
                     let dependency_table = target_table.get(dependency_type)?;
                     dependency_table.as_table_like().map(|_| {
                         (
-                            vec![
-                                "target".to_string(),
-                                target_name.to_string(),
-                                String::from(*dependency_type),
-                            ],
+                            table.clone().set_target(target_name),
                             dependency_table.clone(),
                         )
                     })
@@ -133,6 +200,34 @@ impl Manifest {
         }
 
         sections
+    }
+
+    pub fn get_legacy_sections(&self) -> Vec<String> {
+        let mut result = Vec::new();
+
+        for dependency_type in ["dev_dependencies", "build_dependencies"] {
+            if self.data.contains_key(dependency_type) {
+                result.push(dependency_type.to_owned());
+            }
+
+            // ... and in `target.<target>.(build-/dev-)dependencies`.
+            result.extend(
+                self.data
+                    .as_table()
+                    .get("target")
+                    .and_then(toml_edit::Item::as_table_like)
+                    .into_iter()
+                    .flat_map(toml_edit::TableLike::iter)
+                    .filter_map(|(target_name, target_table)| {
+                        if target_table.as_table_like()?.contains_key(dependency_type) {
+                            Some(format!("target.{target_name}.{dependency_type}"))
+                        } else {
+                            None
+                        }
+                    }),
+            );
+        }
+        result
     }
 
     /// returns features exposed by this manifest
@@ -241,13 +336,13 @@ impl LocalManifest {
         {
             if self.manifest.data.contains_key("workspace") {
                 anyhow::bail!(
-                    "Found virtual manifest at {}, but this command requires running against an \
+                    "found virtual manifest at {}, but this command requires running against an \
                          actual package in this workspace.",
                     self.path.display()
                 );
             } else {
                 anyhow::bail!(
-                    "Missing expected `package` or `project` fields in {}",
+                    "missing expected `package` or `project` fields in {}",
                     self.path.display()
                 );
             }
@@ -264,17 +359,7 @@ impl LocalManifest {
     pub fn get_dependency_versions<'s>(
         &'s self,
         dep_key: &'s str,
-    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's {
-        self.filter_dependencies(move |key| key == dep_key)
-    }
-
-    fn filter_dependencies<'s, P>(
-        &'s self,
-        mut predicate: P,
-    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's
-    where
-        P: FnMut(&str) -> bool + 's,
-    {
+    ) -> impl Iterator<Item = (DepTable, CargoResult<Dependency>)> + 's {
         let crate_root = self.path.parent().expect("manifest path is absolute");
         self.get_sections()
             .into_iter()
@@ -284,7 +369,7 @@ impl LocalManifest {
                     table
                         .into_iter()
                         .filter_map(|(key, item)| {
-                            if predicate(&key) {
+                            if key.as_str() == dep_key {
                                 Some((table_path.clone(), key, item))
                             } else {
                                 None
@@ -296,17 +381,7 @@ impl LocalManifest {
             .flatten()
             .map(move |(table_path, dep_key, dep_item)| {
                 let dep = Dependency::from_toml(crate_root, &dep_key, &dep_item);
-                match dep {
-                    Some(dep) => (table_path, Ok(dep)),
-                    None => {
-                        let message = anyhow::format_err!(
-                            "Invalid dependency {}.{}",
-                            table_path.join("."),
-                            dep_key
-                        );
-                        (table_path, Err(message))
-                    }
-                }
+                (table_path, dep)
             })
     }
 
@@ -461,13 +536,13 @@ pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
 }
 
 fn parse_manifest_err() -> anyhow::Error {
-    anyhow::format_err!("Unable to parse external Cargo.toml")
+    anyhow::format_err!("unable to parse external Cargo.toml")
 }
 
 fn non_existent_table_err(table: impl std::fmt::Display) -> anyhow::Error {
-    anyhow::format_err!("The table `{}` could not be found.", table)
+    anyhow::format_err!("the table `{table}` could not be found.")
 }
 
 fn invalid_cargo_config() -> anyhow::Error {
-    anyhow::format_err!("Invalid cargo config")
+    anyhow::format_err!("invalid cargo config")
 }
