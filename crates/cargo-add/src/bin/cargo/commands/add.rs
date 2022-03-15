@@ -1,10 +1,10 @@
 use cargo::core::dependency::DepKind;
 use cargo::util::command_prelude::*;
 use cargo::CargoResult;
-use cargo_add::ops::add;
-use cargo_add::ops::AddOptions;
-use cargo_add::ops::DepOp;
-use cargo_add::ops::DepTable;
+use cargo_add::ops::cargo_add::add;
+use cargo_add::ops::cargo_add::AddOptions;
+use cargo_add::ops::cargo_add::DepOp;
+use cargo_add::ops::cargo_add::DepTable;
 use indexmap::IndexSet;
 
 pub fn cli() -> clap::Command<'static> {
