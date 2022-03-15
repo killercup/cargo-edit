@@ -132,7 +132,6 @@ Build-dependencies are the only dependencies available for use by build scripts 
                 .value_name("TARGET")
                 .forbid_empty_values(true)
                 .help("Add as dependency to the given target platform")
-                .group("section"),
         ])
         .next_help_heading("UNSTABLE")
         .args([
