@@ -146,7 +146,9 @@ impl Manifest {
             path: &[String],
         ) -> CargoResult<&'a mut toml_edit::Item> {
             if let Some(segment) = path.get(0) {
-                let value = input[&segment].or_insert(toml_edit::table());
+                let mut default_table = toml_edit::Table::new();
+                default_table.set_implicit(true);
+                let value = input[&segment].or_insert(toml_edit::Item::Table(default_table));
 
                 if value.is_table_like() {
                     descend(value, &path[1..])
