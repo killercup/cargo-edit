@@ -289,27 +289,24 @@ fn get_existing_dependency(
         Error,
         Dev,
         Build,
-        Target,
-        Runtime,
+        Normal,
         Existing,
     }
 
-    let target_section = section.to_table();
     let mut possible: Vec<_> = manifest
         .get_dependency_versions(dep_key)
         .map(|(path, dep)| {
-            let key = if path == target_section {
-                Key::Existing
+            let key = if path == *section {
+                (Key::Existing, true)
             } else if dep.is_err() {
-                Key::Error
+                (Key::Error, path.target().is_some())
             } else {
-                match path[0].as_str() {
-                    "dependencies" => Key::Runtime,
-                    "target" => Key::Target,
-                    "build-dependencies" => Key::Build,
-                    "dev-dependencies" => Key::Dev,
-                    other => unreachable!("Unknown dependency section: {}", other),
-                }
+                let key = match path.kind() {
+                    DepKind::Normal => Key::Normal,
+                    DepKind::Build => Key::Build,
+                    DepKind::Development => Key::Dev,
+                };
+                (key, path.target().is_some())
             };
             (key, dep)
         })
@@ -322,7 +319,7 @@ fn get_existing_dependency(
     };
     let mut dep = dep?;
 
-    if key != Key::Existing {
+    if key.0 != Key::Existing {
         // When the dep comes from a different section, we only care about the source and not any
         // of the other fields, like `features`
         let unrelated = dep;

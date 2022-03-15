@@ -163,7 +163,7 @@ impl Manifest {
 
     /// Get all sections in the manifest that exist and might contain dependencies.
     /// The returned items are always `Table` or `InlineTable`.
-    pub fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
+    pub fn get_sections(&self) -> Vec<(DepTable, toml_edit::Item)> {
         let mut sections = Vec::new();
 
         for table in DepTable::KINDS {
@@ -175,10 +175,7 @@ impl Manifest {
                 .map(|t| t.is_table_like())
                 .unwrap_or(false)
             {
-                sections.push((
-                    vec![String::from(dependency_type)],
-                    self.data[dependency_type].clone(),
-                ))
+                sections.push((table.clone(), self.data[dependency_type].clone()))
             }
 
             // ... and in `target.<target>.(build-/dev-)dependencies`.
@@ -193,11 +190,7 @@ impl Manifest {
                     let dependency_table = target_table.get(dependency_type)?;
                     dependency_table.as_table_like().map(|_| {
                         (
-                            vec![
-                                "target".to_string(),
-                                target_name.to_string(),
-                                String::from(dependency_type),
-                            ],
+                            table.clone().set_target(target_name),
                             dependency_table.clone(),
                         )
                     })
@@ -366,7 +359,7 @@ impl LocalManifest {
     pub fn get_dependency_versions<'s>(
         &'s self,
         dep_key: &'s str,
-    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's {
+    ) -> impl Iterator<Item = (DepTable, CargoResult<Dependency>)> + 's {
         let crate_root = self.path.parent().expect("manifest path is absolute");
         self.get_sections()
             .into_iter()
