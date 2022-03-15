@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::str;
 
 use anyhow::Context as _;
+use cargo::core::dependency::DepKind;
 use cargo::util::interning::InternedString;
 use cargo::CargoResult;
 
@@ -13,26 +14,63 @@ const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-depende
 
 /// Dependency table to add dep to
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum DepTable {
-    /// Used for building final artifact
-    Normal,
-    /// Used for testing
-    Development,
-    /// Used for build.rs
-    Build,
-    /// Used for building final artifact only on specific target platforms
-    Target(String),
+pub struct DepTable {
+    kind: DepKind,
+    target: Option<String>,
 }
 
 impl DepTable {
+    /// Reference to a Dependency Table
+    pub fn new() -> Self {
+        Self {
+            kind: DepKind::Normal,
+            target: None,
+        }
+    }
+
+    /// Choose the type of dependency
+    pub fn set_kind(mut self, kind: DepKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    /// Choose the platform for the dependency
+    pub fn set_target(mut self, target: impl Into<String>) -> Self {
+        self.target = Some(target.into());
+        self
+    }
+
+    /// Type of dependency
+    pub fn kind(&self) -> DepKind {
+        self.kind
+    }
+
+    /// Platform for the dependency
+    pub fn target(&self) -> Option<&str> {
+        self.target.as_deref()
+    }
+
     /// Keys to the table
     pub fn to_table(&self) -> Vec<&str> {
-        match self {
-            Self::Normal => vec!["dependencies"],
-            Self::Development => vec!["dev-dependencies"],
-            Self::Build => vec!["build-dependencies"],
-            Self::Target(target) => vec!["target", target, "dependencies"],
+        if let Some(target) = &self.target {
+            vec!["target", target, self.kind_table()]
+        } else {
+            vec![self.kind_table()]
         }
+    }
+
+    fn kind_table(&self) -> &str {
+        match self.kind {
+            DepKind::Normal => "dependencies",
+            DepKind::Development => "dev-dependencies",
+            DepKind::Build => "build-dependencies",
+        }
+    }
+}
+
+impl Default for DepTable {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

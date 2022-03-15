@@ -9,6 +9,7 @@ use std::collections::VecDeque;
 use std::path::Path;
 
 use anyhow::Context as _;
+use cargo::core::dependency::DepKind;
 use cargo::core::Registry;
 use cargo::CargoResult;
 use cargo::Config;
@@ -236,7 +237,7 @@ fn resolve_dependency(
             // information, otherwise, trust the user.
             let mut src = PathSource::new(package.root());
             // dev-dependencies do not need the version populated
-            if *section != DepTable::Development {
+            if section.kind() != DepKind::Development {
                 let op = "";
                 let v = format!("{op}{version}", version = package.version());
                 src = src.set_version(v);
@@ -259,7 +260,7 @@ fn resolve_dependency(
     }
 
     let version_required = dependency.source().and_then(|s| s.as_registry()).is_some();
-    let version_optional_in_section = *section == DepTable::Development;
+    let version_optional_in_section = section.kind() == DepKind::Development;
     let preserve_existing_version = old_dep
         .as_ref()
         .map(|d| d.version().is_some())
@@ -332,7 +333,7 @@ fn get_existing_dependency(
         // dev-dependencies do not need the version populated when path is set though we
         // should preserve it if the user chose to populate it.
         let version_required = unrelated.source().and_then(|s| s.as_registry()).is_some();
-        let version_optional_in_section = *section == DepTable::Development;
+        let version_optional_in_section = section.kind() == DepKind::Development;
         if !version_required && version_optional_in_section {
             dep = dep.clear_version();
         }

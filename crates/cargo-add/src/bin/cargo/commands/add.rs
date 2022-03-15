@@ -1,3 +1,4 @@
+use cargo::core::dependency::DepKind;
 use cargo::util::command_prelude::*;
 use cargo::CargoResult;
 use cargo_add::ops::add;
@@ -304,16 +305,22 @@ fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
 }
 
 fn parse_section(matches: &ArgMatches) -> DepTable {
-    if matches.is_present("dev") {
-        DepTable::Development
+    let kind = if matches.is_present("dev") {
+        DepKind::Development
     } else if matches.is_present("build") {
-        DepTable::Build
-    } else if let Some(target) = matches.value_of("target") {
-        assert!(!target.is_empty(), "Target specification may not be empty");
-        DepTable::Target(target.to_owned())
+        DepKind::Build
     } else {
-        DepTable::Normal
+        DepKind::Normal
+    };
+
+    let mut table = DepTable::new().set_kind(kind);
+
+    if let Some(target) = matches.value_of("target") {
+        assert!(!target.is_empty(), "Target specification may not be empty");
+        table = table.set_target(target);
     }
+
+    table
 }
 
 /// Split feature flag list
