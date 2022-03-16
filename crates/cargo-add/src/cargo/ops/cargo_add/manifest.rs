@@ -462,10 +462,11 @@ impl LocalManifest {
         for (_, tbl) in self.get_sections() {
             if let toml_edit::Item::Table(tbl) = tbl {
                 if let Some(dep_item) = tbl.get(dep_key) {
-                    let optional = dep_item.get("optional");
-                    let optional = optional.and_then(|i| i.as_value());
-                    let optional = optional.and_then(|i| i.as_bool());
-                    let optional = optional.unwrap_or(false);
+                    let optional = dep_item
+                        .get("optional")
+                        .and_then(|i| i.as_value())
+                        .and_then(|i| i.as_bool())
+                        .unwrap_or(false);
                     if optional {
                         return DependencyStatus::Optional;
                     } else {
