@@ -325,7 +325,7 @@ impl LocalManifest {
     /// Construct the `LocalManifest` corresponding to the `Path` provided.
     pub fn try_new(path: &Path) -> CargoResult<Self> {
         let path = dunce::canonicalize(path).context("Failed to read manifest contents")?;
-        let data = std::fs::read_to_string(&path).context("Failed to read manifest contents")?;
+        let data = cargo_util::paths::read(&path)?;
         let manifest = data.parse().context("Unable to parse Cargo.toml")?;
         Ok(LocalManifest { manifest, path })
     }
@@ -352,7 +352,7 @@ impl LocalManifest {
         let s = self.manifest.data.to_string();
         let new_contents_bytes = s.as_bytes();
 
-        std::fs::write(&self.path, new_contents_bytes).context("Failed to write updated Cargo.toml")
+        cargo_util::paths::write(&self.path, new_contents_bytes)
     }
 
     /// Lookup a dependency

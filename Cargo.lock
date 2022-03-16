@@ -208,6 +208,7 @@ dependencies = [
  "cargo",
  "cargo-test-macro",
  "cargo-test-support",
+ "cargo-util",
  "clap",
  "concolor-control",
  "dunce",
