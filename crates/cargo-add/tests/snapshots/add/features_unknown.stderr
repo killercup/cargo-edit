@@ -1,5 +1,4 @@
     Updating `dummy-registry` index
-warning: unrecognized features: ["noze"]
       Adding your-face v99999.0.0 to dependencies.
              Features:
              + noze
@@ -7,3 +6,4 @@ warning: unrecognized features: ["noze"]
              - eyes
              - mouth
              - nose
+warning: unrecognized features: ["noze"]
