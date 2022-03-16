@@ -499,28 +499,20 @@ fn remove_feature_activation(
         .filter_map(|(idx, value)| {
             let value = cargo::core::FeatureValue::new(InternedString::new(value));
             match status {
-                DependencyStatus::None => {
-                    let dep_name = match (value, explicit_dep_activation) {
-                        (cargo::core::FeatureValue::Feature(dep_name), false)
-                        | (cargo::core::FeatureValue::Dep { dep_name }, _)
-                        | (cargo::core::FeatureValue::DepFeature { dep_name, .. }, _) => {
-                            Some(dep_name.as_str())
-                        }
-                        _ => None,
-                    };
-                    dep_name == Some(dep_key)
-                }
+                DependencyStatus::None => match (value, explicit_dep_activation) {
+                    (cargo::core::FeatureValue::Feature(dep_name), false)
+                    | (cargo::core::FeatureValue::Dep { dep_name }, _)
+                    | (cargo::core::FeatureValue::DepFeature { dep_name, .. }, _) => {
+                        dep_name == dep_key
+                    }
+                    _ => false,
+                },
                 DependencyStatus::Optional => false,
-                DependencyStatus::Required => {
-                    let dep_name = match (value, explicit_dep_activation) {
-                        (cargo::core::FeatureValue::Feature(dep_name), false)
-                        | (cargo::core::FeatureValue::Dep { dep_name }, _) => {
-                            Some(dep_name.as_str())
-                        }
-                        (cargo::core::FeatureValue::DepFeature { .. }, _) | _ => None,
-                    };
-                    dep_name == Some(dep_key)
-                }
+                DependencyStatus::Required => match (value, explicit_dep_activation) {
+                    (cargo::core::FeatureValue::Feature(dep_name), false)
+                    | (cargo::core::FeatureValue::Dep { dep_name }, _) => dep_name == dep_key,
+                    (cargo::core::FeatureValue::DepFeature { .. }, _) | _ => false,
+                },
             }
             .then(|| idx)
         })
