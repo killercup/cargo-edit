@@ -238,11 +238,11 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
     }
 
     if crates.len() > 1 && rename.is_some() {
-        anyhow::bail!("cannot specify multiple crates with rename");
+        anyhow::bail!("cannot specify multiple crates with `--rename`");
     }
 
     if crates.len() > 1 && features.is_some() {
-        anyhow::bail!("cannot specify multiple crates with features");
+        anyhow::bail!("cannot specify multiple crates with `--features`");
     }
 
     let mut deps: Vec<DepOp> = Vec::new();
