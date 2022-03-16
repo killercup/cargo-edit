@@ -306,6 +306,24 @@ fn default_features() {
 }
 
 #[cargo_test]
+fn require_weak() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/require_weak.in");
+    let cwd = &project_root;
+
+    cargo_command()
+        .arg("add")
+        .args(["your-face", "--no-optional"])
+        .current_dir(cwd)
+        .assert()
+        .success()
+        .stdout_matches_path("tests/snapshots/add/require_weak.stdout")
+        .stderr_matches_path("tests/snapshots/add/require_weak.stderr");
+
+    assert().subset_matches("tests/snapshots/add/require_weak.out", &project_root);
+}
+
+#[cargo_test]
 fn dev() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/dev.in");

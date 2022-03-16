@@ -426,7 +426,7 @@ impl LocalManifest {
                 if let toml_edit::Item::Value(toml_edit::Value::Array(feature_values)) =
                     &mut feature_values
                 {
-                    remove_feature_activation(
+                    fix_feature_activations(
                         feature_values,
                         dep_key,
                         status,
@@ -488,7 +488,7 @@ enum DependencyStatus {
     Required,
 }
 
-fn remove_feature_activation(
+fn fix_feature_activations(
     feature_values: &mut toml_edit::Array,
     dep_key: &str,
     status: DependencyStatus,
@@ -523,6 +523,26 @@ fn remove_feature_activation(
     // Remove found idx in revers order so we don't invalidate the idx.
     for idx in remove_list.iter().rev() {
         feature_values.remove(*idx);
+    }
+
+    if status == DependencyStatus::Required {
+        for value in feature_values.iter_mut() {
+            let parsed_value = if let Some(value) = value.as_str() {
+                cargo::core::FeatureValue::new(InternedString::new(value))
+            } else {
+                continue;
+            };
+            if let cargo::core::FeatureValue::DepFeature {
+                dep_name,
+                dep_feature,
+                weak,
+            } = parsed_value
+            {
+                if dep_name == dep_key && weak {
+                    *value = format!("{dep_name}/{dep_feature}").into();
+                }
+            }
+        }
     }
 }
 
