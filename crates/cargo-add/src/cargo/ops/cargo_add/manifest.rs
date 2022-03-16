@@ -97,7 +97,8 @@ impl Manifest {
         self.data
             .as_table()
             .get("package")
-            .and_then(|m| m["name"].as_str())
+            .and_then(|m| m.get("name"))
+            .and_then(|m| m.as_str())
             .ok_or_else(parse_manifest_err)
     }
 
@@ -106,7 +107,8 @@ impl Manifest {
         self.data
             .as_table()
             .get("package")
-            .and_then(|m| m["version"].as_str())
+            .and_then(|m| m.get("version"))
+            .and_then(|m| m.as_str())
             .ok_or_else(parse_manifest_err)
     }
 
