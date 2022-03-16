@@ -230,21 +230,6 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
     });
     let optional = optional(matches);
 
-    if crates.len() > 1 && git.is_some() {
-        anyhow::bail!("cannot specify multiple crates with path or git or vers");
-    }
-    if git.is_some() && !config.cli_unstable().unstable_options {
-        anyhow::bail!("`--git` is unstable and requires `-Z unstable-options`");
-    }
-
-    if crates.len() > 1 && rename.is_some() {
-        anyhow::bail!("cannot specify multiple crates with rename");
-    }
-
-    if crates.len() > 1 && features.is_some() {
-        anyhow::bail!("cannot specify multiple crates with features");
-    }
-
     let mut deps: Vec<DepOp> = Vec::new();
     for crate_spec in crates {
         if let Some(features) = crate_spec.strip_prefix('+') {
@@ -277,6 +262,22 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
             deps.push(dep);
         }
     }
+
+    if deps.len() > 1 && git.is_some() {
+        anyhow::bail!("cannot specify multiple crates with path or git or vers");
+    }
+    if git.is_some() && !config.cli_unstable().unstable_options {
+        anyhow::bail!("`--git` is unstable and requires `-Z unstable-options`");
+    }
+
+    if deps.len() > 1 && rename.is_some() {
+        anyhow::bail!("cannot specify multiple crates with `--rename`");
+    }
+
+    if deps.len() > 1 && features.is_some() {
+        anyhow::bail!("cannot specify multiple crates with `--features`");
+    }
+
     Ok(deps)
 }
 

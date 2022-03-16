@@ -88,6 +88,15 @@ pub fn add(workspace: &cargo::core::Workspace<'_>, options: &AddOptions<'_>) -> 
             table_option.map_or(true, |table| is_sorted(table.iter().map(|(name, _)| name)))
         });
     for dep in deps {
+        print_msg(&mut options.config.shell(), &dep, &dep_table)?;
+        if let Some(Source::Path(src)) = dep.source() {
+            if src.path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
+                anyhow::bail!(
+                    "cannot add `{}` as a dependency to itself",
+                    manifest.package_name()?
+                )
+            }
+        }
         if let Some(req_feats) = dep.features.as_ref() {
             let req_feats: BTreeSet<_> = req_feats.iter().map(|s| s.as_str()).collect();
 
@@ -107,16 +116,6 @@ pub fn add(workspace: &cargo::core::Workspace<'_>, options: &AddOptions<'_>) -> 
                     .shell()
                     .warn(format!("unrecognized features: {unknown_features:?}"))?;
             };
-        }
-
-        print_msg(&mut options.config.shell(), &dep, &dep_table)?;
-        if let Some(Source::Path(src)) = dep.source() {
-            if src.path == manifest.path.parent().unwrap_or_else(|| Path::new("")) {
-                anyhow::bail!(
-                    "cannot add `{}` as a dependency to itself",
-                    manifest.package_name()?
-                )
-            }
         }
         manifest.insert_into_table(&dep_table, &dep)?;
         manifest.gc_dep(dep.toml_key());
@@ -186,12 +185,20 @@ fn resolve_dependency(
     let old_dep = get_existing_dependency(manifest, spec_dep.toml_key(), section)?;
 
     let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
-        if spec_dep.source().is_some() {
-            // Overwrite with `crate_spec`
-            old_dep.source = spec_dep.source;
+        if old_dep.name != spec_dep.name {
+            // Assuming most existing keys are not relevant when the package changes
+            if spec_dep.optional.is_none() {
+                spec_dep.optional = old_dep.optional;
+            }
+            spec_dep
+        } else {
+            if spec_dep.source().is_some() {
+                // Overwrite with `crate_spec`
+                old_dep.source = spec_dep.source;
+            }
+            old_dep = populate_dependency(old_dep, arg);
+            old_dep
         }
-        old_dep = populate_dependency(old_dep, arg);
-        old_dep
     } else {
         spec_dep
     };

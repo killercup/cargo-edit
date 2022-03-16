@@ -1,5 +1,5 @@
-warning: unrecognized features: ["one", "two"]
       Adding cargo-list-test-fixture-dependency (local) to optional dependencies.
              Features:
              + one
              + two
+warning: unrecognized features: ["one", "two"]

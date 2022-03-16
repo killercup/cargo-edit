@@ -97,7 +97,8 @@ impl Manifest {
         self.data
             .as_table()
             .get("package")
-            .and_then(|m| m["name"].as_str())
+            .and_then(|m| m.get("name"))
+            .and_then(|m| m.as_str())
             .ok_or_else(parse_manifest_err)
     }
 
@@ -106,7 +107,8 @@ impl Manifest {
         self.data
             .as_table()
             .get("package")
-            .and_then(|m| m["version"].as_str())
+            .and_then(|m| m.get("version"))
+            .and_then(|m| m.as_str())
             .ok_or_else(parse_manifest_err)
     }
 
@@ -285,7 +287,7 @@ impl str::FromStr for Manifest {
 
     /// Read manifest data from string
     fn from_str(input: &str) -> ::std::result::Result<Self, Self::Err> {
-        let d: toml_edit::Document = input.parse().with_context(|| "Manifest not valid TOML")?;
+        let d: toml_edit::Document = input.parse().context("Manifest not valid TOML")?;
 
         Ok(Manifest { data: d })
     }
@@ -324,10 +326,9 @@ impl DerefMut for LocalManifest {
 impl LocalManifest {
     /// Construct the `LocalManifest` corresponding to the `Path` provided.
     pub fn try_new(path: &Path) -> CargoResult<Self> {
-        let path = dunce::canonicalize(path).with_context(|| "Failed to read manifest contents")?;
-        let data =
-            std::fs::read_to_string(&path).with_context(|| "Failed to read manifest contents")?;
-        let manifest = data.parse().with_context(|| "Unable to parse Cargo.toml")?;
+        let path = dunce::canonicalize(path).context("Failed to read manifest contents")?;
+        let data = cargo_util::paths::read(&path)?;
+        let manifest = data.parse().context("Unable to parse Cargo.toml")?;
         Ok(LocalManifest { manifest, path })
     }
 
@@ -353,8 +354,7 @@ impl LocalManifest {
         let s = self.manifest.data.to_string();
         let new_contents_bytes = s.as_bytes();
 
-        std::fs::write(&self.path, new_contents_bytes)
-            .with_context(|| "Failed to write updated Cargo.toml")
+        cargo_util::paths::write(&self.path, new_contents_bytes)
     }
 
     /// Lookup a dependency
@@ -426,7 +426,7 @@ impl LocalManifest {
                 if let toml_edit::Item::Value(toml_edit::Value::Array(feature_values)) =
                     &mut feature_values
                 {
-                    remove_feature_activation(
+                    fix_feature_activations(
                         feature_values,
                         dep_key,
                         status,
@@ -464,10 +464,11 @@ impl LocalManifest {
         for (_, tbl) in self.get_sections() {
             if let toml_edit::Item::Table(tbl) = tbl {
                 if let Some(dep_item) = tbl.get(dep_key) {
-                    let optional = dep_item.get("optional");
-                    let optional = optional.and_then(|i| i.as_value());
-                    let optional = optional.and_then(|i| i.as_bool());
-                    let optional = optional.unwrap_or(false);
+                    let optional = dep_item
+                        .get("optional")
+                        .and_then(|i| i.as_value())
+                        .and_then(|i| i.as_bool())
+                        .unwrap_or(false);
                     if optional {
                         return DependencyStatus::Optional;
                     } else {
@@ -487,7 +488,7 @@ enum DependencyStatus {
     Required,
 }
 
-fn remove_feature_activation(
+fn fix_feature_activations(
     feature_values: &mut toml_edit::Array,
     dep_key: &str,
     status: DependencyStatus,
@@ -498,30 +499,22 @@ fn remove_feature_activation(
         .enumerate()
         .filter_map(|(idx, value)| value.as_str().map(|s| (idx, s)))
         .filter_map(|(idx, value)| {
-            let value = cargo::core::FeatureValue::new(InternedString::new(value));
+            let parsed_value = cargo::core::FeatureValue::new(InternedString::new(value));
             match status {
-                DependencyStatus::None => {
-                    let dep_name = match (value, explicit_dep_activation) {
-                        (cargo::core::FeatureValue::Feature(dep_name), false)
-                        | (cargo::core::FeatureValue::Dep { dep_name }, _)
-                        | (cargo::core::FeatureValue::DepFeature { dep_name, .. }, _) => {
-                            Some(dep_name.as_str())
-                        }
-                        _ => None,
-                    };
-                    dep_name == Some(dep_key)
-                }
+                DependencyStatus::None => match (parsed_value, explicit_dep_activation) {
+                    (cargo::core::FeatureValue::Feature(dep_name), false)
+                    | (cargo::core::FeatureValue::Dep { dep_name }, _)
+                    | (cargo::core::FeatureValue::DepFeature { dep_name, .. }, _) => {
+                        dep_name == dep_key
+                    }
+                    _ => false,
+                },
                 DependencyStatus::Optional => false,
-                DependencyStatus::Required => {
-                    let dep_name = match (value, explicit_dep_activation) {
-                        (cargo::core::FeatureValue::Feature(dep_name), false)
-                        | (cargo::core::FeatureValue::Dep { dep_name }, _) => {
-                            Some(dep_name.as_str())
-                        }
-                        (cargo::core::FeatureValue::DepFeature { .. }, _) | _ => None,
-                    };
-                    dep_name == Some(dep_key)
-                }
+                DependencyStatus::Required => match (parsed_value, explicit_dep_activation) {
+                    (cargo::core::FeatureValue::Feature(dep_name), false)
+                    | (cargo::core::FeatureValue::Dep { dep_name }, _) => dep_name == dep_key,
+                    (cargo::core::FeatureValue::DepFeature { .. }, _) | _ => false,
+                },
             }
             .then(|| idx)
         })
@@ -530,6 +523,26 @@ fn remove_feature_activation(
     // Remove found idx in revers order so we don't invalidate the idx.
     for idx in remove_list.iter().rev() {
         feature_values.remove(*idx);
+    }
+
+    if status == DependencyStatus::Required {
+        for value in feature_values.iter_mut() {
+            let parsed_value = if let Some(value) = value.as_str() {
+                cargo::core::FeatureValue::new(InternedString::new(value))
+            } else {
+                continue;
+            };
+            if let cargo::core::FeatureValue::DepFeature {
+                dep_name,
+                dep_feature,
+                weak,
+            } = parsed_value
+            {
+                if dep_name == dep_key && weak {
+                    *value = format!("{dep_name}/{dep_feature}").into();
+                }
+            }
+        }
     }
 }
 
