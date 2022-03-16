@@ -499,9 +499,9 @@ fn remove_feature_activation(
         .enumerate()
         .filter_map(|(idx, value)| value.as_str().map(|s| (idx, s)))
         .filter_map(|(idx, value)| {
-            let value = cargo::core::FeatureValue::new(InternedString::new(value));
+            let parsed_value = cargo::core::FeatureValue::new(InternedString::new(value));
             match status {
-                DependencyStatus::None => match (value, explicit_dep_activation) {
+                DependencyStatus::None => match (parsed_value, explicit_dep_activation) {
                     (cargo::core::FeatureValue::Feature(dep_name), false)
                     | (cargo::core::FeatureValue::Dep { dep_name }, _)
                     | (cargo::core::FeatureValue::DepFeature { dep_name, .. }, _) => {
@@ -510,7 +510,7 @@ fn remove_feature_activation(
                     _ => false,
                 },
                 DependencyStatus::Optional => false,
-                DependencyStatus::Required => match (value, explicit_dep_activation) {
+                DependencyStatus::Required => match (parsed_value, explicit_dep_activation) {
                     (cargo::core::FeatureValue::Feature(dep_name), false)
                     | (cargo::core::FeatureValue::Dep { dep_name }, _) => dep_name == dep_key,
                     (cargo::core::FeatureValue::DepFeature { .. }, _) | _ => false,
