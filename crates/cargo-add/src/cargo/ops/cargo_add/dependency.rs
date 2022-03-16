@@ -429,9 +429,6 @@ impl Dependency {
         if str_or_1_len_table(item) {
             // Nothing to preserve
             *item = self.to_toml(crate_root);
-        } else if !is_package_eq(item, &self.name, self.rename.as_deref()) {
-            // No existing keys are relevant when the package changes
-            *item = self.to_toml(crate_root);
         } else if let Some(table) = item.as_table_like_mut() {
             match &self.source {
                 Some(Source::Registry(src)) => {
@@ -561,16 +558,6 @@ fn path_field(crate_root: &Path, abs_path: &Path) -> String {
     let relpath = pathdiff::diff_paths(abs_path, crate_root).expect("both paths are absolute");
     let relpath = relpath.to_str().unwrap().replace('\\', "/");
     relpath
-}
-
-fn is_package_eq(item: &mut toml_edit::Item, name: &str, rename: Option<&str>) -> bool {
-    if let Some(table) = item.as_table_like_mut() {
-        let existing_package = table.get("package").and_then(|i| i.as_str());
-        let new_package = rename.map(|_| name);
-        existing_package == new_package
-    } else {
-        false
-    }
 }
 
 /// Primary location of a dependency
