@@ -1,6 +1,0 @@
-[package]
-name = "cargo-list-test-fixture"
-version = "0.0.0"
-
-[dependencies]
-cargo-edit = { git = "https://github.com/killercup/cargo-edit.git", tag = "v0.8.0" }
