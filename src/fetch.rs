@@ -385,7 +385,7 @@ fn get_cargo_toml_from_git_url(url: &str) -> CargoResult<String> {
     {
         use std::sync::Arc;
 
-        let tls_connector = Arc::new(native_tls::TlsConnector::new().map_err(|e| e.to_string())?);
+        let tls_connector = Arc::new(native_tls::TlsConnector::new()?);
         agent = agent.tls_connector(tls_connector.clone());
     }
     if let Some(proxy) = env_proxy::for_url_str(url)
