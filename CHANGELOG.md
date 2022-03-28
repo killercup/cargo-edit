@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog].
 
 ## [0.9.0] - 2022-03-28
 
+In large part, this release is a test-bed for changes proposed as part of the
+path to merging `cargo-add` into cargo.  See
+[internals](https://internals.rust-lang.org/t/feedback-on-cargo-add-before-its-merged/16024)
+for more background on the changes.
+
 ### Breaking Changes
 
 - Many programmatic APIs changed
