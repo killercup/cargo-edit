@@ -7,6 +7,61 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Breaking Changes
+
+- Many programmatic APIs changed
+- Feature flag `vendored-libgit2` is activated by default
+
+cargo-add
+- Removed `--upgrade <policy>`
+- Removed `--sort`
+- Removed `--allow-prerelease`
+- Removed `cargo add <git-url>`, requiring `cargo add --git <git-url>`
+- Removed `--path <path>` in favor of `cargo add <path>`
+- Removed `--vers <version-req>` in favor of `cargo add <name>@<version-req>`
+- `--git` support is now feature gated as we work out how to expose it
+
+### Features
+
+cargo-add
+- Lists available features
+- Warn when adding non-existent features
+- git `--tag` and `--rev` support
+- `--default-features` flag for when updating an existing entry
+- `--no-optional` flag for when updating an existing entry
+- Allow `,` to separate `--features`
+- Added `-F` short flag for `--features`
+- `cargo add serde +derive` feature activation
+- `--dry-run` support
+
+### Fixes
+
+General
+- TOML 1.0 compliant parser
+- Use stderr for user messages
+- Improve detection for enabling colored output
+- Handle empty cargo config `source` table
+
+cargo-add
+- Allow `--registry` with `name@version` and path dependencies
+- Don't panic on `--target=` (ie empty target)
+- Cleaned up "Adding" message
+- Improve overwrite behavior (re-adding the same dependency)
+- Allow using both `--manifest-path` and `--package`
+- Remove invalid dependency activation
+- When adding an existing dependency to another table, reuse the existing source information (e.g. version requirement)
+
+cargo-rm
+- Don't create empty feature tables
+- Remove dep activation when no longer optional
+
+cargo-upgrade
+- Preserve version requirement precision by default
+
+cargo-set-version
+- Allow `--metadata` to override version metadata
+- Improve dependent detection
+
 ## [0.8.0] - 2021-09-22
 #### Breaking Changes
 
