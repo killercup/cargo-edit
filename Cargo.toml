@@ -29,6 +29,13 @@ version = "0.8.0"
 edition = "2021"
 resolver = "2"
 
+[package.metadata.release]
+pre-release-replacements = [
+  {file="CHANGELOG.md", search="Unreleased", replace="{{version}}", min=1},
+  {file="CHANGELOG.md", search="ReleaseDate", replace="{{date}}", min=1},
+  {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n## [Unreleased] - ReleaseDate\n", exactly=1},
+]
+
 [[bin]]
 name = "cargo-add"
 path = "src/bin/add/main.rs"
