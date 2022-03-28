@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+## [0.9.0] - 2022-03-28
+
 ### Breaking Changes
 
 - Many programmatic APIs changed
