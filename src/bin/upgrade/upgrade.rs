@@ -292,7 +292,7 @@ fn load_lockfile(
     // metadata for any one of Cargo.toml files.
     let (manifest, _package) = targets
         .get(0)
-        .ok_or(anyhow::format_err!("Invalid cargo config"))?;
+        .ok_or_else(|| anyhow::format_err!("Invalid cargo config"))?;
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.manifest_path(manifest.path.clone());
     cmd.features(cargo_metadata::CargoOpt::AllFeatures);
