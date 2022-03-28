@@ -56,7 +56,7 @@ cargo-rm
 - Remove dep activation when no longer optional
 
 cargo-upgrade
-- Preserve version requirement precision by default
+- Preserve version requirement precision (behind a feature flag)
 
 cargo-set-version
 - Allow `--metadata` to override version metadata
