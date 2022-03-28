@@ -5,9 +5,9 @@ The format is based on [Keep a Changelog].
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
 <!-- next-header -->
-## [Unreleased] - ReleaseDate
+## Unreleased - ReleaseDate
 
-## [0.9.0] - 2022-03-28
+## 0.9.0 - 2022-03-28
 
 In large part, this release is a test-bed for changes proposed as part of the
 path to merging `cargo-add` into cargo.  See
@@ -69,7 +69,7 @@ cargo-set-version
 - Allow `--metadata` to override version metadata
 - Improve dependent detection
 
-## [0.8.0] - 2021-09-22
+## 0.8.0 - 2021-09-22
 #### Breaking Changes
 
 Many programmatic APIs changed
