@@ -102,11 +102,6 @@ Example uses:
         .arg_dry_run("Don't actually write the manifest")
         .next_help_heading("SOURCE")
         .args([
-            clap::Arg::new("registry")
-                .long("registry")
-                .takes_value(true)
-                .value_name("NAME")
-                .help("Package registry for this dependency"),
             clap::Arg::new("git")
                 .long("git")
                 .takes_value(true)
@@ -139,6 +134,11 @@ Without any other information, cargo will use latest commit on the main branch."
 This is the catch all, handling hashes to named references in remote repositories.")
                 .requires("git")
                 .group("git-ref"),
+            clap::Arg::new("registry")
+                .long("registry")
+                .takes_value(true)
+                .value_name("NAME")
+                .help("Package registry for this dependency"),
         ])
         .next_help_heading("SECTION")
         .args([
