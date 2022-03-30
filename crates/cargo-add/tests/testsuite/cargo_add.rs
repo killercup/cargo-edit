@@ -530,7 +530,7 @@ fn git() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "-Zunstable-options"])
+        .args(["git-package", "--git", &git_url])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -561,14 +561,7 @@ fn git_branch() {
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            &git_url,
-            "--branch",
-            branch,
-            "-Zunstable-options",
-        ])
+        .args(["git-package", "--git", &git_url, "--branch", branch])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -591,7 +584,6 @@ fn git_conflicts_namever() {
             "my-package@0.4.3",
             "--git",
             "https://github.com/dcjanus/invalid",
-            "-Zunstable-options",
         ])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
@@ -620,7 +612,6 @@ fn git_conflicts_registry() {
             "https://github.com/dcjanus/invalid",
             "--registry",
             "alternative",
-            "-Zunstable-options",
         ])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
@@ -652,13 +643,7 @@ fn git_dev() {
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            &git_url,
-            "--dev",
-            "-Zunstable-options",
-        ])
+        .args(["git-package", "--git", &git_url, "--dev"])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -688,14 +673,7 @@ fn git_rev() {
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            &git_url,
-            "--rev",
-            &head,
-            "-Zunstable-options",
-        ])
+        .args(["git-package", "--git", &git_url, "--rev", &head])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -725,14 +703,7 @@ fn git_tag() {
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            &git_url,
-            "--tag",
-            tag,
-            "-Zunstable-options",
-        ])
+        .args(["git-package", "--git", &git_url, "--tag", tag])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -808,7 +779,7 @@ fn invalid_git_external() {
 
     cargo_command()
         .arg("add")
-        .args(["fake-git", "--git", &git_url, "-Zunstable-options"])
+        .args(["fake-git", "--git", &git_url])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -818,27 +789,6 @@ fn invalid_git_external() {
 
     assert().subset_matches(
         "tests/snapshots/add/invalid_git_external.out",
-        &project_root,
-    );
-}
-
-#[cargo_test]
-fn invalid_git_no_unstable() {
-    init_registry();
-    let project_root = project_from_template("tests/snapshots/add/invalid_git_no_unstable.in");
-    let cwd = &project_root;
-
-    cargo_command()
-        .arg("add")
-        .args(["git-package", "--git", "http://localhost/git-package.git"])
-        .current_dir(cwd)
-        .assert()
-        .code(101)
-        .stdout_matches_path("tests/snapshots/add/invalid_git_no_unstable.stdout")
-        .stderr_matches_path("tests/snapshots/add/invalid_git_no_unstable.stderr");
-
-    assert().subset_matches(
-        "tests/snapshots/add/invalid_git_no_unstable.out",
         &project_root,
     );
 }
@@ -1084,7 +1034,6 @@ fn multiple_conflicts_with_git() {
             "my-package2",
             "--git",
             "https://github.com/dcjanus/invalid",
-            "-Zunstable-options",
         ])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
@@ -1639,7 +1588,7 @@ fn overwrite_version_with_git() {
 
     cargo_command()
         .arg("add")
-        .args(["versioned-package", "--git", &git_url, "-Zunstable-options"])
+        .args(["versioned-package", "--git", &git_url])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()

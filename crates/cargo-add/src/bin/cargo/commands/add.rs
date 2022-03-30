@@ -85,12 +85,6 @@ The package will be removed from your features.")
 Example uses:
 - Depending on multiple versions of a crate
 - Depend on crates with the same name from different registries"),
-            clap::Arg::new("registry")
-                .long("registry")
-                .takes_value(true)
-                .value_name("NAME")
-                .help("Package registry for this dependency")
-                .conflicts_with("git"),
         ])
         .arg_manifest_path()
         .args([
@@ -106,35 +100,14 @@ Example uses:
         ])
         .arg_quiet()
         .arg_dry_run("Don't actually write the manifest")
-        .next_help_heading("SECTION")
+        .next_help_heading("SOURCE")
         .args([
-            clap::Arg::new("dev")
-                .short('D')
-                .long("dev")
-                .help("Add as development dependency")
-                .long_help("Add as development dependency
-
-Dev-dependencies are not used when compiling a package for building, but are used for compiling tests, examples, and benchmarks.
-
-These dependencies are not propagated to other packages which depend on this package.")
-                .group("section"),
-            clap::Arg::new("build")
-                .short('B')
-                .long("build")
-                .help("Add as build dependency")
-                .long_help("Add as build dependency
-
-Build-dependencies are the only dependencies available for use by build scripts (`build.rs` files).")
-                .group("section"),
-            clap::Arg::new("target")
-                .long("target")
+            clap::Arg::new("registry")
+                .long("registry")
                 .takes_value(true)
-                .value_name("TARGET")
-                .forbid_empty_values(true)
-                .help("Add as dependency to the given target platform")
-        ])
-        .next_help_heading("UNSTABLE")
-        .args([
+                .value_name("NAME")
+                .help("Package registry for this dependency")
+                .conflicts_with("git"),
             clap::Arg::new("git")
                 .long("git")
                 .takes_value(true)
@@ -167,6 +140,33 @@ Without any other information, cargo will use latest commit on the main branch."
 This is the catch all, handling hashes to named references in remote repositories.")
                 .requires("git")
                 .group("git-ref"),
+        ])
+        .next_help_heading("SECTION")
+        .args([
+            clap::Arg::new("dev")
+                .short('D')
+                .long("dev")
+                .help("Add as development dependency")
+                .long_help("Add as development dependency
+
+Dev-dependencies are not used when compiling a package for building, but are used for compiling tests, examples, and benchmarks.
+
+These dependencies are not propagated to other packages which depend on this package.")
+                .group("section"),
+            clap::Arg::new("build")
+                .short('B')
+                .long("build")
+                .help("Add as build dependency")
+                .long_help("Add as build dependency
+
+Build-dependencies are the only dependencies available for use by build scripts (`build.rs` files).")
+                .group("section"),
+            clap::Arg::new("target")
+                .long("target")
+                .takes_value(true)
+                .value_name("TARGET")
+                .forbid_empty_values(true)
+                .help("Add as dependency to the given target platform")
         ])
 }
 
@@ -265,9 +265,6 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
 
     if deps.len() > 1 && git.is_some() {
         anyhow::bail!("cannot specify multiple crates with path or git or vers");
-    }
-    if git.is_some() && !config.cli_unstable().unstable_options {
-        anyhow::bail!("`--git` is unstable and requires `-Z unstable-options`");
     }
 
     if deps.len() > 1 && rename.is_some() {
