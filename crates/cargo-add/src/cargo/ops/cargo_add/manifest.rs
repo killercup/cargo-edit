@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str;
@@ -98,16 +97,6 @@ impl Manifest {
             .as_table()
             .get("package")
             .and_then(|m| m.get("name"))
-            .and_then(|m| m.as_str())
-            .ok_or_else(parse_manifest_err)
-    }
-
-    /// Get the package version
-    pub fn package_version(&self) -> CargoResult<&str> {
-        self.data
-            .as_table()
-            .get("package")
-            .and_then(|m| m.get("version"))
             .and_then(|m| m.as_str())
             .ok_or_else(parse_manifest_err)
     }
@@ -232,53 +221,6 @@ impl Manifest {
             );
         }
         result
-    }
-
-    /// returns features exposed by this manifest
-    pub fn features(&self) -> CargoResult<BTreeMap<String, Vec<String>>> {
-        let mut features: BTreeMap<String, Vec<String>> = match self.data.as_table().get("features")
-        {
-            None => BTreeMap::default(),
-            Some(item) => match item {
-                toml_edit::Item::None => BTreeMap::default(),
-                toml_edit::Item::Table(t) => t
-                    .iter()
-                    .map(|(k, v)| {
-                        let k = k.to_owned();
-                        let v = v
-                            .as_array()
-                            .cloned()
-                            .unwrap_or_default()
-                            .iter()
-                            .map(|v| v.as_str().map(|s| s.to_owned()))
-                            .collect::<Option<Vec<_>>>();
-                        v.map(|v| (k, v))
-                    })
-                    .collect::<Option<_>>()
-                    .ok_or_else(invalid_cargo_config)?,
-                _ => return Err(invalid_cargo_config()),
-            },
-        };
-
-        let sections = self.get_sections();
-        for (_, deps) in sections {
-            features.extend(
-                deps.as_table_like()
-                    .unwrap()
-                    .iter()
-                    .filter_map(|(key, dep_item)| {
-                        let table = dep_item.as_table_like()?;
-                        table
-                            .get("optional")
-                            .and_then(|o| o.as_value())
-                            .and_then(|o| o.as_bool())
-                            .unwrap_or(false)
-                            .then(|| (key.to_owned(), vec![]))
-                    }),
-            );
-        }
-
-        Ok(features)
     }
 }
 
@@ -556,8 +498,4 @@ fn parse_manifest_err() -> anyhow::Error {
 
 fn non_existent_table_err(table: impl std::fmt::Display) -> anyhow::Error {
     anyhow::format_err!("the table `{table}` could not be found.")
-}
-
-fn invalid_cargo_config() -> anyhow::Error {
-    anyhow::format_err!("invalid cargo config")
 }

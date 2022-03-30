@@ -160,6 +160,8 @@ pub struct DepOp {
     pub registry: Option<String>,
 
     /// Git repo for dependency
+    pub path: Option<String>,
+    /// Git repo for dependency
     pub git: Option<String>,
     /// Specify an alternative git branch
     pub branch: Option<String>,
@@ -204,49 +206,57 @@ fn resolve_dependency(
     };
 
     if let Some(url) = &arg.git {
-        match &crate_spec {
-            CrateSpec::Path(path) => {
-                anyhow::bail!(
-                    "cannot specify a git URL (`{url}`) with a path (`{}`).",
-                    path.display()
-                )
+        if let Some(v) = crate_spec.version_req() {
+            // crate specifier includes a version (e.g. `docopt@0.8`)
+            anyhow::bail!("cannot specify a git URL (`{url}`) with a version (`{v}`).",)
+        } else {
+            let mut src = GitSource::new(url);
+            if let Some(branch) = &arg.branch {
+                src = src.set_branch(branch);
             }
-            CrateSpec::PkgId {
-                name: _,
-                version_req: Some(v),
-            } => {
-                // crate specifier includes a version (e.g. `docopt@0.8`)
-                anyhow::bail!("cannot specify a git URL (`{url}`) with a version (`{v}`).",)
+            if let Some(tag) = &arg.tag {
+                src = src.set_tag(tag);
             }
-            CrateSpec::PkgId {
-                name: _,
-                version_req: None,
-            } => {
-                let mut src = GitSource::new(url);
-                if let Some(branch) = &arg.branch {
-                    src = src.set_branch(branch);
-                }
-                if let Some(tag) = &arg.tag {
-                    src = src.set_tag(tag);
-                }
-                if let Some(rev) = &arg.rev {
-                    src = src.set_rev(rev);
-                }
-                dependency = dependency.set_source(src);
+            if let Some(rev) = &arg.rev {
+                src = src.set_rev(rev);
+            }
+            dependency = dependency.set_source(src);
 
-                let latest = get_latest_dependency(&dependency, false, config, registry)?;
+            let latest = get_latest_dependency(&dependency, false, config, registry)?;
 
-                if dependency.name != latest.name {
-                    config.shell().warn(format!(
-                        "translating `{}` to `{}`",
-                        dependency.name, latest.name,
-                    ))?;
-                    dependency.name = latest.name; // Normalize the name
-                }
-                dependency = dependency
-                    .set_source(latest.source.expect("latest always has a source"))
-                    .set_available_features(latest.available_features);
+            if dependency.name != latest.name {
+                config.shell().warn(format!(
+                    "translating `{}` to `{}`",
+                    dependency.name, latest.name,
+                ))?;
+                dependency.name = latest.name; // Normalize the name
             }
+            dependency = dependency
+                .set_source(latest.source.expect("latest always has a source"))
+                .set_available_features(latest.available_features);
+        }
+    } else if let Some(path) = &arg.path {
+        if let Some(v) = crate_spec.version_req() {
+            // crate specifier includes a version (e.g. `docopt@0.8`)
+            anyhow::bail!("cannot specify a path (`{path}`) with a version (`{v}`).",)
+        } else {
+            let path =
+                dunce::canonicalize(path).with_context(|| format!("Unable to find {}", path))?;
+            let src = PathSource::new(path);
+            dependency = dependency.set_source(src);
+
+            let latest = get_latest_dependency(&dependency, false, config, registry)?;
+
+            if dependency.name != latest.name {
+                config.shell().warn(format!(
+                    "translating `{}` to `{}`",
+                    dependency.name, latest.name,
+                ))?;
+                dependency.name = latest.name; // Normalize the name
+            }
+            dependency = dependency
+                .set_source(latest.source.expect("latest always has a source"))
+                .set_available_features(latest.available_features);
         }
     }
 
@@ -560,9 +570,4 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
     }
 
     true
-}
-
-fn get_manifest_from_path(path: &Path) -> CargoResult<LocalManifest> {
-    let cargo_file = path.join("Cargo.toml");
-    LocalManifest::try_new(&cargo_file).with_context(|| "Unable to open local Cargo.toml")
 }

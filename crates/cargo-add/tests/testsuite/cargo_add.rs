@@ -720,39 +720,48 @@ fn git_tag() {
 }
 
 #[cargo_test]
-fn inline_path() {
+fn path() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/path.stdout")
+        .stderr_matches_path("tests/snapshots/add/path.stderr");
 
-    assert().subset_matches("tests/snapshots/add/inline_path.out", &project_root);
+    assert().subset_matches("tests/snapshots/add/path.out", &project_root);
 }
 
 #[cargo_test]
-fn inline_path_dev() {
+fn path_dev() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/inline_path_dev.in");
+    let project_root = project_from_template("tests/snapshots/add/path_dev.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency", "--dev"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+            "--dev",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/inline_path_dev.stdout")
-        .stderr_matches_path("tests/snapshots/add/inline_path_dev.stderr");
+        .stdout_matches_path("tests/snapshots/add/path_dev.stdout")
+        .stderr_matches_path("tests/snapshots/add/path_dev.stderr");
 
-    assert().subset_matches("tests/snapshots/add/inline_path_dev.out", &project_root);
+    assert().subset_matches("tests/snapshots/add/path_dev.out", &project_root);
 }
 
 #[cargo_test]
@@ -799,42 +808,43 @@ fn invalid_git_external() {
 }
 
 #[cargo_test]
-fn invalid_inline_path() {
+fn invalid_path() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/invalid_inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/invalid_path.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
-        .args(["./tests/fixtures/local"])
+        .args([
+            "cargo-list-test-fixture",
+            "--path",
+            "./tests/fixtures/local",
+        ])
         .current_dir(cwd)
         .assert()
         .code(101)
-        .stdout_matches_path("tests/snapshots/add/invalid_inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/invalid_inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/invalid_path.stdout")
+        .stderr_matches_path("tests/snapshots/add/invalid_path.stderr");
 
-    assert().subset_matches("tests/snapshots/add/invalid_inline_path.out", &project_root);
+    assert().subset_matches("tests/snapshots/add/invalid_path.out", &project_root);
 }
 
 #[cargo_test]
-fn invalid_inline_path_self() {
+fn invalid_path_self() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/invalid_inline_path_self.in");
+    let project_root = project_from_template("tests/snapshots/add/invalid_path_self.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
-        .args(["."])
+        .args(["cargo-list-test-fixture", "--path", "."])
         .current_dir(cwd)
         .assert()
         .code(101)
-        .stdout_matches_path("tests/snapshots/add/invalid_inline_path_self.stdout")
-        .stderr_matches_path("tests/snapshots/add/invalid_inline_path_self.stderr");
+        .stdout_matches_path("tests/snapshots/add/invalid_path_self.stdout")
+        .stderr_matches_path("tests/snapshots/add/invalid_path_self.stderr");
 
-    assert().subset_matches(
-        "tests/snapshots/add/invalid_inline_path_self.out",
-        &project_root,
-    );
+    assert().subset_matches("tests/snapshots/add/invalid_path_self.out", &project_root);
 }
 
 #[cargo_test]
@@ -941,7 +951,7 @@ fn list_features_path() {
 
     cargo_command()
         .arg("add")
-        .args(["cargo-list-test-fixture-dependency", "../dependency"])
+        .args(["your-face", "--path", "../dependency"])
         .current_dir(&cwd)
         .assert()
         .success()
@@ -961,7 +971,8 @@ fn list_features_path_no_default() {
     cargo_command()
         .arg("add")
         .args([
-            "cargo-list-test-fixture-dependency",
+            "your-face",
+            "--path",
             "../dependency",
             "--no-default-features",
         ])
@@ -1231,23 +1242,26 @@ fn overwrite_features() {
 }
 
 #[cargo_test]
-fn overwrite_git_with_inline_path() {
+fn overwrite_git_with_path() {
     init_registry();
-    let project_root =
-        project_from_template("tests/snapshots/add/overwrite_git_with_inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/overwrite_git_with_path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/overwrite_git_with_inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/overwrite_git_with_inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/overwrite_git_with_path.stdout")
+        .stderr_matches_path("tests/snapshots/add/overwrite_git_with_path.stderr");
 
     assert().subset_matches(
-        "tests/snapshots/add/overwrite_git_with_inline_path.out",
+        "tests/snapshots/add/overwrite_git_with_path.out",
         &project_root,
     );
 }
@@ -1459,7 +1473,11 @@ fn overwrite_path_noop() {
 
     cargo_command()
         .arg("add")
-        .args(["./dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "./dependency",
+        ])
         .current_dir(cwd)
         .assert()
         .success()
@@ -1608,23 +1626,26 @@ fn overwrite_version_with_git() {
 }
 
 #[cargo_test]
-fn overwrite_version_with_inline_path() {
+fn overwrite_version_with_path() {
     init_registry();
-    let project_root =
-        project_from_template("tests/snapshots/add/overwrite_version_with_inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/overwrite_version_with_path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/overwrite_version_with_inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/overwrite_version_with_inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/overwrite_version_with_path.stdout")
+        .stderr_matches_path("tests/snapshots/add/overwrite_version_with_path.stderr");
 
     assert().subset_matches(
-        "tests/snapshots/add/overwrite_version_with_inline_path.out",
+        "tests/snapshots/add/overwrite_version_with_path.out",
         &project_root,
     );
 }
@@ -1782,45 +1803,48 @@ fn vers() {
 }
 
 #[cargo_test]
-fn workspace_inline_path() {
+fn workspace_path() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/workspace_inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/workspace_path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/workspace_inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/workspace_inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/workspace_path.stdout")
+        .stderr_matches_path("tests/snapshots/add/workspace_path.stderr");
 
-    assert().subset_matches(
-        "tests/snapshots/add/workspace_inline_path.out",
-        &project_root,
-    );
+    assert().subset_matches("tests/snapshots/add/workspace_path.out", &project_root);
 }
 
 #[cargo_test]
-fn workspace_inline_path_dev() {
+fn workspace_path_dev() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/workspace_inline_path_dev.in");
+    let project_root = project_from_template("tests/snapshots/add/workspace_path_dev.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency", "--dev"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+            "--dev",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/workspace_inline_path_dev.stdout")
-        .stderr_matches_path("tests/snapshots/add/workspace_inline_path_dev.stderr");
+        .stdout_matches_path("tests/snapshots/add/workspace_path_dev.stdout")
+        .stderr_matches_path("tests/snapshots/add/workspace_path_dev.stderr");
 
-    assert().subset_matches(
-        "tests/snapshots/add/workspace_inline_path_dev.out",
-        &project_root,
-    );
+    assert().subset_matches("tests/snapshots/add/workspace_path_dev.out", &project_root);
 }
 
 #[cargo_test]

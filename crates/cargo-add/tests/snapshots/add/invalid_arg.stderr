@@ -4,6 +4,5 @@ error: Found argument '--flag' which wasn't expected, or isn't valid in this con
 
 USAGE:
     cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
-    cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...
 
 For more information try --help

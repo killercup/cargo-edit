@@ -13,15 +13,14 @@ pub fn cli() -> clap::Command<'static> {
         .about("Add dependencies to a Cargo.toml manifest file")
         .override_usage(
             "\
-    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
-    cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...",
+    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ..."
         )
         .after_help(
             "\
 EXAMPLES:
   $ cargo add regex --build
   $ cargo add trycmd --dev
-  $ cargo add ./crate/parser/
+  $ cargo add --path ./crate/parser/
   $ cargo add serde +derive serde_json
 ",
         )
@@ -38,7 +37,6 @@ EXAMPLES:
 You can reference a package by:
 - `<name>`, like `cargo add serde` (latest version will be used)
 - `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`
-- `<path>`, like `cargo add ./crates/parser/`
 
 Additionally, you can specify features for a dependency by following it with a `+<FEATURE>`.",
             ),
@@ -102,6 +100,12 @@ Example uses:
         .arg_dry_run("Don't actually write the manifest")
         .next_help_heading("SOURCE")
         .args([
+            clap::Arg::new("path")
+                .long("path")
+                .takes_value(true)
+                .value_name("PATH")
+                .help("Filesystem path to local crate to add")
+                .conflicts_with("git"),
             clap::Arg::new("git")
                 .long("git")
                 .takes_value(true)
@@ -215,6 +219,7 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
         .flatten()
         .map(String::from)
         .collect::<Vec<_>>();
+    let path = matches.value_of("path");
     let git = matches.value_of("git");
     let branch = matches.value_of("branch");
     let rev = matches.value_of("rev");
@@ -253,6 +258,7 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
                 default_features,
                 optional,
                 registry: registry.clone(),
+                path: path.map(String::from),
                 git: git.map(String::from),
                 branch: branch.map(String::from),
                 rev: rev.map(String::from),
@@ -263,6 +269,10 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
     }
 
     if deps.len() > 1 && git.is_some() {
+        anyhow::bail!("cannot specify multiple crates with path or git or vers");
+    }
+
+    if deps.len() > 1 && path.is_some() {
         anyhow::bail!("cannot specify multiple crates with path or git or vers");
     }
 
