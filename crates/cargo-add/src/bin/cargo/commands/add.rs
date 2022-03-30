@@ -1,11 +1,14 @@
+use indexmap::IndexMap;
+use indexmap::IndexSet;
+
 use cargo::core::dependency::DepKind;
 use cargo::util::command_prelude::*;
+use cargo::util::interning::InternedString;
 use cargo::CargoResult;
 use cargo_add::ops::cargo_add::add;
 use cargo_add::ops::cargo_add::AddOptions;
 use cargo_add::ops::cargo_add::DepOp;
 use cargo_add::ops::cargo_add::DepTable;
-use indexmap::IndexSet;
 
 pub fn cli() -> clap::Command<'static> {
     clap::Command::new("add")
@@ -13,7 +16,7 @@ pub fn cli() -> clap::Command<'static> {
         .about("Add dependencies to a Cargo.toml manifest file")
         .override_usage(
             "\
-    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ..."
+    cargo add [OPTIONS] <DEP>[@<VERSION>] ..."
         )
         .after_help(
             "\
@@ -21,7 +24,7 @@ EXAMPLES:
   $ cargo add regex --build
   $ cargo add trycmd --dev
   $ cargo add --path ./crate/parser/
-  $ cargo add serde +derive serde_json
+  $ cargo add serde serde_json -F serde/derive
 ",
         )
         .args([
@@ -36,9 +39,7 @@ EXAMPLES:
 
 You can reference a package by:
 - `<name>`, like `cargo add serde` (latest version will be used)
-- `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`
-
-Additionally, you can specify features for a dependency by following it with a `+<FEATURE>`.",
+- `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`"
             ),
             clap::Arg::new("no-default-features")
                 .long("no-default-features")
@@ -53,10 +54,7 @@ Additionally, you can specify features for a dependency by following it with a `
                 .takes_value(true)
                 .value_name("FEATURES")
                 .multiple_occurrences(true)
-                .help("Space-separated list of features to add")
-                .long_help("Space-separated list of features to add
-
-Alternatively, you can specify features for a dependency by following it with a `+<FEATURE>`."),
+                .help("Space-separated list of features to add"),
             clap::Arg::new("optional")
                 .long("optional")
                 .help("Mark the dependency as optional")
@@ -213,12 +211,12 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
 }
 
 fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResult<Vec<DepOp>> {
-    let crates = matches
+    let mut crates = matches
         .values_of("crates")
         .into_iter()
         .flatten()
-        .map(String::from)
-        .collect::<Vec<_>>();
+        .map(|c| (String::from(c), None))
+        .collect::<IndexMap<_, _>>();
     let path = matches.value_of("path");
     let git = matches.value_of("git");
     let branch = matches.value_of("branch");
@@ -227,45 +225,66 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
     let rename = matches.value_of("rename");
     let registry = matches.registry(config)?;
     let default_features = default_features(matches);
-    let features = matches.values_of("features").map(|f| {
-        f.flat_map(parse_feature)
-            .map(String::from)
-            .collect::<IndexSet<_>>()
-    });
     let optional = optional(matches);
+    for feature in matches
+        .values_of("features")
+        .into_iter()
+        .flatten()
+        .flat_map(parse_feature)
+    {
+        let parsed_value = cargo::core::FeatureValue::new(InternedString::new(feature));
+        match parsed_value {
+            cargo::core::FeatureValue::Feature(_) => {
+                if 1 < crates.len() {
+                    let candidates = crates
+                        .keys()
+                        .map(|c| format!("`{}/{}`", c, feature))
+                        .collect::<Vec<_>>();
+                    anyhow::bail!("feature `{feature}` must be qualified by the dependency its being activated for, like {}", candidates.join(", "));
+                }
+                crates
+                    .first_mut()
+                    .expect("always at least one crate")
+                    .1
+                    .get_or_insert_with(|| IndexSet::new())
+                    .insert(feature.to_owned());
+            }
+            cargo::core::FeatureValue::Dep { .. } => {
+                anyhow::bail!("feature `{feature}` is not allowed to use explicit `dep:` syntax",)
+            }
+            cargo::core::FeatureValue::DepFeature {
+                dep_name,
+                dep_feature,
+                ..
+            } => {
+                if dep_feature.contains('/') {
+                    anyhow::bail!("multiple slashes in feature `{feature}` is not allowed");
+                }
+                crates.get_mut(dep_name.as_str()).ok_or_else(|| {
+                    anyhow::format_err!("feature `{dep_feature}` activated for crate `{dep_name}` but the crate wasn't specified")
+                })?
+                    .get_or_insert_with(|| IndexSet::new())
+                .insert(dep_feature.as_str().to_owned());
+            }
+        }
+    }
 
     let mut deps: Vec<DepOp> = Vec::new();
-    for crate_spec in crates {
-        if let Some(features) = crate_spec.strip_prefix('+') {
-            if !config.cli_unstable().unstable_options {
-                anyhow::bail!("`+<feature>` is unstable and requires `-Z unstable-options`");
-            }
-
-            if let Some(prior) = deps.last_mut() {
-                let features = parse_feature(features);
-                prior
-                    .features
-                    .get_or_insert_with(Default::default)
-                    .extend(features.map(String::from));
-            } else {
-                anyhow::bail!("`+<feature>` must be preceded by a pkgid");
-            }
-        } else {
-            let dep = DepOp {
-                crate_spec,
-                rename: rename.map(String::from),
-                features: features.clone(),
-                default_features,
-                optional,
-                registry: registry.clone(),
-                path: path.map(String::from),
-                git: git.map(String::from),
-                branch: branch.map(String::from),
-                rev: rev.map(String::from),
-                tag: tag.map(String::from),
-            };
-            deps.push(dep);
-        }
+    for (crate_spec, features) in crates {
+        let dep = DepOp {
+            crate_spec,
+            rename: rename.map(String::from),
+            features,
+            default_features,
+            optional,
+            registry: registry.clone(),
+            path: path.map(String::from),
+            git: git.map(String::from),
+            branch: branch.map(String::from),
+            rev: rev.map(String::from),
+            tag: tag.map(String::from),
+        };
+        deps.push(dep);
     }
 
     if deps.len() > 1 && git.is_some() {
@@ -278,10 +297,6 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
 
     if deps.len() > 1 && rename.is_some() {
         anyhow::bail!("cannot specify multiple crates with `--rename`");
-    }
-
-    if deps.len() > 1 && features.is_some() {
-        anyhow::bail!("cannot specify multiple crates with `--features`");
     }
 
     Ok(deps)

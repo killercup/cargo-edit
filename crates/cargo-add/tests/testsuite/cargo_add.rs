@@ -1277,9 +1277,9 @@ fn overwrite_inline_features() {
         .args([
             "unrelateed-crate",
             "your-face",
-            "+nose,mouth",
-            "+ears",
-            "-Zunstable-options",
+            "--features",
+            "your-face/nose,your-face/mouth",
+            "-Fyour-face/ears",
         ])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
