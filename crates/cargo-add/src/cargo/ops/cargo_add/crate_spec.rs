@@ -3,9 +3,7 @@
 use anyhow::Context as _;
 use cargo::CargoResult;
 
-use super::get_manifest_from_path;
 use super::Dependency;
-use super::PathSource;
 use super::RegistrySource;
 
 /// User-specified crate
@@ -15,42 +13,31 @@ use super::RegistrySource;
 /// - Name and a version req (e.g. `docopt@^0.8`)
 /// - Path
 #[derive(Debug)]
-pub enum CrateSpec {
-    /// Name with optional version req
-    PkgId {
-        /// Crate name
-        name: String,
-        /// Optional version requirement
-        version_req: Option<String>,
-    },
-    /// Path to a crate root
-    Path(std::path::PathBuf),
+pub struct CrateSpec {
+    /// Crate name
+    name: String,
+    /// Optional version requirement
+    version_req: Option<String>,
 }
 
 impl CrateSpec {
     /// Convert a string to a `Crate`
     pub fn resolve(pkg_id: &str) -> CargoResult<Self> {
-        let path = std::path::Path::new(pkg_id);
-        // For improved error messages, treat it like a path if it looks like one
-        let id = if is_path_like(pkg_id) || path.exists() {
-            Self::Path(path.to_owned())
-        } else {
-            let (name, version) = pkg_id
-                .split_once('@')
-                .map(|(n, v)| (n, Some(v)))
-                .unwrap_or((pkg_id, None));
+        let (name, version) = pkg_id
+            .split_once('@')
+            .map(|(n, v)| (n, Some(v)))
+            .unwrap_or((pkg_id, None));
 
-            cargo::util::validate_package_name(name, "dependency name", "")?;
+        cargo::util::validate_package_name(name, "dependency name", "")?;
 
-            if let Some(version) = version {
-                semver::VersionReq::parse(version)
-                    .with_context(|| format!("invalid version requirement `{version}`"))?;
-            }
+        if let Some(version) = version {
+            semver::VersionReq::parse(version)
+                .with_context(|| format!("invalid version requirement `{version}`"))?;
+        }
 
-            Self::PkgId {
-                name: name.to_owned(),
-                version_req: version.map(|s| s.to_owned()),
-            }
+        let id = Self {
+            name: name.to_owned(),
+            version_req: version.map(|s| s.to_owned()),
         };
 
         Ok(id)
@@ -58,30 +45,18 @@ impl CrateSpec {
 
     /// Generate a dependency entry for this crate specifier
     pub fn to_dependency(&self) -> CargoResult<Dependency> {
-        let dep = match self {
-            Self::PkgId { name, version_req } => {
-                let mut dep = Dependency::new(name);
-                if let Some(version_req) = version_req {
-                    dep = dep.set_source(RegistrySource::new(version_req));
-                }
-                dep
-            }
-            Self::Path(path) => {
-                let manifest = get_manifest_from_path(path)?;
-                let crate_name = manifest.package_name()?;
-                let version = manifest.package_version()?;
-                let path = dunce::canonicalize(path)?;
-                let available_features = manifest.features()?;
-                Dependency::new(crate_name)
-                    .set_source(PathSource::new(path).set_version(version))
-                    .set_available_features(available_features)
-            }
-        };
-
+        let mut dep = Dependency::new(self.name());
+        if let Some(version_req) = self.version_req() {
+            dep = dep.set_source(RegistrySource::new(version_req));
+        }
         Ok(dep)
     }
-}
 
-fn is_path_like(s: &str) -> bool {
-    s.contains('/') || s.contains('\\')
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn version_req(&self) -> Option<&str> {
+        self.version_req.as_deref()
+    }
 }

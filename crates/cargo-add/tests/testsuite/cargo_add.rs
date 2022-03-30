@@ -518,11 +518,11 @@ fn git() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git.in");
     let cwd = &project_root;
-    let git_dep = cargo_test_support::git::new("versioned-package", |project| {
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
         project
             .file(
                 "Cargo.toml",
-                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
             )
             .file("src/lib.rs", "")
     });
@@ -530,7 +530,7 @@ fn git() {
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", &git_url, "-Zunstable-options"])
+        .args(["git-package", "--git", &git_url])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -542,15 +542,71 @@ fn git() {
 }
 
 #[cargo_test]
+fn git_normalized_name() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/git_normalized_name.in");
+    let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
+
+    cargo_command()
+        .arg("add")
+        .args(["git_package", "--git", &git_url])
+        .masquerade_as_nightly_cargo()
+        .current_dir(cwd)
+        .assert()
+        .failure() // Fuzzy searching for paths isn't supported at this time
+        .stdout_matches_path("tests/snapshots/add/git_normalized_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/git_normalized_name.stderr");
+
+    assert().subset_matches("tests/snapshots/add/git_normalized_name.out", &project_root);
+}
+
+#[cargo_test]
+fn invalid_git_name() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/invalid_git_name.in");
+    let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
+
+    cargo_command()
+        .arg("add")
+        .args(["not-in-git", "--git", &git_url])
+        .masquerade_as_nightly_cargo()
+        .current_dir(cwd)
+        .assert()
+        .code(101)
+        .stdout_matches_path("tests/snapshots/add/invalid_git_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/invalid_git_name.stderr");
+
+    assert().subset_matches("tests/snapshots/add/invalid_git_name.out", &project_root);
+}
+
+#[cargo_test]
 fn git_branch() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_branch.in");
     let cwd = &project_root;
-    let (git_dep, git_repo) = cargo_test_support::git::new_repo("versioned-package", |project| {
+    let (git_dep, git_repo) = cargo_test_support::git::new_repo("git-package", |project| {
         project
             .file(
                 "Cargo.toml",
-                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
             )
             .file("src/lib.rs", "")
     });
@@ -561,14 +617,7 @@ fn git_branch() {
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            &git_url,
-            "--branch",
-            branch,
-            "-Zunstable-options",
-        ])
+        .args(["git-package", "--git", &git_url, "--branch", branch])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -591,7 +640,6 @@ fn git_conflicts_namever() {
             "my-package@0.4.3",
             "--git",
             "https://github.com/dcjanus/invalid",
-            "-Zunstable-options",
         ])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
@@ -607,38 +655,9 @@ fn git_conflicts_namever() {
 }
 
 #[cargo_test]
-fn git_conflicts_registry() {
-    init_registry();
-    let project_root = project_from_template("tests/snapshots/add/git_conflicts_registry.in");
-    let cwd = &project_root;
-
-    cargo_command()
-        .arg("add")
-        .args([
-            "my-package",
-            "--git",
-            "https://github.com/dcjanus/invalid",
-            "--registry",
-            "alternative",
-            "-Zunstable-options",
-        ])
-        .masquerade_as_nightly_cargo()
-        .current_dir(cwd)
-        .assert()
-        .code(1)
-        .stdout_matches_path("tests/snapshots/add/git_conflicts_registry.stdout")
-        .stderr_matches_path("tests/snapshots/add/git_conflicts_registry.stderr");
-
-    assert().subset_matches(
-        "tests/snapshots/add/git_conflicts_registry.out",
-        &project_root,
-    );
-}
-
-#[cargo_test]
-fn git_dev() {
-    init_registry();
-    let project_root = project_from_template("tests/snapshots/add/git_dev.in");
+fn git_registry() {
+    init_alt_registry();
+    let project_root = project_from_template("tests/snapshots/add/git_registry.in");
     let cwd = &project_root;
     let git_dep = cargo_test_support::git::new("versioned-package", |project| {
         project
@@ -653,12 +672,39 @@ fn git_dev() {
     cargo_command()
         .arg("add")
         .args([
-            "git-package",
+            "versioned-package",
             "--git",
             &git_url,
-            "--dev",
-            "-Zunstable-options",
+            "--registry",
+            "alternative",
         ])
+        .current_dir(cwd)
+        .assert()
+        .success()
+        .stdout_matches_path("tests/snapshots/add/git_registry.stdout")
+        .stderr_matches_path("tests/snapshots/add/git_registry.stderr");
+
+    assert().subset_matches("tests/snapshots/add/git_registry.out", &project_root);
+}
+
+#[cargo_test]
+fn git_dev() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/git_dev.in");
+    let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
+
+    cargo_command()
+        .arg("add")
+        .args(["git-package", "--git", &git_url, "--dev"])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -674,11 +720,11 @@ fn git_rev() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_rev.in");
     let cwd = &project_root;
-    let (git_dep, git_repo) = cargo_test_support::git::new_repo("versioned-package", |project| {
+    let (git_dep, git_repo) = cargo_test_support::git::new_repo("git-package", |project| {
         project
             .file(
                 "Cargo.toml",
-                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
             )
             .file("src/lib.rs", "")
     });
@@ -688,14 +734,7 @@ fn git_rev() {
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            &git_url,
-            "--rev",
-            &head,
-            "-Zunstable-options",
-        ])
+        .args(["git-package", "--git", &git_url, "--rev", &head])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -711,11 +750,11 @@ fn git_tag() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_tag.in");
     let cwd = &project_root;
-    let (git_dep, git_repo) = cargo_test_support::git::new_repo("versioned-package", |project| {
+    let (git_dep, git_repo) = cargo_test_support::git::new_repo("git-package", |project| {
         project
             .file(
                 "Cargo.toml",
-                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
             )
             .file("src/lib.rs", "")
     });
@@ -725,14 +764,7 @@ fn git_tag() {
 
     cargo_command()
         .arg("add")
-        .args([
-            "git-package",
-            "--git",
-            &git_url,
-            "--tag",
-            tag,
-            "-Zunstable-options",
-        ])
+        .args(["git-package", "--git", &git_url, "--tag", tag])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -744,39 +776,91 @@ fn git_tag() {
 }
 
 #[cargo_test]
-fn inline_path() {
+fn path() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/path.stdout")
+        .stderr_matches_path("tests/snapshots/add/path.stderr");
 
-    assert().subset_matches("tests/snapshots/add/inline_path.out", &project_root);
+    assert().subset_matches("tests/snapshots/add/path.out", &project_root);
 }
 
 #[cargo_test]
-fn inline_path_dev() {
+fn path_normalized_name() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/inline_path_dev.in");
+    let project_root = project_from_template("tests/snapshots/add/path_normalized_name.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency", "--dev"])
+        .args([
+            "cargo_list_test_fixture_dependency",
+            "--path",
+            "../dependency",
+        ])
+        .current_dir(&cwd)
+        .assert()
+        .failure() // Fuzzy searching for paths isn't supported at this time
+        .stdout_matches_path("tests/snapshots/add/path_normalized_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/path_normalized_name.stderr");
+
+    assert().subset_matches(
+        "tests/snapshots/add/path_normalized_name.out",
+        &project_root,
+    );
+}
+
+#[cargo_test]
+fn invalid_path_name() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/invalid_path_name.in");
+    let cwd = project_root.join("primary");
+
+    cargo_command()
+        .arg("add")
+        .args(["not-at-path", "--path", "../dependency"])
+        .current_dir(&cwd)
+        .assert()
+        .code(101)
+        .stdout_matches_path("tests/snapshots/add/invalid_path_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/invalid_path_name.stderr");
+
+    assert().subset_matches("tests/snapshots/add/invalid_path_name.out", &project_root);
+}
+
+#[cargo_test]
+fn path_dev() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/path_dev.in");
+    let cwd = project_root.join("primary");
+
+    cargo_command()
+        .arg("add")
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+            "--dev",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/inline_path_dev.stdout")
-        .stderr_matches_path("tests/snapshots/add/inline_path_dev.stderr");
+        .stdout_matches_path("tests/snapshots/add/path_dev.stdout")
+        .stderr_matches_path("tests/snapshots/add/path_dev.stderr");
 
-    assert().subset_matches("tests/snapshots/add/inline_path_dev.out", &project_root);
+    assert().subset_matches("tests/snapshots/add/path_dev.out", &project_root);
 }
 
 #[cargo_test]
@@ -808,7 +892,7 @@ fn invalid_git_external() {
 
     cargo_command()
         .arg("add")
-        .args(["fake-git", "--git", &git_url, "-Zunstable-options"])
+        .args(["fake-git", "--git", &git_url])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -823,63 +907,43 @@ fn invalid_git_external() {
 }
 
 #[cargo_test]
-fn invalid_git_no_unstable() {
+fn invalid_path() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/invalid_git_no_unstable.in");
+    let project_root = project_from_template("tests/snapshots/add/invalid_path.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
-        .args(["git-package", "--git", "http://localhost/git-package.git"])
+        .args([
+            "cargo-list-test-fixture",
+            "--path",
+            "./tests/fixtures/local",
+        ])
         .current_dir(cwd)
         .assert()
         .code(101)
-        .stdout_matches_path("tests/snapshots/add/invalid_git_no_unstable.stdout")
-        .stderr_matches_path("tests/snapshots/add/invalid_git_no_unstable.stderr");
+        .stdout_matches_path("tests/snapshots/add/invalid_path.stdout")
+        .stderr_matches_path("tests/snapshots/add/invalid_path.stderr");
 
-    assert().subset_matches(
-        "tests/snapshots/add/invalid_git_no_unstable.out",
-        &project_root,
-    );
+    assert().subset_matches("tests/snapshots/add/invalid_path.out", &project_root);
 }
 
 #[cargo_test]
-fn invalid_inline_path() {
+fn invalid_path_self() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/invalid_inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/invalid_path_self.in");
     let cwd = &project_root;
 
     cargo_command()
         .arg("add")
-        .args(["./tests/fixtures/local"])
+        .args(["cargo-list-test-fixture", "--path", "."])
         .current_dir(cwd)
         .assert()
         .code(101)
-        .stdout_matches_path("tests/snapshots/add/invalid_inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/invalid_inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/invalid_path_self.stdout")
+        .stderr_matches_path("tests/snapshots/add/invalid_path_self.stderr");
 
-    assert().subset_matches("tests/snapshots/add/invalid_inline_path.out", &project_root);
-}
-
-#[cargo_test]
-fn invalid_inline_path_self() {
-    init_registry();
-    let project_root = project_from_template("tests/snapshots/add/invalid_inline_path_self.in");
-    let cwd = &project_root;
-
-    cargo_command()
-        .arg("add")
-        .args(["."])
-        .current_dir(cwd)
-        .assert()
-        .code(101)
-        .stdout_matches_path("tests/snapshots/add/invalid_inline_path_self.stdout")
-        .stderr_matches_path("tests/snapshots/add/invalid_inline_path_self.stderr");
-
-    assert().subset_matches(
-        "tests/snapshots/add/invalid_inline_path_self.out",
-        &project_root,
-    );
+    assert().subset_matches("tests/snapshots/add/invalid_path_self.out", &project_root);
 }
 
 #[cargo_test]
@@ -986,7 +1050,7 @@ fn list_features_path() {
 
     cargo_command()
         .arg("add")
-        .args(["cargo-list-test-fixture-dependency", "../dependency"])
+        .args(["your-face", "--path", "../dependency"])
         .current_dir(&cwd)
         .assert()
         .success()
@@ -1006,7 +1070,8 @@ fn list_features_path_no_default() {
     cargo_command()
         .arg("add")
         .args([
-            "cargo-list-test-fixture-dependency",
+            "your-face",
+            "--path",
             "../dependency",
             "--no-default-features",
         ])
@@ -1084,7 +1149,6 @@ fn multiple_conflicts_with_git() {
             "my-package2",
             "--git",
             "https://github.com/dcjanus/invalid",
-            "-Zunstable-options",
         ])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
@@ -1277,23 +1341,26 @@ fn overwrite_features() {
 }
 
 #[cargo_test]
-fn overwrite_git_with_inline_path() {
+fn overwrite_git_with_path() {
     init_registry();
-    let project_root =
-        project_from_template("tests/snapshots/add/overwrite_git_with_inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/overwrite_git_with_path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/overwrite_git_with_inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/overwrite_git_with_inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/overwrite_git_with_path.stdout")
+        .stderr_matches_path("tests/snapshots/add/overwrite_git_with_path.stderr");
 
     assert().subset_matches(
-        "tests/snapshots/add/overwrite_git_with_inline_path.out",
+        "tests/snapshots/add/overwrite_git_with_path.out",
         &project_root,
     );
 }
@@ -1309,9 +1376,9 @@ fn overwrite_inline_features() {
         .args([
             "unrelateed-crate",
             "your-face",
-            "+nose,mouth",
-            "+ears",
-            "-Zunstable-options",
+            "--features",
+            "your-face/nose,your-face/mouth",
+            "-Fyour-face/ears",
         ])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
@@ -1505,7 +1572,11 @@ fn overwrite_path_noop() {
 
     cargo_command()
         .arg("add")
-        .args(["./dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "./dependency",
+        ])
         .current_dir(cwd)
         .assert()
         .success()
@@ -1639,7 +1710,7 @@ fn overwrite_version_with_git() {
 
     cargo_command()
         .arg("add")
-        .args(["versioned-package", "--git", &git_url, "-Zunstable-options"])
+        .args(["versioned-package", "--git", &git_url])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
@@ -1654,23 +1725,26 @@ fn overwrite_version_with_git() {
 }
 
 #[cargo_test]
-fn overwrite_version_with_inline_path() {
+fn overwrite_version_with_path() {
     init_registry();
-    let project_root =
-        project_from_template("tests/snapshots/add/overwrite_version_with_inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/overwrite_version_with_path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/overwrite_version_with_inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/overwrite_version_with_inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/overwrite_version_with_path.stdout")
+        .stderr_matches_path("tests/snapshots/add/overwrite_version_with_path.stderr");
 
     assert().subset_matches(
-        "tests/snapshots/add/overwrite_version_with_inline_path.out",
+        "tests/snapshots/add/overwrite_version_with_path.out",
         &project_root,
     );
 }
@@ -1828,45 +1902,48 @@ fn vers() {
 }
 
 #[cargo_test]
-fn workspace_inline_path() {
+fn workspace_path() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/workspace_inline_path.in");
+    let project_root = project_from_template("tests/snapshots/add/workspace_path.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/workspace_inline_path.stdout")
-        .stderr_matches_path("tests/snapshots/add/workspace_inline_path.stderr");
+        .stdout_matches_path("tests/snapshots/add/workspace_path.stdout")
+        .stderr_matches_path("tests/snapshots/add/workspace_path.stderr");
 
-    assert().subset_matches(
-        "tests/snapshots/add/workspace_inline_path.out",
-        &project_root,
-    );
+    assert().subset_matches("tests/snapshots/add/workspace_path.out", &project_root);
 }
 
 #[cargo_test]
-fn workspace_inline_path_dev() {
+fn workspace_path_dev() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/workspace_inline_path_dev.in");
+    let project_root = project_from_template("tests/snapshots/add/workspace_path_dev.in");
     let cwd = project_root.join("primary");
 
     cargo_command()
         .arg("add")
-        .args(["../dependency", "--dev"])
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+            "--dev",
+        ])
         .current_dir(&cwd)
         .assert()
         .success()
-        .stdout_matches_path("tests/snapshots/add/workspace_inline_path_dev.stdout")
-        .stderr_matches_path("tests/snapshots/add/workspace_inline_path_dev.stderr");
+        .stdout_matches_path("tests/snapshots/add/workspace_path_dev.stdout")
+        .stderr_matches_path("tests/snapshots/add/workspace_path_dev.stderr");
 
-    assert().subset_matches(
-        "tests/snapshots/add/workspace_inline_path_dev.out",
-        &project_root,
-    );
+    assert().subset_matches("tests/snapshots/add/workspace_path_dev.out", &project_root);
 }
 
 #[cargo_test]

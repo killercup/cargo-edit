@@ -160,6 +160,8 @@ pub struct DepOp {
     pub registry: Option<String>,
 
     /// Git repo for dependency
+    pub path: Option<String>,
+    /// Git repo for dependency
     pub git: Option<String>,
     /// Specify an alternative git branch
     pub branch: Option<String>,
@@ -204,37 +206,57 @@ fn resolve_dependency(
     };
 
     if let Some(url) = &arg.git {
-        match &crate_spec {
-            CrateSpec::Path(path) => {
-                anyhow::bail!(
-                    "cannot specify a git URL (`{url}`) with a path (`{}`).",
-                    path.display()
-                )
+        if let Some(v) = crate_spec.version_req() {
+            // crate specifier includes a version (e.g. `docopt@0.8`)
+            anyhow::bail!("cannot specify a git URL (`{url}`) with a version (`{v}`).",)
+        } else {
+            let mut src = GitSource::new(url);
+            if let Some(branch) = &arg.branch {
+                src = src.set_branch(branch);
             }
-            CrateSpec::PkgId {
-                name: _,
-                version_req: Some(v),
-            } => {
-                // crate specifier includes a version (e.g. `docopt@0.8`)
-                anyhow::bail!("cannot specify a git URL (`{url}`) with a version (`{v}`).",)
+            if let Some(tag) = &arg.tag {
+                src = src.set_tag(tag);
             }
-            CrateSpec::PkgId {
-                name: _,
-                version_req: None,
-            } => {
-                assert!(arg.registry.is_none());
-                let mut src = GitSource::new(url);
-                if let Some(branch) = &arg.branch {
-                    src = src.set_branch(branch);
-                }
-                if let Some(tag) = &arg.tag {
-                    src = src.set_tag(tag);
-                }
-                if let Some(rev) = &arg.rev {
-                    src = src.set_rev(rev);
-                }
-                dependency = dependency.set_source(src);
+            if let Some(rev) = &arg.rev {
+                src = src.set_rev(rev);
             }
+            dependency = dependency.set_source(src);
+
+            let latest = select_package(&dependency, config, registry)?;
+
+            if dependency.name != latest.name {
+                config.shell().warn(format!(
+                    "translating `{}` to `{}`",
+                    dependency.name, latest.name,
+                ))?;
+                dependency.name = latest.name; // Normalize the name
+            }
+            dependency = dependency
+                .set_source(latest.source.expect("latest always has a source"))
+                .set_available_features(latest.available_features);
+        }
+    } else if let Some(path) = &arg.path {
+        if let Some(v) = crate_spec.version_req() {
+            // crate specifier includes a version (e.g. `docopt@0.8`)
+            anyhow::bail!("cannot specify a path (`{path}`) with a version (`{v}`).",)
+        } else {
+            let path =
+                dunce::canonicalize(path).with_context(|| format!("Unable to find {}", path))?;
+            let src = PathSource::new(path);
+            dependency = dependency.set_source(src);
+
+            let latest = select_package(&dependency, config, registry)?;
+
+            if dependency.name != latest.name {
+                config.shell().warn(format!(
+                    "translating `{}` to `{}`",
+                    dependency.name, latest.name,
+                ))?;
+                dependency.name = latest.name; // Normalize the name
+            }
+            dependency = dependency
+                .set_source(latest.source.expect("latest always has a source"))
+                .set_available_features(latest.available_features);
         }
     }
 
@@ -354,7 +376,8 @@ fn get_latest_dependency(
 ) -> CargoResult<Dependency> {
     let query = dependency.query(config)?;
     let possibilities = loop {
-        match registry.query_vec(&query, true) {
+        let fuzzy = true;
+        match registry.query_vec(&query, fuzzy) {
             std::task::Poll::Ready(res) => {
                 break res?;
             }
@@ -377,6 +400,46 @@ fn get_latest_dependency(
         dep = dep.set_registry(reg_name);
     }
     Ok(dep)
+}
+
+fn select_package(
+    dependency: &Dependency,
+    config: &Config,
+    registry: &mut cargo::core::registry::PackageRegistry<'_>,
+) -> CargoResult<Dependency> {
+    let query = dependency.query(config)?;
+    let possibilities = loop {
+        let fuzzy = false; // Returns all for path/git
+        match registry.query_vec(&query, fuzzy) {
+            std::task::Poll::Ready(res) => {
+                break res?;
+            }
+            std::task::Poll::Pending => registry.block_until_ready()?,
+        }
+    };
+    match possibilities.len() {
+        0 => {
+            let source = dependency
+                .source()
+                .expect("source should be resolved before here");
+            anyhow::bail!("the crate `{dependency}` could not be found at `{source}`")
+        }
+        1 => {
+            let mut dep = Dependency::from(&possibilities[0]);
+            if let Some(reg_name) = dependency.registry.as_deref() {
+                dep = dep.set_registry(reg_name);
+            }
+            Ok(dep)
+        }
+        _ => {
+            let source = dependency
+                .source()
+                .expect("source should be resolved before here");
+            anyhow::bail!(
+                "unexpectedly found multiple copies of crate `{dependency}` at `{source}`"
+            )
+        }
+    }
 }
 
 fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
@@ -548,9 +611,4 @@ fn is_sorted(mut it: impl Iterator<Item = impl PartialOrd>) -> bool {
     }
 
     true
-}
-
-fn get_manifest_from_path(path: &Path) -> CargoResult<LocalManifest> {
-    let cargo_file = path.join("Cargo.toml");
-    LocalManifest::try_new(&cargo_file).with_context(|| "Unable to open local Cargo.toml")
 }
