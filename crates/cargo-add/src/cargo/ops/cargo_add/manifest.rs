@@ -455,7 +455,8 @@ fn fix_feature_activations(
                 DependencyStatus::Required => match (parsed_value, explicit_dep_activation) {
                     (cargo::core::FeatureValue::Feature(dep_name), false)
                     | (cargo::core::FeatureValue::Dep { dep_name }, _) => dep_name == dep_key,
-                    (cargo::core::FeatureValue::DepFeature { .. }, _) | _ => false,
+                    (cargo::core::FeatureValue::Feature(_), true)
+                    | (cargo::core::FeatureValue::DepFeature { .. }, _) => false,
                 },
             }
             .then(|| idx)

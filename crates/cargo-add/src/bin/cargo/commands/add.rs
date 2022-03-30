@@ -210,7 +210,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     Ok(())
 }
 
-fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResult<Vec<DepOp>> {
+fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<DepOp>> {
     let mut crates = matches
         .values_of("crates")
         .into_iter()
@@ -246,7 +246,7 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
                     .first_mut()
                     .expect("always at least one crate")
                     .1
-                    .get_or_insert_with(|| IndexSet::new())
+                    .get_or_insert_with(IndexSet::new)
                     .insert(feature.to_owned());
             }
             cargo::core::FeatureValue::Dep { .. } => {
@@ -263,7 +263,7 @@ fn parse_dependencies<'m>(config: &Config, matches: &'m ArgMatches) -> CargoResu
                 crates.get_mut(dep_name.as_str()).ok_or_else(|| {
                     anyhow::format_err!("feature `{dep_feature}` activated for crate `{dep_name}` but the crate wasn't specified")
                 })?
-                    .get_or_insert_with(|| IndexSet::new())
+                    .get_or_insert_with(IndexSet::new)
                 .insert(dep_feature.as_str().to_owned());
             }
         }
