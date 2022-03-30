@@ -287,14 +287,6 @@ fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<
         deps.push(dep);
     }
 
-    if deps.len() > 1 && git.is_some() {
-        anyhow::bail!("cannot specify multiple crates with path or git or vers");
-    }
-
-    if deps.len() > 1 && path.is_some() {
-        anyhow::bail!("cannot specify multiple crates with path or git or vers");
-    }
-
     if deps.len() > 1 && rename.is_some() {
         anyhow::bail!("cannot specify multiple crates with `--rename`");
     }

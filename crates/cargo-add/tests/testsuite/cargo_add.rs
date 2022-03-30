@@ -1137,30 +1137,36 @@ fn multiple_conflicts_with_features() {
 }
 
 #[cargo_test]
-fn multiple_conflicts_with_git() {
+fn git_multiple_names() {
     init_registry();
-    let project_root = project_from_template("tests/snapshots/add/multiple_conflicts_with_git.in");
+    let project_root = project_from_template("tests/snapshots/add/git_multiple_names.in");
     let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
+        project
+            .file(
+                "p1/Cargo.toml",
+                &cargo_test_support::basic_manifest("my-package1", "0.3.0+my-package1"),
+            )
+            .file("p1/src/lib.rs", "")
+            .file(
+                "p2/Cargo.toml",
+                &cargo_test_support::basic_manifest("my-package2", "0.3.0+my-package2"),
+            )
+            .file("p2/src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
 
     cargo_command()
         .arg("add")
-        .args([
-            "my-package1",
-            "my-package2",
-            "--git",
-            "https://github.com/dcjanus/invalid",
-        ])
+        .args(["my-package1", "my-package2", "--git", &git_url])
         .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
-        .code(101)
-        .stdout_matches_path("tests/snapshots/add/multiple_conflicts_with_git.stdout")
-        .stderr_matches_path("tests/snapshots/add/multiple_conflicts_with_git.stderr");
+        .success()
+        .stdout_matches_path("tests/snapshots/add/git_multiple_names.stdout")
+        .stderr_matches_path("tests/snapshots/add/git_multiple_names.stderr");
 
-    assert().subset_matches(
-        "tests/snapshots/add/multiple_conflicts_with_git.out",
-        &project_root,
-    );
+    assert().subset_matches("tests/snapshots/add/git_multiple_names.out", &project_root);
 }
 
 #[cargo_test]
