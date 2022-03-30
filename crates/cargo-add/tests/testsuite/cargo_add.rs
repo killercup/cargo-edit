@@ -518,11 +518,11 @@ fn git() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git.in");
     let cwd = &project_root;
-    let git_dep = cargo_test_support::git::new("versioned-package", |project| {
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
         project
             .file(
                 "Cargo.toml",
-                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
             )
             .file("src/lib.rs", "")
     });
@@ -546,11 +546,11 @@ fn git_branch() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_branch.in");
     let cwd = &project_root;
-    let (git_dep, git_repo) = cargo_test_support::git::new_repo("versioned-package", |project| {
+    let (git_dep, git_repo) = cargo_test_support::git::new_repo("git-package", |project| {
         project
             .file(
                 "Cargo.toml",
-                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
             )
             .file("src/lib.rs", "")
     });
@@ -599,31 +599,36 @@ fn git_conflicts_namever() {
 }
 
 #[cargo_test]
-fn git_conflicts_registry() {
-    init_registry();
-    let project_root = project_from_template("tests/snapshots/add/git_conflicts_registry.in");
+fn git_registry() {
+    init_alt_registry();
+    let project_root = project_from_template("tests/snapshots/add/git_registry.in");
     let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("versioned-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
 
     cargo_command()
         .arg("add")
         .args([
-            "my-package",
+            "versioned-package",
             "--git",
-            "https://github.com/dcjanus/invalid",
+            &git_url,
             "--registry",
             "alternative",
         ])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
-        .code(1)
-        .stdout_matches_path("tests/snapshots/add/git_conflicts_registry.stdout")
-        .stderr_matches_path("tests/snapshots/add/git_conflicts_registry.stderr");
+        .success()
+        .stdout_matches_path("tests/snapshots/add/git_registry.stdout")
+        .stderr_matches_path("tests/snapshots/add/git_registry.stderr");
 
-    assert().subset_matches(
-        "tests/snapshots/add/git_conflicts_registry.out",
-        &project_root,
-    );
+    assert().subset_matches("tests/snapshots/add/git_registry.out", &project_root);
 }
 
 #[cargo_test]
@@ -631,11 +636,11 @@ fn git_dev() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_dev.in");
     let cwd = &project_root;
-    let git_dep = cargo_test_support::git::new("versioned-package", |project| {
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
         project
             .file(
                 "Cargo.toml",
-                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
             )
             .file("src/lib.rs", "")
     });
@@ -659,11 +664,11 @@ fn git_rev() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_rev.in");
     let cwd = &project_root;
-    let (git_dep, git_repo) = cargo_test_support::git::new_repo("versioned-package", |project| {
+    let (git_dep, git_repo) = cargo_test_support::git::new_repo("git-package", |project| {
         project
             .file(
                 "Cargo.toml",
-                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
             )
             .file("src/lib.rs", "")
     });
@@ -689,11 +694,11 @@ fn git_tag() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_tag.in");
     let cwd = &project_root;
-    let (git_dep, git_repo) = cargo_test_support::git::new_repo("versioned-package", |project| {
+    let (git_dep, git_repo) = cargo_test_support::git::new_repo("git-package", |project| {
         project
             .file(
                 "Cargo.toml",
-                &cargo_test_support::basic_manifest("versioned-package", "0.3.0+versioned-package"),
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
             )
             .file("src/lib.rs", "")
     });

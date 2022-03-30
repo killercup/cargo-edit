@@ -222,7 +222,6 @@ fn resolve_dependency(
                 name: _,
                 version_req: None,
             } => {
-                assert!(arg.registry.is_none());
                 let mut src = GitSource::new(url);
                 if let Some(branch) = &arg.branch {
                     src = src.set_branch(branch);
@@ -234,6 +233,19 @@ fn resolve_dependency(
                     src = src.set_rev(rev);
                 }
                 dependency = dependency.set_source(src);
+
+                let latest = get_latest_dependency(&dependency, false, config, registry)?;
+
+                if dependency.name != latest.name {
+                    config.shell().warn(format!(
+                        "translating `{}` to `{}`",
+                        dependency.name, latest.name,
+                    ))?;
+                    dependency.name = latest.name; // Normalize the name
+                }
+                dependency = dependency
+                    .set_source(latest.source.expect("latest always has a source"))
+                    .set_available_features(latest.available_features);
             }
         }
     }

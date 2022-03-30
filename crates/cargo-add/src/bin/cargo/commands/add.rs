@@ -106,8 +106,7 @@ Example uses:
                 .long("registry")
                 .takes_value(true)
                 .value_name("NAME")
-                .help("Package registry for this dependency")
-                .conflicts_with("git"),
+                .help("Package registry for this dependency"),
             clap::Arg::new("git")
                 .long("git")
                 .takes_value(true)

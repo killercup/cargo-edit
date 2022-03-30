@@ -65,7 +65,9 @@ impl Dependency {
             Some(Source::Path(path)) => {
                 path.version = None;
             }
-            Some(Source::Git(_)) => {}
+            Some(Source::Git(git)) => {
+                git.version = None;
+            }
             None => {}
         }
         self
@@ -155,7 +157,7 @@ impl Dependency {
         match self.source()? {
             Source::Registry(src) => Some(src.version.as_str()),
             Source::Path(src) => src.version.as_deref(),
-            Source::Git(_) => None,
+            Source::Git(src) => src.version.as_deref(),
         }
     }
 
@@ -252,6 +254,11 @@ impl Dependency {
                     if let Some(value) = table.get("rev") {
                         src = src.set_rev(value.as_str().ok_or_else(|| {
                             invalid_type(key, "rev", value.type_name(), "string")
+                        })?);
+                    }
+                    if let Some(value) = table.get("version") {
+                        src = src.set_version(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "version", value.type_name(), "string")
                         })?);
                     }
                     src.into()
@@ -394,6 +401,9 @@ impl Dependency {
                         if let Some(rev) = src.rev.as_deref() {
                             table.insert("rev", rev.into());
                         }
+                        if let Some(r) = src.version.as_deref() {
+                            table.insert("version", r.into());
+                        }
                     }
                     None => {}
                 }
@@ -433,18 +443,20 @@ impl Dependency {
             match &self.source {
                 Some(Source::Registry(src)) => {
                     table.insert("version", toml_edit::value(src.version.as_str()));
+
                     for key in ["path", "git", "branch", "tag", "rev"] {
                         table.remove(key);
                     }
                 }
                 Some(Source::Path(src)) => {
                     let relpath = path_field(crate_root, &src.path);
+                    table.insert("path", toml_edit::value(relpath));
                     if let Some(r) = src.version.as_deref() {
                         table.insert("version", toml_edit::value(r));
                     } else {
                         table.remove("version");
                     }
-                    table.insert("path", toml_edit::value(relpath));
+
                     for key in ["git", "branch", "tag", "rev"] {
                         table.remove(key);
                     }
@@ -466,7 +478,13 @@ impl Dependency {
                     } else {
                         table.remove("rev");
                     }
-                    for key in ["version", "path"] {
+                    if let Some(r) = src.version.as_deref() {
+                        table.insert("version", toml_edit::value(r));
+                    } else {
+                        table.remove("version");
+                    }
+
+                    for key in ["path"] {
                         table.remove(key);
                     }
                 }
@@ -542,8 +560,25 @@ impl std::fmt::Display for Dependency {
 
 impl<'s> From<&'s cargo::core::Summary> for Dependency {
     fn from(other: &'s cargo::core::Summary) -> Self {
+        let source: Source = if let Some(path) = other.source_id().local_path() {
+            PathSource::new(path)
+                .set_version(other.version().to_string())
+                .into()
+        } else if let Some(git_ref) = other.source_id().git_reference() {
+            let mut src = GitSource::new(other.source_id().url().to_string())
+                .set_version(other.version().to_string());
+            match git_ref {
+                cargo::core::source::GitReference::Branch(branch) => src = src.set_branch(branch),
+                cargo::core::source::GitReference::Tag(tag) => src = src.set_tag(tag),
+                cargo::core::source::GitReference::Rev(rev) => src = src.set_rev(rev),
+                cargo::core::source::GitReference::DefaultBranch => {}
+            }
+            src.into()
+        } else {
+            RegistrySource::new(other.version().to_string()).into()
+        };
         Dependency::new(other.name().as_str())
-            .set_source(RegistrySource::new(other.version().to_string()))
+            .set_source(source)
             .set_available_features_from_cargo(other.features())
     }
 }
@@ -708,6 +743,8 @@ pub struct GitSource {
     pub tag: Option<String>,
     /// Select specific rev
     pub rev: Option<String>,
+    /// Version requirement for when published
+    pub version: Option<String>,
 }
 
 impl GitSource {
@@ -718,6 +755,7 @@ impl GitSource {
             branch: None,
             tag: None,
             rev: None,
+            version: None,
         }
     }
 
@@ -756,6 +794,16 @@ impl GitSource {
             (_, _, Some(rev)) => cargo::core::GitReference::Rev(rev.to_owned()),
             _ => cargo::core::GitReference::DefaultBranch,
         }
+    }
+
+    /// Set an optional version requirement
+    pub fn set_version(mut self, version: impl AsRef<str>) -> Self {
+        // versions might have semver metadata appended which we do not want to
+        // store in the cargo toml files.  This would cause a warning upon compilation
+        // ("version requirement […] includes semver metadata which will be ignored")
+        let version = version.as_ref().split('+').next().unwrap();
+        self.version = Some(version.to_owned());
+        self
     }
 }
 
