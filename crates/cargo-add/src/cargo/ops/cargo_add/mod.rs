@@ -222,7 +222,7 @@ fn resolve_dependency(
             }
             dependency = dependency.set_source(src);
 
-            let latest = get_latest_dependency(&dependency, false, config, registry)?;
+            let latest = select_package(&dependency, config, registry)?;
 
             if dependency.name != latest.name {
                 config.shell().warn(format!(
@@ -245,7 +245,7 @@ fn resolve_dependency(
             let src = PathSource::new(path);
             dependency = dependency.set_source(src);
 
-            let latest = get_latest_dependency(&dependency, false, config, registry)?;
+            let latest = select_package(&dependency, config, registry)?;
 
             if dependency.name != latest.name {
                 config.shell().warn(format!(
@@ -376,7 +376,8 @@ fn get_latest_dependency(
 ) -> CargoResult<Dependency> {
     let query = dependency.query(config)?;
     let possibilities = loop {
-        match registry.query_vec(&query, true) {
+        let fuzzy = true;
+        match registry.query_vec(&query, fuzzy) {
             std::task::Poll::Ready(res) => {
                 break res?;
             }
@@ -399,6 +400,46 @@ fn get_latest_dependency(
         dep = dep.set_registry(reg_name);
     }
     Ok(dep)
+}
+
+fn select_package(
+    dependency: &Dependency,
+    config: &Config,
+    registry: &mut cargo::core::registry::PackageRegistry<'_>,
+) -> CargoResult<Dependency> {
+    let query = dependency.query(config)?;
+    let possibilities = loop {
+        let fuzzy = false; // Returns all for path/git
+        match registry.query_vec(&query, fuzzy) {
+            std::task::Poll::Ready(res) => {
+                break res?;
+            }
+            std::task::Poll::Pending => registry.block_until_ready()?,
+        }
+    };
+    match possibilities.len() {
+        0 => {
+            let source = dependency
+                .source()
+                .expect("source should be resolved before here");
+            anyhow::bail!("the crate `{dependency}` could not be found at `{source}`")
+        }
+        1 => {
+            let mut dep = Dependency::from(&possibilities[0]);
+            if let Some(reg_name) = dependency.registry.as_deref() {
+                dep = dep.set_registry(reg_name);
+            }
+            Ok(dep)
+        }
+        _ => {
+            let source = dependency
+                .source()
+                .expect("source should be resolved before here");
+            anyhow::bail!(
+                "unexpectedly found multiple copies of crate `{dependency}` at `{source}`"
+            )
+        }
+    }
 }
 
 fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {

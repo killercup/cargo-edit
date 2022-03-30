@@ -542,6 +542,62 @@ fn git() {
 }
 
 #[cargo_test]
+fn git_normalized_name() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/git_normalized_name.in");
+    let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
+
+    cargo_command()
+        .arg("add")
+        .args(["git_package", "--git", &git_url])
+        .masquerade_as_nightly_cargo()
+        .current_dir(cwd)
+        .assert()
+        .failure() // Fuzzy searching for paths isn't supported at this time
+        .stdout_matches_path("tests/snapshots/add/git_normalized_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/git_normalized_name.stderr");
+
+    assert().subset_matches("tests/snapshots/add/git_normalized_name.out", &project_root);
+}
+
+#[cargo_test]
+fn invalid_git_name() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/invalid_git_name.in");
+    let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
+
+    cargo_command()
+        .arg("add")
+        .args(["not-in-git", "--git", &git_url])
+        .masquerade_as_nightly_cargo()
+        .current_dir(cwd)
+        .assert()
+        .code(101)
+        .stdout_matches_path("tests/snapshots/add/invalid_git_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/invalid_git_name.stderr");
+
+    assert().subset_matches("tests/snapshots/add/invalid_git_name.out", &project_root);
+}
+
+#[cargo_test]
 fn git_branch() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_branch.in");
@@ -739,6 +795,49 @@ fn path() {
         .stderr_matches_path("tests/snapshots/add/path.stderr");
 
     assert().subset_matches("tests/snapshots/add/path.out", &project_root);
+}
+
+#[cargo_test]
+fn path_normalized_name() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/path_normalized_name.in");
+    let cwd = project_root.join("primary");
+
+    cargo_command()
+        .arg("add")
+        .args([
+            "cargo_list_test_fixture_dependency",
+            "--path",
+            "../dependency",
+        ])
+        .current_dir(&cwd)
+        .assert()
+        .failure() // Fuzzy searching for paths isn't supported at this time
+        .stdout_matches_path("tests/snapshots/add/path_normalized_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/path_normalized_name.stderr");
+
+    assert().subset_matches(
+        "tests/snapshots/add/path_normalized_name.out",
+        &project_root,
+    );
+}
+
+#[cargo_test]
+fn invalid_path_name() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/invalid_path_name.in");
+    let cwd = project_root.join("primary");
+
+    cargo_command()
+        .arg("add")
+        .args(["not-at-path", "--path", "../dependency"])
+        .current_dir(&cwd)
+        .assert()
+        .code(101)
+        .stdout_matches_path("tests/snapshots/add/invalid_path_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/invalid_path_name.stderr");
+
+    assert().subset_matches("tests/snapshots/add/invalid_path_name.out", &project_root);
 }
 
 #[cargo_test]
