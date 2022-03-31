@@ -144,7 +144,7 @@ pub fn add(workspace: &cargo::core::Workspace<'_>, options: &AddOptions<'_>) -> 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DepOp {
     /// Describes the crate
-    pub crate_spec: String,
+    pub crate_spec: Option<String>,
     /// Dependency key, overriding the package name in crate_spec
     pub rename: Option<String>,
 
@@ -179,86 +179,91 @@ fn resolve_dependency(
     config: &Config,
     registry: &mut cargo::core::registry::PackageRegistry<'_>,
 ) -> CargoResult<Dependency> {
-    let crate_spec = CrateSpec::resolve(&arg.crate_spec)?;
+    let crate_spec = arg
+        .crate_spec
+        .as_deref()
+        .map(CrateSpec::resolve)
+        .transpose()?;
+    let mut selected_dep = if let Some(url) = &arg.git {
+        let mut src = GitSource::new(url);
+        if let Some(branch) = &arg.branch {
+            src = src.set_branch(branch);
+        }
+        if let Some(tag) = &arg.tag {
+            src = src.set_tag(tag);
+        }
+        if let Some(rev) = &arg.rev {
+            src = src.set_rev(rev);
+        }
 
-    let mut spec_dep = crate_spec.to_dependency()?;
-    spec_dep = populate_dependency(spec_dep, arg);
-
-    let old_dep = get_existing_dependency(manifest, spec_dep.toml_key(), section)?;
-
-    let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
-        if old_dep.name != spec_dep.name {
-            // Assuming most existing keys are not relevant when the package changes
-            if spec_dep.optional.is_none() {
-                spec_dep.optional = old_dep.optional;
+        let selected = if let Some(crate_spec) = &crate_spec {
+            if let Some(v) = crate_spec.version_req() {
+                // crate specifier includes a version (e.g. `docopt@0.8`)
+                anyhow::bail!("cannot specify a git URL (`{url}`) with a version (`{v}`).");
             }
-            spec_dep
+            let dependency = crate_spec.to_dependency()?.set_source(src);
+            let selected = select_package(&dependency, config, registry)?;
+            if dependency.name != selected.name {
+                config.shell().warn(format!(
+                    "translating `{}` to `{}`",
+                    dependency.name, selected.name,
+                ))?;
+            }
+            selected
         } else {
-            if spec_dep.source().is_some() {
+            anyhow::bail!("could not find crate name for `{url}`");
+        };
+        selected
+    } else if let Some(raw_path) = &arg.path {
+        let path = dunce::canonicalize(raw_path)
+            .with_context(|| format!("Unable to find {}", raw_path))?;
+        let src = PathSource::new(path);
+
+        let selected = if let Some(crate_spec) = &crate_spec {
+            if let Some(v) = crate_spec.version_req() {
+                // crate specifier includes a version (e.g. `docopt@0.8`)
+                anyhow::bail!("cannot specify a path (`{raw_path}`) with a version (`{v}`).");
+            }
+            let dependency = crate_spec.to_dependency()?.set_source(src);
+            let selected = select_package(&dependency, config, registry)?;
+            if dependency.name != selected.name {
+                config.shell().warn(format!(
+                    "translating `{}` to `{}`",
+                    dependency.name, selected.name,
+                ))?;
+            }
+            selected
+        } else {
+            anyhow::bail!("could not find crate name for `{raw_path}`");
+        };
+        selected
+    } else if let Some(crate_spec) = &crate_spec {
+        crate_spec.to_dependency()?
+    } else {
+        anyhow::bail!("dependency name is required");
+    };
+    selected_dep = populate_dependency(selected_dep, arg);
+
+    let old_dep = get_existing_dependency(manifest, selected_dep.toml_key(), section)?;
+    let mut dependency = if let Some(mut old_dep) = old_dep.clone() {
+        if old_dep.name != selected_dep.name {
+            // Assuming most existing keys are not relevant when the package changes
+            if selected_dep.optional.is_none() {
+                selected_dep.optional = old_dep.optional;
+            }
+            selected_dep
+        } else {
+            if selected_dep.source().is_some() {
                 // Overwrite with `crate_spec`
-                old_dep.source = spec_dep.source;
+                old_dep.source = selected_dep.source;
             }
             old_dep = populate_dependency(old_dep, arg);
+            old_dep.available_features = selected_dep.available_features;
             old_dep
         }
     } else {
-        spec_dep
+        selected_dep
     };
-
-    if let Some(url) = &arg.git {
-        if let Some(v) = crate_spec.version_req() {
-            // crate specifier includes a version (e.g. `docopt@0.8`)
-            anyhow::bail!("cannot specify a git URL (`{url}`) with a version (`{v}`).",)
-        } else {
-            let mut src = GitSource::new(url);
-            if let Some(branch) = &arg.branch {
-                src = src.set_branch(branch);
-            }
-            if let Some(tag) = &arg.tag {
-                src = src.set_tag(tag);
-            }
-            if let Some(rev) = &arg.rev {
-                src = src.set_rev(rev);
-            }
-            dependency = dependency.set_source(src);
-
-            let latest = select_package(&dependency, config, registry)?;
-
-            if dependency.name != latest.name {
-                config.shell().warn(format!(
-                    "translating `{}` to `{}`",
-                    dependency.name, latest.name,
-                ))?;
-                dependency.name = latest.name; // Normalize the name
-            }
-            dependency = dependency
-                .set_source(latest.source.expect("latest always has a source"))
-                .set_available_features(latest.available_features);
-        }
-    } else if let Some(path) = &arg.path {
-        if let Some(v) = crate_spec.version_req() {
-            // crate specifier includes a version (e.g. `docopt@0.8`)
-            anyhow::bail!("cannot specify a path (`{path}`) with a version (`{v}`).",)
-        } else {
-            let path =
-                dunce::canonicalize(path).with_context(|| format!("Unable to find {}", path))?;
-            let src = PathSource::new(path);
-            dependency = dependency.set_source(src);
-
-            let latest = select_package(&dependency, config, registry)?;
-
-            if dependency.name != latest.name {
-                config.shell().warn(format!(
-                    "translating `{}` to `{}`",
-                    dependency.name, latest.name,
-                ))?;
-                dependency.name = latest.name; // Normalize the name
-            }
-            dependency = dependency
-                .set_source(latest.source.expect("latest always has a source"))
-                .set_available_features(latest.available_features);
-        }
-    }
 
     if dependency.source().is_none() {
         if let Some(package) = ws.members().find(|p| p.name().as_str() == dependency.name) {

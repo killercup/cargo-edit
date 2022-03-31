@@ -27,12 +27,12 @@ EXAMPLES:
   $ cargo add serde serde_json -F serde/derive
 ",
         )
+        .group(clap::ArgGroup::new("selected").multiple(true).required(true))
         .args([
             clap::Arg::new("crates")
                 .takes_value(true)
                 .value_name("DEP_ID")
                 .multiple_occurrences(true)
-                .required(true)
                 .help("Reference to a package to add as a dependency")
                 .long_help(
                 "Reference to a package to add as a dependency
@@ -40,7 +40,8 @@ EXAMPLES:
 You can reference a package by:
 - `<name>`, like `cargo add serde` (latest version will be used)
 - `<name>@<version-req>`, like `cargo add serde@1` or `cargo add serde@=1.0.38`"
-            ),
+            )
+                .group("selected"),
             clap::Arg::new("no-default-features")
                 .long("no-default-features")
                 .help("Disable the default features"),
@@ -103,6 +104,7 @@ Example uses:
                 .takes_value(true)
                 .value_name("PATH")
                 .help("Filesystem path to local crate to add")
+                .group("selected")
                 .conflicts_with("git"),
             clap::Arg::new("git")
                 .long("git")
@@ -111,7 +113,8 @@ Example uses:
                 .help("Git repository location")
                 .long_help("Git repository location
 
-Without any other information, cargo will use latest commit on the main branch."),
+Without any other information, cargo will use latest commit on the main branch.")
+                .group("selected"),
             clap::Arg::new("branch")
                 .long("branch")
                 .takes_value(true)
@@ -211,12 +214,6 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
 }
 
 fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<DepOp>> {
-    let mut crates = matches
-        .values_of("crates")
-        .into_iter()
-        .flatten()
-        .map(|c| (String::from(c), None))
-        .collect::<IndexMap<_, _>>();
     let path = matches.value_of("path");
     let git = matches.value_of("git");
     let branch = matches.value_of("branch");
@@ -226,6 +223,22 @@ fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<
     let registry = matches.registry(config)?;
     let default_features = default_features(matches);
     let optional = optional(matches);
+
+    let mut crates = matches
+        .values_of("crates")
+        .into_iter()
+        .flatten()
+        .map(|c| (Some(String::from(c)), None))
+        .collect::<IndexMap<_, _>>();
+    let mut infer_crate_name = false;
+    if crates.is_empty() {
+        if path.is_some() || git.is_some() {
+            crates.insert(None, None);
+            infer_crate_name = true;
+        } else {
+            unreachable!("clap should ensure we have some source selected");
+        }
+    }
     for feature in matches
         .values_of("features")
         .into_iter()
@@ -238,7 +251,13 @@ fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<
                 if 1 < crates.len() {
                     let candidates = crates
                         .keys()
-                        .map(|c| format!("`{}/{}`", c, feature))
+                        .map(|c| {
+                            format!(
+                                "`{}/{}`",
+                                c.as_deref().expect("only none when there is 1"),
+                                feature
+                            )
+                        })
                         .collect::<Vec<_>>();
                     anyhow::bail!("feature `{feature}` must be qualified by the dependency its being activated for, like {}", candidates.join(", "));
                 }
@@ -257,14 +276,17 @@ fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<
                 dep_feature,
                 ..
             } => {
+                if infer_crate_name {
+                    anyhow::bail!("`{feature}` is unsupported when inferring the crate name, use `{dep_feature}`");
+                }
                 if dep_feature.contains('/') {
                     anyhow::bail!("multiple slashes in feature `{feature}` is not allowed");
                 }
-                crates.get_mut(dep_name.as_str()).ok_or_else(|| {
+                crates.get_mut(&Some(dep_name.as_str().to_owned())).ok_or_else(|| {
                     anyhow::format_err!("feature `{dep_feature}` activated for crate `{dep_name}` but the crate wasn't specified")
                 })?
                     .get_or_insert_with(IndexSet::new)
-                .insert(dep_feature.as_str().to_owned());
+                    .insert(dep_feature.as_str().to_owned());
             }
         }
     }

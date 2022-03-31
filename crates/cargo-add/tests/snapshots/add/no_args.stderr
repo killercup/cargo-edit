@@ -1,5 +1,5 @@
 error: The following required arguments were not provided:
-    <DEP_ID>...
+    <DEP_ID|--path <PATH>|--git <URI>>
 
 USAGE:
     cargo add [OPTIONS] <DEP>[@<VERSION>] ...
