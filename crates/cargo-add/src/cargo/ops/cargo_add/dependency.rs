@@ -193,16 +193,8 @@ impl Dependency {
                     Ok(source_id)
                 }
             }
-            Some(Source::Path(source)) => {
-                let source_id = cargo::core::SourceId::for_path(&source.path)?;
-                Ok(source_id)
-            }
-            Some(Source::Git(source)) => {
-                let git_url = source.git.parse::<url::Url>()?;
-                let git_ref = source.git_ref();
-                let source_id = cargo::core::SourceId::for_git(&git_url, git_ref)?;
-                Ok(source_id)
-            }
+            Some(Source::Path(source)) => source.source_id(),
+            Some(Source::Git(source)) => source.source_id(),
         }
     }
 
@@ -723,6 +715,11 @@ impl PathSource {
         self.version = Some(version.to_owned());
         self
     }
+
+    /// Get the SourceID for this dependency
+    pub fn source_id(&self) -> CargoResult<cargo::core::SourceId> {
+        cargo::core::SourceId::for_path(&self.path)
+    }
 }
 
 impl std::fmt::Display for PathSource {
@@ -781,6 +778,13 @@ impl GitSource {
         self.tag = None;
         self.rev = Some(rev.into());
         self
+    }
+
+    /// Get the SourceID for this dependency
+    pub fn source_id(&self) -> CargoResult<cargo::core::SourceId> {
+        let git_url = self.git.parse::<url::Url>()?;
+        let git_ref = self.git_ref();
+        cargo::core::SourceId::for_git(&git_url, git_ref)
     }
 
     fn git_ref(&self) -> cargo::core::GitReference {
