@@ -9,13 +9,17 @@ use std::collections::VecDeque;
 use std::path::Path;
 
 use anyhow::Context as _;
-use cargo::core::dependency::DepKind;
-use cargo::core::Registry;
-use cargo::CargoResult;
-use cargo::Config;
 use indexmap::IndexSet;
 use toml_edit::Item as TomlItem;
 
+use cargo::core::dependency::DepKind;
+use cargo::core::registry::PackageRegistry;
+use cargo::core::Package;
+use cargo::core::Registry;
+use cargo::core::Shell;
+use cargo::core::Workspace;
+use cargo::CargoResult;
+use cargo::Config;
 use crate_spec::CrateSpec;
 use dependency::Dependency;
 use dependency::GitSource;
@@ -32,7 +36,7 @@ pub struct AddOptions<'a> {
     /// Configuration information for cargo operations
     pub config: &'a Config,
     /// Package to add dependencies to
-    pub spec: &'a cargo::core::Package,
+    pub spec: &'a Package,
     /// Dependencies to add or modify
     pub dependencies: Vec<DepOp>,
     /// Which dependency section to add these to
@@ -42,7 +46,7 @@ pub struct AddOptions<'a> {
 }
 
 /// Add dependencies to a manifest
-pub fn add(workspace: &cargo::core::Workspace<'_>, options: &AddOptions<'_>) -> CargoResult<()> {
+pub fn add(workspace: &Workspace<'_>, options: &AddOptions<'_>) -> CargoResult<()> {
     let dep_table = options
         .section
         .to_table()
@@ -60,7 +64,7 @@ pub fn add(workspace: &cargo::core::Workspace<'_>, options: &AddOptions<'_>) -> 
         );
     }
 
-    let mut registry = cargo::core::registry::PackageRegistry::new(options.config)?;
+    let mut registry = PackageRegistry::new(options.config)?;
 
     let deps = {
         let _lock = options.config.acquire_package_cache_lock()?;
@@ -174,10 +178,10 @@ pub struct DepOp {
 fn resolve_dependency(
     manifest: &LocalManifest,
     arg: &DepOp,
-    ws: &cargo::core::Workspace<'_>,
+    ws: &Workspace<'_>,
     section: &DepTable,
     config: &Config,
-    registry: &mut cargo::core::registry::PackageRegistry<'_>,
+    registry: &mut PackageRegistry<'_>,
 ) -> CargoResult<Dependency> {
     let crate_spec = arg
         .crate_spec
@@ -409,7 +413,7 @@ fn get_latest_dependency(
     dependency: &Dependency,
     _flag_allow_prerelease: bool,
     config: &Config,
-    registry: &mut cargo::core::registry::PackageRegistry<'_>,
+    registry: &mut PackageRegistry<'_>,
 ) -> CargoResult<Dependency> {
     let query = dependency.query(config)?;
     let possibilities = loop {
@@ -442,7 +446,7 @@ fn get_latest_dependency(
 fn select_package(
     dependency: &Dependency,
     config: &Config,
-    registry: &mut cargo::core::registry::PackageRegistry<'_>,
+    registry: &mut PackageRegistry<'_>,
 ) -> CargoResult<Dependency> {
     let query = dependency.query(config)?;
     let possibilities = loop {
@@ -516,7 +520,7 @@ fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
 fn populate_available_features(
     mut dependency: Dependency,
     config: &Config,
-    registry: &mut cargo::core::registry::PackageRegistry<'_>,
+    registry: &mut PackageRegistry<'_>,
 ) -> CargoResult<Dependency> {
     if !dependency.available_features.is_empty() {
         return Ok(dependency);
@@ -549,11 +553,7 @@ fn populate_available_features(
     Ok(dependency)
 }
 
-fn print_msg(
-    shell: &mut cargo::core::Shell,
-    dep: &Dependency,
-    section: &[String],
-) -> CargoResult<()> {
+fn print_msg(shell: &mut Shell, dep: &Dependency, section: &[String]) -> CargoResult<()> {
     use std::fmt::Write;
 
     let mut message = String::new();

@@ -2,6 +2,7 @@ use indexmap::IndexMap;
 use indexmap::IndexSet;
 
 use cargo::core::dependency::DepKind;
+use cargo::core::FeatureValue;
 use cargo::util::command_prelude::*;
 use cargo::util::interning::InternedString;
 use cargo::CargoResult;
@@ -245,9 +246,9 @@ fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<
         .flatten()
         .flat_map(parse_feature)
     {
-        let parsed_value = cargo::core::FeatureValue::new(InternedString::new(feature));
+        let parsed_value = FeatureValue::new(InternedString::new(feature));
         match parsed_value {
-            cargo::core::FeatureValue::Feature(_) => {
+            FeatureValue::Feature(_) => {
                 if 1 < crates.len() {
                     let candidates = crates
                         .keys()
@@ -268,10 +269,10 @@ fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<
                     .get_or_insert_with(IndexSet::new)
                     .insert(feature.to_owned());
             }
-            cargo::core::FeatureValue::Dep { .. } => {
+            FeatureValue::Dep { .. } => {
                 anyhow::bail!("feature `{feature}` is not allowed to use explicit `dep:` syntax",)
             }
-            cargo::core::FeatureValue::DepFeature {
+            FeatureValue::DepFeature {
                 dep_name,
                 dep_feature,
                 ..
