@@ -75,7 +75,6 @@ The package will be removed from your features.")
                 .conflicts_with("dev")
                 .overrides_with("optional"),
             clap::Arg::new("rename")
-                .short('r')
                 .long("rename")
                 .takes_value(true)
                 .value_name("NAME")
@@ -151,7 +150,6 @@ This is the catch all, handling hashes to named references in remote repositorie
         .next_help_heading("SECTION")
         .args([
             clap::Arg::new("dev")
-                .short('D')
                 .long("dev")
                 .help("Add as development dependency")
                 .long_help("Add as development dependency
@@ -161,7 +159,6 @@ Dev-dependencies are not used when compiling a package for building, but are use
 These dependencies are not propagated to other packages which depend on this package.")
                 .group("section"),
             clap::Arg::new("build")
-                .short('B')
                 .long("build")
                 .help("Add as build dependency")
                 .long_help("Add as build dependency
