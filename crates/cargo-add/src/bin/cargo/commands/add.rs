@@ -17,7 +17,9 @@ pub fn cli() -> clap::Command<'static> {
         .about("Add dependencies to a Cargo.toml manifest file")
         .override_usage(
             "\
-    cargo add [OPTIONS] <DEP>[@<VERSION>] ..."
+    cargo add [OPTIONS] <DEP>[@<VERSION>] ...
+    cargo add [OPTIONS] --path <PATH> ...
+    cargo add [OPTIONS] --git <URL> ..."
         )
         .after_help(
             "\
