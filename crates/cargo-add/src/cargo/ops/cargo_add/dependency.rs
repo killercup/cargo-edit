@@ -1,10 +1,16 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use cargo::CargoResult;
 use indexmap::IndexSet;
 
 use super::manifest::str_or_1_len_table;
+use cargo::core::FeatureMap;
+use cargo::core::FeatureValue;
+use cargo::core::GitReference;
+use cargo::core::SourceId;
+use cargo::core::Summary;
+use cargo::CargoResult;
+use cargo::Config;
 
 /// A dependency handled by Cargo
 ///
@@ -85,7 +91,7 @@ impl Dependency {
     /// Populate from cargo
     pub fn set_available_features_from_cargo(
         mut self,
-        available_features: &cargo::core::summary::FeatureMap,
+        available_features: &FeatureMap,
     ) -> Dependency {
         self.available_features = available_features
             .iter()
@@ -94,11 +100,8 @@ impl Dependency {
                     k.as_str().to_owned(),
                     v.iter()
                         .filter_map(|v| match v {
-                            cargo::core::summary::FeatureValue::Feature(f) => {
-                                Some(f.as_str().to_owned())
-                            }
-                            cargo::core::summary::FeatureValue::Dep { .. }
-                            | cargo::core::summary::FeatureValue::DepFeature { .. } => None,
+                            FeatureValue::Feature(f) => Some(f.as_str().to_owned()),
+                            FeatureValue::Dep { .. } | FeatureValue::DepFeature { .. } => None,
                         })
                         .collect::<Vec<_>>(),
                 )
@@ -182,35 +185,24 @@ impl Dependency {
     }
 
     /// Get the SourceID for this dependency
-    pub fn source_id(&self, config: &cargo::Config) -> CargoResult<cargo::core::SourceId> {
+    pub fn source_id(&self, config: &Config) -> CargoResult<SourceId> {
         match &self.source.as_ref() {
             Some(Source::Registry(_)) | None => {
                 if let Some(r) = self.registry() {
-                    let source_id = cargo::core::SourceId::alt_registry(config, r)?;
+                    let source_id = SourceId::alt_registry(config, r)?;
                     Ok(source_id)
                 } else {
-                    let source_id = cargo::core::SourceId::crates_io(config)?;
+                    let source_id = SourceId::crates_io(config)?;
                     Ok(source_id)
                 }
             }
-            Some(Source::Path(source)) => {
-                let source_id = cargo::core::SourceId::for_path(&source.path)?;
-                Ok(source_id)
-            }
-            Some(Source::Git(source)) => {
-                let git_url = source.git.parse::<url::Url>()?;
-                let git_ref = source.git_ref();
-                let source_id = cargo::core::SourceId::for_git(&git_url, git_ref)?;
-                Ok(source_id)
-            }
+            Some(Source::Path(source)) => source.source_id(),
+            Some(Source::Git(source)) => source.source_id(),
         }
     }
 
     /// Query to find this dependency
-    pub fn query(
-        &self,
-        config: &cargo::Config,
-    ) -> CargoResult<cargo::core::dependency::Dependency> {
+    pub fn query(&self, config: &Config) -> CargoResult<cargo::core::dependency::Dependency> {
         let source_id = self.source_id(config)?;
         cargo::core::dependency::Dependency::parse(self.name.as_str(), self.version(), source_id)
     }
@@ -558,8 +550,8 @@ impl std::fmt::Display for Dependency {
     }
 }
 
-impl<'s> From<&'s cargo::core::Summary> for Dependency {
-    fn from(other: &'s cargo::core::Summary) -> Self {
+impl<'s> From<&'s Summary> for Dependency {
+    fn from(other: &'s Summary) -> Self {
         let source: Source = if let Some(path) = other.source_id().local_path() {
             PathSource::new(path)
                 .set_version(other.version().to_string())
@@ -568,10 +560,10 @@ impl<'s> From<&'s cargo::core::Summary> for Dependency {
             let mut src = GitSource::new(other.source_id().url().to_string())
                 .set_version(other.version().to_string());
             match git_ref {
-                cargo::core::source::GitReference::Branch(branch) => src = src.set_branch(branch),
-                cargo::core::source::GitReference::Tag(tag) => src = src.set_tag(tag),
-                cargo::core::source::GitReference::Rev(rev) => src = src.set_rev(rev),
-                cargo::core::source::GitReference::DefaultBranch => {}
+                GitReference::Branch(branch) => src = src.set_branch(branch),
+                GitReference::Tag(tag) => src = src.set_tag(tag),
+                GitReference::Rev(rev) => src = src.set_rev(rev),
+                GitReference::DefaultBranch => {}
             }
             src.into()
         } else {
@@ -583,8 +575,8 @@ impl<'s> From<&'s cargo::core::Summary> for Dependency {
     }
 }
 
-impl From<cargo::core::Summary> for Dependency {
-    fn from(other: cargo::core::Summary) -> Self {
+impl From<Summary> for Dependency {
+    fn from(other: Summary) -> Self {
         (&other).into()
     }
 }
@@ -723,6 +715,11 @@ impl PathSource {
         self.version = Some(version.to_owned());
         self
     }
+
+    /// Get the SourceID for this dependency
+    pub fn source_id(&self) -> CargoResult<SourceId> {
+        SourceId::for_path(&self.path)
+    }
 }
 
 impl std::fmt::Display for PathSource {
@@ -783,16 +780,23 @@ impl GitSource {
         self
     }
 
-    fn git_ref(&self) -> cargo::core::GitReference {
+    /// Get the SourceID for this dependency
+    pub fn source_id(&self) -> CargoResult<SourceId> {
+        let git_url = self.git.parse::<url::Url>()?;
+        let git_ref = self.git_ref();
+        SourceId::for_git(&git_url, git_ref)
+    }
+
+    fn git_ref(&self) -> GitReference {
         match (
             self.branch.as_deref(),
             self.tag.as_deref(),
             self.rev.as_deref(),
         ) {
-            (Some(branch), _, _) => cargo::core::GitReference::Branch(branch.to_owned()),
-            (_, Some(tag), _) => cargo::core::GitReference::Tag(tag.to_owned()),
-            (_, _, Some(rev)) => cargo::core::GitReference::Rev(rev.to_owned()),
-            _ => cargo::core::GitReference::DefaultBranch,
+            (Some(branch), _, _) => GitReference::Branch(branch.to_owned()),
+            (_, Some(tag), _) => GitReference::Tag(tag.to_owned()),
+            (_, _, Some(rev)) => GitReference::Rev(rev.to_owned()),
+            _ => GitReference::DefaultBranch,
         }
     }
 

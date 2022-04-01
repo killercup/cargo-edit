@@ -1,10 +1,11 @@
 //! Crate name parsing.
 
 use anyhow::Context as _;
-use cargo::CargoResult;
 
 use super::Dependency;
 use super::RegistrySource;
+use cargo::util::validate_package_name;
+use cargo::CargoResult;
 
 /// User-specified crate
 ///
@@ -28,7 +29,7 @@ impl CrateSpec {
             .map(|(n, v)| (n, Some(v)))
             .unwrap_or((pkg_id, None));
 
-        cargo::util::validate_package_name(name, "dependency name", "")?;
+        validate_package_name(name, "dependency name", "")?;
 
         if let Some(version) = version {
             semver::VersionReq::parse(version)

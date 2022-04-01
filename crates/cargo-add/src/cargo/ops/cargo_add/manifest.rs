@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 use std::str;
 
 use anyhow::Context as _;
+
 use cargo::core::dependency::DepKind;
+use cargo::core::FeatureValue;
 use cargo::util::interning::InternedString;
 use cargo::CargoResult;
 
@@ -388,8 +390,8 @@ impl LocalManifest {
                 .filter_map(|v| v.as_array())
             {
                 for value in values.iter().filter_map(|v| v.as_str()) {
-                    let value = cargo::core::FeatureValue::new(InternedString::new(value));
-                    if let cargo::core::FeatureValue::Dep { dep_name } = &value {
+                    let value = FeatureValue::new(InternedString::new(value));
+                    if let FeatureValue::Dep { dep_name } = &value {
                         if dep_name.as_str() == dep_key {
                             return true;
                         }
@@ -441,22 +443,21 @@ fn fix_feature_activations(
         .enumerate()
         .filter_map(|(idx, value)| value.as_str().map(|s| (idx, s)))
         .filter_map(|(idx, value)| {
-            let parsed_value = cargo::core::FeatureValue::new(InternedString::new(value));
+            let parsed_value = FeatureValue::new(InternedString::new(value));
             match status {
                 DependencyStatus::None => match (parsed_value, explicit_dep_activation) {
-                    (cargo::core::FeatureValue::Feature(dep_name), false)
-                    | (cargo::core::FeatureValue::Dep { dep_name }, _)
-                    | (cargo::core::FeatureValue::DepFeature { dep_name, .. }, _) => {
-                        dep_name == dep_key
-                    }
+                    (FeatureValue::Feature(dep_name), false)
+                    | (FeatureValue::Dep { dep_name }, _)
+                    | (FeatureValue::DepFeature { dep_name, .. }, _) => dep_name == dep_key,
                     _ => false,
                 },
                 DependencyStatus::Optional => false,
                 DependencyStatus::Required => match (parsed_value, explicit_dep_activation) {
-                    (cargo::core::FeatureValue::Feature(dep_name), false)
-                    | (cargo::core::FeatureValue::Dep { dep_name }, _) => dep_name == dep_key,
-                    (cargo::core::FeatureValue::Feature(_), true)
-                    | (cargo::core::FeatureValue::DepFeature { .. }, _) => false,
+                    (FeatureValue::Feature(dep_name), false)
+                    | (FeatureValue::Dep { dep_name }, _) => dep_name == dep_key,
+                    (FeatureValue::Feature(_), true) | (FeatureValue::DepFeature { .. }, _) => {
+                        false
+                    }
                 },
             }
             .then(|| idx)
@@ -471,11 +472,11 @@ fn fix_feature_activations(
     if status == DependencyStatus::Required {
         for value in feature_values.iter_mut() {
             let parsed_value = if let Some(value) = value.as_str() {
-                cargo::core::FeatureValue::new(InternedString::new(value))
+                FeatureValue::new(InternedString::new(value))
             } else {
                 continue;
             };
-            if let cargo::core::FeatureValue::DepFeature {
+            if let FeatureValue::DepFeature {
                 dep_name,
                 dep_feature,
                 weak,
