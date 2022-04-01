@@ -542,6 +542,70 @@ fn git() {
 }
 
 #[cargo_test]
+fn git_inferred_name() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/git_inferred_name.in");
+    let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("git-package", "0.3.0+git-package"),
+            )
+            .file("src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
+
+    cargo_command()
+        .arg("add")
+        .args(["--git", &git_url])
+        .masquerade_as_nightly_cargo()
+        .current_dir(cwd)
+        .assert()
+        .success()
+        .stdout_matches_path("tests/snapshots/add/git_inferred_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/git_inferred_name.stderr");
+
+    assert().subset_matches("tests/snapshots/add/git_inferred_name.out", &project_root);
+}
+
+#[cargo_test]
+fn git_inferred_name_multiple() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/git_inferred_name_multiple.in");
+    let cwd = &project_root;
+    let git_dep = cargo_test_support::git::new("git-package", |project| {
+        project
+            .file(
+                "p1/Cargo.toml",
+                &cargo_test_support::basic_manifest("my-package1", "0.3.0+my-package1"),
+            )
+            .file("p1/src/lib.rs", "")
+            .file(
+                "p2/Cargo.toml",
+                &cargo_test_support::basic_manifest("my-package2", "0.3.0+my-package2"),
+            )
+            .file("p2/src/lib.rs", "")
+    });
+    let git_url = git_dep.url().to_string();
+
+    cargo_command()
+        .arg("add")
+        .args(["--git", &git_url])
+        .masquerade_as_nightly_cargo()
+        .current_dir(cwd)
+        .assert()
+        .code(101)
+        .stdout_matches_path("tests/snapshots/add/git_inferred_name_multiple.stdout")
+        .stderr_matches_path("tests/snapshots/add/git_inferred_name_multiple.stderr");
+
+    assert().subset_matches(
+        "tests/snapshots/add/git_inferred_name_multiple.out",
+        &project_root,
+    );
+}
+
+#[cargo_test]
 fn git_normalized_name() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/git_normalized_name.in");
@@ -795,6 +859,28 @@ fn path() {
         .stderr_matches_path("tests/snapshots/add/path.stderr");
 
     assert().subset_matches("tests/snapshots/add/path.out", &project_root);
+}
+
+#[cargo_test]
+fn path_inferred_name() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/path_inferred_name.in");
+    let cwd = project_root.join("primary");
+
+    cargo_command()
+        .arg("add")
+        .args([
+            "cargo-list-test-fixture-dependency",
+            "--path",
+            "../dependency",
+        ])
+        .current_dir(&cwd)
+        .assert()
+        .success()
+        .stdout_matches_path("tests/snapshots/add/path_inferred_name.stdout")
+        .stderr_matches_path("tests/snapshots/add/path_inferred_name.stderr");
+
+    assert().subset_matches("tests/snapshots/add/path_inferred_name.out", &project_root);
 }
 
 #[cargo_test]

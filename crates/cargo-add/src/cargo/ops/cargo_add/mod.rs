@@ -211,13 +211,29 @@ fn resolve_dependency(
             }
             selected
         } else {
-            anyhow::bail!("could not find crate name for `{url}`");
+            let mut source = cargo::sources::GitSource::new(src.source_id()?, config)?;
+            let packages = source.read_packages()?;
+            let package = match packages.len() {
+                0 => {
+                    anyhow::bail!("no packages found at `{src}`");
+                }
+                1 => &packages[0],
+                _ => {
+                    let mut names: Vec<_> = packages
+                        .iter()
+                        .map(|p| p.name().as_str().to_owned())
+                        .collect();
+                    names.sort_unstable();
+                    anyhow::bail!("multiple packages found at `{src}`: {}", names.join(", "));
+                }
+            };
+            Dependency::from(package.summary())
         };
         selected
     } else if let Some(raw_path) = &arg.path {
         let path = dunce::canonicalize(raw_path)
             .with_context(|| format!("Unable to find {}", raw_path))?;
-        let src = PathSource::new(path);
+        let src = PathSource::new(&path);
 
         let selected = if let Some(crate_spec) = &crate_spec {
             if let Some(v) = crate_spec.version_req() {
@@ -234,7 +250,23 @@ fn resolve_dependency(
             }
             selected
         } else {
-            anyhow::bail!("could not find crate name for `{raw_path}`");
+            let source = cargo::sources::PathSource::new(&path, src.source_id()?, config);
+            let packages = source.read_packages()?;
+            let package = match packages.len() {
+                0 => {
+                    anyhow::bail!("no packages found at `{src}`");
+                }
+                1 => &packages[0],
+                _ => {
+                    let mut names: Vec<_> = packages
+                        .iter()
+                        .map(|p| p.name().as_str().to_owned())
+                        .collect();
+                    names.sort_unstable();
+                    anyhow::bail!("multiple packages found at `{src}`: {}", names.join(", "));
+                }
+            };
+            Dependency::from(package.summary())
         };
         selected
     } else if let Some(crate_spec) = &crate_spec {
