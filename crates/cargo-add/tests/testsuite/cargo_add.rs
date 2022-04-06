@@ -50,16 +50,6 @@ pub fn cargo_command() -> snapbox::cmd::Command {
     cmd
 }
 
-pub trait CommandExt {
-    fn masquerade_as_nightly_cargo(self) -> Self;
-}
-
-impl CommandExt for snapbox::cmd::Command {
-    fn masquerade_as_nightly_cargo(self) -> Self {
-        self.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly")
-    }
-}
-
 pub fn project_from_template(template_path: impl AsRef<std::path::Path>) -> std::path::PathBuf {
     let root = cargo_test_support::paths::root();
     let project_root = root.join("case");
@@ -549,7 +539,6 @@ fn git() {
     cargo_command()
         .arg("add")
         .args(["git-package", "--git", &git_url])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .success()
@@ -577,7 +566,6 @@ fn git_inferred_name() {
     cargo_command()
         .arg("add")
         .args(["--git", &git_url])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .success()
@@ -610,7 +598,6 @@ fn git_inferred_name_multiple() {
     cargo_command()
         .arg("add")
         .args(["--git", &git_url])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .code(101)
@@ -641,7 +628,6 @@ fn git_normalized_name() {
     cargo_command()
         .arg("add")
         .args(["git_package", "--git", &git_url])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .failure() // Fuzzy searching for paths isn't supported at this time
@@ -669,7 +655,6 @@ fn invalid_git_name() {
     cargo_command()
         .arg("add")
         .args(["not-in-git", "--git", &git_url])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .code(101)
@@ -700,7 +685,6 @@ fn git_branch() {
     cargo_command()
         .arg("add")
         .args(["git-package", "--git", &git_url, "--branch", branch])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .success()
@@ -723,7 +707,6 @@ fn git_conflicts_namever() {
             "--git",
             "https://github.com/dcjanus/invalid",
         ])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .code(101)
@@ -787,7 +770,6 @@ fn git_dev() {
     cargo_command()
         .arg("add")
         .args(["git-package", "--git", &git_url, "--dev"])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .success()
@@ -817,7 +799,6 @@ fn git_rev() {
     cargo_command()
         .arg("add")
         .args(["git-package", "--git", &git_url, "--rev", &head])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .success()
@@ -847,7 +828,6 @@ fn git_tag() {
     cargo_command()
         .arg("add")
         .args(["git-package", "--git", &git_url, "--tag", tag])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .success()
@@ -997,7 +977,6 @@ fn invalid_git_external() {
     cargo_command()
         .arg("add")
         .args(["fake-git", "--git", &git_url])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .code(101)
@@ -1263,7 +1242,6 @@ fn git_multiple_names() {
     cargo_command()
         .arg("add")
         .args(["my-package1", "my-package2", "--git", &git_url])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .success()
@@ -1490,7 +1468,6 @@ fn overwrite_inline_features() {
             "your-face/nose,your-face/mouth",
             "-Fyour-face/ears",
         ])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .success()
@@ -1821,7 +1798,6 @@ fn overwrite_version_with_git() {
     cargo_command()
         .arg("add")
         .args(["versioned-package", "--git", &git_url])
-        .masquerade_as_nightly_cargo()
         .current_dir(cwd)
         .assert()
         .success()
