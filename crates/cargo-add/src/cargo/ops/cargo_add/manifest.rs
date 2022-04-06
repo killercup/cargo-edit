@@ -270,10 +270,15 @@ impl DerefMut for LocalManifest {
 impl LocalManifest {
     /// Construct the `LocalManifest` corresponding to the `Path` provided.
     pub fn try_new(path: &Path) -> CargoResult<Self> {
-        let path = dunce::canonicalize(path).context("Failed to read manifest contents")?;
+        if !path.is_absolute() {
+            anyhow::bail!("can only edit absolute paths, got {}", path.display());
+        }
         let data = cargo_util::paths::read(&path)?;
         let manifest = data.parse().context("Unable to parse Cargo.toml")?;
-        Ok(LocalManifest { manifest, path })
+        Ok(LocalManifest {
+            manifest,
+            path: path.to_owned(),
+        })
     }
 
     /// Write changes back to the file

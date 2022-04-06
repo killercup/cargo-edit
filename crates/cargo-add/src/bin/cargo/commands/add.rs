@@ -58,7 +58,7 @@ You can reference a package by:
                 .takes_value(true)
                 .value_name("FEATURES")
                 .multiple_occurrences(true)
-                .help("Space-separated list of features to add"),
+                .help("Space or comma separated list of features to activate"),
             clap::Arg::new("optional")
                 .long("optional")
                 .help("Mark the dependency as optional")
