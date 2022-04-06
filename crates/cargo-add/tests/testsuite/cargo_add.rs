@@ -882,6 +882,30 @@ fn path_inferred_name() {
 }
 
 #[cargo_test]
+fn path_inferred_name_conflicts_full_feature() {
+    init_registry();
+    let project_root =
+        project_from_template("tests/snapshots/add/path_inferred_name_conflicts_full_feature.in");
+    let cwd = project_root.join("primary");
+
+    cargo_command()
+        .arg("add")
+        .args(["--path", "../dependency", "--features", "your-face/nose"])
+        .current_dir(&cwd)
+        .assert()
+        .code(101)
+        .stdout_matches_path("tests/snapshots/add/path_inferred_name_conflicts_full_feature.stdout")
+        .stderr_matches_path(
+            "tests/snapshots/add/path_inferred_name_conflicts_full_feature.stderr",
+        );
+
+    assert().subset_matches(
+        "tests/snapshots/add/path_inferred_name_conflicts_full_feature.out",
+        &project_root,
+    );
+}
+
+#[cargo_test]
 fn path_normalized_name() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/path_normalized_name.in");
