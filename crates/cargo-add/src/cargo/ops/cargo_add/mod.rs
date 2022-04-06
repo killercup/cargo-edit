@@ -217,20 +217,7 @@ fn resolve_dependency(
         } else {
             let mut source = cargo::sources::GitSource::new(src.source_id()?, config)?;
             let packages = source.read_packages()?;
-            let package = match packages.len() {
-                0 => {
-                    anyhow::bail!("no packages found at `{src}`");
-                }
-                1 => &packages[0],
-                _ => {
-                    let mut names: Vec<_> = packages
-                        .iter()
-                        .map(|p| p.name().as_str().to_owned())
-                        .collect();
-                    names.sort_unstable();
-                    anyhow::bail!("multiple packages found at `{src}`: {}", names.join(", "));
-                }
-            };
+            let package = infer_package(packages, &src)?;
             Dependency::from(package.summary())
         };
         selected
@@ -256,20 +243,7 @@ fn resolve_dependency(
         } else {
             let source = cargo::sources::PathSource::new(&path, src.source_id()?, config);
             let packages = source.read_packages()?;
-            let package = match packages.len() {
-                0 => {
-                    anyhow::bail!("no packages found at `{src}`");
-                }
-                1 => &packages[0],
-                _ => {
-                    let mut names: Vec<_> = packages
-                        .iter()
-                        .map(|p| p.name().as_str().to_owned())
-                        .collect();
-                    names.sort_unstable();
-                    anyhow::bail!("multiple packages found at `{src}`: {}", names.join(", "));
-                }
-            };
+            let package = infer_package(packages, &src)?;
             Dependency::from(package.summary())
         };
         selected
@@ -481,6 +455,24 @@ fn select_package(
             )
         }
     }
+}
+
+fn infer_package(mut packages: Vec<Package>, src: &dyn std::fmt::Display) -> CargoResult<Package> {
+    let package = match packages.len() {
+        0 => {
+            anyhow::bail!("no packages found at `{src}`");
+        }
+        1 => packages.pop().expect("match ensured element is present"),
+        _ => {
+            let mut names: Vec<_> = packages
+                .iter()
+                .map(|p| p.name().as_str().to_owned())
+                .collect();
+            names.sort_unstable();
+            anyhow::bail!("multiple packages found at `{src}`: {}", names.join(", "));
+        }
+    };
+    Ok(package)
 }
 
 fn populate_dependency(mut dependency: Dependency, arg: &DepOp) -> Dependency {
