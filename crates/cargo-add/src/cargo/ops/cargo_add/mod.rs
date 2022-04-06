@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::path::Path;
 
-use anyhow::Context as _;
+use cargo_util::paths;
 use indexmap::IndexSet;
 use toml_edit::Item as TomlItem;
 
@@ -222,8 +222,7 @@ fn resolve_dependency(
         };
         selected
     } else if let Some(raw_path) = &arg.path {
-        let path = dunce::canonicalize(raw_path)
-            .with_context(|| format!("Unable to find {}", raw_path))?;
+        let path = paths::normalize_path(&std::env::current_dir()?.join(raw_path));
         let src = PathSource::new(&path);
 
         let selected = if let Some(crate_spec) = &crate_spec {

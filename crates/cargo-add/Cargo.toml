@@ -40,7 +40,6 @@ path = "src/cargo/lib.rs"
 
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
-dunce = "1.0"
 anyhow = "1.0"
 git2 = "0.14"
 clap = { version = "3.1", features = ["wrap_help"], optional = true }

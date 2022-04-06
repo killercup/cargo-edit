@@ -211,7 +211,6 @@ dependencies = [
  "cargo-util",
  "clap",
  "concolor-control",
- "dunce",
  "git2",
  "indexmap",
  "pathdiff",
