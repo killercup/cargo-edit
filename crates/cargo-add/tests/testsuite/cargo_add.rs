@@ -209,6 +209,24 @@ fn add_multiple() {
 }
 
 #[cargo_test]
+fn quiet() {
+    init_registry();
+    let project_root = project_from_template("tests/snapshots/add/quiet.in");
+    let cwd = &project_root;
+
+    cargo_command()
+        .arg("add")
+        .args(["--quiet", "your-face"])
+        .current_dir(cwd)
+        .assert()
+        .success()
+        .stdout_matches_path("tests/snapshots/add/quiet.stdout")
+        .stderr_matches_path("tests/snapshots/add/quiet.stderr");
+
+    assert().subset_matches("tests/snapshots/add/quiet.out", &project_root);
+}
+
+#[cargo_test]
 fn add_normalized_name_external() {
     init_registry();
     let project_root = project_from_template("tests/snapshots/add/add_normalized_name_external.in");
