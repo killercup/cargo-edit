@@ -1512,7 +1512,7 @@ fn overwrite_name_dev_noop() {
 
     cargo_command()
         .arg("add")
-        .args(["cargo-list-test-fixture-dependency", "--dev"])
+        .args(["your-face", "--dev"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -1533,7 +1533,7 @@ fn overwrite_name_noop() {
 
     cargo_command()
         .arg("add")
-        .args(["cargo-list-test-fixture-dependency"])
+        .args(["your-face"])
         .current_dir(cwd)
         .assert()
         .success()
@@ -1683,11 +1683,7 @@ fn overwrite_path_noop() {
 
     cargo_command()
         .arg("add")
-        .args([
-            "cargo-list-test-fixture-dependency",
-            "--path",
-            "./dependency",
-        ])
+        .args(["your-face", "--path", "./dependency"])
         .current_dir(cwd)
         .assert()
         .success()

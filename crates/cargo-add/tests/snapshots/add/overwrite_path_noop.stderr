@@ -1,5 +1,4 @@
-      Adding cargo-list-test-fixture-dependency (local) to optional dependencies.
+      Adding your-face (local) to optional dependencies.
              Features:
-             + one
-             + two
-warning: unrecognized features: ["one", "two"]
+             + mouth
+             + nose
