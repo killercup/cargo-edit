@@ -6,4 +6,4 @@
              - eyes
              - mouth
              - nose
-warning: unrecognized features: ["noze"]
+error: unrecognized features: ["noze"]
