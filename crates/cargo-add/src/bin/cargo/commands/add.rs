@@ -21,15 +21,7 @@ pub fn cli() -> clap::Command<'static> {
     cargo add [OPTIONS] --path <PATH> ...
     cargo add [OPTIONS] --git <URL> ..."
         )
-        .after_help(
-            "\
-EXAMPLES:
-  $ cargo add regex --build
-  $ cargo add trycmd --dev
-  $ cargo add --path ./crate/parser/
-  $ cargo add serde serde_json -F serde/derive
-",
-        )
+        .after_help("Run `cargo help add` for more detailed information.\n")
         .group(clap::ArgGroup::new("selected").multiple(true).required(true))
         .args([
             clap::Arg::new("crates")
