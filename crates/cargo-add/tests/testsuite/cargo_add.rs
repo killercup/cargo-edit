@@ -514,7 +514,7 @@ fn features_unknown() {
         .args(["your-face", "--features", "noze"])
         .current_dir(cwd)
         .assert()
-        .success()
+        .code(101)
         .stdout_matches_path("tests/snapshots/add/features_unknown.stdout")
         .stderr_matches_path("tests/snapshots/add/features_unknown.stderr");
 

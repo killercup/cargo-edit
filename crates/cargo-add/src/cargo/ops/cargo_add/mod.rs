@@ -115,11 +115,8 @@ pub fn add(workspace: &Workspace<'_>, options: &AddOptions<'_>) -> CargoResult<(
             unknown_features.sort();
 
             if !unknown_features.is_empty() {
-                options
-                    .config
-                    .shell()
-                    .warn(format!("unrecognized features: {unknown_features:?}"))?;
-            };
+                anyhow::bail!("unrecognized features: {unknown_features:?}");
+            }
         }
         manifest.insert_into_table(&dep_table, &dep)?;
         manifest.gc_dep(dep.toml_key());
