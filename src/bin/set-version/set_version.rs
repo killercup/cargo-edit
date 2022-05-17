@@ -148,6 +148,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
                 dunce::canonicalize(manifest.path.parent().expect("at least a parent"))?;
             for member in workspace_members.iter() {
                 let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
+                let mut changed = false;
                 let dep_crate_root = dep_manifest
                     .path
                     .parent()
@@ -176,9 +177,10 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
                     if let Some(new_req) = upgrade_requirement(old_req, &next)? {
                         upgrade_dependent_message(member.name.as_str(), old_req, &new_req)?;
                         dep.insert("version", toml_edit::value(new_req));
+                        changed = true;
                     }
                 }
-                if !dry_run {
+                if changed && !dry_run {
                     dep_manifest.write()?;
                 }
             }
