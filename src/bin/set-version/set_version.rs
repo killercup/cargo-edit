@@ -130,24 +130,28 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 
     let workspace_members = workspace_members(manifest_path.as_deref())?;
 
-    for (mut manifest, package) in manifests.0 {
+    for package in manifests.0 {
         if exclude.contains(&package.name) {
             continue;
         }
         let current = &package.version;
         let next = target.bump(current, metadata.as_deref())?;
         if let Some(next) = next {
-            manifest.set_package_version(&next);
+            {
+                let mut manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
+                manifest.set_package_version(&next);
 
-            upgrade_message(package.name.as_str(), current, &next)?;
-            if !dry_run {
-                manifest.write()?;
+                upgrade_message(package.name.as_str(), current, &next)?;
+                if !dry_run {
+                    manifest.write()?;
+                }
             }
 
             let crate_root =
-                dunce::canonicalize(manifest.path.parent().expect("at least a parent"))?;
+                dunce::canonicalize(package.manifest_path.parent().expect("at least a parent"))?;
             for member in workspace_members.iter() {
                 let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
+                let mut changed = false;
                 let dep_crate_root = dep_manifest
                     .path
                     .parent()
@@ -176,9 +180,10 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
                     if let Some(new_req) = upgrade_requirement(old_req, &next)? {
                         upgrade_dependent_message(member.name.as_str(), old_req, &new_req)?;
                         dep.insert("version", toml_edit::value(new_req));
+                        changed = true;
                     }
                 }
-                if !dry_run {
+                if changed && !dry_run {
                     dep_manifest.write()?;
                 }
             }
@@ -189,7 +194,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 }
 
 /// A collection of manifests.
-struct Manifests(Vec<(LocalManifest, cargo_metadata::Package)>);
+struct Manifests(Vec<cargo_metadata::Package>);
 
 impl Manifests {
     /// Get all manifests in the workspace.
@@ -202,31 +207,18 @@ impl Manifests {
         let result = cmd
             .exec()
             .with_context(|| "Failed to get workspace metadata")?;
-        result
-            .packages
-            .into_iter()
-            .map(|package| {
-                Ok((
-                    LocalManifest::try_new(Path::new(&package.manifest_path))?,
-                    package,
-                ))
-            })
-            .collect::<CargoResult<Vec<_>>>()
-            .map(Manifests)
+        Ok(Self(result.packages))
     }
 
     fn get_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoResult<Self> {
         let package = manifest_from_pkgid(manifest_path, pkgid)?;
-        let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
-        Ok(Manifests(vec![(manifest, package)]))
+        Ok(Manifests(vec![package]))
     }
 
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
     /// provided.
     fn get_local_one(manifest_path: Option<&Path>) -> CargoResult<Self> {
         let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
-
-        let manifest = LocalManifest::find(manifest_path)?;
 
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.no_deps();
@@ -245,7 +237,7 @@ impl Manifests {
                  actual package in this workspace. Try adding `--workspace`."
             })?;
 
-        Ok(Manifests(vec![(manifest, package.to_owned())]))
+        Ok(Manifests(vec![package.to_owned()]))
     }
 }
 

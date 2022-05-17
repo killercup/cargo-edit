@@ -30,7 +30,7 @@ pub fn workspace_members(manifest_path: Option<&Path>) -> CargoResult<Vec<Packag
         cmd.manifest_path(manifest_path);
     }
     let result = cmd.exec().with_context(|| "Invalid manifest")?;
-    let workspace_members: std::collections::HashSet<_> =
+    let workspace_members: std::collections::BTreeSet<_> =
         result.workspace_members.into_iter().collect();
     let workspace_members: Vec<_> = result
         .packages
