@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+set-version
+- Don't overwrite updated dependencies with stale data when modifying multiple packages
+
 ## 0.9.0 - 2022-03-28
 
 In large part, this release is a test-bed for changes proposed as part of the
