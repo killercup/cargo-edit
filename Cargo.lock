@@ -143,7 +143,7 @@ dependencies = [
  "serde_json",
  "subprocess",
  "termcolor",
- "toml_edit",
+ "toml_edit 0.14.4",
  "trycmd",
  "ureq",
  "url",
@@ -1379,6 +1379,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml_edit"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5376256e44f2443f8896ac012507c19a012df0fe8758b55246ae51a2279db51f"
+dependencies = [
+ "combine",
+ "indexmap",
+ "itertools",
+ "serde",
+]
+
+[[package]]
 name = "trycmd"
 version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1391,7 +1403,7 @@ dependencies = [
  "serde",
  "shlex",
  "snapbox",
- "toml_edit",
+ "toml_edit 0.13.4",
 ]
 
 [[package]]
