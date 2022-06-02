@@ -227,6 +227,10 @@ impl AddArgs {
 
         let mut deps: Vec<Dependency> = Vec::new();
         for crate_spec in &self.crates {
+            if crate_spec == "+" {
+                anyhow::bail!("`+` is not a valid pkgid - Did you add a space before a feature?");
+            }
+
             if let Some(features) = crate_spec.strip_prefix('+') {
                 if !self.unstable_features.contains(&UnstableOptions::InlineAdd) {
                     inline_add_message()?;

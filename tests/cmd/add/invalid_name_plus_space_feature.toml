@@ -1,0 +1,11 @@
+bin.name = "cargo-add"
+args = ["add", "my-package", "+", "my-feature"]
+status.code = 1
+stdout = ""
+stderr = """
+Error: `+` is not a valid pkgid - Did you add a space before a feature?
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
