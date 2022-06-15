@@ -7,6 +7,7 @@ use cargo_edit::{
     update_registry_index, CargoResult, Context, CrateSpec, Dependency, LocalManifest,
 };
 use clap::Args;
+use semver::{Op, VersionReq};
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use url::Url;
 
@@ -79,6 +80,11 @@ pub struct UpgradeArgs {
     #[clap(long, conflicts_with = "to-lockfile")]
     skip_compatible: bool,
 
+    /// Only update a dependency if it is not currently pinned in the manifest.
+    /// "Pinned" refers to dependencies with a '=' or '<' or '<=' version requirement
+    #[clap(long)]
+    skip_pinned: bool,
+
     /// Run without accessing the network
     #[clap(long)]
     offline: bool,
@@ -148,7 +154,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
     let mut updated_registries = BTreeSet::new();
     for (manifest, package) in manifests {
-        let existing_dependencies = get_dependencies(&manifest, &args.dependency, &args.exclude)?;
+        let existing_dependencies =
+            get_dependencies(&manifest, &args.dependency, &args.exclude, args.skip_pinned)?;
 
         let upgraded_dependencies = if args.to_lockfile {
             existing_dependencies.into_lockfile(&locked, preserve_precision)?
@@ -196,6 +203,7 @@ fn get_dependencies(
     manifest: &LocalManifest,
     only_update: &[String],
     exclude: &[String],
+    skip_pinned: bool,
 ) -> CargoResult<DesiredUpgrades> {
     // Map the names of user-specified dependencies to the (optionally) requested version.
     let selected_dependencies = only_update
@@ -225,6 +233,17 @@ fn get_dependencies(
             dependency
                 .rename()
                 .map_or(true, |rename| !exclude.iter().any(|s| s == rename))
+        })
+        // Exclude pinned (= | < | <=) dependencies, if enabled
+        .filter(|(_, version)| {
+            !(skip_pinned
+                && VersionReq::parse(version)
+                    .map(|req| {
+                        req.comparators.iter().any(|comparator| {
+                            matches!(comparator.op, Op::Exact | Op::Less | Op::LessEq)
+                        })
+                    })
+                    .unwrap_or(false))
         })
     {
         let registry = dependency

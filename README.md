@@ -214,6 +214,9 @@ OPTIONS:
         --offline                 Run without accessing the network
     -p, --package <PKGID>         Package id of the crate to add this dependency to
         --skip-compatible         Only update a dependency if the new version is semver incompatible
+        --skip-pinned             Only update a dependency if it is not currently pinned in the
+                                  manifest. "Pinned" refers to dependencies with a '=' or '<' or
+                                  '<=' version requirement
         --to-lockfile             Upgrade all packages to the version in the lockfile
     -V, --version                 Print version information
         --workspace               Upgrade all packages in the workspace

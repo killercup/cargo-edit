@@ -1,0 +1,14 @@
+[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[dependencies]
+default = "99999.0.0"
+exact = "=2.0"
+lessthan = "<0.4"
+lessorequal = "<=3.0"
+caret = "99999.0.0"
+tilde = "99999.0.0"
+greaterthan = "99999.0.0"
+greaterorequal = "99999.0.0"
+wildcard = "99999.0.0"
