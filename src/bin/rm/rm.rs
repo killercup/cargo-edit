@@ -15,29 +15,15 @@ pub struct RmArgs {
     crates: Vec<String>,
 
     /// Remove crate as development dependency.
-    #[clap(
-        long,
-        short = 'D',
-        conflicts_with = "build",
-        help_heading = "SECTION",
-    )]
+    #[clap(long, short = 'D', conflicts_with = "build", help_heading = "SECTION")]
     dev: bool,
 
     /// Remove crate as build dependency.
-    #[clap(
-        long,
-        short = 'B',
-        conflicts_with = "dev",
-        help_heading = "SECTION",
-    )]
+    #[clap(long, short = 'B', conflicts_with = "dev", help_heading = "SECTION")]
     build: bool,
 
     /// Remove as dependency from the given target platform.
-    #[clap(
-        long,
-        forbid_empty_values = true,
-        help_heading = "SECTION",
-    )]
+    #[clap(long, forbid_empty_values = true, help_heading = "SECTION")]
     target: Option<String>,
 
     /// Path to the manifest to remove a dependency from.
