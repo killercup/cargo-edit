@@ -20,7 +20,6 @@ pub struct RmArgs {
         short = 'D',
         conflicts_with = "build",
         help_heading = "SECTION",
-        group = "SECTION"
     )]
     dev: bool,
 
@@ -30,7 +29,6 @@ pub struct RmArgs {
         short = 'B',
         conflicts_with = "dev",
         help_heading = "SECTION",
-        group = "SECTION"
     )]
     build: bool,
 
@@ -39,7 +37,6 @@ pub struct RmArgs {
         long,
         forbid_empty_values = true,
         help_heading = "SECTION",
-        group = "section"
     )]
     target: Option<String>,
 
