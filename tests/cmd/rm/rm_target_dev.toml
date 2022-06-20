@@ -1,0 +1,11 @@
+bin.name = "cargo-rm"
+args = ["rm", "--dev", "--target", "x86_64-unknown-linux-gnu", "ncurses"]
+status = "success"
+stdout = ""
+stderr = """
+    Removing ncurses from dev-dependencies for target `x86_64-unknown-linux-gnu`
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

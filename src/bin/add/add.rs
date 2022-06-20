@@ -618,7 +618,7 @@ fn exec(mut args: AddArgs) -> CargoResult<()> {
 
     if was_sorted {
         if let Some(table) = manifest
-            .get_table_mut(&args.get_section())
+            .get_table_mut(&args.get_section(), true)
             .ok()
             .and_then(TomlItem::as_table_like_mut)
         {
