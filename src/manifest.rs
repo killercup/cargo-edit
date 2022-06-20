@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::fs::{self};
+use std::fs;
 use std::io::Write;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};

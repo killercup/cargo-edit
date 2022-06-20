@@ -88,11 +88,7 @@ impl RmArgs {
         if let Some(ref target) = self.target {
             assert!(!target.is_empty(), "Target specification may not be empty");
 
-            vec![
-                "target".to_owned(),
-                target.clone(),
-                section_name.to_owned(),
-            ]
+            vec!["target".to_owned(), target.clone(), section_name.to_owned()]
         } else {
             vec![section_name.to_owned()]
         }
