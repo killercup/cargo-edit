@@ -156,14 +156,17 @@ ARGS:
     <CRATE>...    Crates to be removed
 
 OPTIONS:
-    -B, --build                   Remove crate as build dependency
-    -D, --dev                     Remove crate as development dependency
     -h, --help                    Print help information
         --manifest-path <PATH>    Path to the manifest to remove a dependency from
     -p, --package <PKGID>         Package id of the crate to remove this dependency from
     -q, --quiet                   Do not print any output in case of success
     -V, --version                 Print version information
     -Z <FLAG>                     Unstable (nightly-only) flags
+
+SECTION:
+    -B, --build              Remove crate as build dependency
+    -D, --dev                Remove crate as development dependency
+        --target <TARGET>    Remove as dependency from the given target platform
 
 ```
 

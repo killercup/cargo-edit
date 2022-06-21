@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::fs::{self};
+use std::fs;
 use std::io::Write;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
@@ -57,29 +57,23 @@ impl Manifest {
     }
 
     /// Get the specified table from the manifest.
+    ///
+    /// If there is no table at the specified path, then a non-existent table
+    /// error will be returned.
     pub fn get_table_mut<'a>(
         &'a mut self,
         table_path: &[String],
     ) -> CargoResult<&'a mut toml_edit::Item> {
-        /// Descend into a manifest until the required table is found.
-        fn descend<'a>(
-            input: &'a mut toml_edit::Item,
-            path: &[String],
-        ) -> CargoResult<&'a mut toml_edit::Item> {
-            if let Some(segment) = path.get(0) {
-                let value = input[&segment].or_insert(toml_edit::table());
+        self.get_table_mut_internal(table_path, false)
+    }
 
-                if value.is_table_like() {
-                    descend(value, &path[1..])
-                } else {
-                    Err(non_existent_table_err(segment))
-                }
-            } else {
-                Ok(input)
-            }
-        }
-
-        descend(self.data.as_item_mut(), table_path)
+    /// Get the specified table from the manifest, inserting it if it does not
+    /// exist.
+    pub fn get_or_insert_table_mut<'a>(
+        &'a mut self,
+        table_path: &[String],
+    ) -> CargoResult<&'a mut toml_edit::Item> {
+        self.get_table_mut_internal(table_path, true)
     }
 
     /// Get all sections in the manifest that exist and might contain dependencies.
@@ -174,6 +168,39 @@ impl Manifest {
         }
 
         Ok(features)
+    }
+
+    fn get_table_mut_internal<'a>(
+        &'a mut self,
+        table_path: &[String],
+        insert_if_not_exists: bool,
+    ) -> CargoResult<&'a mut toml_edit::Item> {
+        /// Descend into a manifest until the required table is found.
+        fn descend<'a>(
+            input: &'a mut toml_edit::Item,
+            path: &[String],
+            insert_if_not_exists: bool,
+        ) -> CargoResult<&'a mut toml_edit::Item> {
+            if let Some(segment) = path.get(0) {
+                let value = if insert_if_not_exists {
+                    input[&segment].or_insert(toml_edit::table())
+                } else {
+                    input
+                        .get_mut(&segment)
+                        .ok_or_else(|| non_existent_table_err(segment))?
+                };
+
+                if value.is_table_like() {
+                    descend(value, &path[1..], insert_if_not_exists)
+                } else {
+                    Err(non_existent_table_err(segment))
+                }
+            } else {
+                Ok(input)
+            }
+        }
+
+        descend(self.data.as_item_mut(), table_path, insert_if_not_exists)
     }
 }
 
@@ -376,7 +403,7 @@ impl LocalManifest {
             .to_owned();
         let dep_key = dep.toml_key();
 
-        let table = self.get_table_mut(table_path)?;
+        let table = self.get_or_insert_table_mut(table_path)?;
         if let Some(dep_item) = table.as_table_like_mut().unwrap().get_mut(dep_key) {
             dep.update_toml(&crate_root, dep_item);
         } else {
@@ -413,7 +440,7 @@ impl LocalManifest {
             .parent()
             .expect("manifest path is absolute")
             .to_owned();
-        let table = self.get_table_mut(table_path)?;
+        let table = self.get_or_insert_table_mut(table_path)?;
 
         // If (and only if) there is an old entry, merge the new one in.
         if table.as_table_like().unwrap().contains_key(dep_key) {
@@ -447,22 +474,18 @@ impl LocalManifest {
     ///   let mut manifest = LocalManifest { path, manifest: Manifest { data: toml_edit::Document::new() } };
     ///   let dep = Dependency::new("cargo-edit").set_version("0.1.0");
     ///   let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
-    ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_ok());
-    ///   assert!(manifest.remove_from_table("dependencies", &dep.name).is_err());
+    ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], &dep.name).is_ok());
+    ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], &dep.name).is_err());
     ///   assert!(!manifest.data.contains_key("dependencies"));
     /// ```
-    pub fn remove_from_table(&mut self, table: &str, name: &str) -> CargoResult<()> {
-        let parent_table = self
-            .data
-            .get_mut(table)
-            .filter(|t| t.is_table_like())
-            .ok_or_else(|| non_existent_table_err(table))?;
+    pub fn remove_from_table(&mut self, table_path: &[String], name: &str) -> CargoResult<()> {
+        let parent_table = self.get_table_mut(table_path)?;
 
         {
             let dep = parent_table
                 .get_mut(name)
                 .filter(|t| !t.is_none())
-                .ok_or_else(|| non_existent_dependency_err(name, table))?;
+                .ok_or_else(|| non_existent_dependency_err(name, table_path.join(".")))?;
             // remove the dependency
             *dep = toml_edit::Item::None;
         }
@@ -721,7 +744,7 @@ mod tests {
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         let _ = manifest.insert_into_table(&["dependencies".to_owned()], &dep);
         assert!(manifest
-            .remove_from_table("dependencies", &dep.name)
+            .remove_from_table(&["dependencies".to_owned()], &dep.name)
             .is_ok());
         assert_eq!(manifest.data.to_string(), clone.data.to_string());
     }
@@ -780,7 +803,7 @@ mod tests {
         };
         let dep = Dependency::new("cargo-edit").set_version("0.1.0");
         assert!(manifest
-            .remove_from_table("dependencies", &dep.name)
+            .remove_from_table(&["dependencies".to_owned()], &dep.name)
             .is_err());
     }
 
@@ -799,7 +822,7 @@ mod tests {
             .insert_into_table(&["dependencies".to_owned()], &other_dep)
             .is_ok());
         assert!(manifest
-            .remove_from_table("dependencies", &dep.name)
+            .remove_from_table(&["dependencies".to_owned()], &dep.name)
             .is_err());
     }
 

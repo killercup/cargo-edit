@@ -15,12 +15,16 @@ pub struct RmArgs {
     crates: Vec<String>,
 
     /// Remove crate as development dependency.
-    #[clap(long, short = 'D', conflicts_with = "build")]
+    #[clap(long, short = 'D', conflicts_with = "build", help_heading = "SECTION")]
     dev: bool,
 
     /// Remove crate as build dependency.
-    #[clap(long, short = 'B', conflicts_with = "dev")]
+    #[clap(long, short = 'B', conflicts_with = "dev", help_heading = "SECTION")]
     build: bool,
+
+    /// Remove as dependency from the given target platform.
+    #[clap(long, forbid_empty_values = true, help_heading = "SECTION")]
+    target: Option<String>,
 
     /// Path to the manifest to remove a dependency from.
     #[clap(
@@ -54,14 +58,22 @@ impl RmArgs {
         exec(self)
     }
 
-    /// Get depenency section
-    pub fn get_section(&self) -> &'static str {
-        if self.dev {
+    /// Get dependency section
+    pub fn get_section(&self) -> Vec<String> {
+        let section_name = if self.dev {
             "dev-dependencies"
         } else if self.build {
             "build-dependencies"
         } else {
             "dependencies"
+        };
+
+        if let Some(ref target) = self.target {
+            assert!(!target.is_empty(), "Target specification may not be empty");
+
+            vec!["target".to_owned(), target.clone(), section_name.to_owned()]
+        } else {
+            vec![section_name.to_owned()]
         }
     }
 }
@@ -69,12 +81,17 @@ impl RmArgs {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 enum UnstableOptions {}
 
-fn print_msg(name: &str, section: &str) -> CargoResult<()> {
+fn print_msg(name: &str, section: &[String]) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
     output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
     write!(output, "{:>12}", "Removing")?;
     output.reset()?;
+    let section = if section.len() == 1 {
+        section[0].clone()
+    } else {
+        format!("{} for target `{}`", &section[2], &section[1])
+    };
     writeln!(output, " {} from {}", name, section)?;
     Ok(())
 }
@@ -92,10 +109,10 @@ fn exec(args: &RmArgs) -> CargoResult<()> {
     deps.iter()
         .map(|dep| {
             if !args.quiet {
-                print_msg(dep, args.get_section())?;
+                print_msg(dep, &args.get_section())?;
             }
             let result = manifest
-                .remove_from_table(args.get_section(), dep)
+                .remove_from_table(&args.get_section(), dep)
                 .map_err(Into::into);
 
             // Now that we have removed the crate, if that was the last reference to that crate,
