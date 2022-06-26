@@ -686,8 +686,12 @@ fn old_version_compatible(dependency: &Dependency, old_version: &str) -> CargoRe
     Ok(old_version.matches(&current_version))
 }
 
-pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
-    item.is_str() || item.as_table_like().map(|t| t.len() == 1).unwrap_or(false)
+pub fn str_or_1_len_inline_table(item: &toml_edit::Item) -> bool {
+    item.is_str()
+        || item
+            .as_inline_table()
+            .map(|t| t.len() == 1)
+            .unwrap_or(false)
 }
 
 /// Print a message if the new dependency version is different from the old one.

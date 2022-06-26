@@ -1,0 +1,10 @@
+[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[dependencies]
+inline_table = "99999.0.0"
+string = "99999.0.0"
+
+[dependencies.table]
+version = "99999.0.0"

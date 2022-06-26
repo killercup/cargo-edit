@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use super::manifest::str_or_1_len_table;
+use super::manifest::str_or_1_len_inline_table;
 
 /// A dependency handled by Cargo
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -422,7 +422,7 @@ impl Dependency {
     /// Modify existing entry to match this dependency
     pub fn update_toml(&self, crate_root: &Path, item: &mut toml_edit::Item) {
         #[allow(clippy::if_same_then_else)]
-        if str_or_1_len_table(item) {
+        if str_or_1_len_inline_table(item) {
             // Nothing to preserve
             *item = self.to_toml(crate_root);
         } else if !is_package_eq(item, &self.name, self.rename.as_deref()) {

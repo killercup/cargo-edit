@@ -1,0 +1,15 @@
+bin.name = "cargo-upgrade"
+args = ["upgrade"]
+status = "success"
+stdout = """
+cargo-list-test-fixture:
+"""
+stderr = """
+    Upgrading inline_table v0.1.0 -> v99999.0.0
+    Upgrading string v0.1.0 -> v99999.0.0
+    Upgrading table v0.1.0 -> v99999.0.0
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"
