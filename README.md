@@ -156,6 +156,7 @@ ARGS:
     <CRATE>...    Crates to be removed
 
 OPTIONS:
+        --dry-run                 Don't actually write the manifest
     -h, --help                    Print help information
         --manifest-path <PATH>    Path to the manifest to remove a dependency from
     -p, --package <PKGID>         Package id of the crate to remove this dependency from

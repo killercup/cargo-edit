@@ -1,4 +1,5 @@
 use cargo_edit::shell_status;
+use cargo_edit::shell_warn;
 use cargo_edit::CargoResult;
 use cargo_edit::{manifest_from_pkgid, LocalManifest};
 use clap::Args;
@@ -46,6 +47,10 @@ pub struct RmArgs {
     /// Unstable (nightly-only) flags
     #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
     unstable_features: Vec<UnstableOptions>,
+
+    /// Don't actually write the manifest
+    #[clap(long)]
+    dry_run: bool,
 
     /// Do not print any output in case of success.
     #[clap(long, short)]
@@ -117,7 +122,11 @@ fn exec(args: &RmArgs) -> CargoResult<()> {
             err
         })?;
 
-    manifest.write()?;
+    if args.dry_run {
+        shell_warn("aborting rm due to dry run")?;
+    } else {
+        manifest.write()?;
+    }
 
     Ok(())
 }
