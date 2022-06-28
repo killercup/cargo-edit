@@ -36,5 +36,5 @@ pub use fetch::{
 pub use manifest::{find, LocalManifest, Manifest};
 pub use metadata::{manifest_from_pkgid, workspace_members};
 pub use registry::registry_url;
-pub use util::{colorize_stderr, ColorChoice};
+pub use util::{colorize_stderr, shell_print, shell_status, shell_warn, Color, ColorChoice};
 pub use version::{upgrade_requirement, VersionExt};

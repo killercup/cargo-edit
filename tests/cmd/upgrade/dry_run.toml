@@ -5,7 +5,7 @@ stdout = """
 cargo-list-test-fixture:
 """
 stderr = """
-    Upgrading docopt v0.8.0 -> v99999.0.0
+   Upgrading docopt v0.8.0 -> v99999.0.0
 warning: aborting upgrade due to dry run
 """
 fs.sandbox = true

@@ -1,16 +1,16 @@
 use std::collections::BTreeMap;
 use std::env;
-use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
 
-use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 use url::Url;
 
 use super::errors::*;
 use super::registry::registry_url;
+use super::shell_status;
 use super::VersionExt;
 use super::{Dependency, LocalManifest, Manifest};
+
 use regex::Regex;
 
 /// Query latest version from a registry index
@@ -250,19 +250,13 @@ fn registry_features(v: &crates_index::Version) -> BTreeMap<String, Vec<String>>
 
 /// update registry index for given project
 pub fn update_registry_index(registry: &Url, quiet: bool) -> CargoResult<()> {
-    let colorchoice = super::colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-
     let mut index = crates_index::Index::from_url(registry.as_str())?;
     if !quiet {
-        output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
-        write!(output, "{:>12}", "Updating")?;
-        output.reset()?;
-        writeln!(output, " '{}' index", registry)?;
+        shell_status("Updating", &format!("'{}' index", registry))?;
     }
 
     while need_retry(index.update())? {
-        registry_blocked_message(&mut output)?;
+        shell_status("Blocking", "waiting for lock on registry index")?;
         std::thread::sleep(REGISTRY_BACKOFF);
     }
 
@@ -285,15 +279,6 @@ fn need_retry(res: Result<(), crates_index::Error>) -> CargoResult<bool> {
         }
         Err(err) => Err(err.into()),
     }
-}
-
-/// Report to user that the Registry is locked
-fn registry_blocked_message(output: &mut StandardStream) -> CargoResult<()> {
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
-    write!(output, "{:>12}", "Blocking")?;
-    output.reset()?;
-    writeln!(output, " waiting for lock on registry index")?;
-    Ok(())
 }
 
 /// Load Cargo.toml in a local path

@@ -1,15 +1,14 @@
 use std::collections::BTreeMap;
 use std::fs;
-use std::io::Write;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::{env, str};
 
 use semver::{Version, VersionReq};
-use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
 
 use super::dependency::Dependency;
 use super::errors::*;
+use super::shell_status;
 
 const MANIFEST_FILENAME: &str = "Cargo.toml";
 const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
@@ -703,25 +702,10 @@ fn print_upgrade_if_necessary(
         return Ok(());
     }
 
-    let colorchoice = super::colorize_stderr();
-    let bufwtr = BufferWriter::stderr(colorchoice);
-    let mut buffer = bufwtr.buffer();
-    buffer
-        .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-        .with_context(|| "Failed to set output colour")?;
-    write!(&mut buffer, "    Upgrading ").with_context(|| "Failed to write upgrade message")?;
-    buffer
-        .set_color(&ColorSpec::new())
-        .with_context(|| "Failed to clear output colour")?;
-    writeln!(
-        &mut buffer,
-        "{} v{} -> v{}",
-        crate_name, old_version, new_version,
-    )
-    .with_context(|| "Failed to write upgrade versions")?;
-    bufwtr
-        .print(&buffer)
-        .with_context(|| "Failed to print upgrade message")?;
+    shell_status(
+        "Upgrading",
+        &format!("{crate_name} v{old_version} -> v{new_version}"),
+    )?;
 
     Ok(())
 }
