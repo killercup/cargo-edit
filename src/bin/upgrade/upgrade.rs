@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use cargo_edit::{
-    colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url,
+    colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url, shell_warn,
     update_registry_index, CargoResult, Context, CrateSpec, Dependency, LocalManifest,
 };
 use clap::Args;
@@ -191,7 +191,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     }
 
     if args.dry_run {
-        dry_run_message()?;
+        shell_warn("aborting upgrade due to dry run")?;
     }
 
     Ok(())
@@ -515,20 +515,5 @@ fn deprecated_message(message: &str) -> CargoResult<()> {
     output
         .set_color(&ColorSpec::new())
         .with_context(|| "Failed to clear output colour")?;
-    Ok(())
-}
-
-fn dry_run_message() -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output
-        .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))
-        .with_context(|| "Failed to set output colour")?;
-    write!(output, "warning").with_context(|| "Failed to write dry run message")?;
-    output
-        .set_color(&ColorSpec::new())
-        .with_context(|| "Failed to clear output colour")?;
-    writeln!(output, ": aborting upgrade due to dry run")
-        .with_context(|| "Failed to write dry run message")?;
     Ok(())
 }

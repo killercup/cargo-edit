@@ -1,10 +1,9 @@
+use cargo_edit::shell_status;
 use cargo_edit::CargoResult;
-use cargo_edit::{colorize_stderr, manifest_from_pkgid, LocalManifest};
+use cargo_edit::{manifest_from_pkgid, LocalManifest};
 use clap::Args;
 use std::borrow::Cow;
-use std::io::Write;
 use std::path::PathBuf;
-use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 
 /// Remove a dependency from a Cargo.toml manifest file.
 #[derive(Debug, Args)]
@@ -81,21 +80,6 @@ impl RmArgs {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 enum UnstableOptions {}
 
-fn print_msg(name: &str, section: &[String]) -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))?;
-    write!(output, "{:>12}", "Removing")?;
-    output.reset()?;
-    let section = if section.len() == 1 {
-        section[0].clone()
-    } else {
-        format!("{} for target `{}`", &section[2], &section[1])
-    };
-    writeln!(output, " {} from {}", name, section)?;
-    Ok(())
-}
-
 fn exec(args: &RmArgs) -> CargoResult<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
         let pkg = manifest_from_pkgid(args.manifest_path.as_deref(), pkgid)?;
@@ -109,7 +93,13 @@ fn exec(args: &RmArgs) -> CargoResult<()> {
     deps.iter()
         .map(|dep| {
             if !args.quiet {
-                print_msg(dep, &args.get_section())?;
+                let section = args.get_section();
+                let section = if section.len() >= 3 {
+                    format!("{} for target `{}`", &section[2], &section[1])
+                } else {
+                    section[0].clone()
+                };
+                shell_status("Removing", &format!("{dep} from {section}",))?;
             }
             let result = manifest
                 .remove_from_table(&args.get_section(), dep)
