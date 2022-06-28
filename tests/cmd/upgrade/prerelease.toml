@@ -5,7 +5,7 @@ stdout = """
 cargo-list-test-fixture:
 """
 stderr = """
-    Upgrading docopt v0.8.0 -> v99999.0.0-alpha.1
+   Upgrading docopt v0.8.0 -> v99999.0.0-alpha.1
 """
 fs.sandbox = true
 
