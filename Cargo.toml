@@ -58,7 +58,7 @@ required-features = ["set-version"]
 
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
-cargo_metadata = "0.14.0"
+cargo_metadata = "0.15.0"
 crates-index = "0.18.6"
 dunce = "1.0"
 dirs-next = "2.0.0"
