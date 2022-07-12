@@ -152,10 +152,20 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     };
     let preserve_precision = args.preserve_precision();
 
+    let selected_dependencies = args
+        .dependency
+        .iter()
+        .map(|name| CrateSpec::resolve(name))
+        .collect::<CargoResult<Vec<_>>>()?;
+
     let mut updated_registries = BTreeSet::new();
     for (manifest, package) in manifests {
-        let existing_dependencies =
-            get_dependencies(&manifest, &args.dependency, &args.exclude, args.skip_pinned)?;
+        let existing_dependencies = get_dependencies(
+            &manifest,
+            &selected_dependencies,
+            &args.exclude,
+            args.skip_pinned,
+        )?;
 
         let upgraded_dependencies = if args.to_lockfile {
             existing_dependencies.into_lockfile(&locked, preserve_precision)?
@@ -201,18 +211,15 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 /// per-dependency desired versions, extract those here.
 fn get_dependencies(
     manifest: &LocalManifest,
-    only_update: &[String],
+    only_update: &[CrateSpec],
     exclude: &[String],
     skip_pinned: bool,
 ) -> CargoResult<DesiredUpgrades> {
     // Map the names of user-specified dependencies to the (optionally) requested version.
     let selected_dependencies = only_update
         .iter()
-        .map(|name| {
-            let spec = CrateSpec::resolve(name)?;
-            Ok((spec.name, spec.version_req))
-        })
-        .collect::<CargoResult<BTreeMap<_, _>>>()?;
+        .map(|spec| (spec.name.clone(), spec.version_req.clone()))
+        .collect::<BTreeMap<_, _>>();
 
     let mut upgrades = DesiredUpgrades::default();
     for (dependency, old_version) in manifest
