@@ -234,7 +234,7 @@ fn get_dependencies(
                 .map(ToOwned::to_owned)
                 .map(|version| (dependency, version))
         })
-        .filter(|(dependency, _)| !exclude.contains(&dependency.name))
+        .filter(|(dependency, _)| !exclude.contains(&dependency.toml_key().to_owned()))
         // Exclude renamed dependencies as well
         .filter(|(dependency, _)| {
             dependency
@@ -273,7 +273,7 @@ fn get_dependencies(
         } else {
             // User has asked for specific dependencies. Check if this dependency
             // was specified, populating the registry from the lockfile metadata.
-            if let Some(version) = selected_dependencies.get(&dependency.name) {
+            if let Some(version) = selected_dependencies.get(dependency.toml_key()) {
                 upgrades.0.insert(
                     dependency,
                     UpgradeMetadata {
