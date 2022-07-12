@@ -208,9 +208,9 @@ fn get_dependencies(
     // Map the names of user-specified dependencies to the (optionally) requested version.
     let selected_dependencies = only_update
         .iter()
-        .map(|name| match CrateSpec::resolve(name)? {
-            CrateSpec::PkgId { name, version_req } => Ok((name, version_req)),
-            CrateSpec::Path(path) => Err(anyhow::format_err!("Invalid name: {}", path.display())),
+        .map(|name| {
+            let spec = CrateSpec::resolve(name)?;
+            Ok((spec.name, spec.version_req))
         })
         .collect::<CargoResult<BTreeMap<_, _>>>()?;
 
