@@ -1,7 +1,0 @@
-[package]
-name = "cargo-list-test-fixture"
-version = "0.0.0"
-
-[dependencies]
-Inflector = "0.11.4"
-linked-hash-map = "0.5.4"

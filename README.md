@@ -4,7 +4,6 @@ This tool extends [Cargo](http://doc.crates.io/) to allow you to add, remove, an
 
 Currently available subcommands:
 
-- [`cargo add`](#cargo-add)
 - [`cargo rm`](#cargo-rm)
 - [`cargo upgrade`](#cargo-upgrade)
 - [`cargo set-version`](#cargo-set-version)
@@ -58,74 +57,13 @@ Install a sub-set of the commands with `cargo install -f --no-default-features -
 
 ### `cargo add`
 
-Add new dependencies to your `Cargo.toml`. When no version is specified, `cargo add` will try to query the latest version's number from [crates.io](https://crates.io).
+`cargo add` is now integrated into `cargo` as of v1.62.  If you want access in older versions of `cargo`, you'll need to install `cargo-edit` v0.9 or earlier.
 
-#### Examples
-
-```console,ignore
-$ # Add a specific version
-$ cargo add regex@0.1.41 --dev
-$ # Query the latest version from crates.io and adds it as build dependency
-$ cargo add gcc --build
-$ # Add a non-crates.io crate
-$ cargo add local_experiment --path=lib/trial-and-error/
-$ # Add a non-crates.io crate; the crate name will be found automatically
-$ cargo add lib/trial-and-error/
-$ # Add a crates.io crate with a local development path
-$ cargo add my_helper --vers=1.3.1 --path=lib/my-helper/
-$ # Add a renamed dependency
-$ cargo add thiserror --rename error
-```
-
-#### Usage
-
-```console
-$ cargo-add add -h
-cargo-add [..]
-Add dependencies to a Cargo.toml manifest file
-
-USAGE:
-    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
-    cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...
-
-ARGS:
-    <DEP_ID>...    Reference to a package to add as a dependency
-
-OPTIONS:
-        --no-default-features     Disable the default features
-        --default-features        Re-enable the default features
-    -F, --features <FEATURES>     Space-separated list of features to add
-        --optional                Mark the dependency as optional
-        --no-optional             Mark the dependency as required
-    -r, --rename <RENAME>         Rename the dependency
-        --registry <REGISTRY>     Package registry for this dependency
-        --manifest-path <PATH>    Path to `Cargo.toml`
-    -p, --package <PKGID>         Package to modify
-        --offline                 Run without accessing the network
-        --dry-run                 Don't actually write the manifest
-        --quiet                   Do not print any output in case of success
-    -h, --help                    Print help information
-    -V, --version                 Print version information
-
-SECTION:
-    -D, --dev                Add as development dependency
-    -B, --build              Add as build dependency
-        --target <TARGET>    Add as dependency to the given target platform
-
-UNSTABLE:
-    -Z <FLAG>                Unstable (nightly-only) flags [possible values: git, inline-add]
-        --git <URI>          Git repository location
-        --branch <BRANCH>    Git branch to download the crate from
-        --tag <TAG>          Git tag to download the crate from
-        --rev <REV>          Git reference to download the crate from
-
-Examples:
-  $ cargo add regex --build
-  $ cargo add trycmd --dev
-  $ cargo add ./crate/parser/
-  $ cargo add serde +derive serde_json
-
-```
+Known differences from `cargo-edit` v0.9.1
+- `cargo add <path>` is unsupported, instead use `cargo add --path <path>`
+- `cargo add <crate> +<feature>` is unsupported, instead use `cargo add <crate> -F <feature>`
+  - If adding multiple crates, qualify the feature like `cargo add serde -F serde/derive serde_json`
+  - See [rust-lang/cargo#10809](https://github.com/rust-lang/cargo/issues/10809)
 
 ### `cargo rm`
 

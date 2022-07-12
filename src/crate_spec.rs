@@ -1,7 +1,5 @@
 //! Crate name parsing.
 use super::errors::*;
-use super::get_manifest_from_path;
-use super::Dependency;
 
 /// User-specified crate
 ///
@@ -60,44 +58,6 @@ impl CrateSpec {
         };
 
         Ok(id)
-    }
-
-    /// Whether the version req is known or not
-    pub fn has_version(&self) -> bool {
-        match self {
-            Self::PkgId {
-                name: _,
-                version_req,
-            } => version_req.is_some(),
-            Self::Path(_path) => {
-                // We'll get it from the manifest
-                true
-            }
-        }
-    }
-
-    /// Generate a dependency entry for this crate specifier
-    pub fn to_dependency(&self) -> CargoResult<Dependency> {
-        let dep = match self {
-            Self::PkgId { name, version_req } => {
-                let mut dep = Dependency::new(name);
-                if let Some(version_req) = version_req {
-                    dep = dep.set_version(version_req);
-                }
-                dep
-            }
-            Self::Path(path) => {
-                let manifest = get_manifest_from_path(path)?;
-                let crate_name = manifest.package_name()?;
-                let path = dunce::canonicalize(path)?;
-                let available_features = manifest.features()?;
-                Dependency::new(crate_name)
-                    .set_path(path)
-                    .set_available_features(available_features)
-            }
-        };
-
-        Ok(dep)
     }
 }
 

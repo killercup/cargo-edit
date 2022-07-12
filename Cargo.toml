@@ -11,7 +11,7 @@ categories = [
     "development-tools",
     "development-tools::cargo-plugins",
 ]
-description = "This extends Cargo to allow you to add and remove dependencies by modifying your `Cargo.toml` file from the command line. It contains `cargo add`, `cargo rm`, and `cargo upgrade`."
+description = "Cargo commands for modifying a `Cargo.toml` file.."
 documentation = "https://github.com/killercup/cargo-edit/blob/master/README.md#available-subcommands"
 homepage = "https://github.com/killercup/cargo-edit"
 keywords = [
@@ -35,11 +35,6 @@ pre-release-replacements = [
   {file="CHANGELOG.md", search="ReleaseDate", replace="{{date}}", min=1},
   {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n## Unreleased - ReleaseDate\n", exactly=1},
 ]
-
-[[bin]]
-name = "cargo-add"
-path = "src/bin/add/main.rs"
-required-features = ["add"]
 
 [[bin]]
 name = "cargo-rm"
@@ -98,13 +93,11 @@ trycmd = "0.13.1"
 
 [features]
 default = [
-    "add",
     "rm",
     "upgrade",
     "set-version",
     "vendored-libgit2",
 ]
-add = ["cli"]
 rm = ["cli"]
 upgrade = ["cli"]
 set-version = ["cli"]
