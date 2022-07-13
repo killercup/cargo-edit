@@ -211,12 +211,7 @@ impl LocalManifest {
 
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
     /// dependency, it does nothing.
-    pub fn upgrade(
-        &mut self,
-        dependency: &Dependency,
-        dry_run: bool,
-        skip_compatible: bool,
-    ) -> CargoResult<()> {
+    pub fn upgrade(&mut self, dependency: &Dependency, skip_compatible: bool) -> CargoResult<()> {
         for (table_path, table) in self.get_sections() {
             let table_like = table.as_table_like().expect("Unexpected non-table");
             for (name, toml_item) in table_like.iter() {
@@ -231,12 +226,12 @@ impl LocalManifest {
                             continue;
                         }
                     }
-                    self.update_table_named_entry(&table_path, name, dependency, dry_run)?;
+                    self.update_table_named_entry(&table_path, name, dependency)?;
                 }
             }
         }
 
-        self.write()
+        Ok(())
     }
 
     /// Returns all dependencies
@@ -292,7 +287,6 @@ impl LocalManifest {
         table_path: &[String],
         dep_key: &str,
         dep: &Dependency,
-        dry_run: bool,
     ) -> CargoResult<()> {
         let crate_root = self
             .path
@@ -309,16 +303,14 @@ impl LocalManifest {
             {
                 eprintln!("Error while displaying upgrade message, {}", e);
             }
-            if !dry_run {
-                let (mut dep_key, dep_item) = table
-                    .as_table_like_mut()
-                    .unwrap()
-                    .get_key_value_mut(dep_key)
-                    .unwrap();
-                dep.update_toml(&crate_root, &mut dep_key, dep_item);
-                if let Some(t) = table.as_inline_table_mut() {
-                    t.fmt()
-                }
+            let (mut dep_key, dep_item) = table
+                .as_table_like_mut()
+                .unwrap()
+                .get_key_value_mut(dep_key)
+                .unwrap();
+            dep.update_toml(&crate_root, &mut dep_key, dep_item);
+            if let Some(t) = table.as_inline_table_mut() {
+                t.fmt()
             }
         }
 

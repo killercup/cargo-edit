@@ -301,7 +301,11 @@ fn upgrade(
         if let Some(Source::Registry(source)) = &mut new_dep.source {
             source.version = version.clone();
         }
-        manifest.upgrade(&new_dep, dry_run, skip_compatible)?;
+        manifest.upgrade(&new_dep, skip_compatible)?;
+    }
+
+    if !dry_run {
+        manifest.write()?;
     }
 
     Ok(())
