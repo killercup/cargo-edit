@@ -152,6 +152,7 @@ OPTIONS:
         --dry-run                 Print changes to be made without making them
         --exclude <EXCLUDE>       Crates to exclude and not upgrade
     -h, --help                    Print help information
+        --locked                  Require `Cargo.toml` to be up to date
         --manifest-path <PATH>    Path to the manifest to upgrade
         --offline                 Run without accessing the network
     -p, --package <PKGID>         Package id of the crate to add this dependency to
