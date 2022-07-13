@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::fs;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
@@ -21,45 +20,11 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    /// Get the manifest's package name
-    pub fn package_name(&self) -> CargoResult<&str> {
-        self.data
-            .as_table()
-            .get("package")
-            .and_then(|m| m["name"].as_str())
-            .ok_or_else(parse_manifest_err)
-    }
-
-    /// Get the specified table from the manifest.
-    pub fn get_table<'a>(&'a self, table_path: &[String]) -> CargoResult<&'a toml_edit::Item> {
-        /// Descend into a manifest until the required table is found.
-        fn descend<'a>(
-            input: &'a toml_edit::Item,
-            path: &[String],
-        ) -> CargoResult<&'a toml_edit::Item> {
-            if let Some(segment) = path.get(0) {
-                let value = input
-                    .get(&segment)
-                    .ok_or_else(|| non_existent_table_err(segment))?;
-
-                if value.is_table_like() {
-                    descend(value, &path[1..])
-                } else {
-                    Err(non_existent_table_err(segment))
-                }
-            } else {
-                Ok(input)
-            }
-        }
-
-        descend(self.data.as_item(), table_path)
-    }
-
     /// Get the specified table from the manifest.
     ///
     /// If there is no table at the specified path, then a non-existent table
     /// error will be returned.
-    pub fn get_table_mut<'a>(
+    pub(crate) fn get_table_mut<'a>(
         &'a mut self,
         table_path: &[String],
     ) -> CargoResult<&'a mut toml_edit::Item> {
@@ -68,7 +33,7 @@ impl Manifest {
 
     /// Get the specified table from the manifest, inserting it if it does not
     /// exist.
-    pub fn get_or_insert_table_mut<'a>(
+    pub(crate) fn get_or_insert_table_mut<'a>(
         &'a mut self,
         table_path: &[String],
     ) -> CargoResult<&'a mut toml_edit::Item> {
@@ -77,7 +42,7 @@ impl Manifest {
 
     /// Get all sections in the manifest that exist and might contain dependencies.
     /// The returned items are always `Table` or `InlineTable`.
-    pub fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
+    pub(crate) fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
         let mut sections = Vec::new();
 
         for dependency_type in DEP_TABLES {
@@ -122,53 +87,6 @@ impl Manifest {
         sections
     }
 
-    /// returns features exposed by this manifest
-    pub fn features(&self) -> CargoResult<BTreeMap<String, Vec<String>>> {
-        let mut features: BTreeMap<String, Vec<String>> = match self.data.as_table().get("features")
-        {
-            None => BTreeMap::default(),
-            Some(item) => match item {
-                toml_edit::Item::None => BTreeMap::default(),
-                toml_edit::Item::Table(t) => t
-                    .iter()
-                    .map(|(k, v)| {
-                        let k = k.to_owned();
-                        let v = v
-                            .as_array()
-                            .cloned()
-                            .unwrap_or_default()
-                            .iter()
-                            .map(|v| v.as_str().map(|s| s.to_owned()))
-                            .collect::<Option<Vec<_>>>();
-                        v.map(|v| (k, v))
-                    })
-                    .collect::<Option<_>>()
-                    .ok_or_else(invalid_cargo_config)?,
-                _ => return Err(invalid_cargo_config()),
-            },
-        };
-
-        let sections = self.get_sections();
-        for (_, deps) in sections {
-            features.extend(
-                deps.as_table_like()
-                    .unwrap()
-                    .iter()
-                    .filter_map(|(key, dep_item)| {
-                        let table = dep_item.as_table_like()?;
-                        table
-                            .get("optional")
-                            .and_then(|o| o.as_value())
-                            .and_then(|o| o.as_bool())
-                            .unwrap_or(false)
-                            .then(|| (key.to_owned(), vec![]))
-                    }),
-            );
-        }
-
-        Ok(features)
-    }
-
     fn get_table_mut_internal<'a>(
         &'a mut self,
         table_path: &[String],
@@ -204,11 +122,11 @@ impl Manifest {
 }
 
 impl str::FromStr for Manifest {
-    type Err = Error;
+    type Err = anyhow::Error;
 
     /// Read manifest data from string
     fn from_str(input: &str) -> ::std::result::Result<Self, Self::Err> {
-        let d: toml_edit::Document = input.parse().with_context(|| "Manifest not valid TOML")?;
+        let d: toml_edit::Document = input.parse().context("Manifest not valid TOML")?;
 
         Ok(Manifest { data: d })
     }
@@ -254,11 +172,16 @@ impl LocalManifest {
 
     /// Construct the `LocalManifest` corresponding to the `Path` provided.
     pub fn try_new(path: &Path) -> CargoResult<Self> {
-        let path = path.to_path_buf();
+        if !path.is_absolute() {
+            anyhow::bail!("can only edit absolute paths, got {}", path.display());
+        }
         let data =
             std::fs::read_to_string(&path).with_context(|| "Failed to read manifest contents")?;
-        let manifest = data.parse().with_context(|| "Unable to parse Cargo.toml")?;
-        Ok(LocalManifest { manifest, path })
+        let manifest = data.parse().context("Unable to parse Cargo.toml")?;
+        Ok(LocalManifest {
+            manifest,
+            path: path.to_owned(),
+        })
     }
 
     /// Write changes back to the file
@@ -283,8 +206,7 @@ impl LocalManifest {
         let s = self.manifest.data.to_string();
         let new_contents_bytes = s.as_bytes();
 
-        std::fs::write(&self.path, new_contents_bytes)
-            .with_context(|| "Failed to write updated Cargo.toml")
+        std::fs::write(&self.path, new_contents_bytes).context("Failed to write updated Cargo.toml")
     }
 
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
@@ -317,34 +239,11 @@ impl LocalManifest {
         self.write()
     }
 
-    /// Lookup a dependency
-    pub fn get_dependency(&self, table_path: &[String], dep_key: &str) -> CargoResult<Dependency> {
-        let crate_root = self.path.parent().expect("manifest path is absolute");
-        let table = self.get_table(table_path)?;
-        let table = table
-            .as_table_like()
-            .ok_or_else(|| non_existent_table_err(table_path.join(".")))?;
-        let dep_item = table
-            .get(dep_key)
-            .ok_or_else(|| non_existent_dependency_err(dep_key, table_path.join(".")))?;
-        Dependency::from_toml(crate_root, dep_key, dep_item).ok_or_else(|| {
-            anyhow::format_err!("Invalid dependency {}.{}", table_path.join("."), dep_key)
-        })
-    }
-
     /// Returns all dependencies
     pub fn get_dependencies(
         &self,
     ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + '_ {
         self.filter_dependencies(|_| true)
-    }
-
-    /// Lookup a dependency
-    pub fn get_dependency_versions<'s>(
-        &'s self,
-        dep_key: &'s str,
-    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's {
-        self.filter_dependencies(move |key| key == dep_key)
     }
 
     fn filter_dependencies<'s, P>(
@@ -376,58 +275,19 @@ impl LocalManifest {
             .map(move |(table_path, dep_key, dep_item)| {
                 let dep = Dependency::from_toml(crate_root, &dep_key, &dep_item);
                 match dep {
-                    Some(dep) => (table_path, Ok(dep)),
-                    None => {
-                        let message = anyhow::format_err!(
-                            "Invalid dependency {}.{}",
-                            table_path.join("."),
-                            dep_key
-                        );
-                        (table_path, Err(message))
+                    Ok(dep) => (table_path, Ok(dep)),
+                    Err(err) => {
+                        let message =
+                            format!("Invalid dependency {}.{}", table_path.join("."), dep_key);
+                        let err = err.context(message);
+                        (table_path, Err(err))
                     }
                 }
             })
     }
 
-    /// Add entry to a Cargo.toml.
-    pub fn insert_into_table(
-        &mut self,
-        table_path: &[String],
-        dep: &Dependency,
-    ) -> CargoResult<()> {
-        let crate_root = self
-            .path
-            .parent()
-            .expect("manifest path is absolute")
-            .to_owned();
-        let dep_key = dep.toml_key();
-
-        let table = self.get_or_insert_table_mut(table_path)?;
-        if let Some(dep_item) = table.as_table_like_mut().unwrap().get_mut(dep_key) {
-            dep.update_toml(&crate_root, dep_item);
-        } else {
-            let new_dependency = dep.to_toml(&crate_root);
-            table[dep_key] = new_dependency;
-        }
-        if let Some(t) = table.as_inline_table_mut() {
-            t.fmt()
-        }
-
-        Ok(())
-    }
-
-    /// Update an entry in Cargo.toml.
-    pub fn update_table_entry(
-        &mut self,
-        table_path: &[String],
-        dep: &Dependency,
-        dry_run: bool,
-    ) -> CargoResult<()> {
-        self.update_table_named_entry(table_path, dep.toml_key(), dep, dry_run)
-    }
-
     /// Update an entry with a specified name in Cargo.toml.
-    pub fn update_table_named_entry(
+    pub(crate) fn update_table_named_entry(
         &mut self,
         table_path: &[String],
         dep_key: &str,
@@ -450,7 +310,12 @@ impl LocalManifest {
                 eprintln!("Error while displaying upgrade message, {}", e);
             }
             if !dry_run {
-                dep.update_toml(&crate_root, &mut table[dep_key]);
+                let (mut dep_key, dep_item) = table
+                    .as_table_like_mut()
+                    .unwrap()
+                    .get_key_value_mut(dep_key)
+                    .unwrap();
+                dep.update_toml(&crate_root, &mut dep_key, dep_item);
                 if let Some(t) = table.as_inline_table_mut() {
                     t.fmt()
                 }
@@ -465,16 +330,18 @@ impl LocalManifest {
     /// # Examples
     ///
     /// ```
-    ///   use cargo_edit::{Dependency, LocalManifest, Manifest};
+    ///   use cargo_edit::{Dependency, LocalManifest, Manifest, RegistrySource};
     ///   use toml_edit;
     ///
     ///   let root = std::path::PathBuf::from("/").canonicalize().unwrap();
     ///   let path = root.join("Cargo.toml");
-    ///   let mut manifest = LocalManifest { path, manifest: Manifest { data: toml_edit::Document::new() } };
-    ///   let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-    ///   let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
-    ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], &dep.name).is_ok());
-    ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], &dep.name).is_err());
+    ///   let manifest: toml_edit::Document = "
+    ///   [dependencies]
+    ///   cargo-edit = '0.1.0'
+    ///   ".parse().unwrap();
+    ///   let mut manifest = LocalManifest { path, manifest: Manifest { data: manifest } };
+    ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], "cargo-edit").is_ok());
+    ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], "cargo-edit").is_err());
     ///   assert!(!manifest.data.contains_key("dependencies"));
     /// ```
     pub fn remove_from_table(&mut self, table_path: &[String], name: &str) -> CargoResult<()> {
@@ -493,15 +360,6 @@ impl LocalManifest {
         if parent_table.as_table_like().unwrap().is_empty() {
             *parent_table = toml_edit::Item::None;
         }
-
-        Ok(())
-    }
-
-    /// Add multiple dependencies to manifest
-    pub fn add_deps(&mut self, table: &[String], deps: &[Dependency]) -> CargoResult<()> {
-        deps.iter()
-            .map(|dep| self.insert_into_table(table, dep))
-            .collect::<CargoResult<Vec<_>>>()?;
 
         Ok(())
     }
@@ -708,159 +566,4 @@ fn print_upgrade_if_necessary(
     )?;
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::dependency::Dependency;
-    use super::*;
-
-    #[test]
-    fn add_remove_dependency() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let clone = manifest.clone();
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        let _ = manifest.insert_into_table(&["dependencies".to_owned()], &dep);
-        assert!(manifest
-            .remove_from_table(&["dependencies".to_owned()], &dep.name)
-            .is_ok());
-        assert_eq!(manifest.data.to_string(), clone.data.to_string());
-    }
-
-    #[test]
-    fn update_dependency() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        manifest
-            .insert_into_table(&["dependencies".to_owned()], &dep)
-            .unwrap();
-
-        let new_dep = Dependency::new("cargo-edit").set_version("0.2.0");
-        manifest
-            .update_table_entry(&["dependencies".to_owned()], &new_dep, false)
-            .unwrap();
-    }
-
-    #[test]
-    fn update_wrong_dependency() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        manifest
-            .insert_into_table(&["dependencies".to_owned()], &dep)
-            .unwrap();
-        let original = manifest.clone();
-
-        let new_dep = Dependency::new("wrong-dep").set_version("0.2.0");
-        manifest
-            .update_table_entry(&["dependencies".to_owned()], &new_dep, false)
-            .unwrap();
-
-        assert_eq!(manifest.data.to_string(), original.data.to_string());
-    }
-
-    #[test]
-    fn remove_dependency_no_section() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        assert!(manifest
-            .remove_from_table(&["dependencies".to_owned()], &dep.name)
-            .is_err());
-    }
-
-    #[test]
-    fn remove_dependency_non_existent() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        let other_dep = Dependency::new("other-dep").set_version("0.1.0");
-        assert!(manifest
-            .insert_into_table(&["dependencies".to_owned()], &other_dep)
-            .is_ok());
-        assert!(manifest
-            .remove_from_table(&["dependencies".to_owned()], &dep.name)
-            .is_err());
-    }
-
-    #[test]
-    fn set_package_version_overrides() {
-        let original = r#"
-[package]
-name = "simple"
-version = "0.1.0"
-edition = "2015"
-
-[dependencies]
-"#;
-        let expected = r#"
-[package]
-name = "simple"
-version = "2.0.0"
-edition = "2015"
-
-[dependencies]
-"#;
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: original.parse::<Manifest>().unwrap(),
-        };
-        manifest.set_package_version(&semver::Version::parse("2.0.0").unwrap());
-        let actual = manifest.to_string();
-
-        assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn old_version_is_compatible() -> CargoResult<()> {
-        let with_version = Dependency::new("foo").set_version("2.3.4");
-        assert!(!old_version_compatible(&with_version, "1")?);
-        assert!(old_version_compatible(&with_version, "2")?);
-        assert!(!old_version_compatible(&with_version, "3")?);
-        Ok(())
-    }
-
-    #[test]
-    fn old_incompatible_with_missing_new_version() -> CargoResult<()> {
-        let no_version = Dependency::new("foo");
-        assert!(!old_version_compatible(&no_version, "1")?);
-        assert!(!old_version_compatible(&no_version, "2")?);
-        Ok(())
-    }
-
-    #[test]
-    fn old_incompatible_with_invalid() {
-        let bad_version = Dependency::new("foo").set_version("CAKE CAKE");
-        let good_version = Dependency::new("foo").set_version("1.2.3");
-        assert!(old_version_compatible(&bad_version, "1").is_err());
-        assert!(old_version_compatible(&good_version, "CAKE CAKE").is_err());
-    }
 }

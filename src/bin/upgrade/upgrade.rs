@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use cargo_edit::{
     colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url, shell_warn,
-    update_registry_index, CargoResult, Context, CrateSpec, Dependency, LocalManifest,
+    update_registry_index, CargoResult, Context, CrateSpec, Dependency, LocalManifest, Source,
 };
 use clap::Args;
 use semver::{Op, VersionReq};
@@ -152,10 +152,23 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     };
     let preserve_precision = args.preserve_precision();
 
+    let selected_dependencies = args
+        .dependency
+        .iter()
+        .map(|name| {
+            let spec = CrateSpec::resolve(name)?;
+            Ok((spec.name, spec.version_req))
+        })
+        .collect::<CargoResult<BTreeMap<_, _>>>()?;
+
     let mut updated_registries = BTreeSet::new();
     for (manifest, package) in manifests {
-        let existing_dependencies =
-            get_dependencies(&manifest, &args.dependency, &args.exclude, args.skip_pinned)?;
+        let existing_dependencies = get_dependencies(
+            &manifest,
+            &selected_dependencies,
+            &args.exclude,
+            args.skip_pinned,
+        )?;
 
         let upgraded_dependencies = if args.to_lockfile {
             existing_dependencies.into_lockfile(&locked, preserve_precision)?
@@ -201,33 +214,24 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 /// per-dependency desired versions, extract those here.
 fn get_dependencies(
     manifest: &LocalManifest,
-    only_update: &[String],
+    selected_dependencies: &BTreeMap<String, Option<String>>,
     exclude: &[String],
     skip_pinned: bool,
 ) -> CargoResult<DesiredUpgrades> {
-    // Map the names of user-specified dependencies to the (optionally) requested version.
-    let selected_dependencies = only_update
-        .iter()
-        .map(|name| match CrateSpec::resolve(name)? {
-            CrateSpec::PkgId { name, version_req } => Ok((name, version_req)),
-            CrateSpec::Path(path) => Err(anyhow::format_err!("Invalid name: {}", path.display())),
-        })
-        .collect::<CargoResult<BTreeMap<_, _>>>()?;
-
     let mut upgrades = DesiredUpgrades::default();
     for (dependency, old_version) in manifest
         .get_dependencies()
         .map(|(_, result)| result)
         .collect::<CargoResult<Vec<_>>>()?
         .into_iter()
-        .filter(|dependency| dependency.path().is_none())
+        .filter(|dependency| dependency.source().and_then(|s| s.as_registry()).is_some())
         .filter_map(|dependency| {
             dependency
                 .version()
                 .map(ToOwned::to_owned)
                 .map(|version| (dependency, version))
         })
-        .filter(|(dependency, _)| !exclude.contains(&dependency.name))
+        .filter(|(dependency, _)| !exclude.contains(&dependency.toml_key().to_owned()))
         // Exclude renamed dependencies as well
         .filter(|(dependency, _)| {
             dependency
@@ -266,7 +270,7 @@ fn get_dependencies(
         } else {
             // User has asked for specific dependencies. Check if this dependency
             // was specified, populating the registry from the lockfile metadata.
-            if let Some(version) = selected_dependencies.get(&dependency.name) {
+            if let Some(version) = selected_dependencies.get(dependency.toml_key()) {
                 upgrades.0.insert(
                     dependency,
                     UpgradeMetadata {
@@ -293,9 +297,9 @@ fn upgrade(
     println!("{}:", package.name);
 
     for (dep, version) in &upgraded_deps.0 {
-        let mut new_dep = Dependency::new(&dep.name).set_version(version);
-        if let Some(rename) = dep.rename() {
-            new_dep = new_dep.set_rename(rename);
+        let mut new_dep = dep.clone();
+        if let Some(Source::Registry(source)) = &mut new_dep.source {
+            source.version = version.clone();
         }
         manifest.upgrade(&new_dep, dry_run, skip_compatible)?;
     }
