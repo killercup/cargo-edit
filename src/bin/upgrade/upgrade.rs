@@ -248,7 +248,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 }
 
-                let mut new_version = if let Some(Some(new_version)) =
+                let new_version = if let Some(Some(new_version)) =
                     selected_dependencies.get(dependency.toml_key())
                 {
                     new_version.to_owned()
@@ -286,7 +286,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 .to_owned()
                         })
                     };
-                    match new_version {
+                    let mut new_version = match new_version {
                         Ok(new_version) => new_version,
                         Err(err) => {
                             args.verbose(|| {
@@ -298,20 +298,21 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             })?;
                             continue;
                         }
+                    };
+                    if preserve_precision {
+                        let new_ver: semver::Version = new_version.parse()?;
+                        match cargo_edit::upgrade_requirement(&old_version, &new_ver) {
+                            Ok(Some(version)) => {
+                                new_version = version;
+                            }
+                            Err(_) => {}
+                            _ => {
+                                new_version = old_version.clone();
+                            }
+                        }
                     }
+                    new_version
                 };
-                if preserve_precision {
-                    let new_ver: semver::Version = new_version.parse()?;
-                    match cargo_edit::upgrade_requirement(&old_version, &new_ver) {
-                        Ok(Some(version)) => {
-                            new_version = version;
-                        }
-                        Err(_) => {}
-                        _ => {
-                            new_version = old_version.clone();
-                        }
-                    }
-                }
                 if args.skip_compatible && old_version_compatible(&old_version, &new_version) {
                     args.verbose(|| {
                         shell_warn(&format!(
