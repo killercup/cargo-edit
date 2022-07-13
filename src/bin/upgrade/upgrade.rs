@@ -180,6 +180,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
     let mut updated_registries = BTreeSet::new();
     for (mut manifest, package) in manifests {
+        let mut modified = false;
         let manifest_path = manifest.path.clone();
         shell_status("Checking", &format!("{}'s dependencies", package.name))?;
         for dep_table in manifest.get_dependency_tables_mut() {
@@ -339,9 +340,10 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 }
                 print_upgrade(dependency.toml_key(), &old_version, &new_version)?;
                 set_dep_version(dep_item, &new_version)?;
+                modified = true;
             }
         }
-        if !args.dry_run {
+        if !args.dry_run && modified {
             manifest.write()?;
         }
     }
