@@ -466,16 +466,30 @@ pub fn get_dep_version(dep_item: &toml_edit::Item) -> CargoResult<&str> {
 /// Set a dependency's version in its entry in the dependency table
 pub fn set_dep_version(dep_item: &mut toml_edit::Item, new_version: &str) -> CargoResult<()> {
     if dep_item.is_str() {
-        *dep_item = toml_edit::value(new_version);
+        overwrite_value(dep_item, new_version);
     } else if let Some(table) = dep_item.as_table_like_mut() {
         let version = table
             .get_mut("version")
             .ok_or_else(|| anyhow::format_err!("Missing version field"))?;
-        *version = toml_edit::value(new_version);
+        overwrite_value(version, new_version);
     } else {
         anyhow::bail!("Invalid dependency type");
     }
     Ok(())
+}
+
+/// Overwrite a value while preserving the original formatting
+fn overwrite_value(item: &mut toml_edit::Item, value: impl Into<toml_edit::Value>) {
+    let mut value = value.into();
+
+    let existing_decor = item
+        .as_value()
+        .map(|v| v.decor().clone())
+        .unwrap_or_default();
+
+    *value.decor_mut() = existing_decor;
+
+    *item = toml_edit::Item::Value(value);
 }
 
 pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
