@@ -9,6 +9,87 @@ use super::dependency::Dependency;
 use super::errors::*;
 use super::shell_status;
 
+#[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Clone, Debug, Copy)]
+pub enum DepKind {
+    Normal,
+    Development,
+    Build,
+}
+
+/// Dependency table to add dep to
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DepTable {
+    kind: DepKind,
+    target: Option<String>,
+}
+
+impl DepTable {
+    const KINDS: &'static [Self] = &[
+        Self::new().set_kind(DepKind::Normal),
+        Self::new().set_kind(DepKind::Development),
+        Self::new().set_kind(DepKind::Build),
+    ];
+
+    /// Reference to a Dependency Table
+    pub const fn new() -> Self {
+        Self {
+            kind: DepKind::Normal,
+            target: None,
+        }
+    }
+
+    /// Choose the type of dependency
+    pub const fn set_kind(mut self, kind: DepKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    /// Choose the platform for the dependency
+    pub fn set_target(mut self, target: impl Into<String>) -> Self {
+        self.target = Some(target.into());
+        self
+    }
+
+    /// Type of dependency
+    pub fn kind(&self) -> DepKind {
+        self.kind
+    }
+
+    /// Platform for the dependency
+    pub fn target(&self) -> Option<&str> {
+        self.target.as_deref()
+    }
+
+    /// Keys to the table
+    pub fn to_table(&self) -> Vec<&str> {
+        if let Some(target) = &self.target {
+            vec!["target", target, self.kind_table()]
+        } else {
+            vec![self.kind_table()]
+        }
+    }
+
+    fn kind_table(&self) -> &str {
+        match self.kind {
+            DepKind::Normal => "dependencies",
+            DepKind::Development => "dev-dependencies",
+            DepKind::Build => "build-dependencies",
+        }
+    }
+}
+
+impl Default for DepTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl From<DepKind> for DepTable {
+    fn from(other: DepKind) -> Self {
+        Self::new().set_kind(other)
+    }
+}
+
 const MANIFEST_FILENAME: &str = "Cargo.toml";
 const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
 
@@ -42,10 +123,11 @@ impl Manifest {
 
     /// Get all sections in the manifest that exist and might contain dependencies.
     /// The returned items are always `Table` or `InlineTable`.
-    pub(crate) fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
+    pub(crate) fn get_sections(&self) -> Vec<(DepTable, toml_edit::Item)> {
         let mut sections = Vec::new();
 
-        for dependency_type in DEP_TABLES {
+        for table in DepTable::KINDS {
+            let dependency_type = table.kind_table();
             // Dependencies can be in the three standard sections...
             if self
                 .data
@@ -53,10 +135,7 @@ impl Manifest {
                 .map(|t| t.is_table_like())
                 .unwrap_or(false)
             {
-                sections.push((
-                    vec![String::from(*dependency_type)],
-                    self.data[dependency_type].clone(),
-                ))
+                sections.push((table.clone(), self.data[dependency_type].clone()))
             }
 
             // ... and in `target.<target>.(build-/dev-)dependencies`.
@@ -71,11 +150,7 @@ impl Manifest {
                     let dependency_table = target_table.get(dependency_type)?;
                     dependency_table.as_table_like().map(|_| {
                         (
-                            vec![
-                                "target".to_string(),
-                                target_name.to_string(),
-                                String::from(*dependency_type),
-                            ],
+                            table.clone().set_target(target_name),
                             dependency_table.clone(),
                         )
                     })
@@ -226,7 +301,7 @@ impl LocalManifest {
                             continue;
                         }
                     }
-                    self.update_table_named_entry(&table_path, name, dependency)?;
+                    self.update_dep_entry(&table_path, name, dependency)?;
                 }
             }
         }
@@ -237,14 +312,14 @@ impl LocalManifest {
     /// Returns all dependencies
     pub fn get_dependencies(
         &self,
-    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + '_ {
+    ) -> impl Iterator<Item = (DepTable, CargoResult<Dependency>)> + '_ {
         self.filter_dependencies(|_| true)
     }
 
     fn filter_dependencies<'s, P>(
         &'s self,
         mut predicate: P,
-    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's
+    ) -> impl Iterator<Item = (DepTable, CargoResult<Dependency>)> + 's
     where
         P: FnMut(&str) -> bool + 's,
     {
@@ -272,8 +347,11 @@ impl LocalManifest {
                 match dep {
                     Ok(dep) => (table_path, Ok(dep)),
                     Err(err) => {
-                        let message =
-                            format!("Invalid dependency {}.{}", table_path.join("."), dep_key);
+                        let message = format!(
+                            "Invalid dependency {}.{}",
+                            table_path.to_table().join("."),
+                            dep_key
+                        );
                         let err = err.context(message);
                         (table_path, Err(err))
                     }
@@ -282,9 +360,9 @@ impl LocalManifest {
     }
 
     /// Update an entry with a specified name in Cargo.toml.
-    pub(crate) fn update_table_named_entry(
+    pub(crate) fn update_dep_entry(
         &mut self,
-        table_path: &[String],
+        table_path: &DepTable,
         dep_key: &str,
         dep: &Dependency,
     ) -> CargoResult<()> {
@@ -293,7 +371,12 @@ impl LocalManifest {
             .parent()
             .expect("manifest path is absolute")
             .to_owned();
-        let table = self.get_or_insert_table_mut(table_path)?;
+        let keys = table_path
+            .to_table()
+            .into_iter()
+            .map(|s| s.to_owned())
+            .collect::<Vec<_>>();
+        let table = self.get_or_insert_table_mut(&keys)?;
 
         // If (and only if) there is an old entry, merge the new one in.
         if table.as_table_like().unwrap().contains_key(dep_key) {
