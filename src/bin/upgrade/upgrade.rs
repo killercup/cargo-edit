@@ -311,19 +311,19 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             }
                         }
                     }
+                    if args.skip_compatible && old_version_compatible(&old_version, &new_version) {
+                        args.verbose(|| {
+                            shell_warn(&format!(
+                                "ignoring {}, version ({}) is compatible with {}",
+                                dependency.toml_key(),
+                                old_version,
+                                new_version
+                            ))
+                        })?;
+                        continue;
+                    }
                     new_version
                 };
-                if args.skip_compatible && old_version_compatible(&old_version, &new_version) {
-                    args.verbose(|| {
-                        shell_warn(&format!(
-                            "ignoring {}, version ({}) is compatible with {}",
-                            dependency.toml_key(),
-                            old_version,
-                            new_version
-                        ))
-                    })?;
-                    continue;
-                }
                 if new_version == old_version {
                     args.verbose(|| {
                         shell_warn(&format!(
