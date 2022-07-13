@@ -91,7 +91,6 @@ impl From<DepKind> for DepTable {
 }
 
 const MANIFEST_FILENAME: &str = "Cargo.toml";
-const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
 
 /// A Cargo manifest
 #[derive(Debug, Clone)]
@@ -442,7 +441,10 @@ impl LocalManifest {
     ) -> impl Iterator<Item = &mut dyn toml_edit::TableLike> + 'r {
         let root = self.data.as_table_mut();
         root.iter_mut().flat_map(|(k, v)| {
-            if DEP_TABLES.contains(&k.get()) {
+            if DepTable::KINDS
+                .iter()
+                .any(|kind| kind.kind_table() == k.get())
+            {
                 v.as_table_like_mut().into_iter().collect::<Vec<_>>()
             } else if k == "target" {
                 v.as_table_like_mut()
@@ -451,7 +453,10 @@ impl LocalManifest {
                     .flat_map(|(_, v)| {
                         v.as_table_like_mut().into_iter().flat_map(|v| {
                             v.iter_mut().filter_map(|(k, v)| {
-                                if DEP_TABLES.contains(&k.get()) {
+                                if DepTable::KINDS
+                                    .iter()
+                                    .any(|kind| kind.kind_table() == k.get())
+                                {
                                     v.as_table_like_mut()
                                 } else {
                                     None
