@@ -1,11 +1,11 @@
 bin.name = "cargo-upgrade"
-args = ["upgrade", "--skip-compatible"]
+args = ["upgrade", "--skip-compatible", "--verbose"]
 status = "success"
-stdout = """
-cargo-list-test-fixture:
-"""
+stdout = ""
 stderr = """
-   Upgrading test_breaking v0.1 -> v0.2.0
+    Checking cargo-list-test-fixture's dependencies
+   Upgrading test_breaking: v0.1 -> v0.2.0
+warning: ignoring test_nonbreaking, version (0.1) is compatible with 0.1.1
 """
 fs.sandbox = true
 

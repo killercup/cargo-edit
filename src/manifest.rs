@@ -3,14 +3,73 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::{env, str};
 
-use semver::{Version, VersionReq};
+use semver::Version;
 
-use super::dependency::Dependency;
 use super::errors::*;
-use super::shell_status;
+
+#[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Clone, Debug, Copy)]
+pub enum DepKind {
+    Normal,
+    Development,
+    Build,
+}
+
+/// Dependency table to add dep to
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DepTable {
+    kind: DepKind,
+    target: Option<String>,
+}
+
+impl DepTable {
+    const KINDS: &'static [Self] = &[
+        Self::new().set_kind(DepKind::Normal),
+        Self::new().set_kind(DepKind::Development),
+        Self::new().set_kind(DepKind::Build),
+    ];
+
+    /// Reference to a Dependency Table
+    pub(crate) const fn new() -> Self {
+        Self {
+            kind: DepKind::Normal,
+            target: None,
+        }
+    }
+
+    /// Choose the type of dependency
+    pub(crate) const fn set_kind(mut self, kind: DepKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    /// Choose the platform for the dependency
+    pub(crate) fn set_target(mut self, target: impl Into<String>) -> Self {
+        self.target = Some(target.into());
+        self
+    }
+
+    fn kind_table(&self) -> &str {
+        match self.kind {
+            DepKind::Normal => "dependencies",
+            DepKind::Development => "dev-dependencies",
+            DepKind::Build => "build-dependencies",
+        }
+    }
+}
+
+impl Default for DepTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl From<DepKind> for DepTable {
+    fn from(other: DepKind) -> Self {
+        Self::new().set_kind(other)
+    }
+}
 
 const MANIFEST_FILENAME: &str = "Cargo.toml";
-const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
 
 /// A Cargo manifest
 #[derive(Debug, Clone)]
@@ -31,21 +90,13 @@ impl Manifest {
         self.get_table_mut_internal(table_path, false)
     }
 
-    /// Get the specified table from the manifest, inserting it if it does not
-    /// exist.
-    pub(crate) fn get_or_insert_table_mut<'a>(
-        &'a mut self,
-        table_path: &[String],
-    ) -> CargoResult<&'a mut toml_edit::Item> {
-        self.get_table_mut_internal(table_path, true)
-    }
-
     /// Get all sections in the manifest that exist and might contain dependencies.
     /// The returned items are always `Table` or `InlineTable`.
-    pub(crate) fn get_sections(&self) -> Vec<(Vec<String>, toml_edit::Item)> {
+    pub(crate) fn get_sections(&self) -> Vec<(DepTable, toml_edit::Item)> {
         let mut sections = Vec::new();
 
-        for dependency_type in DEP_TABLES {
+        for table in DepTable::KINDS {
+            let dependency_type = table.kind_table();
             // Dependencies can be in the three standard sections...
             if self
                 .data
@@ -53,10 +104,7 @@ impl Manifest {
                 .map(|t| t.is_table_like())
                 .unwrap_or(false)
             {
-                sections.push((
-                    vec![String::from(*dependency_type)],
-                    self.data[dependency_type].clone(),
-                ))
+                sections.push((table.clone(), self.data[dependency_type].clone()))
             }
 
             // ... and in `target.<target>.(build-/dev-)dependencies`.
@@ -71,11 +119,7 @@ impl Manifest {
                     let dependency_table = target_table.get(dependency_type)?;
                     dependency_table.as_table_like().map(|_| {
                         (
-                            vec![
-                                "target".to_string(),
-                                target_name.to_string(),
-                                String::from(*dependency_type),
-                            ],
+                            table.clone().set_target(target_name),
                             dependency_table.clone(),
                         )
                     })
@@ -209,122 +253,6 @@ impl LocalManifest {
         std::fs::write(&self.path, new_contents_bytes).context("Failed to write updated Cargo.toml")
     }
 
-    /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
-    /// dependency, it does nothing.
-    pub fn upgrade(
-        &mut self,
-        dependency: &Dependency,
-        dry_run: bool,
-        skip_compatible: bool,
-    ) -> CargoResult<()> {
-        for (table_path, table) in self.get_sections() {
-            let table_like = table.as_table_like().expect("Unexpected non-table");
-            for (name, toml_item) in table_like.iter() {
-                let dep_name = toml_item
-                    .as_table_like()
-                    .and_then(|t| t.get("package").and_then(|p| p.as_str()))
-                    .unwrap_or(name);
-                if dep_name == dependency.name {
-                    if skip_compatible {
-                        let old_version = get_version(toml_item)?;
-                        if old_version_compatible(dependency, old_version)? {
-                            continue;
-                        }
-                    }
-                    self.update_table_named_entry(&table_path, name, dependency, dry_run)?;
-                }
-            }
-        }
-
-        self.write()
-    }
-
-    /// Returns all dependencies
-    pub fn get_dependencies(
-        &self,
-    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + '_ {
-        self.filter_dependencies(|_| true)
-    }
-
-    fn filter_dependencies<'s, P>(
-        &'s self,
-        mut predicate: P,
-    ) -> impl Iterator<Item = (Vec<String>, CargoResult<Dependency>)> + 's
-    where
-        P: FnMut(&str) -> bool + 's,
-    {
-        let crate_root = self.path.parent().expect("manifest path is absolute");
-        self.get_sections()
-            .into_iter()
-            .filter_map(move |(table_path, table)| {
-                let table = table.into_table().ok()?;
-                Some(
-                    table
-                        .into_iter()
-                        .filter_map(|(key, item)| {
-                            if predicate(&key) {
-                                Some((table_path.clone(), key, item))
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .flatten()
-            .map(move |(table_path, dep_key, dep_item)| {
-                let dep = Dependency::from_toml(crate_root, &dep_key, &dep_item);
-                match dep {
-                    Ok(dep) => (table_path, Ok(dep)),
-                    Err(err) => {
-                        let message =
-                            format!("Invalid dependency {}.{}", table_path.join("."), dep_key);
-                        let err = err.context(message);
-                        (table_path, Err(err))
-                    }
-                }
-            })
-    }
-
-    /// Update an entry with a specified name in Cargo.toml.
-    pub(crate) fn update_table_named_entry(
-        &mut self,
-        table_path: &[String],
-        dep_key: &str,
-        dep: &Dependency,
-        dry_run: bool,
-    ) -> CargoResult<()> {
-        let crate_root = self
-            .path
-            .parent()
-            .expect("manifest path is absolute")
-            .to_owned();
-        let table = self.get_or_insert_table_mut(table_path)?;
-
-        // If (and only if) there is an old entry, merge the new one in.
-        if table.as_table_like().unwrap().contains_key(dep_key) {
-            let new_dependency = dep.to_toml(&crate_root);
-
-            if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[dep_key], &new_dependency)
-            {
-                eprintln!("Error while displaying upgrade message, {}", e);
-            }
-            if !dry_run {
-                let (mut dep_key, dep_item) = table
-                    .as_table_like_mut()
-                    .unwrap()
-                    .get_key_value_mut(dep_key)
-                    .unwrap();
-                dep.update_toml(&crate_root, &mut dep_key, dep_item);
-                if let Some(t) = table.as_inline_table_mut() {
-                    t.fmt()
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     /// Remove entry from a Cargo.toml.
     ///
     /// # Examples
@@ -370,7 +298,10 @@ impl LocalManifest {
     ) -> impl Iterator<Item = &mut dyn toml_edit::TableLike> + 'r {
         let root = self.data.as_table_mut();
         root.iter_mut().flat_map(|(k, v)| {
-            if DEP_TABLES.contains(&k.get()) {
+            if DepTable::KINDS
+                .iter()
+                .any(|kind| kind.kind_table() == k.get())
+            {
                 v.as_table_like_mut().into_iter().collect::<Vec<_>>()
             } else if k == "target" {
                 v.as_table_like_mut()
@@ -379,7 +310,10 @@ impl LocalManifest {
                     .flat_map(|(_, v)| {
                         v.as_table_like_mut().into_iter().flat_map(|v| {
                             v.iter_mut().filter_map(|(k, v)| {
-                                if DEP_TABLES.contains(&k.get()) {
+                                if DepTable::KINDS
+                                    .iter()
+                                    .any(|kind| kind.kind_table() == k.get())
+                                {
                                     v.as_table_like_mut()
                                 } else {
                                     None
@@ -513,66 +447,51 @@ fn search(dir: &Path) -> CargoResult<PathBuf> {
     }
 }
 
-fn get_version(old_dep: &toml_edit::Item) -> CargoResult<&str> {
-    if let Some(req) = old_dep.as_str() {
+/// Get a dependency's version from its entry in the dependency table
+pub fn get_dep_version(dep_item: &toml_edit::Item) -> CargoResult<&str> {
+    if let Some(req) = dep_item.as_str() {
         Ok(req)
-    } else if old_dep.is_table_like() {
-        let version = old_dep
+    } else if dep_item.is_table_like() {
+        let version = dep_item
             .get("version")
             .ok_or_else(|| anyhow::format_err!("Missing version field"))?;
         version
             .as_str()
             .ok_or_else(|| anyhow::format_err!("Expect version to be a string"))
     } else {
-        unreachable!("Invalid old dependency type")
+        anyhow::bail!("Invalid dependency type");
     }
 }
 
-fn old_version_compatible(dependency: &Dependency, old_version: &str) -> CargoResult<bool> {
-    let old_version = VersionReq::parse(old_version)
-        .with_context(|| parse_version_err(&dependency.name, old_version))?;
-
-    let mut current_version = match dependency.version() {
-        Some(current_version) => current_version,
-        None => return Ok(false),
-    };
-
-    let current_req = VersionReq::parse(current_version);
-    assert!(current_req.is_ok(), "{}", current_req.unwrap_err());
-    let first_char = current_version.chars().next();
-    if !first_char.unwrap_or('0').is_ascii_digit() {
-        current_version = current_version.strip_prefix(first_char.unwrap()).unwrap();
+/// Set a dependency's version in its entry in the dependency table
+pub fn set_dep_version(dep_item: &mut toml_edit::Item, new_version: &str) -> CargoResult<()> {
+    if dep_item.is_str() {
+        overwrite_value(dep_item, new_version);
+    } else if let Some(table) = dep_item.as_table_like_mut() {
+        let version = table
+            .get_mut("version")
+            .ok_or_else(|| anyhow::format_err!("Missing version field"))?;
+        overwrite_value(version, new_version);
+    } else {
+        anyhow::bail!("Invalid dependency type");
     }
-    let current_version = match Version::parse(current_version) {
-        Ok(current_version) => current_version,
-        // HACK: Skip compatibility checks on incomplete version reqs
-        Err(_) => return Ok(false),
-    };
+    Ok(())
+}
 
-    Ok(old_version.matches(&current_version))
+/// Overwrite a value while preserving the original formatting
+fn overwrite_value(item: &mut toml_edit::Item, value: impl Into<toml_edit::Value>) {
+    let mut value = value.into();
+
+    let existing_decor = item
+        .as_value()
+        .map(|v| v.decor().clone())
+        .unwrap_or_default();
+
+    *value.decor_mut() = existing_decor;
+
+    *item = toml_edit::Item::Value(value);
 }
 
 pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
     item.is_str() || item.as_table_like().map(|t| t.len() == 1).unwrap_or(false)
-}
-
-/// Print a message if the new dependency version is different from the old one.
-fn print_upgrade_if_necessary(
-    crate_name: &str,
-    old_dep: &toml_edit::Item,
-    new_dep: &toml_edit::Item,
-) -> CargoResult<()> {
-    let old_version = get_version(old_dep)?;
-    let new_version = get_version(new_dep)?;
-
-    if old_version == new_version {
-        return Ok(());
-    }
-
-    shell_status(
-        "Upgrading",
-        &format!("{crate_name} v{old_version} -> v{new_version}"),
-    )?;
-
-    Ok(())
 }

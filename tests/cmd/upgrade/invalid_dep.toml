@@ -1,10 +1,10 @@
 bin.name = "cargo-upgrade"
 args = ["upgrade", "failure"]
 status = "success"
-stdout = """
-cargo-list-test-fixture:
+stdout = ""
+stderr = """
+    Checking cargo-list-test-fixture's dependencies
 """
-stderr = ""
 fs.sandbox = true
 
 [env.add]

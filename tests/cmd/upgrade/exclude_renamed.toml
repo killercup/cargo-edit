@@ -1,11 +1,11 @@
 bin.name = "cargo-upgrade"
-args = ["upgrade", "--exclude", "rx"]
+args = ["upgrade", "--exclude", "rx", "--verbose"]
 status = "success"
-stdout = """
-cargo-list-test-fixture:
-"""
+stdout = ""
 stderr = """
-   Upgrading toml_edit v0.1.5 -> v99999.0.0
+    Checking cargo-list-test-fixture's dependencies
+   Upgrading te: v0.1.5 -> v99999.0.0
+warning: ignoring rx, excluded by user
 """
 fs.sandbox = true
 
