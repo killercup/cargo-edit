@@ -286,7 +286,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 .to_owned()
                         })
                     };
-                    let new_version = match new_version {
+                    match new_version {
                         Ok(new_version) => new_version,
                         Err(err) => {
                             args.verbose(|| {
@@ -298,8 +298,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             })?;
                             continue;
                         }
-                    };
-                    new_version
+                    }
                 };
                 if preserve_precision {
                     let new_ver: semver::Version = new_version.parse()?;
@@ -380,7 +379,7 @@ fn find_locked_version(
     old_version: &str,
     locked: &[cargo_metadata::Package],
 ) -> Option<String> {
-    let req = semver::VersionReq::parse(&old_version).ok()?;
+    let req = semver::VersionReq::parse(old_version).ok()?;
     for p in locked {
         if dep_name == p.name && req.matches(&p.version) {
             return Some(p.version.to_string());
