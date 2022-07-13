@@ -5,7 +5,7 @@ stdout = """
 cargo-list-test-fixture:
 """
 stderr = """
-   Upgrading test_breaking v0.1 -> v0.2.0
+   Upgrading test_breaking v0.1 -> v0.2
 """
 fs.sandbox = true
 

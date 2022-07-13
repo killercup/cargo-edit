@@ -120,17 +120,10 @@ impl UpgradeArgs {
             resolve_local_one(self.manifest_path.as_deref())
         }
     }
-
-    fn preserve_precision(&self) -> bool {
-        self.unstable_features
-            .contains(&UnstableOptions::PreservePrecision)
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
-enum UnstableOptions {
-    PreservePrecision,
-}
+enum UnstableOptions {}
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
@@ -150,7 +143,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     } else {
         load_lockfile(&manifests).unwrap_or_default()
     };
-    let preserve_precision = args.preserve_precision();
 
     let selected_dependencies = args
         .dependency
@@ -171,7 +163,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         )?;
 
         let upgraded_dependencies = if args.to_lockfile {
-            existing_dependencies.into_lockfile(&locked, preserve_precision)?
+            existing_dependencies.into_lockfile(&locked)?
         } else {
             // Update indices for any alternative registries, unless
             // we're offline.
@@ -187,11 +179,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 }
             }
 
-            existing_dependencies.into_latest(
-                args.allow_prerelease,
-                &find(args.manifest_path.as_deref())?,
-                preserve_precision,
-            )?
+            existing_dependencies
+                .into_latest(args.allow_prerelease, &find(args.manifest_path.as_deref())?)?
         };
 
         upgrade(
@@ -356,7 +345,6 @@ impl DesiredUpgrades {
         self,
         allow_prerelease: bool,
         manifest_path: &Path,
-        preserve_precision: bool,
     ) -> CargoResult<ActualUpgrades> {
         let mut upgrades = ActualUpgrades::default();
         for (
@@ -384,29 +372,21 @@ impl DesiredUpgrades {
             )
             .with_context(|| "Failed to get new version")?;
             let latest_version_str = latest.version().expect("Invalid dependency type");
-            if preserve_precision {
-                let latest_version: semver::Version = latest_version_str.parse()?;
-                match cargo_edit::upgrade_requirement(&old_version, &latest_version) {
-                    Ok(Some(version)) => {
-                        upgrades.0.insert(dep, version);
-                    }
-                    Err(_) => {
-                        upgrades.0.insert(dep, latest_version_str.to_owned());
-                    }
-                    _ => {}
+            let latest_version: semver::Version = latest_version_str.parse()?;
+            match cargo_edit::upgrade_requirement(&old_version, &latest_version) {
+                Ok(Some(version)) => {
+                    upgrades.0.insert(dep, version);
                 }
-            } else {
-                upgrades.0.insert(dep, latest_version_str.to_owned());
+                Err(_) => {
+                    upgrades.0.insert(dep, latest_version_str.to_owned());
+                }
+                _ => {}
             }
         }
         Ok(upgrades)
     }
 
-    fn into_lockfile(
-        self,
-        locked: &[cargo_metadata::Package],
-        preserve_precision: bool,
-    ) -> CargoResult<ActualUpgrades> {
+    fn into_lockfile(self, locked: &[cargo_metadata::Package]) -> CargoResult<ActualUpgrades> {
         let mut upgrades = ActualUpgrades::default();
         for (
             dep,
@@ -429,18 +409,14 @@ impl DesiredUpgrades {
                 let req = semver::VersionReq::parse(&old_version)?;
                 if dep.name == p.name && req.matches(&p.version) {
                     let locked_version = &p.version;
-                    if preserve_precision {
-                        match cargo_edit::upgrade_requirement(&old_version, locked_version) {
-                            Ok(Some(version)) => {
-                                upgrades.0.insert(dep, version);
-                            }
-                            Err(_) => {
-                                upgrades.0.insert(dep, locked_version.to_string());
-                            }
-                            _ => {}
+                    match cargo_edit::upgrade_requirement(&old_version, &locked_version) {
+                        Ok(Some(version)) => {
+                            upgrades.0.insert(dep, version);
                         }
-                    } else {
-                        upgrades.0.insert(dep, locked_version.to_string());
+                        Err(_) => {
+                            upgrades.0.insert(dep, locked_version.to_string());
+                        }
+                        _ => {}
                     }
                     break;
                 }
