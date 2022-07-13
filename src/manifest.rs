@@ -299,10 +299,7 @@ impl LocalManifest {
         if table.as_table_like().unwrap().contains_key(dep_key) {
             let new_dependency = dep.to_toml(&crate_root);
 
-            if let Err(e) = print_upgrade_if_necessary(&dep.name, &table[dep_key], &new_dependency)
-            {
-                eprintln!("Error while displaying upgrade message, {}", e);
-            }
+            print_upgrade_if_necessary(&dep.name, &table[dep_key], &new_dependency)?;
             let (mut dep_key, dep_item) = table
                 .as_table_like_mut()
                 .unwrap()
