@@ -122,11 +122,11 @@ impl Manifest {
 }
 
 impl str::FromStr for Manifest {
-    type Err = Error;
+    type Err = anyhow::Error;
 
     /// Read manifest data from string
     fn from_str(input: &str) -> ::std::result::Result<Self, Self::Err> {
-        let d: toml_edit::Document = input.parse().with_context(|| "Manifest not valid TOML")?;
+        let d: toml_edit::Document = input.parse().context("Manifest not valid TOML")?;
 
         Ok(Manifest { data: d })
     }
@@ -172,11 +172,16 @@ impl LocalManifest {
 
     /// Construct the `LocalManifest` corresponding to the `Path` provided.
     pub fn try_new(path: &Path) -> CargoResult<Self> {
-        let path = path.to_path_buf();
+        if !path.is_absolute() {
+            anyhow::bail!("can only edit absolute paths, got {}", path.display());
+        }
         let data =
             std::fs::read_to_string(&path).with_context(|| "Failed to read manifest contents")?;
-        let manifest = data.parse().with_context(|| "Unable to parse Cargo.toml")?;
-        Ok(LocalManifest { manifest, path })
+        let manifest = data.parse().context("Unable to parse Cargo.toml")?;
+        Ok(LocalManifest {
+            manifest,
+            path: path.to_owned(),
+        })
     }
 
     /// Write changes back to the file
@@ -201,8 +206,7 @@ impl LocalManifest {
         let s = self.manifest.data.to_string();
         let new_contents_bytes = s.as_bytes();
 
-        std::fs::write(&self.path, new_contents_bytes)
-            .with_context(|| "Failed to write updated Cargo.toml")
+        std::fs::write(&self.path, new_contents_bytes).context("Failed to write updated Cargo.toml")
     }
 
     /// Instruct this manifest to upgrade a single dependency. If this manifest does not have that
