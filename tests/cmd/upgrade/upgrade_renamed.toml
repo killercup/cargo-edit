@@ -1,12 +1,11 @@
 bin.name = "cargo-upgrade"
 args = ["upgrade"]
 status = "success"
-stdout = """
-cargo-list-test-fixture:
-"""
+stdout = ""
 stderr = """
-   Upgrading regex v0.2 -> v99999.0.0
-   Upgrading toml_edit v0.1.5 -> v99999.0.0
+    Checking cargo-list-test-fixture's dependencies
+   Upgrading te: v0.1.5 -> v99999.0.0
+   Upgrading rx: v0.2 -> v99999.0.0
 """
 fs.sandbox = true
 

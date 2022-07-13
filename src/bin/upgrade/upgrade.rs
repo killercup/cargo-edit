@@ -3,13 +3,13 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use cargo_edit::{
-    colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url, shell_warn,
-    update_registry_index, CargoResult, Context, CrateSpec, Dependency, LocalManifest, Source,
+    colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url,
+    set_dep_version, shell_status, shell_warn, update_registry_index, CargoResult, Context,
+    CrateSpec, Dependency, LocalManifest,
 };
 use clap::Args;
 use semver::{Op, VersionReq};
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
-use url::Url;
 
 /// Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
 #[derive(Debug, Args)]
@@ -162,150 +162,121 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         .collect::<CargoResult<BTreeMap<_, _>>>()?;
 
     let mut updated_registries = BTreeSet::new();
-    for (manifest, package) in manifests {
-        let existing_dependencies = get_dependencies(
-            &manifest,
-            &selected_dependencies,
-            &args.exclude,
-            args.skip_pinned,
-        )?;
-
-        let upgraded_dependencies = if args.to_lockfile {
-            existing_dependencies.into_lockfile(&locked, preserve_precision)?
-        } else {
-            // Update indices for any alternative registries, unless
-            // we're offline.
-            if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
-                for registry_url in existing_dependencies
-                    .0
-                    .values()
-                    .filter_map(|UpgradeMetadata { registry, .. }| registry.as_ref())
+    for (mut manifest, package) in manifests {
+        let manifest_path = manifest.path.clone();
+        shell_status("Checking", &format!("{}'s dependencies", package.name))?;
+        for dep_table in manifest.get_dependency_tables_mut() {
+            for (dep_key, dep_item) in dep_table.iter_mut() {
+                if !selected_dependencies.is_empty()
+                    && !selected_dependencies.contains_key(dep_key.get())
                 {
-                    if updated_registries.insert(registry_url.to_owned()) {
-                        update_registry_index(registry_url, false)?;
+                    continue;
+                }
+                if args.exclude.contains(&dep_key.get().to_owned()) {
+                    continue;
+                }
+                let dependency =
+                    match Dependency::from_toml(&manifest_path, dep_key.get(), dep_item) {
+                        Ok(dependency) => dependency,
+                        Err(_) => {
+                            continue;
+                        }
+                    };
+                let old_version = match dependency.source.as_ref().and_then(|s| s.as_registry()) {
+                    Some(registry) => registry.version.clone(),
+                    None => {
+                        continue;
+                    }
+                };
+                if args.skip_pinned {
+                    if dependency.rename.is_some() {
+                        continue;
+                    }
+
+                    if let Ok(version_req) = VersionReq::parse(&old_version) {
+                        if version_req.comparators.iter().any(|comparator| {
+                            matches!(comparator.op, Op::Exact | Op::Less | Op::LessEq)
+                        }) {
+                            continue;
+                        }
                     }
                 }
+
+                let mut new_version = if let Some(Some(new_version)) =
+                    selected_dependencies.get(dependency.toml_key())
+                {
+                    new_version.to_owned()
+                } else {
+                    // Not checking `selected_dependencies.is_empty`, it was checked earlier
+                    let new_version = if args.to_lockfile {
+                        find_locked_version(&dependency.name, &old_version, &locked).ok_or_else(
+                            || anyhow::format_err!("{} is not in block file", dependency.name),
+                        )
+                    } else {
+                        // Update indices for any alternative registries, unless
+                        // we're offline.
+                        let registry_url = dependency
+                            .registry()
+                            .map(|registry| registry_url(&manifest_path, Some(registry)))
+                            .transpose()?;
+                        if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
+                            if let Some(registry_url) = &registry_url {
+                                if updated_registries.insert(registry_url.to_owned()) {
+                                    update_registry_index(registry_url, false)?;
+                                }
+                            }
+                        }
+                        let is_prerelease = old_version.contains('-');
+                        let allow_prerelease = args.allow_prerelease || is_prerelease;
+                        get_latest_dependency(
+                            &dependency.name,
+                            allow_prerelease,
+                            &manifest_path,
+                            registry_url.as_ref(),
+                        )
+                        .map(|d| {
+                            d.version()
+                                .expect("registry packages always have a version")
+                                .to_owned()
+                        })
+                    };
+                    let new_version = match new_version {
+                        Ok(new_version) => new_version,
+                        Err(_) => {
+                            continue;
+                        }
+                    };
+                    new_version
+                };
+                if preserve_precision {
+                    let new_ver: semver::Version = new_version.parse()?;
+                    match cargo_edit::upgrade_requirement(&old_version, &new_ver) {
+                        Ok(Some(version)) => {
+                            new_version = version;
+                        }
+                        Err(_) => {}
+                        _ => {
+                            new_version = old_version.clone();
+                        }
+                    }
+                }
+                if args.skip_compatible && old_version_compatible(&old_version, &new_version) {
+                    continue;
+                }
+                if new_version == old_version {
+                    continue;
+                }
+                print_upgrade(dependency.toml_key(), &old_version, &new_version)?;
+                set_dep_version(dep_item, &new_version)?;
             }
-
-            existing_dependencies.into_latest(
-                args.allow_prerelease,
-                &find(args.manifest_path.as_deref())?,
-                preserve_precision,
-            )?
-        };
-
-        upgrade(
-            manifest,
-            package,
-            &upgraded_dependencies,
-            args.dry_run,
-            args.skip_compatible,
-        )?;
+        }
+        if !args.dry_run {
+            manifest.write()?;
+        }
     }
 
     if args.dry_run {
         shell_warn("aborting upgrade due to dry run")?;
-    }
-
-    Ok(())
-}
-
-/// Get the combined set of dependencies to upgrade. If the user has specified
-/// per-dependency desired versions, extract those here.
-fn get_dependencies(
-    manifest: &LocalManifest,
-    selected_dependencies: &BTreeMap<String, Option<String>>,
-    exclude: &[String],
-    skip_pinned: bool,
-) -> CargoResult<DesiredUpgrades> {
-    let mut upgrades = DesiredUpgrades::default();
-    for (dependency, old_version) in manifest
-        .get_dependencies()
-        .map(|(_, result)| result)
-        .collect::<CargoResult<Vec<_>>>()?
-        .into_iter()
-        .filter(|dependency| dependency.source().and_then(|s| s.as_registry()).is_some())
-        .filter_map(|dependency| {
-            dependency
-                .version()
-                .map(ToOwned::to_owned)
-                .map(|version| (dependency, version))
-        })
-        .filter(|(dependency, _)| !exclude.contains(&dependency.toml_key().to_owned()))
-        // Exclude renamed dependencies as well
-        .filter(|(dependency, _)| {
-            dependency
-                .rename()
-                .map_or(true, |rename| !exclude.iter().any(|s| s == rename))
-        })
-        // Exclude pinned (= | < | <=) dependencies, if enabled
-        .filter(|(_, version)| {
-            !(skip_pinned
-                && VersionReq::parse(version)
-                    .map(|req| {
-                        req.comparators.iter().any(|comparator| {
-                            matches!(comparator.op, Op::Exact | Op::Less | Op::LessEq)
-                        })
-                    })
-                    .unwrap_or(false))
-        })
-    {
-        let registry = dependency
-            .registry()
-            .map(|registry| registry_url(&manifest.path, Some(registry)))
-            .transpose()?;
-        let is_prerelease = dependency
-            .version()
-            .map_or(false, |version| version.contains('-'));
-        if selected_dependencies.is_empty() {
-            upgrades.0.insert(
-                dependency,
-                UpgradeMetadata {
-                    registry,
-                    version: None,
-                    old_version,
-                    is_prerelease,
-                },
-            );
-        } else {
-            // User has asked for specific dependencies. Check if this dependency
-            // was specified, populating the registry from the lockfile metadata.
-            if let Some(version) = selected_dependencies.get(dependency.toml_key()) {
-                upgrades.0.insert(
-                    dependency,
-                    UpgradeMetadata {
-                        registry,
-                        version: version.clone(),
-                        old_version,
-                        is_prerelease,
-                    },
-                );
-            }
-        }
-    }
-    Ok(upgrades)
-}
-
-/// Upgrade the manifests on disk following the previously-determined upgrade schema.
-fn upgrade(
-    mut manifest: LocalManifest,
-    package: cargo_metadata::Package,
-    upgraded_deps: &ActualUpgrades,
-    dry_run: bool,
-    skip_compatible: bool,
-) -> CargoResult<()> {
-    println!("{}:", package.name);
-
-    for (dep, version) in &upgraded_deps.0 {
-        let mut new_dep = dep.clone();
-        if let Some(Source::Registry(source)) = &mut new_dep.source {
-            source.version = version.clone();
-        }
-        manifest.upgrade(&new_dep, skip_compatible)?;
-    }
-
-    if !dry_run {
-        manifest.write()?;
     }
 
     Ok(())
@@ -336,128 +307,19 @@ fn load_lockfile(
     Ok(locked)
 }
 
-// Some metadata about the dependency
-// we're trying to upgrade.
-#[derive(Clone, Debug)]
-struct UpgradeMetadata {
-    registry: Option<Url>,
-    // `Some` if the user has specified an explicit
-    // version to upgrade to.
-    version: Option<String>,
-    old_version: String,
-    is_prerelease: bool,
-}
-
-/// The set of dependencies to be upgraded, alongside the registries returned from cargo metadata, and
-/// the desired versions, if specified by the user.
-#[derive(Default, Clone, Debug)]
-struct DesiredUpgrades(BTreeMap<Dependency, UpgradeMetadata>);
-
-impl DesiredUpgrades {
-    /// Transform the dependencies into their upgraded forms. If a version is specified, all
-    /// dependencies will get that version.
-    fn into_latest(
-        self,
-        allow_prerelease: bool,
-        manifest_path: &Path,
-        preserve_precision: bool,
-    ) -> CargoResult<ActualUpgrades> {
-        let mut upgrades = ActualUpgrades::default();
-        for (
-            dep,
-            UpgradeMetadata {
-                registry,
-                version,
-                old_version,
-                is_prerelease,
-            },
-        ) in self.0.into_iter()
-        {
-            if let Some(v) = version {
-                upgrades.0.insert(dep, v);
-                continue;
-            }
-
-            let allow_prerelease = allow_prerelease || is_prerelease;
-
-            let latest = get_latest_dependency(
-                &dep.name,
-                allow_prerelease,
-                manifest_path,
-                registry.as_ref(),
-            )
-            .with_context(|| "Failed to get new version")?;
-            let latest_version_str = latest.version().expect("Invalid dependency type");
-            if preserve_precision {
-                let latest_version: semver::Version = latest_version_str.parse()?;
-                match cargo_edit::upgrade_requirement(&old_version, &latest_version) {
-                    Ok(Some(version)) => {
-                        upgrades.0.insert(dep, version);
-                    }
-                    Err(_) => {
-                        upgrades.0.insert(dep, latest_version_str.to_owned());
-                    }
-                    _ => {}
-                }
-            } else {
-                upgrades.0.insert(dep, latest_version_str.to_owned());
-            }
+fn find_locked_version(
+    dep_name: &str,
+    old_version: &str,
+    locked: &[cargo_metadata::Package],
+) -> Option<String> {
+    let req = semver::VersionReq::parse(&old_version).ok()?;
+    for p in locked {
+        if dep_name == p.name && req.matches(&p.version) {
+            return Some(p.version.to_string());
         }
-        Ok(upgrades)
     }
-
-    fn into_lockfile(
-        self,
-        locked: &[cargo_metadata::Package],
-        preserve_precision: bool,
-    ) -> CargoResult<ActualUpgrades> {
-        let mut upgrades = ActualUpgrades::default();
-        for (
-            dep,
-            UpgradeMetadata {
-                registry: _,
-                version,
-                old_version,
-                is_prerelease: _,
-            },
-        ) in self.0.into_iter()
-        {
-            if let Some(v) = version {
-                upgrades.0.insert(dep, v);
-                continue;
-            }
-
-            for p in locked {
-                // The requested dependency may be present in the lock file with different versions,
-                // but only one will be semver-compatible with the requested version.
-                let req = semver::VersionReq::parse(&old_version)?;
-                if dep.name == p.name && req.matches(&p.version) {
-                    let locked_version = &p.version;
-                    if preserve_precision {
-                        match cargo_edit::upgrade_requirement(&old_version, locked_version) {
-                            Ok(Some(version)) => {
-                                upgrades.0.insert(dep, version);
-                            }
-                            Err(_) => {
-                                upgrades.0.insert(dep, locked_version.to_string());
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        upgrades.0.insert(dep, locked_version.to_string());
-                    }
-                    break;
-                }
-            }
-        }
-        Ok(upgrades)
-    }
+    None
 }
-
-/// The complete specification of the upgrades that will be performed. Map of the dependency names
-/// to the new versions.
-#[derive(Default, Clone, Debug)]
-struct ActualUpgrades(BTreeMap<Dependency, String>);
 
 /// Get all manifests in the workspace.
 fn resolve_all(
@@ -521,6 +383,27 @@ fn resolve_local_one(
     Ok(vec![(manifest, package.to_owned())])
 }
 
+fn old_version_compatible(old_version: &str, mut new_version: &str) -> bool {
+    let old_version = match VersionReq::parse(old_version) {
+        Ok(req) => req,
+        Err(_) => return false,
+    };
+
+    let new_req = VersionReq::parse(new_version);
+    assert!(new_req.is_ok(), "{}", new_req.unwrap_err());
+    let first_char = new_version.chars().next();
+    if !first_char.unwrap_or('0').is_ascii_digit() {
+        new_version = new_version.strip_prefix(first_char.unwrap()).unwrap();
+    }
+    let new_version = match semver::Version::parse(new_version) {
+        Ok(new_version) => new_version,
+        // HACK: Skip compatibility checks on incomplete version reqs
+        Err(_) => return false,
+    };
+
+    old_version.matches(&new_version)
+}
+
 fn deprecated_message(message: &str) -> CargoResult<()> {
     let colorchoice = colorize_stderr();
     let mut output = StandardStream::stderr(colorchoice);
@@ -532,4 +415,25 @@ fn deprecated_message(message: &str) -> CargoResult<()> {
         .set_color(&ColorSpec::new())
         .with_context(|| "Failed to clear output colour")?;
     Ok(())
+}
+
+/// Print a message if the new dependency version is different from the old one.
+fn print_upgrade(dep_name: &str, old_version: &str, new_version: &str) -> CargoResult<()> {
+    let old_version = format_version_req(old_version);
+    let new_version = format_version_req(new_version);
+
+    shell_status(
+        "Upgrading",
+        &format!("{dep_name}: {old_version} -> {new_version}"),
+    )?;
+
+    Ok(())
+}
+
+fn format_version_req(version: &str) -> String {
+    if version.chars().next().unwrap_or('0').is_ascii_digit() {
+        format!("v{}", version)
+    } else {
+        version.to_owned()
+    }
 }
