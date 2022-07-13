@@ -523,6 +523,12 @@ impl Dependency {
     }
 }
 
+impl Default for WorkspaceSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Overwrite a value while preserving the original formatting
 fn overwrite_value(
     table: &mut dyn toml_edit::TableLike,
