@@ -383,16 +383,20 @@ impl DesiredUpgrades {
                 registry.as_ref(),
             )
             .with_context(|| "Failed to get new version")?;
-            let latest_version = latest.version().expect("Invalid dependency type");
+            let latest_version_str = latest.version().expect("Invalid dependency type");
             if preserve_precision {
-                let latest_version: semver::Version = latest_version.parse()?;
-                if let Some(version) =
-                    cargo_edit::upgrade_requirement(&old_version, &latest_version)?
-                {
-                    upgrades.0.insert(dep, version);
+                let latest_version: semver::Version = latest_version_str.parse()?;
+                match cargo_edit::upgrade_requirement(&old_version, &latest_version) {
+                    Ok(Some(version)) => {
+                        upgrades.0.insert(dep, version);
+                    }
+                    Err(_) => {
+                        upgrades.0.insert(dep, latest_version_str.to_owned());
+                    }
+                    _ => {}
                 }
             } else {
-                upgrades.0.insert(dep, latest_version.to_owned());
+                upgrades.0.insert(dep, latest_version_str.to_owned());
             }
         }
         Ok(upgrades)
@@ -426,10 +430,14 @@ impl DesiredUpgrades {
                 if dep.name == p.name && req.matches(&p.version) {
                     let locked_version = &p.version;
                     if preserve_precision {
-                        if let Some(version) =
-                            cargo_edit::upgrade_requirement(&old_version, locked_version)?
-                        {
-                            upgrades.0.insert(dep, version);
+                        match cargo_edit::upgrade_requirement(&old_version, locked_version) {
+                            Ok(Some(version)) => {
+                                upgrades.0.insert(dep, version);
+                            }
+                            Err(_) => {
+                                upgrades.0.insert(dep, locked_version.to_string());
+                            }
+                            _ => {}
                         }
                     } else {
                         upgrades.0.insert(dep, locked_version.to_string());

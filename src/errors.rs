@@ -93,7 +93,7 @@ pub(crate) fn invalid_release_level(actual: impl Display, version: impl Display)
     anyhow::format_err!("Cannot increment the {} field for {}", actual, version)
 }
 
-pub(crate) fn parse_version_err(version: impl Display, dep: impl Display) -> Error {
+pub(crate) fn parse_version_err(dep: impl Display, version: impl Display) -> Error {
     anyhow::format_err!(
         "The version `{}` for the dependency `{}` couldn't be parsed",
         version,

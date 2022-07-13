@@ -532,13 +532,22 @@ fn old_version_compatible(dependency: &Dependency, old_version: &str) -> CargoRe
     let old_version = VersionReq::parse(old_version)
         .with_context(|| parse_version_err(&dependency.name, old_version))?;
 
-    let current_version = match dependency.version() {
+    let mut current_version = match dependency.version() {
         Some(current_version) => current_version,
         None => return Ok(false),
     };
 
-    let current_version = Version::parse(current_version)
-        .with_context(|| parse_version_err(&dependency.name, current_version))?;
+    let current_req = VersionReq::parse(current_version);
+    assert!(current_req.is_ok(), "{}", current_req.unwrap_err());
+    let first_char = current_version.chars().next();
+    if !first_char.unwrap_or('0').is_ascii_digit() {
+        current_version = current_version.strip_prefix(first_char.unwrap()).unwrap();
+    }
+    let current_version = match Version::parse(current_version) {
+        Ok(current_version) => current_version,
+        // HACK: Skip compatibility checks on incomplete version reqs
+        Err(_) => return Ok(false),
+    };
 
     Ok(old_version.matches(&current_version))
 }
