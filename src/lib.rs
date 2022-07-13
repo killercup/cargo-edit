@@ -28,6 +28,9 @@ mod version;
 
 pub use crate_spec::CrateSpec;
 pub use dependency::Dependency;
+pub use dependency::PathSource;
+pub use dependency::RegistrySource;
+pub use dependency::Source;
 pub use errors::*;
 pub use fetch::{get_latest_dependency, update_registry_index};
 pub use manifest::{find, LocalManifest, Manifest};

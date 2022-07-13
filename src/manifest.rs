@@ -327,7 +327,7 @@ impl LocalManifest {
         let dep_item = table
             .get(dep_key)
             .ok_or_else(|| non_existent_dependency_err(dep_key, table_path.join(".")))?;
-        Dependency::from_toml(crate_root, dep_key, dep_item).ok_or_else(|| {
+        Dependency::from_toml(crate_root, dep_key, dep_item).with_context(|| {
             anyhow::format_err!("Invalid dependency {}.{}", table_path.join("."), dep_key)
         })
     }
@@ -376,14 +376,12 @@ impl LocalManifest {
             .map(move |(table_path, dep_key, dep_item)| {
                 let dep = Dependency::from_toml(crate_root, &dep_key, &dep_item);
                 match dep {
-                    Some(dep) => (table_path, Ok(dep)),
-                    None => {
-                        let message = anyhow::format_err!(
-                            "Invalid dependency {}.{}",
-                            table_path.join("."),
-                            dep_key
-                        );
-                        (table_path, Err(message))
+                    Ok(dep) => (table_path, Ok(dep)),
+                    Err(err) => {
+                        let message =
+                            format!("Invalid dependency {}.{}", table_path.join("."), dep_key);
+                        let err = err.context(message);
+                        (table_path, Err(err))
                     }
                 }
             })
@@ -403,8 +401,12 @@ impl LocalManifest {
         let dep_key = dep.toml_key();
 
         let table = self.get_or_insert_table_mut(table_path)?;
-        if let Some(dep_item) = table.as_table_like_mut().unwrap().get_mut(dep_key) {
-            dep.update_toml(&crate_root, dep_item);
+        if let Some((mut dep_key, dep_item)) = table
+            .as_table_like_mut()
+            .unwrap()
+            .get_key_value_mut(dep_key)
+        {
+            dep.update_toml(&crate_root, &mut dep_key, dep_item);
         } else {
             let new_dependency = dep.to_toml(&crate_root);
             table[dep_key] = new_dependency;
@@ -450,7 +452,12 @@ impl LocalManifest {
                 eprintln!("Error while displaying upgrade message, {}", e);
             }
             if !dry_run {
-                dep.update_toml(&crate_root, &mut table[dep_key]);
+                let (mut dep_key, dep_item) = table
+                    .as_table_like_mut()
+                    .unwrap()
+                    .get_key_value_mut(dep_key)
+                    .unwrap();
+                dep.update_toml(&crate_root, &mut dep_key, dep_item);
                 if let Some(t) = table.as_inline_table_mut() {
                     t.fmt()
                 }
@@ -465,13 +472,13 @@ impl LocalManifest {
     /// # Examples
     ///
     /// ```
-    ///   use cargo_edit::{Dependency, LocalManifest, Manifest};
+    ///   use cargo_edit::{Dependency, LocalManifest, Manifest, RegistrySource};
     ///   use toml_edit;
     ///
     ///   let root = std::path::PathBuf::from("/").canonicalize().unwrap();
     ///   let path = root.join("Cargo.toml");
     ///   let mut manifest = LocalManifest { path, manifest: Manifest { data: toml_edit::Document::new() } };
-    ///   let dep = Dependency::new("cargo-edit").set_version("0.1.0");
+    ///   let dep = Dependency::new("cargo-edit").set_source(RegistrySource::new("0.1.0"));
     ///   let _ = manifest.insert_into_table(&vec!["dependencies".to_owned()], &dep);
     ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], &dep.name).is_ok());
     ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], &dep.name).is_err());
@@ -708,159 +715,4 @@ fn print_upgrade_if_necessary(
     )?;
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::dependency::Dependency;
-    use super::*;
-
-    #[test]
-    fn add_remove_dependency() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let clone = manifest.clone();
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        let _ = manifest.insert_into_table(&["dependencies".to_owned()], &dep);
-        assert!(manifest
-            .remove_from_table(&["dependencies".to_owned()], &dep.name)
-            .is_ok());
-        assert_eq!(manifest.data.to_string(), clone.data.to_string());
-    }
-
-    #[test]
-    fn update_dependency() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        manifest
-            .insert_into_table(&["dependencies".to_owned()], &dep)
-            .unwrap();
-
-        let new_dep = Dependency::new("cargo-edit").set_version("0.2.0");
-        manifest
-            .update_table_entry(&["dependencies".to_owned()], &new_dep, false)
-            .unwrap();
-    }
-
-    #[test]
-    fn update_wrong_dependency() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        manifest
-            .insert_into_table(&["dependencies".to_owned()], &dep)
-            .unwrap();
-        let original = manifest.clone();
-
-        let new_dep = Dependency::new("wrong-dep").set_version("0.2.0");
-        manifest
-            .update_table_entry(&["dependencies".to_owned()], &new_dep, false)
-            .unwrap();
-
-        assert_eq!(manifest.data.to_string(), original.data.to_string());
-    }
-
-    #[test]
-    fn remove_dependency_no_section() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        assert!(manifest
-            .remove_from_table(&["dependencies".to_owned()], &dep.name)
-            .is_err());
-    }
-
-    #[test]
-    fn remove_dependency_non_existent() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: Manifest {
-                data: toml_edit::Document::new(),
-            },
-        };
-        let dep = Dependency::new("cargo-edit").set_version("0.1.0");
-        let other_dep = Dependency::new("other-dep").set_version("0.1.0");
-        assert!(manifest
-            .insert_into_table(&["dependencies".to_owned()], &other_dep)
-            .is_ok());
-        assert!(manifest
-            .remove_from_table(&["dependencies".to_owned()], &dep.name)
-            .is_err());
-    }
-
-    #[test]
-    fn set_package_version_overrides() {
-        let original = r#"
-[package]
-name = "simple"
-version = "0.1.0"
-edition = "2015"
-
-[dependencies]
-"#;
-        let expected = r#"
-[package]
-name = "simple"
-version = "2.0.0"
-edition = "2015"
-
-[dependencies]
-"#;
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let mut manifest = LocalManifest {
-            path: root.join("Cargo.toml"),
-            manifest: original.parse::<Manifest>().unwrap(),
-        };
-        manifest.set_package_version(&semver::Version::parse("2.0.0").unwrap());
-        let actual = manifest.to_string();
-
-        assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn old_version_is_compatible() -> CargoResult<()> {
-        let with_version = Dependency::new("foo").set_version("2.3.4");
-        assert!(!old_version_compatible(&with_version, "1")?);
-        assert!(old_version_compatible(&with_version, "2")?);
-        assert!(!old_version_compatible(&with_version, "3")?);
-        Ok(())
-    }
-
-    #[test]
-    fn old_incompatible_with_missing_new_version() -> CargoResult<()> {
-        let no_version = Dependency::new("foo");
-        assert!(!old_version_compatible(&no_version, "1")?);
-        assert!(!old_version_compatible(&no_version, "2")?);
-        Ok(())
-    }
-
-    #[test]
-    fn old_incompatible_with_invalid() {
-        let bad_version = Dependency::new("foo").set_version("CAKE CAKE");
-        let good_version = Dependency::new("foo").set_version("1.2.3");
-        assert!(old_version_compatible(&bad_version, "1").is_err());
-        assert!(old_version_compatible(&good_version, "CAKE CAKE").is_err());
-    }
 }

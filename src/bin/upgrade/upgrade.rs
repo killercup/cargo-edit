@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use cargo_edit::{
     colorize_stderr, find, get_latest_dependency, manifest_from_pkgid, registry_url, shell_warn,
-    update_registry_index, CargoResult, Context, CrateSpec, Dependency, LocalManifest,
+    update_registry_index, CargoResult, Context, CrateSpec, Dependency, LocalManifest, Source,
 };
 use clap::Args;
 use semver::{Op, VersionReq};
@@ -224,7 +224,7 @@ fn get_dependencies(
         .map(|(_, result)| result)
         .collect::<CargoResult<Vec<_>>>()?
         .into_iter()
-        .filter(|dependency| dependency.path().is_none())
+        .filter(|dependency| dependency.source().and_then(|s| s.as_registry()).is_some())
         .filter_map(|dependency| {
             dependency
                 .version()
@@ -297,9 +297,9 @@ fn upgrade(
     println!("{}:", package.name);
 
     for (dep, version) in &upgraded_deps.0 {
-        let mut new_dep = Dependency::new(&dep.name).set_version(version);
-        if let Some(rename) = dep.rename() {
-            new_dep = new_dep.set_rename(rename);
+        let mut new_dep = dep.clone();
+        if let Some(Source::Registry(source)) = &mut new_dep.source {
+            source.version = version.clone();
         }
         manifest.upgrade(&new_dep, dry_run, skip_compatible)?;
     }

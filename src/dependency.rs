@@ -1,21 +1,38 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use indexmap::IndexSet;
+use toml_edit::KeyMut;
+
 use super::manifest::str_or_1_len_table;
+use crate::CargoResult;
 
 /// A dependency handled by Cargo
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+///
+/// `None` means the field will be blank in TOML
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[non_exhaustive]
 pub struct Dependency {
     /// The name of the dependency (as it is set in its `Cargo.toml` and known to crates.io)
     pub name: String,
-    optional: Option<bool>,
+    /// Whether the dependency is opted-in with a feature flag
+    pub optional: Option<bool>,
+
     /// List of features to add (or None to keep features unchanged).
     pub features: Option<Vec<String>>,
-    default_features: Option<bool>,
-    source: DependencySource,
+    /// Whether default features are enabled
+    pub default_features: Option<bool>,
+    /// List of features inherited from a workspace dependency
+    pub inherited_features: Option<Vec<String>>,
+
+    /// Where the dependency comes from
+    pub source: Option<Source>,
+    /// Non-default registry
+    pub registry: Option<String>,
+
     /// If the dependency is renamed, this is the new name for the dependency
     /// as a string.  None if it is not renamed.
-    rename: Option<String>,
+    pub rename: Option<String>,
 
     /// Features that are exposed by the dependency
     pub available_features: BTreeMap<String, Vec<String>>,
@@ -23,39 +40,40 @@ pub struct Dependency {
 
 impl Dependency {
     /// Create a new dependency with a name
-    pub fn new(name: &str) -> Dependency {
-        Dependency {
+    pub fn new(name: &str) -> Self {
+        Self {
             name: name.into(),
-            ..Dependency::default()
+            optional: None,
+            features: None,
+            default_features: None,
+            inherited_features: None,
+            source: None,
+            registry: None,
+            rename: None,
+            available_features: Default::default(),
         }
     }
 
     /// Set dependency to a given version
-    pub fn set_version(mut self, version: &str) -> Dependency {
-        // versions might have semver metadata appended which we do not want to
-        // store in the cargo toml files.  This would cause a warning upon compilation
-        // ("version requirement […] includes semver metadata which will be ignored")
-        let version = version.split('+').next().unwrap();
-        let (old_path, old_registry) = match self.source {
-            DependencySource::Version { path, registry, .. } => (path, registry),
-            _ => (None, None),
-        };
-        self.source = DependencySource::Version {
-            version: Some(version.into()),
-            path: old_path,
-            registry: old_registry,
-        };
+    pub fn set_source(mut self, source: impl Into<Source>) -> Self {
+        self.source = Some(source.into());
         self
     }
 
     /// Remove the existing version requirement
-    pub fn clear_version(mut self) -> Dependency {
-        if let DependencySource::Version {
-            version, registry, ..
-        } = &mut self.source
-        {
-            *version = None;
-            *registry = None;
+    pub fn clear_version(mut self) -> Self {
+        match &mut self.source {
+            Some(Source::Registry(_)) => {
+                self.source = None;
+            }
+            Some(Source::Path(path)) => {
+                path.version = None;
+            }
+            Some(Source::Git(git)) => {
+                git.version = None;
+            }
+            Some(Source::Workspace(_workspace)) => {}
+            None => {}
         }
         self
     }
@@ -64,136 +82,75 @@ impl Dependency {
     pub fn set_available_features(
         mut self,
         available_features: BTreeMap<String, Vec<String>>,
-    ) -> Dependency {
+    ) -> Self {
         self.available_features = available_features;
         self
     }
 
-    /// Set dependency to a given repository
-    pub fn set_git(
-        mut self,
-        repo: &str,
-        branch: Option<String>,
-        tag: Option<String>,
-        rev: Option<String>,
-    ) -> Dependency {
-        self.source = DependencySource::Git {
-            repo: repo.into(),
-            branch,
-            tag,
-            rev,
-        };
-        self
-    }
-
-    /// Set dependency to a given path
-    ///
-    /// # Panic
-    ///
-    /// Panics if the path is relative
-    pub fn set_path(mut self, path: PathBuf) -> Dependency {
-        assert!(
-            path.is_absolute(),
-            "Absolute path needed, got: {}",
-            path.display()
-        );
-        let (old_version, old_registry) = match self.source {
-            DependencySource::Version {
-                version, registry, ..
-            } => (version, registry),
-            _ => (None, None),
-        };
-        self.source = DependencySource::Version {
-            version: old_version,
-            path: Some(path),
-            registry: old_registry,
-        };
-        self
-    }
-
     /// Set whether the dependency is optional
-    pub fn set_optional(mut self, opt: Option<bool>) -> Dependency {
-        self.optional = opt;
+    #[allow(dead_code)]
+    pub fn set_optional(mut self, opt: bool) -> Self {
+        self.optional = Some(opt);
+        self
+    }
+
+    /// Set features as an array of string (does some basic parsing)
+    #[allow(dead_code)]
+    pub fn set_features(mut self, features: Vec<String>) -> Self {
+        self.features = Some(features);
         self
     }
     /// Set features as an array of string (does some basic parsing)
-    pub fn set_features(mut self, features: Option<Vec<String>>) -> Dependency {
-        self.features = features;
+    pub fn extend_features(mut self, features: impl IntoIterator<Item = String>) -> Self {
+        self.features
+            .get_or_insert_with(Default::default)
+            .extend(features);
         self
     }
 
     /// Set the value of default-features for the dependency
-    pub fn set_default_features(mut self, default_features: Option<bool>) -> Dependency {
-        self.default_features = default_features;
+    #[allow(dead_code)]
+    pub fn set_default_features(mut self, default_features: bool) -> Self {
+        self.default_features = Some(default_features);
         self
     }
 
     /// Set the alias for the dependency
-    pub fn set_rename(mut self, rename: &str) -> Dependency {
+    pub fn set_rename(mut self, rename: &str) -> Self {
         self.rename = Some(rename.into());
         self
     }
 
     /// Set the value of registry for the dependency
-    pub fn set_registry(mut self, registry: &str) -> Dependency {
-        let (old_version, old_path) = match self.source {
-            DependencySource::Version { version, path, .. } => (version, path),
-            _ => (None, None),
-        };
-        self.source = DependencySource::Version {
-            version: old_version,
-            path: old_path,
-            registry: Some(registry.into()),
-        };
+    pub fn set_registry(mut self, registry: impl Into<String>) -> Self {
+        self.registry = Some(registry.into());
         self
+    }
+
+    /// Set features as an array of string (does some basic parsing)
+    pub fn set_inherited_features(mut self, features: Vec<String>) -> Self {
+        self.inherited_features = Some(features);
+        self
+    }
+
+    /// Get the dependency source
+    pub fn source(&self) -> Option<&Source> {
+        self.source.as_ref()
     }
 
     /// Get version of dependency
     pub fn version(&self) -> Option<&str> {
-        if let DependencySource::Version {
-            version: Some(ref version),
-            ..
-        } = self.source
-        {
-            Some(version)
-        } else {
-            None
-        }
-    }
-
-    /// Get the path of the dependency
-    pub fn path(&self) -> Option<&Path> {
-        if let DependencySource::Version {
-            path: Some(ref path),
-            ..
-        } = self.source
-        {
-            Some(path.as_path())
-        } else {
-            None
+        match self.source()? {
+            Source::Registry(src) => Some(src.version.as_str()),
+            Source::Path(src) => src.version.as_deref(),
+            Source::Git(src) => src.version.as_deref(),
+            Source::Workspace(_) => None,
         }
     }
 
     /// Get registry of the dependency
     pub fn registry(&self) -> Option<&str> {
-        if let DependencySource::Version {
-            registry: Some(ref registry),
-            ..
-        } = self.source
-        {
-            Some(registry)
-        } else {
-            None
-        }
-    }
-
-    /// Get the git repo of the dependency
-    pub fn git(&self) -> Option<&str> {
-        if let DependencySource::Git { repo, .. } = &self.source {
-            Some(repo.as_str())
-        } else {
-            None
-        }
+        self.registry.as_deref()
     }
 
     /// Get the alias for the dependency (if any)
@@ -205,83 +162,116 @@ impl Dependency {
     pub fn default_features(&self) -> Option<bool> {
         self.default_features
     }
+
+    /// Get whether the dep is optional
+    pub fn optional(&self) -> Option<bool> {
+        self.optional
+    }
 }
 
 impl Dependency {
     /// Create a dependency from a TOML table entry
-    pub fn from_toml(crate_root: &Path, key: &str, item: &toml_edit::Item) -> Option<Self> {
+    pub fn from_toml(crate_root: &Path, key: &str, item: &toml_edit::Item) -> CargoResult<Self> {
         if let Some(version) = item.as_str() {
-            let dep = Dependency::new(key).set_version(version);
-            Some(dep)
+            let dep = Self::new(key).set_source(RegistrySource::new(version));
+            Ok(dep)
         } else if let Some(table) = item.as_table_like() {
             let (name, rename) = if let Some(value) = table.get("package") {
-                (value.as_str()?.to_owned(), Some(key.to_owned()))
+                (
+                    value
+                        .as_str()
+                        .ok_or_else(|| invalid_type(key, "package", value.type_name(), "string"))?
+                        .to_owned(),
+                    Some(key.to_owned()),
+                )
             } else {
                 (key.to_owned(), None)
             };
 
-            let source = if let Some(repo) = table.get("git") {
-                let repo = repo.as_str()?.to_owned();
-                let branch = if let Some(value) = table.get("branch") {
-                    Some(value.as_str()?.to_owned())
+            let source: Source =
+                if let Some(git) = table.get("git") {
+                    let mut src = GitSource::new(
+                        git.as_str()
+                            .ok_or_else(|| invalid_type(key, "git", git.type_name(), "string"))?,
+                    );
+                    if let Some(value) = table.get("branch") {
+                        src = src.set_branch(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "branch", value.type_name(), "string")
+                        })?);
+                    }
+                    if let Some(value) = table.get("tag") {
+                        src = src.set_tag(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "tag", value.type_name(), "string")
+                        })?);
+                    }
+                    if let Some(value) = table.get("rev") {
+                        src = src.set_rev(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "rev", value.type_name(), "string")
+                        })?);
+                    }
+                    if let Some(value) = table.get("version") {
+                        src = src.set_version(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "version", value.type_name(), "string")
+                        })?);
+                    }
+                    src.into()
+                } else if let Some(path) = table.get("path") {
+                    let path = crate_root
+                        .join(path.as_str().ok_or_else(|| {
+                            invalid_type(key, "path", path.type_name(), "string")
+                        })?);
+                    let mut src = PathSource::new(path);
+                    if let Some(value) = table.get("version") {
+                        src = src.set_version(value.as_str().ok_or_else(|| {
+                            invalid_type(key, "version", value.type_name(), "string")
+                        })?);
+                    }
+                    src.into()
+                } else if let Some(version) = table.get("version") {
+                    let src = RegistrySource::new(version.as_str().ok_or_else(|| {
+                        invalid_type(key, "version", version.type_name(), "string")
+                    })?);
+                    src.into()
+                } else if let Some(workspace) = table.get("workspace") {
+                    let workspace_bool = workspace.as_bool().ok_or_else(|| {
+                        invalid_type(key, "workspace", workspace.type_name(), "bool")
+                    })?;
+                    if !workspace_bool {
+                        anyhow::bail!("`{key}.workspace = false` is unsupported")
+                    }
+                    let src = WorkspaceSource::new();
+                    src.into()
                 } else {
-                    None
+                    anyhow::bail!("Unrecognized dependency source for `{key}`");
                 };
-                let tag = if let Some(value) = table.get("tag") {
-                    Some(value.as_str()?.to_owned())
-                } else {
-                    None
-                };
-                let rev = if let Some(value) = table.get("rev") {
-                    Some(value.as_str()?.to_owned())
-                } else {
-                    None
-                };
-                DependencySource::Git {
-                    repo,
-                    branch,
-                    tag,
-                    rev,
-                }
+            let registry = if let Some(value) = table.get("registry") {
+                Some(
+                    value
+                        .as_str()
+                        .ok_or_else(|| invalid_type(key, "registry", value.type_name(), "string"))?
+                        .to_owned(),
+                )
             } else {
-                let version = if let Some(value) = table.get("version") {
-                    Some(value.as_str()?.to_owned())
-                } else {
-                    None
-                };
-                let path = if let Some(value) = table.get("path") {
-                    let path = value.as_str()?;
-                    let path = crate_root.join(path);
-                    Some(path)
-                } else {
-                    None
-                };
-                let registry = if let Some(value) = table.get("registry") {
-                    Some(value.as_str()?.to_owned())
-                } else {
-                    None
-                };
-                DependencySource::Version {
-                    version,
-                    path,
-                    registry,
-                }
+                None
             };
 
-            let default_features = if let Some(value) = table.get("default-features") {
-                value.as_bool()?
-            } else {
-                true
-            };
-            let default_features = Some(default_features);
+            let default_features = table.get("default-features").and_then(|v| v.as_bool());
+            if table.contains_key("default_features") {
+                anyhow::bail!("Use of `default_features` in `{key}` is unsupported, please switch to `default-features`");
+            }
 
             let features = if let Some(value) = table.get("features") {
                 Some(
                     value
-                        .as_array()?
+                        .as_array()
+                        .ok_or_else(|| invalid_type(key, "features", value.type_name(), "array"))?
                         .iter()
-                        .map(|v| v.as_str().map(|s| s.to_owned()))
-                        .collect::<Option<Vec<String>>>()?,
+                        .map(|v| {
+                            v.as_str().map(|s| s.to_owned()).ok_or_else(|| {
+                                invalid_type(key, "features", v.type_name(), "string")
+                            })
+                        })
+                        .collect::<CargoResult<Vec<String>>>()?,
                 )
             } else {
                 None
@@ -289,25 +279,22 @@ impl Dependency {
 
             let available_features = BTreeMap::default();
 
-            let optional = if let Some(value) = table.get("optional") {
-                value.as_bool()?
-            } else {
-                false
-            };
-            let optional = Some(optional);
+            let optional = table.get("optional").and_then(|v| v.as_bool());
 
-            let dep = Dependency {
+            let dep = Self {
                 name,
                 rename,
-                source,
+                source: Some(source),
+                registry,
                 default_features,
                 features,
                 available_features,
                 optional,
+                inherited_features: None,
             };
-            Some(dep)
+            Ok(dep)
         } else {
-            None
+            anyhow::bail!("Unrecognized` dependency entry format for `{key}");
         }
     }
 
@@ -334,11 +321,12 @@ impl Dependency {
             "Absolute path needed, got: {}",
             crate_root.display()
         );
-        let data: toml_edit::Item = match (
+        let table: toml_edit::Item = match (
             self.optional.unwrap_or(false),
             self.features.as_ref(),
             self.default_features.unwrap_or(true),
-            self.source.clone(),
+            self.source.as_ref(),
+            self.registry.as_ref(),
             self.rename.as_ref(),
         ) {
             // Extra short when version flag only
@@ -346,153 +334,181 @@ impl Dependency {
                 false,
                 None,
                 true,
-                DependencySource::Version {
-                    version: Some(v),
-                    path: None,
-                    registry: None,
-                },
+                Some(Source::Registry(RegistrySource { version: v })),
+                None,
                 None,
             ) => toml_edit::value(v),
+            (false, None, true, Some(Source::Workspace(WorkspaceSource {})), None, None) => {
+                let mut table = toml_edit::InlineTable::default();
+                table.set_dotted(true);
+                table.insert("workspace", true.into());
+                toml_edit::value(toml_edit::Value::InlineTable(table))
+            }
             // Other cases are represented as an inline table
-            (_, _, _, _, _) => {
-                let mut data = toml_edit::InlineTable::default();
+            (_, _, _, _, _, _) => {
+                let mut table = toml_edit::InlineTable::default();
 
                 match &self.source {
-                    DependencySource::Version {
-                        version,
-                        path,
-                        registry,
-                    } => {
-                        if let Some(v) = version {
-                            data.insert("version", v.into());
+                    Some(Source::Registry(src)) => {
+                        table.insert("version", src.version.as_str().into());
+                    }
+                    Some(Source::Path(src)) => {
+                        let relpath = path_field(crate_root, &src.path);
+                        if let Some(r) = src.version.as_deref() {
+                            table.insert("version", r.into());
                         }
-                        if let Some(p) = path {
-                            let relpath = path_field(crate_root, p);
-                            data.insert("path", relpath.into());
+                        table.insert("path", relpath.into());
+                    }
+                    Some(Source::Git(src)) => {
+                        table.insert("git", src.git.as_str().into());
+                        if let Some(branch) = src.branch.as_deref() {
+                            table.insert("branch", branch.into());
                         }
-                        if let Some(r) = registry {
-                            data.insert("registry", r.into());
+                        if let Some(tag) = src.tag.as_deref() {
+                            table.insert("tag", tag.into());
+                        }
+                        if let Some(rev) = src.rev.as_deref() {
+                            table.insert("rev", rev.into());
+                        }
+                        if let Some(r) = src.version.as_deref() {
+                            table.insert("version", r.into());
                         }
                     }
-                    DependencySource::Git {
-                        repo,
-                        branch,
-                        tag,
-                        rev,
-                    } => {
-                        data.insert("git", repo.into());
-                        if let Some(branch) = branch {
-                            data.insert("branch", branch.into());
-                        }
-                        if let Some(tag) = tag {
-                            data.insert("tag", tag.into());
-                        }
-                        if let Some(rev) = rev {
-                            data.insert("rev", rev.into());
-                        }
+                    Some(Source::Workspace(_)) => {
+                        table.insert("workspace", true.into());
                     }
+                    None => {}
                 }
-                if self.rename.is_some() {
-                    data.insert("package", self.name.as_str().into());
-                }
-                match self.default_features {
-                    Some(true) | None => {}
-                    Some(false) => {
-                        data.insert("default-features", false.into());
-                    }
-                }
-                if let Some(features) = self.features.as_deref() {
-                    let features: toml_edit::Value = features.iter().cloned().collect();
-                    data.insert("features", features);
-                }
-                match self.optional {
-                    Some(false) | None => {}
-                    Some(true) => {
-                        data.insert("optional", true.into());
+                if table.contains_key("version") {
+                    if let Some(r) = self.registry.as_deref() {
+                        table.insert("registry", r.into());
                     }
                 }
 
-                toml_edit::value(toml_edit::Value::InlineTable(data))
+                if self.rename.is_some() {
+                    table.insert("package", self.name.as_str().into());
+                }
+                if let Some(v) = self.default_features {
+                    table.insert("default-features", v.into());
+                }
+                if let Some(features) = self.features.as_ref() {
+                    let features: toml_edit::Value = features.iter().cloned().collect();
+                    table.insert("features", features);
+                }
+                if let Some(v) = self.optional {
+                    table.insert("optional", v.into());
+                }
+
+                toml_edit::value(toml_edit::Value::InlineTable(table))
             }
         };
 
-        data
+        table
     }
 
     /// Modify existing entry to match this dependency
-    pub fn update_toml(&self, crate_root: &Path, item: &mut toml_edit::Item) {
-        #[allow(clippy::if_same_then_else)]
+    pub fn update_toml<'k>(
+        &self,
+        crate_root: &Path,
+        key: &mut KeyMut<'k>,
+        item: &mut toml_edit::Item,
+    ) {
         if str_or_1_len_table(item) {
             // Nothing to preserve
             *item = self.to_toml(crate_root);
-        } else if !is_package_eq(item, &self.name, self.rename.as_deref()) {
-            // No existing keys are relevant when the package changes
-            *item = self.to_toml(crate_root);
+            key.fmt();
         } else if let Some(table) = item.as_table_like_mut() {
             match &self.source {
-                DependencySource::Version {
-                    version,
-                    path,
-                    registry,
-                } => {
-                    if let Some(v) = version {
-                        table.insert("version", toml_edit::value(v));
+                Some(Source::Registry(src)) => {
+                    overwrite_value(table, "version", src.version.as_str());
+
+                    for key in ["path", "git", "branch", "tag", "rev", "workspace"] {
+                        table.remove(key);
+                    }
+                }
+                Some(Source::Path(src)) => {
+                    let relpath = path_field(crate_root, &src.path);
+                    overwrite_value(table, "path", relpath);
+                    if let Some(r) = src.version.as_deref() {
+                        overwrite_value(table, "version", r);
                     } else {
                         table.remove("version");
                     }
-                    if let Some(p) = path {
-                        let relpath = path_field(crate_root, p);
-                        table.insert("path", toml_edit::value(relpath));
-                    } else {
-                        table.remove("path");
-                    }
-                    if let Some(r) = registry {
-                        table.insert("registry", toml_edit::value(r));
-                    }
-                    for key in ["git", "branch", "tag", "rev"] {
+
+                    for key in ["git", "branch", "tag", "rev", "workspace"] {
                         table.remove(key);
                     }
                 }
-                DependencySource::Git {
-                    repo,
-                    branch,
-                    tag,
-                    rev,
-                } => {
-                    table.insert("git", toml_edit::value(repo));
-                    if let Some(branch) = branch {
-                        table.insert("branch", toml_edit::value(branch));
+                Some(Source::Git(src)) => {
+                    overwrite_value(table, "git", src.git.as_str());
+                    if let Some(branch) = src.branch.as_deref() {
+                        overwrite_value(table, "branch", branch);
                     } else {
                         table.remove("branch");
                     }
-                    if let Some(tag) = tag {
-                        table.insert("tag", toml_edit::value(tag));
+                    if let Some(tag) = src.tag.as_deref() {
+                        overwrite_value(table, "tag", tag);
                     } else {
                         table.remove("tag");
                     }
-                    if let Some(rev) = rev {
-                        table.insert("rev", toml_edit::value(rev));
+                    if let Some(rev) = src.rev.as_deref() {
+                        overwrite_value(table, "rev", rev);
                     } else {
                         table.remove("rev");
                     }
-                    for key in ["version", "path", "registry"] {
+                    if let Some(r) = src.version.as_deref() {
+                        overwrite_value(table, "version", r);
+                    } else {
+                        table.remove("version");
+                    }
+
+                    for key in ["path", "workspace"] {
                         table.remove(key);
                     }
                 }
-            }
-            if self.rename.is_some() {
-                table.insert("package", toml_edit::value(self.name.as_str()));
-            }
-            match self.default_features {
-                Some(true) => {
-                    table.remove("default-features");
-                }
-                Some(false) => {
-                    table.insert("default-features", toml_edit::value(false));
+                Some(Source::Workspace(_)) => {
+                    overwrite_value(table, "workspace", true);
+                    table.set_dotted(true);
+                    key.fmt();
+                    for key in [
+                        "version",
+                        "registry",
+                        "registry-index",
+                        "path",
+                        "git",
+                        "branch",
+                        "tag",
+                        "rev",
+                        "package",
+                        "default-features",
+                    ] {
+                        table.remove(key);
+                    }
                 }
                 None => {}
             }
-            if let Some(new_features) = self.features.as_deref() {
+            if table.contains_key("version") {
+                if let Some(r) = self.registry.as_deref() {
+                    overwrite_value(table, "registry", r);
+                } else {
+                    table.remove("registry");
+                }
+            } else {
+                table.remove("registry");
+            }
+
+            if self.rename.is_some() {
+                overwrite_value(table, "package", self.name.as_str());
+            }
+            match self.default_features {
+                Some(v) => {
+                    overwrite_value(table, "default-features", v);
+                }
+                None => {
+                    table.remove("default-features");
+                }
+            }
+            if let Some(new_features) = self.features.as_ref() {
                 let mut features = table
                     .get("features")
                     .and_then(|i| i.as_value())
@@ -500,26 +516,60 @@ impl Dependency {
                     .and_then(|a| {
                         a.iter()
                             .map(|v| v.as_str())
-                            .collect::<Option<indexmap::IndexSet<_>>>()
+                            .collect::<Option<IndexSet<_>>>()
                     })
                     .unwrap_or_default();
                 features.extend(new_features.iter().map(|s| s.as_str()));
-                let features = toml_edit::value(features.into_iter().collect::<toml_edit::Value>());
-                table.insert("features", features);
+                let features = features.into_iter().collect::<toml_edit::Value>();
+                table.set_dotted(false);
+                overwrite_value(table, "features", features);
+            } else {
+                table.remove("features");
             }
             match self.optional {
-                Some(true) => {
-                    table.insert("optional", toml_edit::value(true));
+                Some(v) => {
+                    table.set_dotted(false);
+                    overwrite_value(table, "optional", v);
                 }
-                Some(false) => {
+                None => {
                     table.remove("optional");
                 }
-                None => {}
             }
-
-            table.fmt();
         } else {
             unreachable!("Invalid dependency type: {}", item.type_name());
+        }
+    }
+}
+
+/// Overwrite a value while preserving the original formatting
+fn overwrite_value(
+    table: &mut dyn toml_edit::TableLike,
+    key: &str,
+    value: impl Into<toml_edit::Value>,
+) {
+    let mut value = value.into();
+
+    let existing = table.entry(key).or_insert(toml_edit::Item::None);
+    let existing_decor = existing
+        .as_value()
+        .map(|v| v.decor().clone())
+        .unwrap_or_default();
+
+    *value.decor_mut() = existing_decor;
+
+    *existing = toml_edit::Item::Value(value);
+}
+
+fn invalid_type(dep: &str, key: &str, actual: &str, expected: &str) -> anyhow::Error {
+    anyhow::format_err!("Found {actual} for {key} when {expected} was expected for {dep}")
+}
+
+impl std::fmt::Display for Dependency {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(source) = self.source() {
+            write!(f, "{}@{}", self.name, source)
+        } else {
+            self.toml_key().fmt(f)
         }
     }
 }
@@ -530,58 +580,268 @@ fn path_field(crate_root: &Path, abs_path: &Path) -> String {
     relpath
 }
 
-fn is_package_eq(item: &mut toml_edit::Item, name: &str, rename: Option<&str>) -> bool {
-    if let Some(table) = item.as_table_like_mut() {
-        let existing_package = table.get("package").and_then(|i| i.as_str());
-        let new_package = rename.map(|_| name);
-        existing_package == new_package
-    } else {
-        false
-    }
+/// Primary location of a dependency
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+pub enum Source {
+    /// Dependency from a registry
+    Registry(RegistrySource),
+    /// Dependency from a local path
+    Path(PathSource),
+    /// Dependency from a git repo
+    Git(GitSource),
+    /// Dependency from a workspace
+    Workspace(WorkspaceSource),
 }
 
-impl Default for Dependency {
-    fn default() -> Dependency {
-        Dependency {
-            name: "".into(),
-            rename: None,
-            optional: None,
-            features: None,
-            default_features: None,
-            source: DependencySource::Version {
-                version: None,
-                path: None,
-                registry: None,
-            },
-            available_features: BTreeMap::default(),
+impl Source {
+    /// Access the registry source, if present
+    pub fn as_registry(&self) -> Option<&RegistrySource> {
+        match self {
+            Self::Registry(src) => Some(src),
+            _ => None,
+        }
+    }
+
+    /// Access the path source, if present
+    #[allow(dead_code)]
+    pub fn as_path(&self) -> Option<&PathSource> {
+        match self {
+            Self::Path(src) => Some(src),
+            _ => None,
+        }
+    }
+
+    /// Access the git source, if present
+    #[allow(dead_code)]
+    pub fn as_git(&self) -> Option<&GitSource> {
+        match self {
+            Self::Git(src) => Some(src),
+            _ => None,
+        }
+    }
+
+    /// Access the workspace source, if present
+    #[allow(dead_code)]
+    pub fn as_workspace(&self) -> Option<&WorkspaceSource> {
+        match self {
+            Self::Workspace(src) => Some(src),
+            _ => None,
         }
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
-enum DependencySource {
-    Version {
-        version: Option<String>,
-        path: Option<PathBuf>,
-        registry: Option<String>,
-    },
-    Git {
-        repo: String,
-        branch: Option<String>,
-        tag: Option<String>,
-        rev: Option<String>,
-    },
+impl std::fmt::Display for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Registry(src) => src.fmt(f),
+            Self::Path(src) => src.fmt(f),
+            Self::Git(src) => src.fmt(f),
+            Self::Workspace(src) => src.fmt(f),
+        }
+    }
+}
+
+impl<'s> From<&'s Source> for Source {
+    fn from(inner: &'s Source) -> Self {
+        inner.clone()
+    }
+}
+
+impl From<RegistrySource> for Source {
+    fn from(inner: RegistrySource) -> Self {
+        Self::Registry(inner)
+    }
+}
+
+impl From<PathSource> for Source {
+    fn from(inner: PathSource) -> Self {
+        Self::Path(inner)
+    }
+}
+
+impl From<GitSource> for Source {
+    fn from(inner: GitSource) -> Self {
+        Self::Git(inner)
+    }
+}
+
+impl From<WorkspaceSource> for Source {
+    fn from(inner: WorkspaceSource) -> Self {
+        Self::Workspace(inner)
+    }
+}
+
+/// Dependency from a registry
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[non_exhaustive]
+pub struct RegistrySource {
+    /// Version requirement
+    pub version: String,
+}
+
+impl RegistrySource {
+    /// Specify dependency by version requirement
+    pub fn new(version: impl AsRef<str>) -> Self {
+        // versions might have semver metadata appended which we do not want to
+        // store in the cargo toml files.  This would cause a warning upon compilation
+        // ("version requirement […] includes semver metadata which will be ignored")
+        let version = version.as_ref().split('+').next().unwrap();
+        Self {
+            version: version.to_owned(),
+        }
+    }
+}
+
+impl std::fmt::Display for RegistrySource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.version.fmt(f)
+    }
+}
+
+/// Dependency from a local path
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[non_exhaustive]
+pub struct PathSource {
+    /// Local, absolute path
+    pub path: PathBuf,
+    /// Version requirement for when published
+    pub version: Option<String>,
+}
+
+impl PathSource {
+    /// Specify dependency from a path
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self {
+            path: path.into(),
+            version: None,
+        }
+    }
+
+    /// Set an optional version requirement
+    pub fn set_version(mut self, version: impl AsRef<str>) -> Self {
+        // versions might have semver metadata appended which we do not want to
+        // store in the cargo toml files.  This would cause a warning upon compilation
+        // ("version requirement […] includes semver metadata which will be ignored")
+        let version = version.as_ref().split('+').next().unwrap();
+        self.version = Some(version.to_owned());
+        self
+    }
+}
+
+impl std::fmt::Display for PathSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.path.display().fmt(f)
+    }
+}
+
+/// Dependency from a git repo
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[non_exhaustive]
+pub struct GitSource {
+    /// Repo URL
+    pub git: String,
+    /// Select specific branch
+    pub branch: Option<String>,
+    /// Select specific tag
+    pub tag: Option<String>,
+    /// Select specific rev
+    pub rev: Option<String>,
+    /// Version requirement for when published
+    pub version: Option<String>,
+}
+
+impl GitSource {
+    /// Specify dependency from a git repo
+    pub fn new(git: impl Into<String>) -> Self {
+        Self {
+            git: git.into(),
+            branch: None,
+            tag: None,
+            rev: None,
+            version: None,
+        }
+    }
+
+    /// Specify an optional branch
+    pub fn set_branch(mut self, branch: impl Into<String>) -> Self {
+        self.branch = Some(branch.into());
+        self.tag = None;
+        self.rev = None;
+        self
+    }
+
+    /// Specify an optional tag
+    pub fn set_tag(mut self, tag: impl Into<String>) -> Self {
+        self.branch = None;
+        self.tag = Some(tag.into());
+        self.rev = None;
+        self
+    }
+
+    /// Specify an optional rev
+    pub fn set_rev(mut self, rev: impl Into<String>) -> Self {
+        self.branch = None;
+        self.tag = None;
+        self.rev = Some(rev.into());
+        self
+    }
+
+    /// Set an optional version requirement
+    pub fn set_version(mut self, version: impl AsRef<str>) -> Self {
+        // versions might have semver metadata appended which we do not want to
+        // store in the cargo toml files.  This would cause a warning upon compilation
+        // ("version requirement […] includes semver metadata which will be ignored")
+        let version = version.as_ref().split('+').next().unwrap();
+        self.version = Some(version.to_owned());
+        self
+    }
+}
+
+impl std::fmt::Display for GitSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.git)?;
+        if let Some(branch) = &self.branch {
+            write!(f, "?branch={}", branch)?;
+        } else if let Some(tag) = &self.tag {
+            write!(f, "?tag={}", tag)?;
+        } else if let Some(rev) = &self.rev {
+            write!(f, "?rev={}", rev)?;
+        }
+        Ok(())
+    }
+}
+
+/// Dependency from a workspace
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+#[non_exhaustive]
+pub struct WorkspaceSource;
+
+impl WorkspaceSource {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl std::fmt::Display for WorkspaceSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "workspace".fmt(f)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::dependency::Dependency;
     use std::path::Path;
+
+    use super::super::manifest::LocalManifest;
+
+    use super::*;
 
     #[test]
     fn to_toml_simple_dep() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let dep = Dependency::new("dep");
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
+        let dep = Dependency::new("dep").set_source(RegistrySource::new("1.0"));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -592,8 +852,10 @@ mod tests {
 
     #[test]
     fn to_toml_simple_dep_with_version() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let dep = Dependency::new("dep").set_version("1.0");
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
+        let dep = Dependency::new("dep").set_source(RegistrySource::new("1.0"));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -605,8 +867,12 @@ mod tests {
 
     #[test]
     fn to_toml_optional_dep() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let dep = Dependency::new("dep").set_optional(Some(true));
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
+        let dep = Dependency::new("dep")
+            .set_source(RegistrySource::new("1.0"))
+            .set_optional(true);
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -621,8 +887,12 @@ mod tests {
 
     #[test]
     fn to_toml_dep_without_default_features() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let dep = Dependency::new("dep").set_default_features(Some(false));
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
+        let dep = Dependency::new("dep")
+            .set_source(RegistrySource::new("1.0"))
+            .set_default_features(false);
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -637,9 +907,10 @@ mod tests {
 
     #[test]
     fn to_toml_dep_with_path_source() {
-        let root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let root = dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let crate_root = root.join("foo");
-        let dep = Dependency::new("dep").set_path(root.join("bar"));
+        let dep = Dependency::new("dep").set_source(PathSource::new(root.join("bar")));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -654,8 +925,10 @@ mod tests {
 
     #[test]
     fn to_toml_dep_with_git_source() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let dep = Dependency::new("dep").set_git("https://foor/bar.git", None, None, None);
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
+        let dep = Dependency::new("dep").set_source(GitSource::new("https://foor/bar.git"));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -673,8 +946,12 @@ mod tests {
 
     #[test]
     fn to_toml_renamed_dep() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let dep = Dependency::new("dep").set_rename("d");
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
+        let dep = Dependency::new("dep")
+            .set_source(RegistrySource::new("1.0"))
+            .set_rename("d");
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -689,8 +966,12 @@ mod tests {
 
     #[test]
     fn to_toml_dep_from_alt_registry() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
-        let dep = Dependency::new("dep").set_registry("alternative");
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
+        let dep = Dependency::new("dep")
+            .set_source(RegistrySource::new("1.0"))
+            .set_registry("alternative");
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -705,10 +986,12 @@ mod tests {
 
     #[test]
     fn to_toml_complex_dep() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
         let dep = Dependency::new("dep")
-            .set_version("1.0")
-            .set_default_features(Some(false))
+            .set_source(RegistrySource::new("1.0"))
+            .set_default_features(false)
             .set_rename("d");
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
@@ -726,10 +1009,12 @@ mod tests {
 
     #[test]
     fn paths_with_forward_slashes_are_left_as_is() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
         let path = crate_root.join("sibling/crate");
         let relpath = "sibling/crate";
-        let dep = Dependency::new("dep").set_path(path);
+        let dep = Dependency::new("dep").set_source(PathSource::new(path));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -741,12 +1026,34 @@ mod tests {
     }
 
     #[test]
+    fn overwrite_with_workspace_source_fmt_key() {
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("./")))
+                .expect("root exists");
+        let toml = "dep = \"1.0\"\n";
+        let manifest = toml.parse().unwrap();
+        let mut local = LocalManifest {
+            path: crate_root.clone(),
+            manifest,
+        };
+        assert_eq!(local.manifest.to_string(), toml);
+        for (key, item) in local.data.clone().iter() {
+            let dep = Dependency::from_toml(&crate_root, key, item).unwrap();
+            let dep = dep.set_source(WorkspaceSource::new());
+            local.insert_into_table(&vec![], &dep).unwrap();
+            assert_eq!(local.data.to_string(), "dep.workspace = true\n");
+        }
+    }
+
+    #[test]
     #[cfg(windows)]
     fn normalise_windows_style_paths() {
-        let crate_root = dunce::canonicalize(Path::new("/")).expect("root exists");
+        let crate_root =
+            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
+                .expect("root exists");
         let original = crate_root.join(r"sibling\crate");
         let should_be = "sibling/crate";
-        let dep = Dependency::new("dep").set_path(original);
+        let dep = Dependency::new("dep").set_source(PathSource::new(original));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
 
@@ -757,6 +1064,7 @@ mod tests {
         verify_roundtrip(&crate_root, key, &item);
     }
 
+    #[track_caller]
     fn verify_roundtrip(crate_root: &Path, key: &str, item: &toml_edit::Item) {
         let roundtrip = Dependency::from_toml(crate_root, key, item).unwrap();
         let round_key = roundtrip.toml_key();

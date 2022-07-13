@@ -9,6 +9,7 @@ use super::errors::*;
 use super::registry::registry_url;
 use super::shell_status;
 use super::Dependency;
+use super::RegistrySource;
 use super::VersionExt;
 
 /// Query latest version from a registry index
@@ -54,7 +55,7 @@ pub fn get_latest_dependency(
         };
 
         return Ok(Dependency::new(crate_name)
-            .set_version(&new_version)
+            .set_source(RegistrySource::new(&new_version))
             .set_available_features(features));
     }
 
@@ -186,7 +187,7 @@ fn read_latest_version(
     let name = &latest.name;
     let version = latest.version.to_string();
     Ok(Dependency::new(name)
-        .set_version(&version)
+        .set_source(RegistrySource::new(&version))
         .set_available_features(latest.available_features.clone()))
 }
 
