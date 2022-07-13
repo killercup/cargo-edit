@@ -1,0 +1,13 @@
+bin.name = "cargo-upgrade"
+args = ["upgrade", "--locked"]
+status = "failed"
+stdout = ""
+stderr = """
+    Checking cargo-list-test-fixture's dependencies
+   Upgrading docopt: v0.8.0 -> v99999.0.0
+Error: cannot upgrade due to `--locked`
+"""
+fs.sandbox = true
+
+[env.add]
+CARGO_IS_TEST="1"

@@ -98,6 +98,10 @@ pub struct UpgradeArgs {
     #[clap(long)]
     exclude: Vec<String>,
 
+    /// Require `Cargo.toml` to be up to date
+    #[clap(long)]
+    locked: bool,
+
     /// Use verbose output
     #[clap(short, long)]
     verbose: bool,
@@ -179,8 +183,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut processed_keys = BTreeSet::new();
 
     let mut updated_registries = BTreeSet::new();
+    let mut any_crate_modified = false;
     for (mut manifest, package) in manifests {
-        let mut modified = false;
+        let mut crate_modified = false;
         let manifest_path = manifest.path.clone();
         shell_status("Checking", &format!("{}'s dependencies", package.name))?;
         for dep_table in manifest.get_dependency_tables_mut() {
@@ -340,12 +345,17 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 }
                 print_upgrade(dependency.toml_key(), &old_version, &new_version)?;
                 set_dep_version(dep_item, &new_version)?;
-                modified = true;
+                crate_modified = true;
+                any_crate_modified = true;
             }
         }
-        if !args.dry_run && modified {
+        if !args.dry_run && !args.locked && crate_modified {
             manifest.write()?;
         }
+    }
+
+    if args.locked && any_crate_modified {
+        anyhow::bail!("cannot upgrade due to `--locked`");
     }
 
     let unused = selected_dependencies
