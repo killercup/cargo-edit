@@ -160,6 +160,7 @@ OPTIONS:
                                   manifest. "Pinned" refers to dependencies with a '=' or '<' or
                                   '<=' version requirement
         --to-lockfile             Upgrade all packages to the version in the lockfile
+    -v, --verbose                 Use verbose output
     -V, --version                 Print version information
         --workspace               Upgrade all packages in the workspace
     -Z <FLAG>                     Unstable (nightly-only) flags [possible values: preserve-

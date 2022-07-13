@@ -1,9 +1,10 @@
 bin.name = "cargo-upgrade"
-args = ["upgrade", "--exclude", "docopt"]
+args = ["upgrade", "--exclude", "docopt", "--verbose"]
 status = "success"
 stdout = ""
 stderr = """
     Checking None's dependencies
+warning: ignoring docopt , excluded by user
    Upgrading pad: v0.1 -> v99999.0.0
    Upgrading serde_json: v1.0 -> v99999.0.0
    Upgrading syn: v0.11.10 -> v99999.0.0
@@ -14,6 +15,7 @@ stderr = """
    Upgrading rn: v0.1 -> v99999.0.0
    Upgrading assert_cli: v0.2.0 -> v99999.0.0
    Upgrading tempdir: v0.3 -> v99999.0.0
+warning: ignoring serde, source is https://github.com/serde-rs/serde.git
    Upgrading openssl: v0.9 -> v99999.0.0
    Upgrading rget: v0.3.0 -> v99999.0.0
    Upgrading geo: v0.7.0 -> v99999.0.0

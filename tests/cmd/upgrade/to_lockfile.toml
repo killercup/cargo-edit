@@ -1,11 +1,12 @@
 bin.name = "cargo-upgrade"
-args = ["upgrade", "--workspace", "--to-lockfile"]
+args = ["upgrade", "--workspace", "--to-lockfile", "--verbose"]
 status = "success"
 stdout = ""
 stderr = """
     Checking one's dependencies
    Upgrading libc: v0.2.28 -> v0.2.62
    Upgrading rand: v0.3 -> v0.3.23
+warning: ignoring three, source is [CWD]/one/Cargo.toml/../implicit/three
     Checking three's dependencies
    Upgrading libc: v0.2.28 -> v0.2.62
     Checking two's dependencies

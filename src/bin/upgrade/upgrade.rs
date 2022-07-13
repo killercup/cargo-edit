@@ -97,6 +97,10 @@ pub struct UpgradeArgs {
     #[clap(long)]
     exclude: Vec<String>,
 
+    /// Use verbose output
+    #[clap(short, long)]
+    verbose: bool,
+
     /// Unstable (nightly-only) flags
     #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
     unstable_features: Vec<UnstableOptions>,
@@ -124,6 +128,17 @@ impl UpgradeArgs {
     fn preserve_precision(&self) -> bool {
         self.unstable_features
             .contains(&UnstableOptions::PreservePrecision)
+    }
+
+    fn verbose<F>(&self, mut callback: F) -> CargoResult<()>
+    where
+        F: FnMut() -> CargoResult<()>,
+    {
+        if self.verbose {
+            callback()
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -170,26 +185,50 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 if !selected_dependencies.is_empty()
                     && !selected_dependencies.contains_key(dep_key.get())
                 {
+                    args.verbose(|| {
+                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
+                    })?;
                     continue;
                 }
                 if args.exclude.contains(&dep_key.get().to_owned()) {
+                    args.verbose(|| {
+                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
+                    })?;
                     continue;
                 }
                 let dependency =
                     match Dependency::from_toml(&manifest_path, dep_key.get(), dep_item) {
                         Ok(dependency) => dependency,
-                        Err(_) => {
+                        Err(err) => {
+                            shell_warn(&format!("ignoring {}, invalid entry: {}", dep_key, err))?;
                             continue;
                         }
                     };
                 let old_version = match dependency.source.as_ref().and_then(|s| s.as_registry()) {
                     Some(registry) => registry.version.clone(),
                     None => {
+                        args.verbose(|| {
+                            let source = dependency
+                                .source()
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|| "unknown".to_owned());
+                            shell_warn(&format!(
+                                "ignoring {}, source is {}",
+                                dependency.toml_key(),
+                                source
+                            ))
+                        })?;
                         continue;
                     }
                 };
                 if args.skip_pinned {
                     if dependency.rename.is_some() {
+                        args.verbose(|| {
+                            shell_warn(&format!(
+                                "ignoring {}, renamed dependencies are pinned",
+                                dependency.toml_key(),
+                            ))
+                        })?;
                         continue;
                     }
 
@@ -197,6 +236,13 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         if version_req.comparators.iter().any(|comparator| {
                             matches!(comparator.op, Op::Exact | Op::Less | Op::LessEq)
                         }) {
+                            args.verbose(|| {
+                                shell_warn(&format!(
+                                    "ignoring {}, version ({}) is pinned",
+                                    dependency.toml_key(),
+                                    old_version
+                                ))
+                            })?;
                             continue;
                         }
                     }
@@ -242,7 +288,14 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     };
                     let new_version = match new_version {
                         Ok(new_version) => new_version,
-                        Err(_) => {
+                        Err(err) => {
+                            args.verbose(|| {
+                                shell_warn(&format!(
+                                    "ignoring {}, could not find package: {}",
+                                    dependency.toml_key(),
+                                    err
+                                ))
+                            })?;
                             continue;
                         }
                     };
@@ -261,9 +314,24 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 }
                 if args.skip_compatible && old_version_compatible(&old_version, &new_version) {
+                    args.verbose(|| {
+                        shell_warn(&format!(
+                            "ignoring {}, version ({}) is compatible with {}",
+                            dependency.toml_key(),
+                            old_version,
+                            new_version
+                        ))
+                    })?;
                     continue;
                 }
                 if new_version == old_version {
+                    args.verbose(|| {
+                        shell_warn(&format!(
+                            "ignoring {}, version ({}) is unchanged",
+                            dependency.toml_key(),
+                            new_version
+                        ))
+                    })?;
                     continue;
                 }
                 print_upgrade(dependency.toml_key(), &old_version, &new_version)?;
