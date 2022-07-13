@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -8,6 +8,7 @@ use cargo_edit::{
     CrateSpec, Dependency, LocalManifest,
 };
 use clap::Args;
+use indexmap::IndexMap;
 use semver::{Op, VersionReq};
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 
@@ -174,7 +175,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             let spec = CrateSpec::resolve(name)?;
             Ok((spec.name, spec.version_req))
         })
-        .collect::<CargoResult<BTreeMap<_, _>>>()?;
+        .collect::<CargoResult<IndexMap<_, _>>>()?;
+    let mut processed_keys = BTreeSet::new();
 
     let mut updated_registries = BTreeSet::new();
     for (mut manifest, package) in manifests {
@@ -182,6 +184,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         shell_status("Checking", &format!("{}'s dependencies", package.name))?;
         for dep_table in manifest.get_dependency_tables_mut() {
             for (dep_key, dep_item) in dep_table.iter_mut() {
+                processed_keys.insert(dep_key.get().to_owned());
                 if !selected_dependencies.is_empty()
                     && !selected_dependencies.contains_key(dep_key.get())
                 {
@@ -341,6 +344,17 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         if !args.dry_run {
             manifest.write()?;
         }
+    }
+
+    let unused = selected_dependencies
+        .keys()
+        .filter(|k| !processed_keys.contains(k.as_str()))
+        .map(|k| k.as_str())
+        .collect::<Vec<_>>();
+    match unused.len() {
+        0 => {}
+        1 => anyhow::bail!("dependency {} doesn't exist", unused.join(", ")),
+        _ => anyhow::bail!("dependencies {} don't exist", unused.join(", ")),
     }
 
     if args.dry_run {
