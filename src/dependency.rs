@@ -60,24 +60,6 @@ impl Dependency {
         self
     }
 
-    /// Remove the existing version requirement
-    pub fn clear_version(mut self) -> Self {
-        match &mut self.source {
-            Some(Source::Registry(_)) => {
-                self.source = None;
-            }
-            Some(Source::Path(path)) => {
-                path.version = None;
-            }
-            Some(Source::Git(git)) => {
-                git.version = None;
-            }
-            Some(Source::Workspace(_workspace)) => {}
-            None => {}
-        }
-        self
-    }
-
     /// Set the available features of the dependency to a given vec
     pub fn set_available_features(
         mut self,
@@ -832,8 +814,6 @@ impl std::fmt::Display for WorkspaceSource {
 mod tests {
     use std::path::Path;
 
-    use super::super::manifest::LocalManifest;
-
     use super::*;
 
     #[test]
@@ -1023,26 +1003,6 @@ mod tests {
         assert_eq!(got, relpath);
 
         verify_roundtrip(&crate_root, key, &item);
-    }
-
-    #[test]
-    fn overwrite_with_workspace_source_fmt_key() {
-        let crate_root =
-            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("./")))
-                .expect("root exists");
-        let toml = "dep = \"1.0\"\n";
-        let manifest = toml.parse().unwrap();
-        let mut local = LocalManifest {
-            path: crate_root.clone(),
-            manifest,
-        };
-        assert_eq!(local.manifest.to_string(), toml);
-        for (key, item) in local.data.clone().iter() {
-            let dep = Dependency::from_toml(&crate_root, key, item).unwrap();
-            let dep = dep.set_source(WorkspaceSource::new());
-            local.insert_into_table(&vec![], &dep).unwrap();
-            assert_eq!(local.data.to_string(), "dep.workspace = true\n");
-        }
     }
 
     #[test]
