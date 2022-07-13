@@ -5,11 +5,11 @@ stdout = """
 cargo-list-test-fixture:
 """
 stderr = """
-   Upgrading caret v^3.0 -> v99999.0.0
+   Upgrading caret ^3.0 -> v99999.0.0
    Upgrading default v1.0 -> v99999.0.0
-   Upgrading greaterorequal v>=2.1.0 -> v99999.0.0
-   Upgrading greaterthan v>2.0 -> v99999.0.0
-   Upgrading tilde v~4.1.0 -> v99999.0.0
+   Upgrading greaterorequal >=2.1.0 -> v99999.0.0
+   Upgrading greaterthan >2.0 -> v99999.0.0
+   Upgrading tilde ~4.1.0 -> v99999.0.0
    Upgrading wildcard v3.* -> v99999.0.0
 """
 fs.sandbox = true

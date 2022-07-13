@@ -557,11 +557,21 @@ fn print_upgrade_if_necessary(
     if old_version == new_version {
         return Ok(());
     }
+    let old_version = format_version_req(old_version);
+    let new_version = format_version_req(new_version);
 
     shell_status(
         "Upgrading",
-        &format!("{crate_name} v{old_version} -> v{new_version}"),
+        &format!("{crate_name} {old_version} -> {new_version}"),
     )?;
 
     Ok(())
+}
+
+fn format_version_req(version: &str) -> String {
+    if version.chars().next().unwrap_or('0').is_ascii_digit() {
+        format!("v{}", version)
+    } else {
+        version.to_owned()
+    }
 }
