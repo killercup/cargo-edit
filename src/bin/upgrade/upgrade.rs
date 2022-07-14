@@ -67,10 +67,6 @@ pub struct UpgradeArgs {
     #[clap(long)]
     dry_run: bool,
 
-    /// Only update a dependency if the new version is semver incompatible.
-    #[clap(long, conflicts_with = "to-lockfile")]
-    skip_compatible: bool,
-
     /// Only update a dependency if it is not currently pinned in the manifest.
     /// "Pinned" refers to dependencies with a '=' or '<' or '<=' version requirement
     #[clap(long)]
@@ -245,9 +241,18 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 } else {
                     // Not checking `selected_dependencies.is_empty`, it was checked earlier
                     let new_version = if args.to_lockfile {
-                        find_locked_version(&dependency.name, &old_version_req, &locked).ok_or_else(
-                            || anyhow::format_err!("{} is not in block file", dependency.name),
-                        )
+                        match find_locked_version(&dependency.name, &old_version_req, &locked) {
+                            Some(new_version) => new_version,
+                            None => {
+                                args.verbose(|| {
+                                    shell_warn(&format!(
+                                        "ignoring {}, could not find package: not in lock file",
+                                        dependency.toml_key(),
+                                    ))
+                                })?;
+                                continue;
+                            }
+                        }
                     } else {
                         // Update indices for any alternative registries, unless
                         // we're offline.
@@ -263,7 +268,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             }
                         }
                         let is_prerelease = old_version_req.contains('-');
-                        get_latest_dependency(
+                        let new_version = get_latest_dependency(
                             &dependency.name,
                             is_prerelease,
                             &manifest_path,
@@ -273,34 +278,33 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             d.version()
                                 .expect("registry packages always have a version")
                                 .to_owned()
-                        })
-                    };
-                    let new_version = match new_version {
-                        Ok(new_version) => new_version,
-                        Err(err) => {
+                        });
+                        let new_version = match new_version {
+                            Ok(new_version) => new_version,
+                            Err(err) => {
+                                args.verbose(|| {
+                                    shell_warn(&format!(
+                                        "ignoring {}, could not find package: {}",
+                                        dependency.toml_key(),
+                                        err
+                                    ))
+                                })?;
+                                continue;
+                            }
+                        };
+                        if old_version_compatible(&old_version_req, &new_version) {
                             args.verbose(|| {
                                 shell_warn(&format!(
-                                    "ignoring {}, could not find package: {}",
+                                    "ignoring {}, version ({}) is compatible with {}",
                                     dependency.toml_key(),
-                                    err
+                                    old_version_req,
+                                    new_version
                                 ))
                             })?;
                             continue;
                         }
+                        new_version
                     };
-                    if args.skip_compatible
-                        && old_version_compatible(&old_version_req, &new_version)
-                    {
-                        args.verbose(|| {
-                            shell_warn(&format!(
-                                "ignoring {}, version ({}) is compatible with {}",
-                                dependency.toml_key(),
-                                old_version_req,
-                                new_version
-                            ))
-                        })?;
-                        continue;
-                    }
                     let mut new_version_req = new_version;
                     let new_ver: semver::Version = new_version_req.parse()?;
                     match cargo_edit::upgrade_requirement(&old_version_req, &new_ver) {

@@ -154,7 +154,6 @@ OPTIONS:
         --manifest-path <PATH>    Path to the manifest to upgrade
         --offline                 Run without accessing the network
     -p, --package <PKGID>         Package id of the crate to add this dependency to
-        --skip-compatible         Only update a dependency if the new version is semver incompatible
         --skip-pinned             Only update a dependency if it is not currently pinned in the
                                   manifest. "Pinned" refers to dependencies with a '=' or '<' or
                                   '<=' version requirement
