@@ -7,6 +7,42 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Breaking changes
+
+- Many programmatic APIs changed
+- `cargo add` remove in favor of the version included with cargo 1.62.0
+- `cargo upgrade` skips pinned dependencies by default, run with `--pinned` to do them all
+- `cargo upgrade --skip-compatible` is now default, run with `--to-lockfile` to upgrade all
+- `cargo upgrade` now accepts dependency keys rather than crate names
+- `cargo upgrade` now preserves version req precision
+- `cargo upgrade --allow-prerelease` was removed to match `cargo add`
+
+### Fixes
+
+All
+- Align console messages
+- Allow using `--manifest-path` with `--pkgid`
+- Allow relative paths with `--manifest-path`
+
+`upgrade`
+- Positional arguments are now dependency keys, allowing forcing of renamed dependencies to upgrade
+- Make compatible upgrades and precision preservation work together
+- Cleaned up output
+- Preserve user formatting of dependencies
+- Don't confuse dependencies
+
+### Features
+
+`upgrade`
+- Always preserve version req precision
+- With `--verbose`, see why dependencies didn't upgrade
+- Error if upgrades possible with `--locked`
+- Allow multiple occurrences of `--pkgid`
+
+`rm`
+- Add `--target` flag
+- Add `--dry-run` flag
+
 ## 0.9.1 - 2022-05-17
 
 ### Fixes
