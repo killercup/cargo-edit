@@ -1,0 +1,9 @@
+[package]
+name = "three"
+version = "0.1.0"
+
+[lib]
+path = "../../dummy.rs"
+
+[dependencies]
+libc = "99999.0.0"

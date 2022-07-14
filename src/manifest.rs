@@ -6,6 +6,7 @@ use std::{env, str};
 use semver::Version;
 
 use super::errors::*;
+use super::metadata::find_manifest_path;
 
 #[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Clone, Debug, Copy)]
 pub enum DepKind {
@@ -68,8 +69,6 @@ impl From<DepKind> for DepTable {
         Self::new().set_kind(other)
     }
 }
-
-const MANIFEST_FILENAME: &str = "Cargo.toml";
 
 /// A Cargo manifest
 #[derive(Debug, Clone)]
@@ -423,27 +422,10 @@ pub fn find(specified: Option<&Path>) -> CargoResult<PathBuf> {
         {
             Ok(path.to_owned())
         }
-        Some(path) => search(path),
-        None => search(&env::current_dir().with_context(|| "Failed to get current directory")?),
-    }
-}
-
-/// Search for Cargo.toml in this directory and recursively up the tree until one is found.
-fn search(dir: &Path) -> CargoResult<PathBuf> {
-    let mut current_dir = dir;
-
-    loop {
-        let manifest = current_dir.join(MANIFEST_FILENAME);
-        if fs::metadata(&manifest).is_ok() {
-            return Ok(manifest);
-        }
-
-        current_dir = match current_dir.parent() {
-            Some(current_dir) => current_dir,
-            None => {
-                anyhow::bail!("Unable to find Cargo.toml for {}", dir.display());
-            }
-        };
+        Some(path) => find_manifest_path(path),
+        None => find_manifest_path(
+            &env::current_dir().with_context(|| "Failed to get current directory")?,
+        ),
     }
 }
 

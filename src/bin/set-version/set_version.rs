@@ -3,8 +3,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use cargo_edit::{
-    colorize_stderr, find, manifest_from_pkgid, upgrade_requirement, workspace_members,
-    LocalManifest,
+    colorize_stderr, resolve_manifests, upgrade_requirement, workspace_members, LocalManifest,
 };
 use clap::Args;
 use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
@@ -110,13 +109,11 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
     let all = workspace || all;
-    let manifests = if all {
-        Manifests::get_all(manifest_path.as_deref())
-    } else if let Some(ref pkgid) = pkgid {
-        Manifests::get_pkgid(manifest_path.as_deref(), pkgid)
-    } else {
-        Manifests::get_local_one(manifest_path.as_deref())
-    }?;
+    let manifests = Manifests(resolve_manifests(
+        manifest_path.as_deref(),
+        all,
+        pkgid.as_deref().into_iter().collect::<Vec<_>>(),
+    )?);
 
     if dry_run {
         dry_run_message()?;
@@ -189,51 +186,6 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 
 /// A collection of manifests.
 struct Manifests(Vec<cargo_metadata::Package>);
-
-impl Manifests {
-    /// Get all manifests in the workspace.
-    fn get_all(manifest_path: Option<&Path>) -> CargoResult<Self> {
-        let mut cmd = cargo_metadata::MetadataCommand::new();
-        cmd.no_deps();
-        if let Some(path) = manifest_path {
-            cmd.manifest_path(path);
-        }
-        let result = cmd
-            .exec()
-            .with_context(|| "Failed to get workspace metadata")?;
-        Ok(Self(result.packages))
-    }
-
-    fn get_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoResult<Self> {
-        let package = manifest_from_pkgid(manifest_path, pkgid)?;
-        Ok(Manifests(vec![package]))
-    }
-
-    /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
-    /// provided.
-    fn get_local_one(manifest_path: Option<&Path>) -> CargoResult<Self> {
-        let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
-
-        let mut cmd = cargo_metadata::MetadataCommand::new();
-        cmd.no_deps();
-        if let Some(path) = manifest_path {
-            cmd.manifest_path(path);
-        }
-        let result = cmd.exec().with_context(|| "Invalid manifest")?;
-        let packages = result.packages;
-        let package = packages
-            .iter()
-            .find(|p| p.manifest_path == resolved_manifest_path)
-            // If we have successfully got metadata, but our manifest path does not correspond to a
-            // package, we must have been called against a virtual manifest.
-            .with_context(|| {
-                "Found virtual manifest, but this command requires running against an \
-                 actual package in this workspace. Try adding `--workspace`."
-            })?;
-
-        Ok(Manifests(vec![package.to_owned()]))
-    }
-}
 
 fn dry_run_message() -> CargoResult<()> {
     let colorchoice = colorize_stderr();
