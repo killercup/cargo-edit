@@ -309,6 +309,19 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             continue;
                         }
                     };
+                    if args.skip_compatible
+                        && old_version_compatible(&old_version_req, &new_version)
+                    {
+                        args.verbose(|| {
+                            shell_warn(&format!(
+                                "ignoring {}, version ({}) is compatible with {}",
+                                dependency.toml_key(),
+                                old_version_req,
+                                new_version
+                            ))
+                        })?;
+                        continue;
+                    }
                     let mut new_version_req = new_version;
                     if preserve_precision {
                         let new_ver: semver::Version = new_version_req.parse()?;
@@ -321,19 +334,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 new_version_req = old_version_req.clone();
                             }
                         }
-                    }
-                    if args.skip_compatible
-                        && old_version_compatible(&old_version_req, &new_version_req)
-                    {
-                        args.verbose(|| {
-                            shell_warn(&format!(
-                                "ignoring {}, version ({}) is compatible with {}",
-                                dependency.toml_key(),
-                                old_version_req,
-                                new_version_req
-                            ))
-                        })?;
-                        continue;
                     }
                     new_version_req
                 };
@@ -481,25 +481,19 @@ fn resolve_local_one(
     Ok(vec![(manifest, package.to_owned())])
 }
 
-fn old_version_compatible(old_version: &str, mut new_version: &str) -> bool {
-    let old_version = match VersionReq::parse(old_version) {
+fn old_version_compatible(old_version_req: &str, new_version: &str) -> bool {
+    let old_version_req = match VersionReq::parse(old_version_req) {
         Ok(req) => req,
         Err(_) => return false,
     };
 
-    let new_req = VersionReq::parse(new_version);
-    assert!(new_req.is_ok(), "{}", new_req.unwrap_err());
-    let first_char = new_version.chars().next();
-    if !first_char.unwrap_or('0').is_ascii_digit() {
-        new_version = new_version.strip_prefix(first_char.unwrap()).unwrap();
-    }
     let new_version = match semver::Version::parse(new_version) {
         Ok(new_version) => new_version,
         // HACK: Skip compatibility checks on incomplete version reqs
         Err(_) => return false,
     };
 
-    old_version.matches(&new_version)
+    old_version_req.matches(&new_version)
 }
 
 fn deprecated_message(message: &str) -> CargoResult<()> {
