@@ -3,17 +3,21 @@ args = ["upgrade"]
 status.code = 1
 stdout = ""
 stderr = """
-Error: Unable to parse Cargo.toml
+Error: Invalid manifest
 
 Caused by:
-    0: Manifest not valid TOML
-    1: TOML parse error at line 1, column 6
-         |
-       1 | This is clearly not a valid Cargo.toml.
-         |      ^
-       Unexpected `i`
-       Expected `.` or `=`
-       
+    `cargo metadata` exited with an error: error: failed to parse manifest at `[CWD]/Cargo.toml`
+    
+    Caused by:
+      could not parse input as TOML
+    
+    Caused by:
+      TOML parse error at line 1, column 6
+        |
+      1 | This is clearly not a valid Cargo.toml.
+        |      ^
+      Unexpected `i`
+      Expected `.` or `=`
 """
 fs.sandbox = true
 

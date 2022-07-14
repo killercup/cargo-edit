@@ -114,7 +114,7 @@ impl UpgradeArgs {
         self.all || self.workspace
     }
 
-    fn resolve_targets(&self) -> CargoResult<Vec<(LocalManifest, cargo_metadata::Package)>> {
+    fn resolve_targets(&self) -> CargoResult<Vec<cargo_metadata::Package>> {
         if self.workspace() {
             resolve_all(self.manifest_path.as_deref())
         } else if let Some(pkgid) = self.pkgid.as_deref() {
@@ -170,7 +170,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
     let mut updated_registries = BTreeSet::new();
     let mut any_crate_modified = false;
-    for (mut manifest, package) in manifests {
+    for package in manifests {
+        let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
         let mut crate_modified = false;
         let manifest_path = manifest.path.clone();
         shell_status("Checking", &format!("{}'s dependencies", package.name))?;
@@ -363,17 +364,15 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     Ok(())
 }
 
-fn load_lockfile(
-    targets: &[(LocalManifest, cargo_metadata::Package)],
-) -> CargoResult<Vec<cargo_metadata::Package>> {
+fn load_lockfile(targets: &[cargo_metadata::Package]) -> CargoResult<Vec<cargo_metadata::Package>> {
     // Get locked dependencies. For workspaces with multiple Cargo.toml
     // files, there is only a single lockfile, so it suffices to get
     // metadata for any one of Cargo.toml files.
-    let (manifest, _package) = targets
+    let package = targets
         .get(0)
         .ok_or_else(|| anyhow::format_err!("Invalid cargo config"))?;
     let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.manifest_path(manifest.path.clone());
+    cmd.manifest_path(package.manifest_path.clone());
     cmd.features(cargo_metadata::CargoOpt::AllFeatures);
     cmd.other_options(vec!["--locked".to_string()]);
 
@@ -403,9 +402,7 @@ fn find_locked_version(
 }
 
 /// Get all manifests in the workspace.
-fn resolve_all(
-    manifest_path: Option<&Path>,
-) -> CargoResult<Vec<(LocalManifest, cargo_metadata::Package)>> {
+fn resolve_all(manifest_path: Option<&Path>) -> CargoResult<Vec<cargo_metadata::Package>> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.no_deps();
     if let Some(path) = manifest_path {
@@ -417,32 +414,22 @@ fn resolve_all(
     result
         .packages
         .into_iter()
-        .map(|package| {
-            Ok((
-                LocalManifest::try_new(Path::new(&package.manifest_path))?,
-                package,
-            ))
-        })
+        .map(|package| Ok(package))
         .collect::<CargoResult<Vec<_>>>()
 }
 
 fn resolve_pkgid(
     manifest_path: Option<&Path>,
     pkgid: &str,
-) -> CargoResult<Vec<(LocalManifest, cargo_metadata::Package)>> {
+) -> CargoResult<Vec<cargo_metadata::Package>> {
     let package = manifest_from_pkgid(manifest_path, pkgid)?;
-    let manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
-    Ok(vec![(manifest, package)])
+    Ok(vec![package])
 }
 
 /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
 /// provided.
-fn resolve_manifest(
-    manifest_path: Option<&Path>,
-) -> CargoResult<Vec<(LocalManifest, cargo_metadata::Package)>> {
+fn resolve_manifest(manifest_path: Option<&Path>) -> CargoResult<Vec<cargo_metadata::Package>> {
     let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
-
-    let manifest = LocalManifest::find(manifest_path)?;
 
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.no_deps();
@@ -461,7 +448,7 @@ fn resolve_manifest(
                  actual package in this workspace. Try adding `--workspace`."
         })?;
 
-    Ok(vec![(manifest, package.to_owned())])
+    Ok(vec![(package.to_owned())])
 }
 
 fn old_version_compatible(old_version_req: &str, new_version: &str) -> bool {
