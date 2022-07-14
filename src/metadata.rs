@@ -58,3 +58,65 @@ fn canonicalize_path(
 
     path
 }
+
+/// Determine packages selected by user
+pub fn resolve_manifests(
+    manifest_path: Option<&Path>,
+    workspace: bool,
+    pkgid: Option<&str>,
+) -> CargoResult<Vec<Package>> {
+    let manifest_path = manifest_path.map(|p| Ok(p.to_owned())).unwrap_or_else(|| {
+        find_manifest_path(
+            &std::env::current_dir().with_context(|| "Failed to get current directory")?,
+        )
+    })?;
+    let manifest_path = dunce::canonicalize(manifest_path)?;
+
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.no_deps();
+    cmd.manifest_path(&manifest_path);
+    let result = cmd.exec().with_context(|| "Invalid manifest")?;
+    let pkgs = if workspace {
+        result
+            .packages
+            .into_iter()
+            .map(|package| Ok(package))
+            .collect::<CargoResult<Vec<_>>>()?
+    } else if let Some(pkgid) = pkgid {
+        let package = result
+            .packages
+            .into_iter()
+            .find(|pkg| pkg.name == pkgid)
+            .with_context(|| {
+                "Found virtual manifest, but this command requires running against an \
+                 actual package in this workspace. Try adding `--workspace`."
+            })?;
+        vec![package]
+    } else {
+        let package = result
+            .packages
+            .iter()
+            .find(|p| p.manifest_path == manifest_path)
+            // If we have successfully got metadata, but our manifest path does not correspond to a
+            // package, we must have been called against a virtual manifest.
+            .with_context(|| {
+                "Found virtual manifest, but this command requires running against an \
+                 actual package in this workspace. Try adding `--workspace`."
+            })?;
+
+        vec![(package.to_owned())]
+    };
+    Ok(pkgs)
+}
+
+/// Search for Cargo.toml in this directory and recursively up the tree until one is found.
+pub(crate) fn find_manifest_path(dir: &Path) -> CargoResult<std::path::PathBuf> {
+    const MANIFEST_FILENAME: &str = "Cargo.toml";
+    for path in dir.ancestors() {
+        let manifest = path.join(MANIFEST_FILENAME);
+        if std::fs::metadata(&manifest).is_ok() {
+            return Ok(manifest);
+        }
+    }
+    anyhow::bail!("Unable to find Cargo.toml for {}", dir.display());
+}

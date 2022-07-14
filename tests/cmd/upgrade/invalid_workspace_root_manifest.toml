@@ -3,7 +3,7 @@ args = ["upgrade", "--workspace"]
 status.code = 1
 stdout = ""
 stderr = """
-Error: Failed to get workspace metadata
+Error: Invalid manifest
 
 Caused by:
     `cargo metadata` exited with an error: error: failed to parse manifest at `[CWD]/Cargo.toml`
