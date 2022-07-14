@@ -176,29 +176,28 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         shell_status("Checking", &format!("{}'s dependencies", package.name))?;
         for dep_table in manifest.get_dependency_tables_mut() {
             for (dep_key, dep_item) in dep_table.iter_mut() {
-                processed_keys.insert(dep_key.get().to_owned());
-                if !selected_dependencies.is_empty()
-                    && !selected_dependencies.contains_key(dep_key.get())
+                let dep_key = dep_key.get();
+                processed_keys.insert(dep_key.to_owned());
+                if !selected_dependencies.is_empty() && !selected_dependencies.contains_key(dep_key)
                 {
                     args.verbose(|| {
                         shell_warn(&format!("ignoring {}, excluded by user", dep_key))
                     })?;
                     continue;
                 }
-                if args.exclude.contains(&dep_key.get().to_owned()) {
+                if args.exclude.contains(&dep_key.to_owned()) {
                     args.verbose(|| {
                         shell_warn(&format!("ignoring {}, excluded by user", dep_key))
                     })?;
                     continue;
                 }
-                let dependency =
-                    match Dependency::from_toml(&manifest_path, dep_key.get(), dep_item) {
-                        Ok(dependency) => dependency,
-                        Err(err) => {
-                            shell_warn(&format!("ignoring {}, invalid entry: {}", dep_key, err))?;
-                            continue;
-                        }
-                    };
+                let dependency = match Dependency::from_toml(&manifest_path, dep_key, dep_item) {
+                    Ok(dependency) => dependency,
+                    Err(err) => {
+                        shell_warn(&format!("ignoring {}, invalid entry: {}", dep_key, err))?;
+                        continue;
+                    }
+                };
                 let old_version_req = match dependency.source.as_ref().and_then(|s| s.as_registry())
                 {
                     Some(registry) => registry.version.clone(),
