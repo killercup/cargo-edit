@@ -67,10 +67,9 @@ pub struct UpgradeArgs {
     #[clap(long)]
     dry_run: bool,
 
-    /// Only update a dependency if it is not currently pinned in the manifest.
-    /// "Pinned" refers to dependencies with a '=' or '<' or '<=' version requirement
+    /// Upgrade dependencies pinned in the manifest.
     #[clap(long)]
-    skip_pinned: bool,
+    pinned: bool,
 
     /// Run without accessing the network
     #[clap(long)]
@@ -207,7 +206,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         continue;
                     }
                 };
-                if args.skip_pinned {
+                if !args.pinned {
                     if dependency.rename.is_some() {
                         args.verbose(|| {
                             shell_warn(&format!(

@@ -1,5 +1,5 @@
 bin.name = "cargo-upgrade"
-args = ["upgrade", "--exclude", "docopt", "--verbose"]
+args = ["upgrade", "--pinned", "--exclude", "docopt", "--verbose"]
 status = "success"
 stdout = ""
 stderr = """
