@@ -27,21 +27,11 @@ pub struct RmArgs {
     target: Option<String>,
 
     /// Path to the manifest to remove a dependency from.
-    #[clap(
-        long,
-        value_name = "PATH",
-        parse(from_os_str),
-        conflicts_with = "pkgid"
-    )]
+    #[clap(long, value_name = "PATH", parse(from_os_str))]
     manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to remove this dependency from.
-    #[clap(
-        long = "package",
-        short = 'p',
-        value_name = "PKGID",
-        conflicts_with = "manifest-path"
-    )]
+    #[clap(long = "package", short = 'p', value_name = "PKGID")]
     pkgid: Option<String>,
 
     /// Unstable (nightly-only) flags

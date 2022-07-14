@@ -35,12 +35,7 @@ pub struct VersionArgs {
     pub metadata: Option<String>,
 
     /// Path to the manifest to upgrade
-    #[clap(
-        long,
-        value_name = "PATH",
-        parse(from_os_str),
-        conflicts_with = "pkgid"
-    )]
+    #[clap(long, value_name = "PATH", parse(from_os_str))]
     manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to change the version of.
@@ -48,7 +43,6 @@ pub struct VersionArgs {
         long = "package",
         short = 'p',
         value_name = "PKGID",
-        conflicts_with = "manifest-path",
         conflicts_with = "all",
         conflicts_with = "workspace"
     )]
