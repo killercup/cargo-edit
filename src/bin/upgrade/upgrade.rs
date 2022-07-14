@@ -130,11 +130,6 @@ impl UpgradeArgs {
         }
     }
 
-    fn preserve_precision(&self) -> bool {
-        self.unstable_features
-            .contains(&UnstableOptions::PreservePrecision)
-    }
-
     fn verbose<F>(&self, mut callback: F) -> CargoResult<()>
     where
         F: FnMut() -> CargoResult<()>,
@@ -148,9 +143,7 @@ impl UpgradeArgs {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
-enum UnstableOptions {
-    PreservePrecision,
-}
+enum UnstableOptions {}
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
@@ -170,7 +163,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     } else {
         load_lockfile(&manifests).unwrap_or_default()
     };
-    let preserve_precision = args.preserve_precision();
 
     let selected_dependencies = args
         .dependency
@@ -323,16 +315,14 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         continue;
                     }
                     let mut new_version_req = new_version;
-                    if preserve_precision {
-                        let new_ver: semver::Version = new_version_req.parse()?;
-                        match cargo_edit::upgrade_requirement(&old_version_req, &new_ver) {
-                            Ok(Some(version)) => {
-                                new_version_req = version;
-                            }
-                            Err(_) => {}
-                            _ => {
-                                new_version_req = old_version_req.clone();
-                            }
+                    let new_ver: semver::Version = new_version_req.parse()?;
+                    match cargo_edit::upgrade_requirement(&old_version_req, &new_ver) {
+                        Ok(Some(version)) => {
+                            new_version_req = version;
+                        }
+                        Err(_) => {}
+                        _ => {
+                            new_version_req = old_version_req.clone();
                         }
                     }
                     new_version_req

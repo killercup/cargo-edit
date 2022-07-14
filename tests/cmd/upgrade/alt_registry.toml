@@ -5,7 +5,7 @@ stdout = ""
 stderr = """
     Checking none's dependencies
    Upgrading toml_edit: v0.1.5 -> v99999.0.0
-   Upgrading regex: v0.2 -> v99999.0.0
+   Upgrading regex: v0.2 -> v99999.0
 """
 fs.sandbox = true
 

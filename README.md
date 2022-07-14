@@ -164,8 +164,7 @@ OPTIONS:
     -v, --verbose                 Use verbose output
     -V, --version                 Print version information
         --workspace               Upgrade all packages in the workspace
-    -Z <FLAG>                     Unstable (nightly-only) flags [possible values: preserve-
-                                  precision]
+    -Z <FLAG>                     Unstable (nightly-only) flags
 
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).

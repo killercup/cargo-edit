@@ -10,4 +10,4 @@ te = { package = "toml_edit", version = "99999.0.0" }
 
 [dependencies.rx]
 package = "regex"
-version = "99999.0.0"
+version = "99999.0"
