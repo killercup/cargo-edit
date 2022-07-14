@@ -188,9 +188,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         continue;
                     }
                 };
-                let old_version_req = match dependency.source.as_ref().and_then(|s| s.as_registry())
-                {
-                    Some(registry) => registry.version.clone(),
+                let old_version_req = match dependency.version() {
+                    Some(version_req) => version_req.to_owned(),
                     None => {
                         args.verbose(|| {
                             let source = dependency
@@ -200,7 +199,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             shell_warn(&format!(
                                 "ignoring {}, source is {}",
                                 dependency.toml_key(),
-                                source
+                                source,
                             ))
                         })?;
                         continue;
@@ -253,6 +252,25 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             }
                         }
                     } else {
+                        if dependency
+                            .source
+                            .as_ref()
+                            .and_then(|s| s.as_registry())
+                            .is_none()
+                        {
+                            args.verbose(|| {
+                                let source = dependency
+                                    .source()
+                                    .map(|s| s.to_string())
+                                    .unwrap_or_else(|| "unknown".to_owned());
+                                shell_warn(&format!(
+                                    "ignoring {}, source is {}",
+                                    dependency.toml_key(),
+                                    source
+                                ))
+                            })?;
+                            continue;
+                        }
                         // Update indices for any alternative registries, unless
                         // we're offline.
                         let registry_url = dependency
