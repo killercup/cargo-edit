@@ -80,8 +80,8 @@ pub fn resolve_manifests(
         result
             .packages
             .into_iter()
-            .map(|package| Ok(package))
-            .collect::<CargoResult<Vec<_>>>()?
+            .map(|package| package)
+            .collect::<Vec<_>>()
     } else if !pkgid.is_empty() {
         pkgid
             .into_iter()
@@ -95,18 +95,18 @@ pub fn resolve_manifests(
             })
             .collect::<Result<Vec<_>, anyhow::Error>>()?
     } else {
-        let package = result
+        result
             .packages
             .iter()
             .find(|p| p.manifest_path == manifest_path)
-            // If we have successfully got metadata, but our manifest path does not correspond to a
-            // package, we must have been called against a virtual manifest.
-            .with_context(|| {
-                "Found virtual manifest, but this command requires running against an \
-                 actual package in this workspace. Try adding `--workspace`."
-            })?;
-
-        vec![(package.to_owned())]
+            .map(|p| vec![(p.to_owned())])
+            .unwrap_or_else(|| {
+                result
+                    .packages
+                    .into_iter()
+                    .map(|package| package)
+                    .collect::<Vec<_>>()
+            })
     };
     Ok(pkgs)
 }
