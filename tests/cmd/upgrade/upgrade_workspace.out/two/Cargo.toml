@@ -8,4 +8,4 @@ path = "../dummy.rs"
 
 [dependencies]
 libc = "99999.0.0"
-rand = "99999.0.0"
+rand = "99999.0"

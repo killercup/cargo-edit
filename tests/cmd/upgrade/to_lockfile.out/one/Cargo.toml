@@ -7,5 +7,5 @@ path = "../dummy.rs"
 
 [dependencies]
 libc = "0.2.62"
-rand = "0.3.23"
+rand = "0.3"
 three = { path = "../implicit/three"}

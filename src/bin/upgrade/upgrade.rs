@@ -130,11 +130,6 @@ impl UpgradeArgs {
         }
     }
 
-    fn preserve_precision(&self) -> bool {
-        self.unstable_features
-            .contains(&UnstableOptions::PreservePrecision)
-    }
-
     fn verbose<F>(&self, mut callback: F) -> CargoResult<()>
     where
         F: FnMut() -> CargoResult<()>,
@@ -148,9 +143,7 @@ impl UpgradeArgs {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
-enum UnstableOptions {
-    PreservePrecision,
-}
+enum UnstableOptions {}
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
@@ -170,7 +163,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     } else {
         load_lockfile(&manifests).unwrap_or_default()
     };
-    let preserve_precision = args.preserve_precision();
 
     let selected_dependencies = args
         .dependency
@@ -213,7 +205,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             continue;
                         }
                     };
-                let old_version = match dependency.source.as_ref().and_then(|s| s.as_registry()) {
+                let old_version_req = match dependency.source.as_ref().and_then(|s| s.as_registry())
+                {
                     Some(registry) => registry.version.clone(),
                     None => {
                         args.verbose(|| {
@@ -241,7 +234,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         continue;
                     }
 
-                    if let Ok(version_req) = VersionReq::parse(&old_version) {
+                    if let Ok(version_req) = VersionReq::parse(&old_version_req) {
                         if version_req.comparators.iter().any(|comparator| {
                             matches!(comparator.op, Op::Exact | Op::Less | Op::LessEq)
                         }) {
@@ -249,7 +242,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 shell_warn(&format!(
                                     "ignoring {}, version ({}) is pinned",
                                     dependency.toml_key(),
-                                    old_version
+                                    old_version_req
                                 ))
                             })?;
                             continue;
@@ -257,14 +250,14 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 }
 
-                let new_version = if let Some(Some(new_version)) =
+                let new_version_req = if let Some(Some(new_version_req)) =
                     selected_dependencies.get(dependency.toml_key())
                 {
-                    new_version.to_owned()
+                    new_version_req.to_owned()
                 } else {
                     // Not checking `selected_dependencies.is_empty`, it was checked earlier
                     let new_version = if args.to_lockfile {
-                        find_locked_version(&dependency.name, &old_version, &locked).ok_or_else(
+                        find_locked_version(&dependency.name, &old_version_req, &locked).ok_or_else(
                             || anyhow::format_err!("{} is not in block file", dependency.name),
                         )
                     } else {
@@ -281,7 +274,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 }
                             }
                         }
-                        let is_prerelease = old_version.contains('-');
+                        let is_prerelease = old_version_req.contains('-');
                         let allow_prerelease = args.allow_prerelease || is_prerelease;
                         get_latest_dependency(
                             &dependency.name,
@@ -295,7 +288,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 .to_owned()
                         })
                     };
-                    let mut new_version = match new_version {
+                    let new_version = match new_version {
                         Ok(new_version) => new_version,
                         Err(err) => {
                             args.verbose(|| {
@@ -308,43 +301,44 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             continue;
                         }
                     };
-                    if preserve_precision {
-                        let new_ver: semver::Version = new_version.parse()?;
-                        match cargo_edit::upgrade_requirement(&old_version, &new_ver) {
-                            Ok(Some(version)) => {
-                                new_version = version;
-                            }
-                            Err(_) => {}
-                            _ => {
-                                new_version = old_version.clone();
-                            }
-                        }
-                    }
-                    if args.skip_compatible && old_version_compatible(&old_version, &new_version) {
+                    if args.skip_compatible
+                        && old_version_compatible(&old_version_req, &new_version)
+                    {
                         args.verbose(|| {
                             shell_warn(&format!(
                                 "ignoring {}, version ({}) is compatible with {}",
                                 dependency.toml_key(),
-                                old_version,
+                                old_version_req,
                                 new_version
                             ))
                         })?;
                         continue;
                     }
-                    new_version
+                    let mut new_version_req = new_version;
+                    let new_ver: semver::Version = new_version_req.parse()?;
+                    match cargo_edit::upgrade_requirement(&old_version_req, &new_ver) {
+                        Ok(Some(version)) => {
+                            new_version_req = version;
+                        }
+                        Err(_) => {}
+                        _ => {
+                            new_version_req = old_version_req.clone();
+                        }
+                    }
+                    new_version_req
                 };
-                if new_version == old_version {
+                if new_version_req == old_version_req {
                     args.verbose(|| {
                         shell_warn(&format!(
                             "ignoring {}, version ({}) is unchanged",
                             dependency.toml_key(),
-                            new_version
+                            new_version_req
                         ))
                     })?;
                     continue;
                 }
-                print_upgrade(dependency.toml_key(), &old_version, &new_version)?;
-                set_dep_version(dep_item, &new_version)?;
+                print_upgrade(dependency.toml_key(), &old_version_req, &new_version_req)?;
+                set_dep_version(dep_item, &new_version_req)?;
                 crate_modified = true;
                 any_crate_modified = true;
             }
@@ -477,25 +471,19 @@ fn resolve_local_one(
     Ok(vec![(manifest, package.to_owned())])
 }
 
-fn old_version_compatible(old_version: &str, mut new_version: &str) -> bool {
-    let old_version = match VersionReq::parse(old_version) {
+fn old_version_compatible(old_version_req: &str, new_version: &str) -> bool {
+    let old_version_req = match VersionReq::parse(old_version_req) {
         Ok(req) => req,
         Err(_) => return false,
     };
 
-    let new_req = VersionReq::parse(new_version);
-    assert!(new_req.is_ok(), "{}", new_req.unwrap_err());
-    let first_char = new_version.chars().next();
-    if !first_char.unwrap_or('0').is_ascii_digit() {
-        new_version = new_version.strip_prefix(first_char.unwrap()).unwrap();
-    }
     let new_version = match semver::Version::parse(new_version) {
         Ok(new_version) => new_version,
         // HACK: Skip compatibility checks on incomplete version reqs
         Err(_) => return false,
     };
 
-    old_version.matches(&new_version)
+    old_version_req.matches(&new_version)
 }
 
 fn deprecated_message(message: &str) -> CargoResult<()> {
