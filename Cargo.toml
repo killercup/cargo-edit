@@ -25,7 +25,7 @@ license = "Apache-2.0 OR MIT"
 name = "cargo-edit"
 readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
-version = "0.9.1"
+version = "0.10.0"
 edition = "2021"
 resolver = "2"
 
