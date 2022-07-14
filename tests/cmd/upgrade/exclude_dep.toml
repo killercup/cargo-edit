@@ -4,7 +4,7 @@ status = "success"
 stdout = ""
 stderr = """
     Checking None's dependencies
-warning: ignoring docopt , excluded by user
+warning: ignoring docopt, excluded by user
    Upgrading pad: v0.1 -> v99999.0
    Upgrading serde_json: v1.0 -> v99999.0
    Upgrading syn: v0.11.10 -> v99999.0.0
