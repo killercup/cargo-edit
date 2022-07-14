@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use cargo_edit::{
     colorize_stderr, find, get_latest_dependency, registry_url, resolve_manifests, set_dep_version,
-    shell_status, shell_warn, update_registry_index, CargoResult, Context, CrateSpec, Dependency,
-    LocalManifest,
+    shell_note, shell_status, shell_warn, update_registry_index, CargoResult, Context, CrateSpec,
+    Dependency, LocalManifest,
 };
 use clap::Args;
 use indexmap::IndexMap;
@@ -159,6 +159,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
     let mut updated_registries = BTreeSet::new();
     let mut any_crate_modified = false;
+    let mut compatible_present = false;
     for package in manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
         let mut crate_modified = false;
@@ -318,6 +319,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                     new_version
                                 ))
                             })?;
+                            compatible_present = true;
                             continue;
                         }
                         new_version
@@ -369,6 +371,10 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         0 => {}
         1 => anyhow::bail!("dependency {} doesn't exist", unused.join(", ")),
         _ => anyhow::bail!("dependencies {} don't exist", unused.join(", ")),
+    }
+
+    if compatible_present {
+        shell_note("Re-run with `--to-lockfile` to upgrade compatible version requirements")?;
     }
 
     if args.dry_run {
