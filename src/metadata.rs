@@ -77,11 +77,7 @@ pub fn resolve_manifests(
     cmd.manifest_path(&manifest_path);
     let result = cmd.exec().with_context(|| "Invalid manifest")?;
     let pkgs = if workspace {
-        result
-            .packages
-            .into_iter()
-            .map(|package| package)
-            .collect::<Vec<_>>()
+        result.packages
     } else if !pkgid.is_empty() {
         pkgid
             .into_iter()
@@ -100,13 +96,7 @@ pub fn resolve_manifests(
             .iter()
             .find(|p| p.manifest_path == manifest_path)
             .map(|p| vec![(p.to_owned())])
-            .unwrap_or_else(|| {
-                result
-                    .packages
-                    .into_iter()
-                    .map(|package| package)
-                    .collect::<Vec<_>>()
-            })
+            .unwrap_or_else(|| result.packages)
     };
     Ok(pkgs)
 }
