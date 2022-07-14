@@ -63,10 +63,6 @@ pub struct UpgradeArgs {
     #[clap(long, conflicts_with = "all", conflicts_with = "pkgid")]
     workspace: bool,
 
-    /// Include prerelease versions when fetching from crates.io (e.g. 0.6.0-alpha').
-    #[clap(long)]
-    allow_prerelease: bool,
-
     /// Print changes to be made without making them.
     #[clap(long)]
     dry_run: bool,
@@ -267,10 +263,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             }
                         }
                         let is_prerelease = old_version_req.contains('-');
-                        let allow_prerelease = args.allow_prerelease || is_prerelease;
                         get_latest_dependency(
                             &dependency.name,
-                            allow_prerelease,
+                            is_prerelease,
                             &manifest_path,
                             registry_url.as_ref(),
                         )
