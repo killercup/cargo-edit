@@ -120,7 +120,7 @@ impl UpgradeArgs {
         } else if let Some(pkgid) = self.pkgid.as_deref() {
             resolve_pkgid(self.manifest_path.as_deref(), pkgid)
         } else {
-            resolve_local_one(self.manifest_path.as_deref())
+            resolve_manifest(self.manifest_path.as_deref())
         }
     }
 
@@ -437,7 +437,7 @@ fn resolve_pkgid(
 
 /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
 /// provided.
-fn resolve_local_one(
+fn resolve_manifest(
     manifest_path: Option<&Path>,
 ) -> CargoResult<Vec<(LocalManifest, cargo_metadata::Package)>> {
     let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();

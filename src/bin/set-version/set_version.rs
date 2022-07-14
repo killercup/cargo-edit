@@ -111,11 +111,11 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     }
     let all = workspace || all;
     let manifests = if all {
-        Manifests::get_all(manifest_path.as_deref())
+        Manifests::resolve_all(manifest_path.as_deref())
     } else if let Some(ref pkgid) = pkgid {
-        Manifests::get_pkgid(manifest_path.as_deref(), pkgid)
+        Manifests::resolve_pkgid(manifest_path.as_deref(), pkgid)
     } else {
-        Manifests::get_local_one(manifest_path.as_deref())
+        Manifests::resolve_manifest(manifest_path.as_deref())
     }?;
 
     if dry_run {
@@ -192,7 +192,7 @@ struct Manifests(Vec<cargo_metadata::Package>);
 
 impl Manifests {
     /// Get all manifests in the workspace.
-    fn get_all(manifest_path: Option<&Path>) -> CargoResult<Self> {
+    fn resolve_all(manifest_path: Option<&Path>) -> CargoResult<Self> {
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.no_deps();
         if let Some(path) = manifest_path {
@@ -204,14 +204,14 @@ impl Manifests {
         Ok(Self(result.packages))
     }
 
-    fn get_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoResult<Self> {
+    fn resolve_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoResult<Self> {
         let package = manifest_from_pkgid(manifest_path, pkgid)?;
         Ok(Manifests(vec![package]))
     }
 
     /// Get the manifest specified by the manifest path. Try to make an educated guess if no path is
     /// provided.
-    fn get_local_one(manifest_path: Option<&Path>) -> CargoResult<Self> {
+    fn resolve_manifest(manifest_path: Option<&Path>) -> CargoResult<Self> {
         let resolved_manifest_path: String = find(manifest_path)?.to_string_lossy().into();
 
         let mut cmd = cargo_metadata::MetadataCommand::new();
