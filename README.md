@@ -154,9 +154,7 @@ OPTIONS:
         --manifest-path <PATH>    Path to the manifest to upgrade
         --offline                 Run without accessing the network
     -p, --package <PKGID>         Package id of the crate to add this dependency to
-        --skip-pinned             Only update a dependency if it is not currently pinned in the
-                                  manifest. "Pinned" refers to dependencies with a '=' or '<' or
-                                  '<=' version requirement
+        --pinned                  Upgrade dependencies pinned in the manifest
         --to-lockfile             Upgrade all packages to the version in the lockfile
     -v, --verbose                 Use verbose output
     -V, --version                 Print version information

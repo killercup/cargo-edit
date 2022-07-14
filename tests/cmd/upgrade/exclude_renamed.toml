@@ -4,7 +4,7 @@ status = "success"
 stdout = ""
 stderr = """
     Checking cargo-list-test-fixture's dependencies
-   Upgrading te: v0.1.5 -> v99999.0.0
+warning: ignoring te, renamed dependencies are pinned
 warning: ignoring rx, excluded by user
 """
 fs.sandbox = true
