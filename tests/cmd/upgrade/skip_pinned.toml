@@ -10,8 +10,8 @@ warning: ignoring lessthan, version (<0.4) is pinned
 warning: ignoring lessorequal, version (<=3.0) is pinned
    Upgrading caret: ^3.0 -> ^99999.0
    Upgrading tilde: ~4.1.0 -> ~99999.0.0
-   Upgrading greaterthan: >2.0 -> v99999.0.0
-   Upgrading greaterorequal: >=2.1.0 -> v99999.0.0
+warning: ignoring greaterthan, version (>2.0) is compatible with 99999.0.0
+warning: ignoring greaterorequal, version (>=2.1.0) is compatible with 99999.0.0
    Upgrading wildcard: v3.* -> v99999.*
 """
 fs.sandbox = true
