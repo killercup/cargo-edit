@@ -112,7 +112,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     let manifests = Manifests(resolve_manifests(
         manifest_path.as_deref(),
         all,
-        pkgid.as_deref(),
+        pkgid.as_deref().into_iter().collect::<Vec<_>>(),
     )?);
 
     if dry_run {

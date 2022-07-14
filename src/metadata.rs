@@ -63,7 +63,7 @@ fn canonicalize_path(
 pub fn resolve_manifests(
     manifest_path: Option<&Path>,
     workspace: bool,
-    pkgid: Option<&str>,
+    pkgid: Vec<&str>,
 ) -> CargoResult<Vec<Package>> {
     let manifest_path = manifest_path.map(|p| Ok(p.to_owned())).unwrap_or_else(|| {
         find_manifest_path(
@@ -82,16 +82,18 @@ pub fn resolve_manifests(
             .into_iter()
             .map(|package| Ok(package))
             .collect::<CargoResult<Vec<_>>>()?
-    } else if let Some(pkgid) = pkgid {
-        let package = result
-            .packages
+    } else if !pkgid.is_empty() {
+        pkgid
             .into_iter()
-            .find(|pkg| pkg.name == pkgid)
-            .with_context(|| {
-                "Found virtual manifest, but this command requires running against an \
-                 actual package in this workspace. Try adding `--workspace`."
-            })?;
-        vec![package]
+            .map(|id| {
+                result
+                    .packages
+                    .iter()
+                    .find(|pkg| pkg.name == id)
+                    .map(|p| p.to_owned())
+                    .with_context(|| format!("could not find pkgid {}", id))
+            })
+            .collect::<Result<Vec<_>, anyhow::Error>>()?
     } else {
         let package = result
             .packages

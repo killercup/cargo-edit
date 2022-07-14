@@ -48,7 +48,7 @@ pub struct UpgradeArgs {
         conflicts_with = "all",
         conflicts_with = "workspace"
     )]
-    pkgid: Option<String>,
+    pkgid: Vec<String>,
 
     /// Upgrade all packages in the workspace.
     #[clap(
@@ -118,7 +118,7 @@ impl UpgradeArgs {
         resolve_manifests(
             self.manifest_path.as_deref(),
             self.workspace(),
-            self.pkgid.as_deref(),
+            self.pkgid.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
         )
     }
 
