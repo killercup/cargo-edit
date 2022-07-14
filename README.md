@@ -147,8 +147,6 @@ ARGS:
 
 OPTIONS:
         --all                     [deprecated in favor of `--workspace`]
-        --allow-prerelease        Include prerelease versions when fetching from crates.io (e.g.
-                                  0.6.0-alpha')
         --dry-run                 Print changes to be made without making them
         --exclude <EXCLUDE>       Crates to exclude and not upgrade
     -h, --help                    Print help information
