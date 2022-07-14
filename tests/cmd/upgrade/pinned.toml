@@ -13,6 +13,7 @@ warning: ignoring lessorequal, version (<=3.0) is pinned
 warning: ignoring greaterthan, version (>2.0) is compatible with 99999.0.0
 warning: ignoring greaterorequal, version (>=2.1.0) is compatible with 99999.0.0
    Upgrading wildcard: v3.* -> v99999.*
+note: Re-run with `--to-lockfile` to upgrade compatible version requirements
 """
 fs.sandbox = true
 

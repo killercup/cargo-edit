@@ -43,3 +43,8 @@ pub fn shell_status(action: &str, message: &str) -> CargoResult<()> {
 pub fn shell_warn(message: &str) -> CargoResult<()> {
     shell_print("warning", message, Color::Yellow, false)
 }
+
+/// Print a styled warning message.
+pub fn shell_note(message: &str) -> CargoResult<()> {
+    shell_print("note", message, Color::Cyan, false)
+}
