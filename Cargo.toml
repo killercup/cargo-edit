@@ -37,6 +37,11 @@ pre-release-replacements = [
 ]
 
 [[bin]]
+name = "cargo-add"
+path = "src/bin/add/main.rs"
+required-features = ["add"]
+
+[[bin]]
 name = "cargo-rm"
 path = "src/bin/rm/main.rs"
 required-features = ["rm"]
@@ -93,11 +98,13 @@ trycmd = "0.13.1"
 
 [features]
 default = [
+    "add",
     "rm",
     "upgrade",
     "set-version",
     "vendored-libgit2",
 ]
+add = ["cli"]
 rm = ["cli"]
 upgrade = ["cli"]
 set-version = ["cli"]
