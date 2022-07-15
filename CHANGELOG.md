@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Features
+
+`upgrade`
+- Note the `--pinned` flag when pinned dependencies are skipped
+
+### Fixes
+
+`add`
+- Provide a failing command to tell people how to get it
+
 ## 0.10.0 - 2022-07-14
 
 ### Breaking changes
