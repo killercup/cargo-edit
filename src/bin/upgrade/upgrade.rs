@@ -160,6 +160,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut updated_registries = BTreeSet::new();
     let mut any_crate_modified = false;
     let mut compatible_present = false;
+    let mut pinned_present = false;
     for package in manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
         let mut crate_modified = false;
@@ -214,6 +215,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 dependency.toml_key(),
                             ))
                         })?;
+                        pinned_present = true;
                         continue;
                     }
 
@@ -228,6 +230,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                     old_version_req
                                 ))
                             })?;
+                            pinned_present = true;
                             continue;
                         }
                     }
@@ -373,6 +376,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         _ => anyhow::bail!("dependencies {} don't exist", unused.join(", ")),
     }
 
+    if pinned_present {
+        shell_note("Re-run with `--pinned` to upgrade pinned version requirements")?;
+    }
     if compatible_present {
         shell_note("Re-run with `--to-lockfile` to upgrade compatible version requirements")?;
     }
