@@ -4,9 +4,6 @@ status.code = 1
 stdout = ""
 stderr = """
     Removing semver from dev-dependencies
-Could not edit `Cargo.toml`.
-
-ERROR: The dependency `semver` could not be found in `dev-dependencies`.
 Error: The dependency `semver` could not be found in `dev-dependencies`.
 """
 fs.sandbox = true

@@ -4,9 +4,6 @@ status.code = 1
 stdout = ""
 stderr = """
     Removing semver from build-dependencies
-Could not edit `Cargo.toml`.
-
-ERROR: The table `build-dependencies` could not be found.
 Error: The table `build-dependencies` could not be found.
 """
 fs.sandbox = true

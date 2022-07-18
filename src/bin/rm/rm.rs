@@ -106,11 +106,7 @@ fn exec(args: &RmArgs) -> CargoResult<()> {
 
             result
         })
-        .collect::<CargoResult<Vec<_>>>()
-        .map_err(|err| {
-            eprintln!("Could not edit `Cargo.toml`.\n\nERROR: {}", err);
-            err
-        })?;
+        .collect::<CargoResult<Vec<_>>>()?;
 
     if args.dry_run {
         shell_warn("aborting rm due to dry run")?;
