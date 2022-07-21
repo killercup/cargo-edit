@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.10.2 - 2022-07-21
+
 ### Fixes
 
 `upgrade`
