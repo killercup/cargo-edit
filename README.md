@@ -94,17 +94,17 @@ ARGS:
     <DEP_ID>...    Dependencies to be removed
 
 OPTIONS:
-        --dry-run                 Don't actually write the manifest
-    -h, --help                    Print help information
         --manifest-path <PATH>    Path to the manifest to remove a dependency from
-    -p, --package <PKGID>         Package id of the crate to remove this dependency from
-    -q, --quiet                   Do not print any output in case of success
-    -V, --version                 Print version information
+    -p, --package <PKGID>         Package to remove from
     -Z <FLAG>                     Unstable (nightly-only) flags
+        --dry-run                 Don't actually write the manifest
+    -q, --quiet                   Do not print any output in case of success
+    -h, --help                    Print help information
+    -V, --version                 Print version information
 
 SECTION:
-    -B, --build              Remove crate as build dependency
-    -D, --dev                Remove crate as development dependency
+    -D, --dev                Remove as development dependency
+    -B, --build              Remove as build dependency
         --target <TARGET>    Remove as dependency from the given target platform
 
 ```
