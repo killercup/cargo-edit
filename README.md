@@ -88,10 +88,10 @@ cargo-rm [..]
 Remove a dependency from a Cargo.toml manifest file
 
 USAGE:
-    cargo rm [OPTIONS] <CRATE>...
+    cargo rm [OPTIONS] <DEP_ID>...
 
 ARGS:
-    <CRATE>...    Crates to be removed
+    <DEP_ID>...    Dependencies to be removed
 
 OPTIONS:
         --dry-run                 Don't actually write the manifest

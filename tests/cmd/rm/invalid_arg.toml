@@ -8,7 +8,7 @@ error: Found argument '--flag' which wasn't expected, or isn't valid in this con
 \tIf you tried to supply `--flag` as a value rather than a flag, use `-- --flag`
 
 USAGE:
-    cargo rm [OPTIONS] <CRATE>...
+    cargo rm [OPTIONS] <DEP_ID>...
 
 For more information try --help
 """
