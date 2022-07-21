@@ -95,7 +95,7 @@ ARGS:
 
 OPTIONS:
         --manifest-path <PATH>    Path to the manifest to remove a dependency from
-    -p, --package <PKGID>         Package id of the crate to remove this dependency from
+    -p, --package <PKGID>         Package to remove from
     -Z <FLAG>                     Unstable (nightly-only) flags
         --dry-run                 Don't actually write the manifest
     -q, --quiet                   Do not print any output in case of success
@@ -103,8 +103,8 @@ OPTIONS:
     -V, --version                 Print version information
 
 SECTION:
-    -D, --dev                Remove crate as development dependency
-    -B, --build              Remove crate as build dependency
+    -D, --dev                Remove as development dependency
+    -B, --build              Remove as build dependency
         --target <TARGET>    Remove as dependency from the given target platform
 
 ```

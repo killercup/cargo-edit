@@ -11,27 +11,27 @@ use std::path::PathBuf;
 #[clap(version)]
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 pub struct RmArgs {
-    /// Dependencies to be removed.
+    /// Dependencies to be removed
     #[clap(value_name = "DEP_ID", required = true)]
     crates: Vec<String>,
 
-    /// Remove crate as development dependency.
+    /// Remove as development dependency
     #[clap(long, short = 'D', conflicts_with = "build", help_heading = "SECTION")]
     dev: bool,
 
-    /// Remove crate as build dependency.
+    /// Remove as build dependency
     #[clap(long, short = 'B', conflicts_with = "dev", help_heading = "SECTION")]
     build: bool,
 
-    /// Remove as dependency from the given target platform.
+    /// Remove as dependency from the given target platform
     #[clap(long, forbid_empty_values = true, help_heading = "SECTION")]
     target: Option<String>,
 
-    /// Path to the manifest to remove a dependency from.
+    /// Path to the manifest to remove a dependency from
     #[clap(long, value_name = "PATH", parse(from_os_str))]
     manifest_path: Option<PathBuf>,
 
-    /// Package id of the crate to remove this dependency from.
+    /// Package to remove from
     #[clap(long = "package", short = 'p', value_name = "PKGID")]
     pkgid: Option<String>,
 
@@ -43,7 +43,7 @@ pub struct RmArgs {
     #[clap(long)]
     dry_run: bool,
 
-    /// Do not print any output in case of success.
+    /// Do not print any output in case of success
     #[clap(long, short)]
     quiet: bool,
 }
