@@ -10,8 +10,8 @@ use std::path::PathBuf;
 #[derive(Debug, Args)]
 #[clap(version)]
 pub struct RmArgs {
-    /// Crates to be removed.
-    #[clap(value_name = "CRATE", required = true)]
+    /// Dependencies to be removed.
+    #[clap(value_name = "DEP_ID", required = true)]
     crates: Vec<String>,
 
     /// Remove crate as development dependency.
