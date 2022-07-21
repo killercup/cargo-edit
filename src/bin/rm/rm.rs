@@ -9,6 +9,7 @@ use std::path::PathBuf;
 /// Remove a dependency from a Cargo.toml manifest file.
 #[derive(Debug, Args)]
 #[clap(version)]
+#[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 pub struct RmArgs {
     /// Dependencies to be removed.
     #[clap(value_name = "DEP_ID", required = true)]
