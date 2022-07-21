@@ -141,11 +141,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     }
 
     let manifests = args.resolve_targets()?;
-    let locked = if std::env::var("CARGO_IS_TEST").is_err() {
-        load_lockfile(&manifests)?
-    } else {
-        load_lockfile(&manifests).unwrap_or_default()
-    };
+    let locked = args
+        .to_lockfile
+        .then(|| load_lockfile(&manifests))
+        .transpose()?
+        .unwrap_or_default();
 
     let selected_dependencies = args
         .dependency
@@ -402,7 +402,7 @@ fn load_lockfile(targets: &[cargo_metadata::Package]) -> CargoResult<Vec<cargo_m
     cmd.features(cargo_metadata::CargoOpt::AllFeatures);
     cmd.other_options(vec!["--locked".to_string()]);
 
-    let result = cmd.exec().with_context(|| "Invalid manifest")?;
+    let result = cmd.exec()?;
 
     let locked = result
         .packages
