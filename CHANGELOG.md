@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+`upgrade`
+- Only fail on bad lockfile if `--to-lockfile` is set
+
+`rm`
+- Don't duplicate error messages
+
 ## 0.10.1 - 2022-07-15
 
 ### Features
