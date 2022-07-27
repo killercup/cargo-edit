@@ -1,0 +1,4 @@
+    Updating '[ROOTURL]/registry' index
+    Checking cargo-list-test-fixture's dependencies
+   Upgrading m1: v0.1.1 -> v99999.0.0
+   Upgrading m2: v0.2 -> v99999.0

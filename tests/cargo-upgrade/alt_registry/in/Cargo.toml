@@ -1,0 +1,13 @@
+[package]
+name = "none"
+version = "0.0.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+my-package1 = {version = "0.1.1", registry = "alternative" }
+
+[dependencies.my-package2]
+version = "0.2"
+registry = "alternative"

@@ -1,0 +1,7 @@
+[package]
+name = "cargo-list-test-fixture"
+version = "0.0.0"
+
+[dependencies]
+unrelated-crate = "99999.0"
+my-package = "99999.1.0-alpha.1"

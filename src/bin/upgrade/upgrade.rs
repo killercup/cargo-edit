@@ -135,7 +135,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
 
-    if !args.offline && !args.to_lockfile && std::env::var("CARGO_IS_TEST").is_err() {
+    if !args.offline && !args.to_lockfile {
         let url = registry_url(&find(args.manifest_path.as_deref())?, None)?;
         update_registry_index(&url, false)?;
     }
@@ -281,7 +281,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             .registry()
                             .map(|registry| registry_url(&manifest_path, Some(registry)))
                             .transpose()?;
-                        if !args.offline && std::env::var("CARGO_IS_TEST").is_err() {
+                        if !args.offline {
                             if let Some(registry_url) = &registry_url {
                                 if updated_registries.insert(registry_url.to_owned()) {
                                     update_registry_index(registry_url, false)?;

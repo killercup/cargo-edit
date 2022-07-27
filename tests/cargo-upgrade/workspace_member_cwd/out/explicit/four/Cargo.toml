@@ -1,0 +1,9 @@
+[package]
+name = "four"
+version = "0.1.0"
+
+[lib]
+path = "../../dummy.rs"
+
+[dependencies]
+my-package = "0.1.1"
