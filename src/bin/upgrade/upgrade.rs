@@ -186,7 +186,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 let dependency = match Dependency::from_toml(&manifest_path, dep_key, dep_item) {
                     Ok(dependency) => dependency,
                     Err(err) => {
-                        shell_warn(&format!("ignoring {}, invalid entry: {}", dep_key, err))?;
+                        shell_warn(&format!("ignoring {}, unsupported entry: {}", dep_key, err))?;
                         continue;
                     }
                 };
