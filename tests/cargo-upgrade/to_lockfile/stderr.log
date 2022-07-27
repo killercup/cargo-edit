@@ -1,9 +1,17 @@
     Checking one's dependencies
-   Upgrading my-package: v0.2.0 -> v0.2.3
-   Upgrading three: v0.1.0 -> v0.1.5
+name       old req locked           latest    new req note
+====       ======= ======           ======    ======= ====
+my-package 0.2.0   0.2.3+my-package 99999.0.0 0.2.3       
+three      0.1.0   0.1.5            -         0.1.5       
     Checking three's dependencies
-   Upgrading my-package: v0.2.0 -> v0.2.3
+name       old req locked           latest    new req note
+====       ======= ======           ======    ======= ====
+my-package 0.2.0   0.2.3+my-package 99999.0.0 0.2.3       
     Checking two's dependencies
-   Upgrading my-package: v0.2.0 -> v0.2.3
+name       old req locked           latest    new req note
+====       ======= ======           ======    ======= ====
+my-package 0.2.0   0.2.3+my-package 99999.0.0 0.2.3       
     Checking four's dependencies
-   Upgrading my-package: v0.2.0 -> v0.2.3
+name       old req locked           latest    new req note
+====       ======= ======           ======    ======= ====
+my-package 0.2.0   0.2.3+my-package 99999.0.0 0.2.3       

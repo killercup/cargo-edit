@@ -1,13 +1,15 @@
     Updating '[ROOTURL]/registry' index
     Checking cargo-list-test-fixture's dependencies
-   Upgrading default: v1.0 -> v99999.0
-warning: ignoring exact, version (=2.0) is pinned
-warning: ignoring lessthan, version (<0.4) is pinned
-warning: ignoring lessorequal, version (<=3.0) is pinned
-   Upgrading caret: ^3.0 -> ^99999.0
-   Upgrading tilde: ~4.1.0 -> ~99999.0.0
-warning: ignoring greaterthan, version (>2.0) is compatible with 99999.0.0
-warning: ignoring greaterorequal, version (>=2.1.0) is compatible with 99999.0.0
-   Upgrading wildcard: v3.* -> v99999.*
+name           old req locked latest    new req    note      
+====           ======= ====== ======    =======    ====      
+default        1.0     -      99999.0.0 99999.0              
+exact          =2.0    -      99999.0.0 =2.0       pinned    
+lessthan       <0.4    -      99999.0.0 <0.4       pinned    
+lessorequal    <=3.0   -      99999.0.0 <=3.0      pinned    
+caret          ^3.0    -      99999.0.0 ^99999.0             
+tilde          ~4.1.0  -      99999.0.0 ~99999.0.0           
+greaterthan    >2.0    -      99999.0.0 >2.0       compatible
+greaterorequal >=2.1.0 -      99999.0.0 >=2.1.0    compatible
+wildcard       3.*     -      99999.0.0 99999.*              
 note: Re-run with `--pinned` to upgrade pinned version requirements
 note: Re-run with `--to-lockfile` to upgrade compatible version requirements

@@ -1,10 +1,19 @@
 The flag `--all` has been deprecated in favor of `--workspace`
     Updating '[ROOTURL]/registry' index
     Checking one's dependencies
-   Upgrading my-package: v0.2.0 -> v99999.0.0
+name       old req locked latest    new req   note
+====       ======= ====== ======    =======   ====
+my-package 0.2.0   -      99999.0.0 99999.0.0     
+three      0.1.0   -      -         0.1.0         
     Checking three's dependencies
-   Upgrading my-package: v0.2.0 -> v99999.0.0
+name       old req locked latest    new req   note
+====       ======= ====== ======    =======   ====
+my-package 0.2.0   -      99999.0.0 99999.0.0     
     Checking two's dependencies
-   Upgrading my-package: v0.2.0 -> v99999.0.0
+name       old req locked latest    new req   note
+====       ======= ====== ======    =======   ====
+my-package 0.2.0   -      99999.0.0 99999.0.0     
     Checking four's dependencies
-   Upgrading my-package: v0.2.0 -> v99999.0.0
+name       old req locked latest    new req   note
+====       ======= ====== ======    =======   ====
+my-package 0.2.0   -      99999.0.0 99999.0.0     

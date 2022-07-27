@@ -1,3 +1,5 @@
     Updating '[ROOTURL]/registry' index
     Checking one's dependencies
-   Upgrading my-package: v0.2.0 -> v99999.0.0
+name       old req locked latest    new req   note
+====       ======= ====== ======    =======   ====
+my-package 0.2.0   -      99999.0.0 99999.0.0     

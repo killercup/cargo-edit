@@ -4,8 +4,10 @@ status = "success"
 stdout = ""
 stderr = """
     Checking none's dependencies
-   Upgrading toml_edit: v0.1.5 -> v99999.0.0
-   Upgrading regex: v0.2 -> v99999.0
+name      old req locked latest    new req   note
+====      ======= ====== ======    =======   ====
+toml_edit 0.1.5   -      99999.0.0 99999.0.0     
+regex     0.2     -      99999.0.0 99999.0       
 """
 fs.sandbox = true
 

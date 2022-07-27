@@ -1,5 +1,7 @@
     Updating '[ROOTURL]/registry' index
     Checking none's dependencies
     Updating '[ROOTURL]/alternative-registry' index
-   Upgrading my-package1: v0.1.1 -> v99999.0.0
-   Upgrading my-package2: v0.2 -> v99999.0
+name        old req locked latest    new req   note
+====        ======= ====== ======    =======   ====
+my-package1 0.1.1   -      99999.0.0 99999.0.0     
+my-package2 0.2     -      99999.0.0 99999.0       

@@ -4,21 +4,24 @@ status = "success"
 stdout = ""
 stderr = """
     Checking None's dependencies
-   Upgrading docopt: v0.8 -> v99999.0
-   Upgrading pad: v0.1 -> v99999.0
-   Upgrading serde_json: v1.0 -> v99999.0
-   Upgrading syn: v0.11.10 -> v99999.0.0
-   Upgrading tar: v0.4 -> v99999.0
-   Upgrading ftp: v2.2.1 -> v99999.0.0
-   Upgrading te: v0.1.5 -> v99999.0.0
-   Upgrading semver: v0.7 -> v99999.0
-   Upgrading rn: v0.1 -> v99999.0
-   Upgrading assert_cli: v0.2.0 -> v99999.0.0
-   Upgrading tempdir: v0.3 -> v99999.0
-   Upgrading openssl: v0.9 -> v99999.0
-   Upgrading rget: v0.3.0 -> v99999.0.0
-   Upgrading geo: v0.7.0 -> v99999.0.0
-   Upgrading ftp: v2.2.1 -> v99999.0.0
+name       old req locked latest    new req   note
+====       ======= ====== ======    =======   ====
+docopt     0.8     -      99999.0.0 99999.0       
+pad        0.1     -      99999.0.0 99999.0       
+serde_json 1.0     -      99999.0.0 99999.0       
+syn        0.11.10 -      99999.0.0 99999.0.0     
+tar        0.4     -      99999.0.0 99999.0       
+ftp        2.2.1   -      99999.0.0 99999.0.0     
+te         0.1.5   -      99999.0.0 99999.0.0     
+semver     0.7     -      99999.0.0 99999.0       
+rn         0.1     -      99999.0.0 99999.0       
+assert_cli 0.2.0   -      99999.0.0 99999.0.0     
+tempdir    0.3     -      99999.0.0 99999.0       
+serde      1.0     -      -         1.0           
+openssl    0.9     -      99999.0.0 99999.0       
+rget       0.3.0   -      99999.0.0 99999.0.0     
+geo        0.7.0   -      99999.0.0 99999.0.0     
+ftp        2.2.1   -      99999.0.0 99999.0.0     
 """
 fs.sandbox = true
 
