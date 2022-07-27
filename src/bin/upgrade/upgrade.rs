@@ -569,7 +569,7 @@ fn print_upgrade(mut deps: Vec<Dep>) -> CargoResult<()> {
         } else {
             ColorSpec::new()
         };
-        write_cell(&dep.latest_version(), width[3], &spec)?;
+        write_cell(dep.latest_version(), width[3], &spec)?;
         shell_write_stderr(" ", &ColorSpec::new())?;
 
         let spec = if is_header {
@@ -585,7 +585,7 @@ fn print_upgrade(mut deps: Vec<Dep>) -> CargoResult<()> {
         } else {
             dep.reason_spec()
         };
-        write_cell(&dep.reason(), width[5], &spec)?;
+        write_cell(dep.reason(), width[5], &spec)?;
         shell_write_stderr("\n", &ColorSpec::new())?;
     }
 
