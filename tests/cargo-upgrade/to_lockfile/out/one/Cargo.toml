@@ -7,4 +7,4 @@ path = "../dummy.rs"
 
 [dependencies]
 my-package = "0.2.3"
-three = { path = "../implicit/three", version = "0.1.0" }
+three = { path = "../implicit/three", version = "0.1.5" }
