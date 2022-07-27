@@ -411,11 +411,7 @@ fn load_lockfile(
 
     let result = cmd.exec()?;
 
-    let locked = result
-        .packages
-        .into_iter()
-        .filter(|p| p.source.is_some()) // Source is none for local packages
-        .collect::<Vec<_>>();
+    let locked = result.packages;
 
     Ok(locked)
 }
