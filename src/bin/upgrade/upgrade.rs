@@ -12,28 +12,19 @@ use indexmap::IndexMap;
 use semver::{Op, VersionReq};
 use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
 
-/// Upgrade dependencies as specified in the local manifest file (i.e. Cargo.toml).
+/// Upgrade dependency version requirements in Cargo.toml manifest files
 #[derive(Debug, Args)]
 #[clap(version)]
 #[clap(after_help = "\
-This command differs from `cargo update`, which updates the dependency versions recorded in the \
-local lock file (Cargo.lock).
-
-If `<dependency>`(s) are provided, only the specified dependencies will be upgraded. The version \
-to upgrade to for each can be specified with e.g. `docopt@0.8.0` or `serde@>=0.9,<2.0`.
-
-Dev, build, and all target dependencies will also be upgraded. Only dependencies from crates.io \
-are supported. Git/path dependencies will be ignored.
-
-All packages in the workspace will be upgraded if the `--workspace` flag is supplied. The \
-`--workspace` flag may be supplied in the presence of a virtual manifest.
+To only update Cargo.lock, see `cargo update`.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked \
 version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is \
 up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with \
-an error. If the '--to-lockfile' flag is supplied then the network won't be accessed.")]
+an error.")]
 pub struct UpgradeArgs {
     /// Crates to be upgraded.
+    #[clap(value_name = "DEP_ID")]
     dependency: Vec<String>,
 
     /// Path to the manifest to upgrade
@@ -76,7 +67,7 @@ pub struct UpgradeArgs {
     offline: bool,
 
     /// Upgrade all packages to the version in the lockfile.
-    #[clap(long, conflicts_with = "dependency")]
+    #[clap(long)]
     to_lockfile: bool,
 
     /// Crates to exclude and not upgrade.
