@@ -6,7 +6,7 @@ stderr = """
     Checking one's dependencies
 name old req locked latest    new req   note
 ==== ======= ====== ======    =======   ====
-libc 0.2.28  -      99999.0.0 99999.0.0     
+libc 0.2.28  0.2.62 99999.0.0 99999.0.0     
 """
 fs.sandbox = true
 fs.cwd = "workspace_member_cwd.in/one"

@@ -141,11 +141,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     }
 
     let manifests = args.resolve_targets()?;
-    let locked = args
-        .to_lockfile
-        .then(|| load_lockfile(&manifests, args.offline))
-        .transpose()?
-        .unwrap_or_default();
+    let locked = load_lockfile(&manifests, args.offline).unwrap_or_default();
 
     let selected_dependencies = args
         .dependency

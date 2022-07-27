@@ -7,21 +7,21 @@ The flag `--all` has been deprecated in favor of `--workspace`
     Checking one's dependencies
 name old req locked latest    new req   note
 ==== ======= ====== ======    =======   ====
-libc 0.2.28  -      99999.0.0 99999.0.0     
-rand 0.3     -      99999.0.0 99999.0       
+libc 0.2.28  0.2.62 99999.0.0 99999.0.0     
+rand 0.3     0.3.23 99999.0.0 99999.0       
     Checking three's dependencies
 name old req locked latest    new req   note
 ==== ======= ====== ======    =======   ====
-libc 0.2.28  -      99999.0.0 99999.0.0     
+libc 0.2.28  0.2.62 99999.0.0 99999.0.0     
     Checking two's dependencies
 name old req locked latest    new req   note
 ==== ======= ====== ======    =======   ====
-libc 0.2.28  -      99999.0.0 99999.0.0     
-rand 0.2     -      99999.0.0 99999.0       
+libc 0.2.28  0.2.62 99999.0.0 99999.0.0     
+rand 0.2     0.2.1  99999.0.0 99999.0       
     Checking four's dependencies
 name old req locked latest    new req   note
 ==== ======= ====== ======    =======   ====
-libc 0.2.28  -      99999.0.0 99999.0.0     
+libc 0.2.28  0.2.62 99999.0.0 99999.0.0     
 """
 fs.sandbox = true
 
