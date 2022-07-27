@@ -1,5 +1,5 @@
     Updating '[ROOTURL]/registry' index
     Checking cargo-list-test-fixture's dependencies
-name   old req locked latest    new req     note
-====   ======= ====== ======    =======     ====
-docopt 0.8.0   -      99999.0.0 1000000.0.0     
+name   old req locked latest    new req   note
+====   ======= ====== ======    =======   ====
+docopt 0.4.0   0.4.1  99999.0.0 99999.0.0     

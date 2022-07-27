@@ -157,7 +157,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut any_crate_modified = false;
     let mut compatible_present = false;
     let mut pinned_present = false;
-    for package in manifests {
+    for package in &manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
         let mut crate_modified = false;
         let mut table = Vec::new();
@@ -329,8 +329,12 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         }
     }
 
-    if args.locked && any_crate_modified {
-        anyhow::bail!("cannot upgrade due to `--locked`");
+    if any_crate_modified {
+        if args.locked {
+            anyhow::bail!("cannot upgrade due to `--locked`");
+        } else {
+            load_lockfile(&manifests, args.locked, args.offline)?;
+        }
     }
 
     let unused = selected_dependencies

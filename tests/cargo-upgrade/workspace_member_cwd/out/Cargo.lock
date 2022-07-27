@@ -6,7 +6,7 @@ version = 3
 name = "four"
 version = "0.1.0"
 dependencies = [
- "my-package",
+ "my-package 0.1.1+my-package",
 ]
 
 [[package]]
@@ -16,10 +16,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61758fedb08b81e9c6967f0661a54feb83fb38eb4bde3614119fbc1d03c1cedf"
 
 [[package]]
+name = "my-package"
+version = "99999.0.0+my-package"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62c45acf9e11d2f97f5b318143219c0b4102eafef1c22a4b545b47104691d915"
+
+[[package]]
 name = "one"
 version = "0.1.0"
 dependencies = [
- "my-package",
+ "my-package 99999.0.0+my-package",
  "three",
 ]
 
@@ -27,12 +33,12 @@ dependencies = [
 name = "three"
 version = "0.1.0"
 dependencies = [
- "my-package",
+ "my-package 0.1.1+my-package",
 ]
 
 [[package]]
 name = "two"
 version = "0.1.0"
 dependencies = [
- "my-package",
+ "my-package 0.1.1+my-package",
 ]

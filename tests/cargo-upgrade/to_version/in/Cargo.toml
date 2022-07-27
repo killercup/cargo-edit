@@ -3,4 +3,4 @@ name = "cargo-list-test-fixture"
 version = "0.0.0"
 
 [dependencies]
-docopt = "0.8.0"
+docopt = "0.4.0"
