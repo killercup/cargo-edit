@@ -3,5 +3,5 @@
     Updating '[ROOTURL]/alternative-registry' index
 name        old req locked latest    new req   note
 ====        ======= ====== ======    =======   ====
-my-package1 0.1.1   -      99999.0.0 99999.0.0     
-my-package2 0.2     -      99999.0.0 99999.0       
+my-package1 0.1.1   0.1.1  99999.0.0 99999.0.0     
+my-package2 0.2     0.2.3  99999.0.0 99999.0       

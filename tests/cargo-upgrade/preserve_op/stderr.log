@@ -3,13 +3,12 @@
 name           old req locked    latest    new req    note      
 ====           ======= ======    ======    =======    ====      
 default        0.2     0.2.3     99999.0.0 99999.0              
-exact          =0.2    0.2.3     99999.0.0 =0.2       pinned    
-lessthan       <0.2    0.1.1     99999.0.0 <0.2       pinned    
-lessorequal    <=0.2   0.2.3     99999.0.0 <=0.2      pinned    
+exact          =0.2    0.2.3     99999.0.0 =99999.0             
+lessthan       <0.2    0.1.1     99999.0.0 99999.0.0            
+lessorequal    <=0.2   0.2.3     99999.0.0 99999.0.0            
 caret          ^0.2    0.2.3     99999.0.0 ^99999.0             
 tilde          ~0.2.0  0.2.3     99999.0.0 ~99999.0.0           
 greaterthan    >0.2    99999.0.0 99999.0.0 >0.2       compatible
 greaterorequal >=0.2.0 99999.0.0 99999.0.0 >=0.2.0    compatible
 wildcard       0.2.*   0.2.3     99999.0.0 99999.0.*            
-note: Re-run with `--pinned` to upgrade pinned version requirements
 note: Re-run with `--to-lockfile` to upgrade compatible version requirements

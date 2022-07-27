@@ -1,7 +1,0 @@
-[package]
-name = "cargo-list-test-fixture"
-version = "0.0.0"
-
-[dependencies]
-a = "1.0"
-b = "0.8.0-alpha"

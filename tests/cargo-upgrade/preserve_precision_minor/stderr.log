@@ -2,4 +2,4 @@
     Checking cargo-list-test-fixture's dependencies
 name       old req locked latest    new req note
 ====       ======= ====== ======    ======= ====
-my-package 0.1     -      99999.0.0 99999.0     
+my-package 0.1     0.1.1  99999.0.0 99999.0     

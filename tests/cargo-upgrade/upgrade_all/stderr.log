@@ -3,17 +3,17 @@ The flag `--all` has been deprecated in favor of `--workspace`
     Checking one's dependencies
 name       old req locked latest    new req   note
 ====       ======= ====== ======    =======   ====
-my-package 0.2.0   -      99999.0.0 99999.0.0     
-three      0.1.0   -      -         0.1.0         
+my-package 0.2.0   0.2.3  99999.0.0 99999.0.0     
+three      0.1.0   0.1.5  -         0.1.0         
     Checking three's dependencies
 name       old req locked latest    new req   note
 ====       ======= ====== ======    =======   ====
-my-package 0.2.0   -      99999.0.0 99999.0.0     
+my-package 0.2.0   0.2.3  99999.0.0 99999.0.0     
     Checking two's dependencies
 name       old req locked latest    new req   note
 ====       ======= ====== ======    =======   ====
-my-package 0.2.0   -      99999.0.0 99999.0.0     
+my-package 0.2.0   0.2.3  99999.0.0 99999.0.0     
     Checking four's dependencies
 name       old req locked latest    new req   note
 ====       ======= ====== ======    =======   ====
-my-package 0.2.0   -      99999.0.0 99999.0.0     
+my-package 0.2.0   0.2.3  99999.0.0 99999.0.0     
