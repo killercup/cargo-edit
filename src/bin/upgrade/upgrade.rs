@@ -475,6 +475,17 @@ impl Dep {
             spec.set_fg(Some(Color::Yellow));
         } else if self.new_version_req != self.old_version_req {
             spec.set_fg(Some(Color::Green));
+            if let Some(latest_version) = self
+                .latest_version
+                .as_ref()
+                .and_then(|v| semver::Version::parse(v).ok())
+            {
+                if let Ok(new_version_req) = semver::VersionReq::parse(&self.new_version_req) {
+                    if !new_version_req.matches(&latest_version) {
+                        spec.set_fg(Some(Color::Yellow));
+                    }
+                }
+            }
         }
         spec
     }
