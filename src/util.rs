@@ -48,3 +48,14 @@ pub fn shell_warn(message: &str) -> CargoResult<()> {
 pub fn shell_note(message: &str) -> CargoResult<()> {
     shell_print("note", message, Color::Cyan, false)
 }
+
+/// Print a part of a line with formatting
+pub fn shell_write_stderr(fragment: impl std::fmt::Display, spec: &ColorSpec) -> CargoResult<()> {
+    let color_choice = colorize_stderr();
+    let mut output = StandardStream::stderr(color_choice);
+
+    output.set_color(spec)?;
+    write!(output, "{}", fragment)?;
+    output.reset()?;
+    Ok(())
+}

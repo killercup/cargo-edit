@@ -1,5 +1,7 @@
     Updating '[ROOTURL]/registry' index
     Checking cargo-list-test-fixture's dependencies
-warning: ignoring te, renamed dependencies are pinned
 warning: ignoring rx, excluded by user
+name old req locked latest    new req note  
+==== ======= ====== ======    ======= ====  
+te   0.1.5   -      99999.0.0 0.1.5   pinned
 note: Re-run with `--pinned` to upgrade pinned version requirements

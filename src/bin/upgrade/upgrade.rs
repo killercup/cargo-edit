@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use cargo_edit::{
     colorize_stderr, find, get_latest_dependency, registry_url, resolve_manifests, set_dep_version,
-    shell_note, shell_status, shell_warn, update_registry_index, CargoResult, Context, CrateSpec,
-    Dependency, LocalManifest,
+    shell_note, shell_status, shell_warn, shell_write_stderr, update_registry_index, CargoResult,
+    Context, CrateSpec, Dependency, LocalManifest,
 };
 use clap::Args;
 use indexmap::IndexMap;
@@ -164,6 +164,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     for package in manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
         let mut crate_modified = false;
+        let mut table = Vec::new();
         let manifest_path = manifest.path.clone();
         shell_status("Checking", &format!("{}'s dependencies", package.name))?;
         for dep_table in manifest.get_dependency_tables_mut() {
@@ -207,154 +208,120 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         continue;
                     }
                 };
+
+                let mut reason = None;
                 if !args.pinned {
                     if dependency.rename.is_some() {
-                        args.verbose(|| {
-                            shell_warn(&format!(
-                                "ignoring {}, renamed dependencies are pinned",
-                                dependency.toml_key(),
-                            ))
-                        })?;
+                        reason.get_or_insert("pinned");
                         pinned_present = true;
-                        continue;
                     }
 
                     if let Ok(version_req) = VersionReq::parse(&old_version_req) {
                         if version_req.comparators.iter().any(|comparator| {
                             matches!(comparator.op, Op::Exact | Op::Less | Op::LessEq)
                         }) {
-                            args.verbose(|| {
-                                shell_warn(&format!(
-                                    "ignoring {}, version ({}) is pinned",
-                                    dependency.toml_key(),
-                                    old_version_req
-                                ))
-                            })?;
+                            reason.get_or_insert("pinned");
                             pinned_present = true;
-                            continue;
                         }
                     }
                 }
 
-                let new_version_req = if let Some(Some(new_version_req)) =
+                let locked_version =
+                    find_locked_version(&dependency.name, &old_version_req, &locked);
+
+                let latest_version = if dependency
+                    .source
+                    .as_ref()
+                    .and_then(|s| s.as_registry())
+                    .is_some()
+                {
+                    // Update indices for any alternative registries, unless
+                    // we're offline.
+                    let registry_url = dependency
+                        .registry()
+                        .map(|registry| registry_url(&manifest_path, Some(registry)))
+                        .transpose()?;
+                    if !args.offline {
+                        if let Some(registry_url) = &registry_url {
+                            if updated_registries.insert(registry_url.to_owned()) {
+                                update_registry_index(registry_url, false)?;
+                            }
+                        }
+                    }
+                    let is_prerelease = old_version_req.contains('-');
+                    let latest_version = get_latest_dependency(
+                        &dependency.name,
+                        is_prerelease,
+                        &manifest_path,
+                        registry_url.as_ref(),
+                    )
+                    .map(|d| {
+                        d.version()
+                            .expect("registry packages always have a version")
+                            .to_owned()
+                    });
+                    latest_version.ok()
+                } else {
+                    None
+                };
+
+                let new_version_req = if reason.is_some() {
+                    old_version_req.clone()
+                } else if let Some(Some(new_version_req)) =
                     selected_dependencies.get(dependency.toml_key())
                 {
                     new_version_req.to_owned()
                 } else {
-                    // Not checking `selected_dependencies.is_empty`, it was checked earlier
                     let new_version = if args.to_lockfile {
-                        match find_locked_version(&dependency.name, &old_version_req, &locked) {
-                            Some(new_version) => new_version,
-                            None => {
-                                args.verbose(|| {
-                                    shell_warn(&format!(
-                                        "ignoring {}, could not find package: not in lock file",
-                                        dependency.toml_key(),
-                                    ))
-                                })?;
-                                continue;
-                            }
+                        if let Some(locked_version) = &locked_version {
+                            Some(locked_version.clone())
+                        } else {
+                            None
+                        }
+                    } else if let Some(latest_version) = &latest_version {
+                        if old_version_compatible(&old_version_req, latest_version) {
+                            reason.get_or_insert("compatible");
+                            compatible_present = true;
+                            None
+                        } else {
+                            Some(latest_version.clone())
                         }
                     } else {
-                        if dependency
-                            .source
-                            .as_ref()
-                            .and_then(|s| s.as_registry())
-                            .is_none()
-                        {
-                            args.verbose(|| {
-                                let source = dependency
-                                    .source()
-                                    .map(|s| s.to_string())
-                                    .unwrap_or_else(|| "unknown".to_owned());
-                                shell_warn(&format!(
-                                    "ignoring {}, source is {}",
-                                    dependency.toml_key(),
-                                    source
-                                ))
-                            })?;
-                            continue;
-                        }
-                        // Update indices for any alternative registries, unless
-                        // we're offline.
-                        let registry_url = dependency
-                            .registry()
-                            .map(|registry| registry_url(&manifest_path, Some(registry)))
-                            .transpose()?;
-                        if !args.offline {
-                            if let Some(registry_url) = &registry_url {
-                                if updated_registries.insert(registry_url.to_owned()) {
-                                    update_registry_index(registry_url, false)?;
-                                }
-                            }
-                        }
-                        let is_prerelease = old_version_req.contains('-');
-                        let new_version = get_latest_dependency(
-                            &dependency.name,
-                            is_prerelease,
-                            &manifest_path,
-                            registry_url.as_ref(),
-                        )
-                        .map(|d| {
-                            d.version()
-                                .expect("registry packages always have a version")
-                                .to_owned()
-                        });
-                        let new_version = match new_version {
-                            Ok(new_version) => new_version,
-                            Err(err) => {
-                                args.verbose(|| {
-                                    shell_warn(&format!(
-                                        "ignoring {}, could not find package: {}",
-                                        dependency.toml_key(),
-                                        err
-                                    ))
-                                })?;
-                                continue;
-                            }
-                        };
-                        if old_version_compatible(&old_version_req, &new_version) {
-                            args.verbose(|| {
-                                shell_warn(&format!(
-                                    "ignoring {}, version ({}) is compatible with {}",
-                                    dependency.toml_key(),
-                                    old_version_req,
-                                    new_version
-                                ))
-                            })?;
-                            compatible_present = true;
-                            continue;
-                        }
-                        new_version
+                        None
                     };
-                    let mut new_version_req = new_version;
-                    let new_ver: semver::Version = new_version_req.parse()?;
-                    match cargo_edit::upgrade_requirement(&old_version_req, &new_ver) {
-                        Ok(Some(version)) => {
-                            new_version_req = version;
+                    if let Some(mut new_version_req) = new_version {
+                        let new_ver: semver::Version = new_version_req.parse()?;
+                        match cargo_edit::upgrade_requirement(&old_version_req, &new_ver) {
+                            Ok(Some(version)) => {
+                                new_version_req = version;
+                            }
+                            Err(_) => {}
+                            _ => {
+                                new_version_req = old_version_req.clone();
+                            }
                         }
-                        Err(_) => {}
-                        _ => {
-                            new_version_req = old_version_req.clone();
-                        }
+                        new_version_req
+                    } else {
+                        old_version_req.clone()
                     }
-                    new_version_req
                 };
-                if new_version_req == old_version_req {
-                    args.verbose(|| {
-                        shell_warn(&format!(
-                            "ignoring {}, version ({}) is unchanged",
-                            dependency.toml_key(),
-                            new_version_req
-                        ))
-                    })?;
-                    continue;
+                if new_version_req != old_version_req {
+                    set_dep_version(dep_item, &new_version_req)?;
+                    crate_modified = true;
+                    any_crate_modified = true;
                 }
-                print_upgrade(dependency.toml_key(), &old_version_req, &new_version_req)?;
-                set_dep_version(dep_item, &new_version_req)?;
-                crate_modified = true;
-                any_crate_modified = true;
+                table.push(Dep {
+                    name: dependency.toml_key().to_owned(),
+                    old_version_req,
+                    locked_version,
+                    latest_version,
+                    new_version_req,
+                    reason,
+                });
             }
+        }
+        if !table.is_empty() {
+            print_upgrade(table)?;
         }
         if !args.dry_run && !args.locked && crate_modified {
             manifest.write()?;
@@ -458,23 +425,165 @@ fn deprecated_message(message: &str) -> CargoResult<()> {
     Ok(())
 }
 
-/// Print a message if the new dependency version is different from the old one.
-fn print_upgrade(dep_name: &str, old_version: &str, new_version: &str) -> CargoResult<()> {
-    let old_version = format_version_req(old_version);
-    let new_version = format_version_req(new_version);
+struct Dep {
+    name: String,
+    old_version_req: String,
+    locked_version: Option<String>,
+    latest_version: Option<String>,
+    new_version_req: String,
+    reason: Option<&'static str>,
+}
 
-    shell_status(
-        "Upgrading",
-        &format!("{dep_name}: {old_version} -> {new_version}"),
-    )?;
+impl Dep {
+    fn old_version_req_spec(&self) -> ColorSpec {
+        let mut spec = ColorSpec::new();
+        if let Some(latest_version) = self
+            .latest_version
+            .as_ref()
+            .and_then(|v| semver::Version::parse(v).ok())
+        {
+            if let Ok(old_version_req) = semver::VersionReq::parse(&self.old_version_req) {
+                if !old_version_req.matches(&latest_version) {
+                    spec.set_fg(Some(Color::Yellow));
+                }
+            }
+        }
+        spec
+    }
+
+    fn locked_version(&self) -> &str {
+        self.locked_version.as_deref().unwrap_or("-")
+    }
+
+    fn locked_version_spec(&self) -> ColorSpec {
+        let mut spec = ColorSpec::new();
+        if self.locked_version.is_none() {
+        } else if self.locked_version != self.latest_version {
+            spec.set_fg(Some(Color::Yellow));
+        }
+        spec
+    }
+
+    fn latest_version(&self) -> &str {
+        self.latest_version.as_deref().unwrap_or("-")
+    }
+
+    fn new_version_req_spec(&self) -> ColorSpec {
+        let mut spec = ColorSpec::new();
+        if self.reason.is_some() {
+            spec.set_fg(Some(Color::Yellow));
+        } else if self.new_version_req != self.old_version_req {
+            spec.set_fg(Some(Color::Green));
+        }
+        spec
+    }
+
+    fn reason(&self) -> &str {
+        self.reason.unwrap_or("")
+    }
+
+    fn reason_spec(&self) -> ColorSpec {
+        let mut spec = ColorSpec::new();
+        if self.reason.is_some() {
+            spec.set_fg(Some(Color::Yellow));
+        }
+        spec
+    }
+}
+
+/// Print a message if the new dependency version is different from the old one.
+fn print_upgrade(mut deps: Vec<Dep>) -> CargoResult<()> {
+    deps.splice(
+        0..0,
+        [
+            Dep {
+                name: "name".to_owned(),
+                old_version_req: "old req".to_owned(),
+                locked_version: Some("locked".to_owned()),
+                latest_version: Some("latest".to_owned()),
+                new_version_req: "new req".to_owned(),
+                reason: Some("note"),
+            },
+            Dep {
+                name: "====".to_owned(),
+                old_version_req: "=======".to_owned(),
+                locked_version: Some("======".to_owned()),
+                latest_version: Some("======".to_owned()),
+                new_version_req: "=======".to_owned(),
+                reason: Some("===="),
+            },
+        ],
+    );
+    let mut width = [0; 6];
+    for dep in &deps {
+        width[0] = width[0].max(dep.name.len());
+        width[1] = width[1].max(dep.old_version_req.len());
+        width[2] = width[2].max(dep.locked_version().len());
+        width[3] = width[3].max(dep.latest_version().len());
+        width[4] = width[4].max(dep.new_version_req.len());
+        width[5] = width[5].max(dep.reason().len());
+    }
+    for (i, dep) in deps.iter().enumerate() {
+        let is_header = (0..=1).contains(&i);
+        let mut header_spec = ColorSpec::new();
+        header_spec.set_bold(true);
+
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            ColorSpec::new()
+        };
+        write_cell(&dep.name, width[0], &spec)?;
+        shell_write_stderr(" ", &ColorSpec::new())?;
+
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            dep.old_version_req_spec()
+        };
+        write_cell(&dep.old_version_req, width[1], &spec)?;
+        shell_write_stderr(" ", &ColorSpec::new())?;
+
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            dep.locked_version_spec()
+        };
+        write_cell(dep.locked_version(), width[2], &spec)?;
+        shell_write_stderr(" ", &ColorSpec::new())?;
+
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            ColorSpec::new()
+        };
+        write_cell(&dep.latest_version(), width[3], &spec)?;
+        shell_write_stderr(" ", &ColorSpec::new())?;
+
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            dep.new_version_req_spec()
+        };
+        write_cell(&dep.new_version_req, width[4], &spec)?;
+        shell_write_stderr(" ", &ColorSpec::new())?;
+
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            dep.reason_spec()
+        };
+        write_cell(&dep.reason(), width[5], &spec)?;
+        shell_write_stderr("\n", &ColorSpec::new())?;
+    }
 
     Ok(())
 }
 
-fn format_version_req(version: &str) -> String {
-    if version.chars().next().unwrap_or('0').is_ascii_digit() {
-        format!("v{}", version)
-    } else {
-        version.to_owned()
+fn write_cell(content: &str, width: usize, spec: &ColorSpec) -> CargoResult<()> {
+    shell_write_stderr(content, spec)?;
+    for _ in 0..(width - content.len()) {
+        shell_write_stderr(" ", &ColorSpec::new())?;
     }
+    Ok(())
 }

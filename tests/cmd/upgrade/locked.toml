@@ -4,7 +4,9 @@ status = "failed"
 stdout = ""
 stderr = """
     Checking cargo-list-test-fixture's dependencies
-   Upgrading docopt: v0.8.0 -> v99999.0.0
+name   old req locked latest    new req   note
+====   ======= ====== ======    =======   ====
+docopt 0.8.0   -      99999.0.0 99999.0.0     
 Error: cannot upgrade due to `--locked`
 """
 fs.sandbox = true

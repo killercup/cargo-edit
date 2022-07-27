@@ -5,15 +5,23 @@ stdout = ""
 stderr = """
 The flag `--all` has been deprecated in favor of `--workspace`
     Checking one's dependencies
-   Upgrading libc: v0.2.28 -> v99999.0.0
-   Upgrading rand: v0.3 -> v99999.0
+name old req locked latest    new req   note
+==== ======= ====== ======    =======   ====
+libc 0.2.28  -      99999.0.0 99999.0.0     
+rand 0.3     -      99999.0.0 99999.0       
     Checking three's dependencies
-   Upgrading libc: v0.2.28 -> v99999.0.0
+name old req locked latest    new req   note
+==== ======= ====== ======    =======   ====
+libc 0.2.28  -      99999.0.0 99999.0.0     
     Checking two's dependencies
-   Upgrading libc: v0.2.28 -> v99999.0.0
-   Upgrading rand: v0.2 -> v99999.0
+name old req locked latest    new req   note
+==== ======= ====== ======    =======   ====
+libc 0.2.28  -      99999.0.0 99999.0.0     
+rand 0.2     -      99999.0.0 99999.0       
     Checking four's dependencies
-   Upgrading libc: v0.2.28 -> v99999.0.0
+name old req locked latest    new req   note
+==== ======= ====== ======    =======   ====
+libc 0.2.28  -      99999.0.0 99999.0.0     
 """
 fs.sandbox = true
 

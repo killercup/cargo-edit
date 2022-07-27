@@ -4,7 +4,9 @@ status = "success"
 stdout = ""
 stderr = """
     Checking cargo-list-test-fixture's dependencies
-   Upgrading docopt: v0 -> v99999
+name   old req locked latest    new req note
+====   ======= ====== ======    ======= ====
+docopt 0       -      99999.0.0 99999       
 """
 fs.sandbox = true
 

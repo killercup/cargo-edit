@@ -1,5 +1,7 @@
     Updating '[ROOTURL]/registry' index
     Checking cargo-list-test-fixture's dependencies
-   Upgrading test_breaking: v0.1 -> v0.2
-warning: ignoring test_nonbreaking, version (0.1) is compatible with 0.1.1
+name             old req locked latest new req note      
+====             ======= ====== ====== ======= ====      
+test_breaking    0.1     -      0.2.0  0.2               
+test_nonbreaking 0.1     -      0.1.1  0.1     compatible
 note: Re-run with `--to-lockfile` to upgrade compatible version requirements

@@ -4,7 +4,9 @@ status = "success"
 stdout = ""
 stderr = """
     Checking one's dependencies
-   Upgrading libc: v0.2.28 -> v99999.0.0
+name old req locked latest    new req   note
+==== ======= ====== ======    =======   ====
+libc 0.2.28  -      99999.0.0 99999.0.0     
 """
 fs.sandbox = true
 fs.cwd = "workspace_member_cwd.in/one"

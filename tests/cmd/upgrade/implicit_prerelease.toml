@@ -4,8 +4,10 @@ status = "success"
 stdout = ""
 stderr = """
     Checking cargo-list-test-fixture's dependencies
-   Upgrading a: v1.0 -> v99999.0
-   Upgrading b: v0.8.0-alpha -> v99999.0.0-alpha.1
+name old req     locked latest            new req           note
+==== =======     ====== ======            =======           ====
+a    1.0         -      99999.0.0         99999.0               
+b    0.8.0-alpha -      99999.0.0-alpha.1 99999.0.0-alpha.1     
 """
 fs.sandbox = true
 

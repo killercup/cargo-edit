@@ -1,4 +1,6 @@
     Updating '[ROOTURL]/registry' index
     Checking cargo-list-test-fixture's dependencies
-   Upgrading unrelated-crate: v1.0 -> v99999.0
-   Upgrading my-package: v0.1.1-alpha.1 -> v99999.1.0-alpha.1
+name            old req       locked latest            new req           note
+====            =======       ====== ======            =======           ====
+unrelated-crate 1.0           -      99999.0.0         99999.0               
+my-package      0.1.1-alpha.1 -      99999.1.0-alpha.1 99999.1.0-alpha.1     
