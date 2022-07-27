@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+`upgrade`
+- Provide table view of upgrades, like `cargo outdated`, to raise visibility for why a change isn't made
+- Fix where we didn't respect `--offline`
+- Fix `--to-lockfile` to update non-registry version requirements
+- Update lockfile for upgraded requirements
+- Update `--help` to be consistent with `cargo add`
+
+`rm`
+- Update `--help` to be consistent with `cargo add`
+
 ## 0.10.2 - 2022-07-21
 
 ### Fixes
