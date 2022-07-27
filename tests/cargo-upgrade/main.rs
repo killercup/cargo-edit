@@ -17,6 +17,7 @@ mod invalid_workspace_root_manifest;
 mod locked;
 mod optional_dep;
 mod pinned;
+mod preserve_op;
 mod preserve_precision_major;
 mod preserve_precision_minor;
 mod preserve_precision_patch;
