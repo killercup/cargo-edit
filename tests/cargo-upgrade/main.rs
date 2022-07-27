@@ -124,6 +124,9 @@ fn add_registry_packages(alt: bool) {
     cargo_test_support::registry::Package::new("test_nonbreaking", "0.1.1")
         .alternative(alt)
         .publish();
+    cargo_test_support::registry::Package::new("test_nonbreaking", "0.1.2")
+        .alternative(alt)
+        .publish();
 
     // Normalization
     cargo_test_support::registry::Package::new("linked-hash-map", "0.5.4")

@@ -268,38 +268,43 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 {
                     new_version_req.to_owned()
                 } else {
-                    let new_version = if args.to_lockfile {
+                    let new_version_req = if args.to_lockfile {
                         if let Some(locked_version) = &locked_version {
-                            Some(locked_version.clone())
+                            let new_version_req = locked_version.clone();
+                            let new_version: semver::Version = locked_version.parse()?;
+                            match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
+                                Ok(Some(version_req)) => Some(version_req),
+                                Err(_) => Some(new_version_req),
+                                _ => None,
+                            }
                         } else {
                             None
                         }
                     } else if let Some(latest_version) = &latest_version {
-                        if old_version_compatible(&old_version_req, latest_version) {
-                            reason.get_or_insert("compatible");
-                            compatible_present = true;
-                            None
-                        } else {
-                            Some(latest_version.clone())
-                        }
-                    } else {
-                        None
-                    };
-                    if let Some(mut new_version_req) = new_version {
-                        let new_ver: semver::Version = new_version_req.parse()?;
-                        match cargo_edit::upgrade_requirement(&old_version_req, &new_ver) {
-                            Ok(Some(version)) => {
-                                new_version_req = version;
+                        let mut new_version_req = latest_version.clone();
+                        let new_version: semver::Version = latest_version.parse()?;
+                        match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
+                            Ok(Some(version_req)) => {
+                                new_version_req = version_req;
                             }
                             Err(_) => {}
                             _ => {
                                 new_version_req = old_version_req.clone();
                             }
                         }
-                        new_version_req
+                        if new_version_req == old_version_req {
+                            None
+                        } else if old_version_compatible(&old_version_req, latest_version) {
+                            reason.get_or_insert("compatible");
+                            compatible_present = true;
+                            None
+                        } else {
+                            Some(new_version_req)
+                        }
                     } else {
-                        old_version_req.clone()
-                    }
+                        None
+                    };
+                    new_version_req.unwrap_or_else(|| old_version_req.clone())
                 };
                 if new_version_req != old_version_req {
                     set_dep_version(dep_item, &new_version_req)?;
