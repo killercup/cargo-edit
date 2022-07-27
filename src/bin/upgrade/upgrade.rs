@@ -141,7 +141,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     }
 
     let manifests = args.resolve_targets()?;
-    let locked = load_lockfile(&manifests, args.offline).unwrap_or_default();
+    let locked = load_lockfile(&manifests, args.locked, args.offline).unwrap_or_default();
 
     let selected_dependencies = args
         .dependency
@@ -360,6 +360,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
 fn load_lockfile(
     targets: &[cargo_metadata::Package],
+    locked: bool,
     offline: bool,
 ) -> CargoResult<Vec<cargo_metadata::Package>> {
     // Get locked dependencies. For workspaces with multiple Cargo.toml
@@ -371,7 +372,10 @@ fn load_lockfile(
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.manifest_path(package.manifest_path.clone());
     cmd.features(cargo_metadata::CargoOpt::AllFeatures);
-    let mut other = vec!["--locked".to_owned()];
+    let mut other = Vec::new();
+    if locked {
+        other.push("--locked".to_owned());
+    }
     if offline {
         other.push("--offline".to_owned());
     }
@@ -392,7 +396,9 @@ fn find_locked_version(
     let req = semver::VersionReq::parse(old_version).ok()?;
     for p in locked {
         if dep_name == p.name && req.matches(&p.version) {
-            return Some(p.version.to_string());
+            let mut v = p.version.clone();
+            v.build = semver::BuildMetadata::EMPTY;
+            return Some(v.to_string());
         }
     }
     None

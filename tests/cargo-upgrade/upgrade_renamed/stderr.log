@@ -2,5 +2,5 @@
     Checking cargo-list-test-fixture's dependencies
 name old req locked latest    new req   note
 ==== ======= ====== ======    =======   ====
-m1   0.1.1   -      99999.0.0 99999.0.0     
-m2   0.2     -      99999.0.0 99999.0       
+m1   0.1.1   0.1.1  99999.0.0 99999.0.0     
+m2   0.2     0.2.3  99999.0.0 99999.0       
