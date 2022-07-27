@@ -143,7 +143,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let manifests = args.resolve_targets()?;
     let locked = args
         .to_lockfile
-        .then(|| load_lockfile(&manifests))
+        .then(|| load_lockfile(&manifests, args.offline))
         .transpose()?
         .unwrap_or_default();
 
@@ -390,7 +390,10 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     Ok(())
 }
 
-fn load_lockfile(targets: &[cargo_metadata::Package]) -> CargoResult<Vec<cargo_metadata::Package>> {
+fn load_lockfile(
+    targets: &[cargo_metadata::Package],
+    offline: bool,
+) -> CargoResult<Vec<cargo_metadata::Package>> {
     // Get locked dependencies. For workspaces with multiple Cargo.toml
     // files, there is only a single lockfile, so it suffices to get
     // metadata for any one of Cargo.toml files.
@@ -400,7 +403,11 @@ fn load_lockfile(targets: &[cargo_metadata::Package]) -> CargoResult<Vec<cargo_m
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.manifest_path(package.manifest_path.clone());
     cmd.features(cargo_metadata::CargoOpt::AllFeatures);
-    cmd.other_options(vec!["--locked".to_string()]);
+    let mut other = vec!["--locked".to_owned()];
+    if offline {
+        other.push("--offline".to_owned());
+    }
+    cmd.other_options(other);
 
     let result = cmd.exec()?;
 
