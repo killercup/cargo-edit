@@ -459,7 +459,7 @@ impl Dep {
 
     fn locked_version_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        if self.locked_version.is_none() {
+        if self.locked_version.is_none() || self.latest_version.is_none() {
         } else if self.locked_version != self.latest_version {
             spec.set_fg(Some(Color::Yellow));
         }
