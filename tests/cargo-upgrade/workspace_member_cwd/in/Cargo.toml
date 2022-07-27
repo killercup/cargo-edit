@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "one",
+    "two",
+    "explicit/*"
+]

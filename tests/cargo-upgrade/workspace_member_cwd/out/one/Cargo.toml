@@ -1,0 +1,10 @@
+[package]
+name = "one"
+version = "0.1.0"
+
+[lib]
+path = "../dummy.rs"
+
+[dependencies]
+my-package = "99999.0.0"
+three = { path = "../implicit/three"}

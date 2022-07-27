@@ -1,0 +1,4 @@
+    Updating '[ROOTURL]/registry' index
+    Checking cargo-list-test-fixture's dependencies
+   Upgrading my-package: v0.1.1 -> v99999.0.0
+Error: cannot upgrade due to `--locked`
