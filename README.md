@@ -4,6 +4,7 @@ This tool extends [Cargo](http://doc.crates.io/) to allow you to add, remove, an
 
 Currently available subcommands:
 
+- [`cargo add`](#cargo-add)
 - [`cargo rm`](#cargo-rm)
 - [`cargo upgrade`](#cargo-upgrade)
 - [`cargo set-version`](#cargo-set-version)
