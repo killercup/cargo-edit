@@ -297,6 +297,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     };
                     new_version_req.unwrap_or_else(|| old_version_req.clone())
                 };
+                if new_version_req == old_version_req {
+                    reason.get_or_insert(Reason::Unchanged);
+                }
                 if new_version_req != old_version_req {
                     set_dep_version(dep_item, &new_version_req)?;
                     crate_modified = true;
@@ -472,18 +475,20 @@ impl Dep {
 
     fn new_version_req_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        if self.reason.is_some() {
-            spec.set_fg(Some(Color::Yellow));
-        } else if self.new_version_req != self.old_version_req {
-            spec.set_fg(Some(Color::Green));
-            if let Some(latest_version) = self
-                .latest_version
-                .as_ref()
-                .and_then(|v| semver::Version::parse(v).ok())
-            {
-                if let Ok(new_version_req) = semver::VersionReq::parse(&self.new_version_req) {
-                    if !new_version_req.matches(&latest_version) {
-                        spec.set_fg(Some(Color::Yellow));
+        if self.new_version_req != self.old_version_req {
+            if self.reason.is_some() {
+                spec.set_fg(Some(Color::Yellow));
+            } else {
+                spec.set_fg(Some(Color::Green));
+                if let Some(latest_version) = self
+                    .latest_version
+                    .as_ref()
+                    .and_then(|v| semver::Version::parse(v).ok())
+                {
+                    if let Ok(new_version_req) = semver::VersionReq::parse(&self.new_version_req) {
+                        if !new_version_req.matches(&latest_version) {
+                            spec.set_fg(Some(Color::Yellow));
+                        }
                     }
                 }
             }
@@ -506,6 +511,7 @@ impl Dep {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Reason {
+    Unchanged,
     Compatible,
     Pinned,
 }
@@ -513,6 +519,7 @@ enum Reason {
 impl Reason {
     fn as_str(&self) -> &'static str {
         match self {
+            Self::Unchanged => "",
             Self::Compatible => "compatible",
             Self::Pinned => "pinned",
         }
