@@ -31,6 +31,7 @@ mod to_version;
 mod upgrade_all;
 mod upgrade_everything;
 mod upgrade_renamed;
+mod upgrade_verbose;
 mod upgrade_workspace;
 mod virtual_manifest;
 mod workspace_member_cwd;

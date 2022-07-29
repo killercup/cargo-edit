@@ -14,7 +14,7 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--all"])
+        .args(["--all", "--verbose"])
         .current_dir(cwd)
         .assert()
         .success()

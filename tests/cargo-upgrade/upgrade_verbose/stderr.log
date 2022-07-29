@@ -1,8 +1,8 @@
     Updating '[ROOTURL]/registry' index
     Checking None's dependencies
-warning: ignoring docopt, excluded by user
 name       old req locked  latest    new req  
 ====       ======= ======  ======    =======  
+docopt     0.4     0.4.1   99999.0.0 99999.0  
 pad        0.1     0.1.1   99999.0.0 99999.0  
 serde_json 20.0    20.0.0  99999.0.0 99999.0  
 syn        0.1.1   0.1.1   99999.0.0 99999.0.0
