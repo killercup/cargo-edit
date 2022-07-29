@@ -199,7 +199,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 let mut reason = None;
                 if !args.pinned {
                     if dependency.rename.is_some() {
-                        reason.get_or_insert("pinned");
+                        reason.get_or_insert(Reason::Pinned);
                         pinned_present = true;
                     }
 
@@ -207,7 +207,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         if version_req.comparators.iter().any(|comparator| {
                             matches!(comparator.op, Op::Exact | Op::Less | Op::LessEq)
                         }) {
-                            reason.get_or_insert("pinned");
+                            reason.get_or_insert(Reason::Pinned);
                             pinned_present = true;
                         }
                     }
@@ -286,7 +286,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         if new_version_req == old_version_req {
                             None
                         } else if old_version_compatible(&old_version_req, latest_version) {
-                            reason.get_or_insert("compatible");
+                            reason.get_or_insert(Reason::Compatible);
                             compatible_present = true;
                             None
                         } else {
@@ -433,7 +433,7 @@ struct Dep {
     locked_version: Option<String>,
     latest_version: Option<String>,
     new_version_req: String,
-    reason: Option<&'static str>,
+    reason: Option<Reason>,
 }
 
 impl Dep {
@@ -492,7 +492,7 @@ impl Dep {
     }
 
     fn reason(&self) -> &str {
-        self.reason.unwrap_or("")
+        self.reason.map(|r| r.as_str()).unwrap_or("")
     }
 
     fn reason_spec(&self) -> ColorSpec {
@@ -501,6 +501,21 @@ impl Dep {
             spec.set_fg(Some(Color::Yellow));
         }
         spec
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Reason {
+    Compatible,
+    Pinned,
+}
+
+impl Reason {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Compatible => "compatible",
+            Self::Pinned => "pinned",
+        }
     }
 }
 
@@ -515,7 +530,7 @@ fn print_upgrade(mut deps: Vec<Dep>) -> CargoResult<()> {
                 locked_version: Some("locked".to_owned()),
                 latest_version: Some("latest".to_owned()),
                 new_version_req: "new req".to_owned(),
-                reason: Some("note"),
+                reason: None,
             },
             Dep {
                 name: "====".to_owned(),
@@ -523,7 +538,7 @@ fn print_upgrade(mut deps: Vec<Dep>) -> CargoResult<()> {
                 locked_version: Some("======".to_owned()),
                 latest_version: Some("======".to_owned()),
                 new_version_req: "=======".to_owned(),
-                reason: Some("===="),
+                reason: None,
             },
         ],
     );
@@ -589,7 +604,12 @@ fn print_upgrade(mut deps: Vec<Dep>) -> CargoResult<()> {
             } else {
                 dep.reason_spec()
             };
-            write_cell(dep.reason(), width[5], &spec)?;
+            let reason = match i {
+                0 => "note",
+                1 => "====",
+                _ => dep.reason(),
+            };
+            write_cell(reason, width[5], &spec)?;
         }
 
         shell_write_stderr("\n", &ColorSpec::new())?;
