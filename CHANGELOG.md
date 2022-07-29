@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+`upgrade`
+- Hide "note" column when unused
+- Summarize uninteresting rows by default
+
 ## 0.10.3 - 2022-07-27
 
 ### Fixes
