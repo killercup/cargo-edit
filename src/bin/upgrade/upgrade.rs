@@ -459,7 +459,7 @@ impl Dep {
                 return old_version_req.matches(&latest_version);
             }
         }
-        return true;
+        true
     }
 
     fn locked_version(&self) -> &str {
@@ -477,10 +477,8 @@ impl Dep {
     fn is_locked_latest(&self) -> bool {
         if self.locked_version.is_none() || self.latest_version.is_none() {
             true
-        } else if self.locked_version != self.latest_version {
-            false
         } else {
-            true
+            self.locked_version == self.latest_version
         }
     }
 
@@ -681,7 +679,7 @@ fn print_upgrade(deps: Vec<Dep>, verbose: bool) -> CargoResult<()> {
         for dep in uninteresting {
             categorize
                 .entry(dep.long_reason())
-                .or_insert_with(|| BTreeSet::new())
+                .or_insert_with(BTreeSet::new)
                 .insert(dep.name);
         }
         let mut note = "Re-run with `--verbose` to show all dependencies".to_owned();
