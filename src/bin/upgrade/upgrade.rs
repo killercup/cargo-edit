@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::PathBuf;
@@ -316,7 +317,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             }
         }
         if !table.is_empty() {
-            print_upgrade(table)?;
+            print_upgrade(table, args.verbose)?;
         }
         if !args.dry_run && !args.locked && crate_modified {
             manifest.write()?;
@@ -442,18 +443,23 @@ struct Dep {
 impl Dep {
     fn old_version_req_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
+        if !self.old_req_matches_latest() {
+            spec.set_fg(Some(Color::Yellow));
+        }
+        spec
+    }
+
+    fn old_req_matches_latest(&self) -> bool {
         if let Some(latest_version) = self
             .latest_version
             .as_ref()
             .and_then(|v| semver::Version::parse(v).ok())
         {
             if let Ok(old_version_req) = semver::VersionReq::parse(&self.old_version_req) {
-                if !old_version_req.matches(&latest_version) {
-                    spec.set_fg(Some(Color::Yellow));
-                }
+                return old_version_req.matches(&latest_version);
             }
         }
-        spec
+        return true;
     }
 
     fn locked_version(&self) -> &str {
@@ -462,11 +468,20 @@ impl Dep {
 
     fn locked_version_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        if self.locked_version.is_none() || self.latest_version.is_none() {
-        } else if self.locked_version != self.latest_version {
+        if !self.is_locked_latest() {
             spec.set_fg(Some(Color::Yellow));
         }
         spec
+    }
+
+    fn is_locked_latest(&self) -> bool {
+        if self.locked_version.is_none() || self.latest_version.is_none() {
+            true
+        } else if self.locked_version != self.latest_version {
+            false
+        } else {
+            true
+        }
     }
 
     fn latest_version(&self) -> &str {
@@ -475,7 +490,7 @@ impl Dep {
 
     fn new_version_req_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        if self.new_version_req != self.old_version_req {
+        if self.req_changed() {
             if self.reason.is_some() {
                 spec.set_fg(Some(Color::Yellow));
             } else {
@@ -496,8 +511,16 @@ impl Dep {
         spec
     }
 
-    fn reason(&self) -> &str {
-        self.reason.map(|r| r.as_str()).unwrap_or("")
+    fn req_changed(&self) -> bool {
+        self.new_version_req != self.old_version_req
+    }
+
+    fn short_reason(&self) -> &'static str {
+        self.reason.map(|r| r.as_short()).unwrap_or("")
+    }
+
+    fn long_reason(&self) -> &'static str {
+        self.reason.map(|r| r.as_long()).unwrap_or("")
     }
 
     fn reason_spec(&self) -> ColorSpec {
@@ -506,6 +529,22 @@ impl Dep {
             spec.set_fg(Some(Color::Yellow));
         }
         spec
+    }
+
+    fn is_interesting(&self) -> bool {
+        if self.reason.is_none() {
+            return true;
+        }
+
+        if self.req_changed() {
+            return true;
+        }
+
+        if !self.old_req_matches_latest() {
+            return true;
+        }
+
+        false
     }
 }
 
@@ -517,9 +556,17 @@ enum Reason {
 }
 
 impl Reason {
-    fn as_str(&self) -> &'static str {
+    fn as_short(&self) -> &'static str {
         match self {
             Self::Unchanged => "",
+            Self::Compatible => "compatible",
+            Self::Pinned => "pinned",
+        }
+    }
+
+    fn as_long(&self) -> &'static str {
+        match self {
+            Self::Unchanged => "unchanged",
             Self::Compatible => "compatible",
             Self::Pinned => "pinned",
         }
@@ -527,99 +574,128 @@ impl Reason {
 }
 
 /// Print a message if the new dependency version is different from the old one.
-fn print_upgrade(mut deps: Vec<Dep>) -> CargoResult<()> {
-    deps.splice(
-        0..0,
-        [
-            Dep {
-                name: "name".to_owned(),
-                old_version_req: "old req".to_owned(),
-                locked_version: Some("locked".to_owned()),
-                latest_version: Some("latest".to_owned()),
-                new_version_req: "new req".to_owned(),
-                reason: None,
-            },
-            Dep {
-                name: "====".to_owned(),
-                old_version_req: "=======".to_owned(),
-                locked_version: Some("======".to_owned()),
-                latest_version: Some("======".to_owned()),
-                new_version_req: "=======".to_owned(),
-                reason: None,
-            },
-        ],
-    );
-    let mut width = [0; 6];
-    for (i, dep) in deps.iter().enumerate() {
-        width[0] = width[0].max(dep.name.len());
-        width[1] = width[1].max(dep.old_version_req.len());
-        width[2] = width[2].max(dep.locked_version().len());
-        width[3] = width[3].max(dep.latest_version().len());
-        width[4] = width[4].max(dep.new_version_req.len());
-        if 1 < i {
-            width[5] = width[5].max(dep.reason().len());
+fn print_upgrade(deps: Vec<Dep>, verbose: bool) -> CargoResult<()> {
+    let (mut interesting, uninteresting) = if verbose {
+        (deps, Vec::new())
+    } else {
+        deps.into_iter().partition::<Vec<_>, _>(Dep::is_interesting)
+    };
+    if !interesting.is_empty() {
+        interesting.splice(
+            0..0,
+            [
+                Dep {
+                    name: "name".to_owned(),
+                    old_version_req: "old req".to_owned(),
+                    locked_version: Some("locked".to_owned()),
+                    latest_version: Some("latest".to_owned()),
+                    new_version_req: "new req".to_owned(),
+                    reason: None,
+                },
+                Dep {
+                    name: "====".to_owned(),
+                    old_version_req: "=======".to_owned(),
+                    locked_version: Some("======".to_owned()),
+                    latest_version: Some("======".to_owned()),
+                    new_version_req: "=======".to_owned(),
+                    reason: None,
+                },
+            ],
+        );
+        let mut width = [0; 6];
+        for (i, dep) in interesting.iter().enumerate() {
+            width[0] = width[0].max(dep.name.len());
+            width[1] = width[1].max(dep.old_version_req.len());
+            width[2] = width[2].max(dep.locked_version().len());
+            width[3] = width[3].max(dep.latest_version().len());
+            width[4] = width[4].max(dep.new_version_req.len());
+            if 1 < i {
+                width[5] = width[5].max(dep.short_reason().len());
+            }
         }
-    }
-    for (i, dep) in deps.iter().enumerate() {
-        let is_header = (0..=1).contains(&i);
-        let mut header_spec = ColorSpec::new();
-        header_spec.set_bold(true);
+        for (i, dep) in interesting.iter().enumerate() {
+            let is_header = (0..=1).contains(&i);
+            let mut header_spec = ColorSpec::new();
+            header_spec.set_bold(true);
 
-        let spec = if is_header {
-            header_spec.clone()
-        } else {
-            ColorSpec::new()
-        };
-        write_cell(&dep.name, width[0], &spec)?;
+            let spec = if is_header {
+                header_spec.clone()
+            } else {
+                ColorSpec::new()
+            };
+            write_cell(&dep.name, width[0], &spec)?;
 
-        shell_write_stderr(" ", &ColorSpec::new())?;
-        let spec = if is_header {
-            header_spec.clone()
-        } else {
-            dep.old_version_req_spec()
-        };
-        write_cell(&dep.old_version_req, width[1], &spec)?;
-
-        shell_write_stderr(" ", &ColorSpec::new())?;
-        let spec = if is_header {
-            header_spec.clone()
-        } else {
-            dep.locked_version_spec()
-        };
-        write_cell(dep.locked_version(), width[2], &spec)?;
-
-        shell_write_stderr(" ", &ColorSpec::new())?;
-        let spec = if is_header {
-            header_spec.clone()
-        } else {
-            ColorSpec::new()
-        };
-        write_cell(dep.latest_version(), width[3], &spec)?;
-
-        shell_write_stderr(" ", &ColorSpec::new())?;
-        let spec = if is_header {
-            header_spec.clone()
-        } else {
-            dep.new_version_req_spec()
-        };
-        write_cell(&dep.new_version_req, width[4], &spec)?;
-
-        if 0 < width[5] {
             shell_write_stderr(" ", &ColorSpec::new())?;
             let spec = if is_header {
                 header_spec.clone()
             } else {
-                dep.reason_spec()
+                dep.old_version_req_spec()
             };
-            let reason = match i {
-                0 => "note",
-                1 => "====",
-                _ => dep.reason(),
-            };
-            write_cell(reason, width[5], &spec)?;
-        }
+            write_cell(&dep.old_version_req, width[1], &spec)?;
 
-        shell_write_stderr("\n", &ColorSpec::new())?;
+            shell_write_stderr(" ", &ColorSpec::new())?;
+            let spec = if is_header {
+                header_spec.clone()
+            } else {
+                dep.locked_version_spec()
+            };
+            write_cell(dep.locked_version(), width[2], &spec)?;
+
+            shell_write_stderr(" ", &ColorSpec::new())?;
+            let spec = if is_header {
+                header_spec.clone()
+            } else {
+                ColorSpec::new()
+            };
+            write_cell(dep.latest_version(), width[3], &spec)?;
+
+            shell_write_stderr(" ", &ColorSpec::new())?;
+            let spec = if is_header {
+                header_spec.clone()
+            } else {
+                dep.new_version_req_spec()
+            };
+            write_cell(&dep.new_version_req, width[4], &spec)?;
+
+            if 0 < width[5] {
+                shell_write_stderr(" ", &ColorSpec::new())?;
+                let spec = if is_header {
+                    header_spec.clone()
+                } else {
+                    dep.reason_spec()
+                };
+                let reason = match i {
+                    0 => "note",
+                    1 => "====",
+                    _ => dep.short_reason(),
+                };
+                write_cell(reason, width[5], &spec)?;
+            }
+
+            shell_write_stderr("\n", &ColorSpec::new())?;
+        }
+    }
+
+    if !uninteresting.is_empty() {
+        let mut categorize = BTreeMap::new();
+        for dep in uninteresting {
+            categorize
+                .entry(dep.long_reason())
+                .or_insert_with(|| BTreeSet::new())
+                .insert(dep.name);
+        }
+        let mut note = "Re-run with `--verbose` to show all dependencies".to_owned();
+        for (reason, deps) in categorize {
+            use std::fmt::Write;
+            write!(&mut note, "\n  {}: ", reason)?;
+            for (i, dep) in deps.into_iter().enumerate() {
+                if 0 < i {
+                    note.push_str(", ");
+                }
+                note.push_str(&dep);
+            }
+        }
+        shell_note(&note)?;
     }
 
     Ok(())

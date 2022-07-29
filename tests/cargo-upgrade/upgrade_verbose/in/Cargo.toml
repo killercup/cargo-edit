@@ -1,0 +1,47 @@
+[package]
+name = "None"
+version = "0.1.0"
+
+[lib]
+path = "dummy.rs"
+
+[dependencies]
+docopt = "0.4"
+pad = "0.1"
+serde_json = "20.0"
+syn = { version = "0.1.1", default-features = false }
+tar = { version = "0.4", default-features = false }
+ftp = "20.0.0"
+te = { package = "toml_edit", version = "0.1.1" }
+
+[dependencies.semver]
+version = "0.2"
+
+[dependencies.rn]
+package = "renamed"
+version = "0.1"
+
+[dev-dependencies]
+assert_cli = "0.2.0"
+tempdir = "0.1"
+
+[build-dependencies]
+serde = { version = "1.0", git= "https://github.com/serde-rs/serde.git" }
+
+[target.'cfg(unix)'.dependencies]
+openssl = "0.4"
+
+[target."windows.json"]
+# let's make it an inline table
+dependencies = { rget = "0.4.0" }
+
+[target.'cfg(target_arch = "x86_64")'.dev-dependencies]
+geo = { version = "0.2.0", default-features = false }
+
+[target.foo.build-dependencies]
+ftp = "0.2.0"
+
+[features]
+default = []
+test-external-apis = []
+unstable = []

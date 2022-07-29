@@ -14,7 +14,7 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--manifest-path", "Cargo.toml"])
+        .args(["--manifest-path", "Cargo.toml", "--verbose"])
         .current_dir(cwd)
         .assert()
         .success()
