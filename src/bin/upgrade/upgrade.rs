@@ -528,13 +528,15 @@ fn print_upgrade(mut deps: Vec<Dep>) -> CargoResult<()> {
         ],
     );
     let mut width = [0; 6];
-    for dep in &deps {
+    for (i, dep) in deps.iter().enumerate() {
         width[0] = width[0].max(dep.name.len());
         width[1] = width[1].max(dep.old_version_req.len());
         width[2] = width[2].max(dep.locked_version().len());
         width[3] = width[3].max(dep.latest_version().len());
         width[4] = width[4].max(dep.new_version_req.len());
-        width[5] = width[5].max(dep.reason().len());
+        if 1 < i {
+            width[5] = width[5].max(dep.reason().len());
+        }
     }
     for (i, dep) in deps.iter().enumerate() {
         let is_header = (0..=1).contains(&i);
@@ -547,46 +549,49 @@ fn print_upgrade(mut deps: Vec<Dep>) -> CargoResult<()> {
             ColorSpec::new()
         };
         write_cell(&dep.name, width[0], &spec)?;
-        shell_write_stderr(" ", &ColorSpec::new())?;
 
+        shell_write_stderr(" ", &ColorSpec::new())?;
         let spec = if is_header {
             header_spec.clone()
         } else {
             dep.old_version_req_spec()
         };
         write_cell(&dep.old_version_req, width[1], &spec)?;
-        shell_write_stderr(" ", &ColorSpec::new())?;
 
+        shell_write_stderr(" ", &ColorSpec::new())?;
         let spec = if is_header {
             header_spec.clone()
         } else {
             dep.locked_version_spec()
         };
         write_cell(dep.locked_version(), width[2], &spec)?;
-        shell_write_stderr(" ", &ColorSpec::new())?;
 
+        shell_write_stderr(" ", &ColorSpec::new())?;
         let spec = if is_header {
             header_spec.clone()
         } else {
             ColorSpec::new()
         };
         write_cell(dep.latest_version(), width[3], &spec)?;
-        shell_write_stderr(" ", &ColorSpec::new())?;
 
+        shell_write_stderr(" ", &ColorSpec::new())?;
         let spec = if is_header {
             header_spec.clone()
         } else {
             dep.new_version_req_spec()
         };
         write_cell(&dep.new_version_req, width[4], &spec)?;
-        shell_write_stderr(" ", &ColorSpec::new())?;
 
-        let spec = if is_header {
-            header_spec.clone()
-        } else {
-            dep.reason_spec()
-        };
-        write_cell(dep.reason(), width[5], &spec)?;
+        if 0 < width[5] {
+            shell_write_stderr(" ", &ColorSpec::new())?;
+            let spec = if is_header {
+                header_spec.clone()
+            } else {
+                dep.reason_spec()
+            };
+            write_cell(dep.reason(), width[5], &spec)?;
+        }
+
         shell_write_stderr("\n", &ColorSpec::new())?;
     }
 
