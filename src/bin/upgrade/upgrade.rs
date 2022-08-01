@@ -206,7 +206,10 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
                     if let Ok(version_req) = VersionReq::parse(&old_version_req) {
                         if version_req.comparators.iter().any(|comparator| {
-                            matches!(comparator.op, Op::Exact | Op::Less | Op::LessEq)
+                            matches!(
+                                comparator.op,
+                                Op::Exact | Op::Less | Op::LessEq | Op::Wildcard
+                            )
                         }) {
                             reason.get_or_insert(Reason::Pinned);
                             pinned_present = true;

@@ -62,6 +62,7 @@ fn add_registry_packages(alt: bool) {
         // "Everything"
         "docopt",
         "pad",
+        "serde",
         "serde_json",
         "syn",
         "tar",
