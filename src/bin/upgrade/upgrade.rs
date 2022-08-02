@@ -204,16 +204,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         pinned_present = true;
                     }
 
-                    if let Ok(version_req) = VersionReq::parse(&old_version_req) {
-                        if version_req.comparators.iter().any(|comparator| {
-                            matches!(
-                                comparator.op,
-                                Op::Exact | Op::Less | Op::LessEq | Op::Wildcard
-                            )
-                        }) {
-                            reason.get_or_insert(Reason::Pinned);
-                            pinned_present = true;
-                        }
+                    if is_pinned_req(&old_version_req) {
+                        reason.get_or_insert(Reason::Pinned);
+                        pinned_present = true;
                     }
                 }
 
@@ -419,6 +412,19 @@ fn old_version_compatible(old_version_req: &str, new_version: &str) -> bool {
     };
 
     old_version_req.matches(&new_version)
+}
+
+fn is_pinned_req(old_version_req: &str) -> bool {
+    if let Ok(version_req) = VersionReq::parse(old_version_req) {
+        version_req.comparators.iter().any(|comparator| {
+            matches!(
+                comparator.op,
+                Op::Exact | Op::Less | Op::LessEq | Op::Wildcard
+            )
+        })
+    } else {
+        false
+    }
 }
 
 fn deprecated_message(message: &str) -> CargoResult<()> {
@@ -708,4 +714,63 @@ fn write_cell(content: &str, width: usize, spec: &ColorSpec) -> CargoResult<()> 
         shell_write_stderr(" ", &ColorSpec::new())?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn exact_is_pinned_req() {
+        let req = "=3";
+        assert!(is_pinned_req(req));
+    }
+
+    #[test]
+    fn less_than_is_pinned_req() {
+        let req = "<3";
+        assert!(is_pinned_req(req));
+    }
+
+    #[test]
+    fn less_than_equal_is_pinned_req() {
+        let req = "<=3";
+        assert!(is_pinned_req(req));
+    }
+
+    #[test]
+    fn minor_wildcard_is_pinned_req() {
+        let req = "3.*";
+        assert!(is_pinned_req(req));
+    }
+
+    #[test]
+    fn major_wildcard_is_not_pinned() {
+        let req = "*";
+        assert!(!is_pinned_req(req));
+    }
+
+    #[test]
+    fn greater_than_is_not_pinned() {
+        let req = ">3";
+        assert!(!is_pinned_req(req));
+    }
+
+    #[test]
+    fn greater_than_equal_is_not_pinned() {
+        let req = ">=3";
+        assert!(!is_pinned_req(req));
+    }
+
+    #[test]
+    fn caret_is_not_pinned() {
+        let req = "^3";
+        assert!(!is_pinned_req(req));
+    }
+
+    #[test]
+    fn default_is_not_pinned() {
+        let req = "3";
+        assert!(!is_pinned_req(req));
+    }
 }
