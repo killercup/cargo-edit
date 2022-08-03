@@ -39,26 +39,65 @@ mod workspace_member_manifest_path;
 
 fn init_registry() {
     cargo_test_support::registry::init();
-    add_registry_packages(false);
+    add_fake_registry_packages(false);
 }
 
 fn init_alt_registry() {
     cargo_test_support::registry::alt_init();
-    add_registry_packages(true);
+    add_fake_registry_packages(true);
 }
 
-fn add_registry_packages(alt: bool) {
+fn add_fake_registry_packages(alt: bool) {
     for name in [
         "my-package",
         "my-package1",
         "my-package2",
-        "my-dev-package1",
-        "my-dev-package2",
-        "my-build-package1",
-        "my-build-package2",
-        "versioned-package",
-        "cargo-list-test-fixture-dependency",
         "unrelated-crate",
+    ] {
+        cargo_test_support::registry::Package::new(name, "0.1.1-alpha.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.1.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.2.0+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.2.3+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.4.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "20.0.0+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "99999.0.0-alpha.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "99999.0.0+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "99999.1.0-alpha.1+my-package")
+            .alternative(alt)
+            .publish();
+    }
+}
+
+fn add_breaking_registry_packages(alt: bool) {
+    cargo_test_support::registry::Package::new("test_breaking", "0.2.0")
+        .alternative(alt)
+        .publish();
+    cargo_test_support::registry::Package::new("test_nonbreaking", "0.1.1")
+        .alternative(alt)
+        .publish();
+    cargo_test_support::registry::Package::new("test_nonbreaking", "0.1.2")
+        .alternative(alt)
+        .publish();
+}
+
+fn add_everything_registry_packages(alt: bool) {
+    for name in [
         // "Everything"
         "docopt",
         "pad",
@@ -76,7 +115,39 @@ fn add_registry_packages(alt: bool) {
         "openssl",
         "rget",
         "geo",
-        // Operators
+    ] {
+        cargo_test_support::registry::Package::new(name, "0.1.1-alpha.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.1.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.2.0+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.2.3+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.4.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "20.0.0+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "99999.0.0-alpha.1+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "99999.0.0+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "99999.1.0-alpha.1+my-package")
+            .alternative(alt)
+            .publish();
+    }
+}
+
+fn add_op_registry_packages(alt: bool) {
+    for name in [
         "default",
         "exact",
         "lessthan",
@@ -129,34 +200,6 @@ fn add_registry_packages(alt: bool) {
         .publish();
     cargo_test_support::registry::Package::new("test_nonbreaking", "0.1.2")
         .alternative(alt)
-        .publish();
-
-    // Normalization
-    cargo_test_support::registry::Package::new("linked-hash-map", "0.5.4")
-        .alternative(alt)
-        .feature("clippy", &[])
-        .feature("heapsize", &[])
-        .feature("heapsize_impl", &[])
-        .feature("nightly", &[])
-        .feature("serde", &[])
-        .feature("serde_impl", &[])
-        .feature("serde_test", &[])
-        .publish();
-    cargo_test_support::registry::Package::new("inflector", "0.11.4")
-        .alternative(alt)
-        .feature("default", &["heavyweight", "lazy_static", "regex"])
-        .feature("heavyweight", &[])
-        .feature("lazy_static", &[])
-        .feature("regex", &[])
-        .feature("unstable", &[])
-        .publish();
-
-    cargo_test_support::registry::Package::new("your-face", "99999.0.0+my-package")
-        .alternative(alt)
-        .feature("nose", &[])
-        .feature("mouth", &[])
-        .feature("eyes", &[])
-        .feature("ears", &[])
         .publish();
 }
 
