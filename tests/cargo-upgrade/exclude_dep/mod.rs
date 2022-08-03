@@ -1,13 +1,13 @@
 use cargo_test_support::compare::assert_ui;
 use cargo_test_support::Project;
 
-use crate::init_registry;
 use crate::CargoCommand;
 use cargo_test_support::curr_dir;
 
 #[cargo_test]
 fn case() {
-    init_registry();
+    cargo_test_support::registry::init();
+    crate::add_everything_registry_packages(false);
     let project = Project::from_template(curr_dir!().join("in"));
     let project_root = project.root();
     let cwd = &project_root;
