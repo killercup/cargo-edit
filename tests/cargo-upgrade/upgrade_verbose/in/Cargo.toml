@@ -26,7 +26,7 @@ assert_cli = "0.2.0"
 tempdir = "0.1"
 
 [build-dependencies]
-serde = { version = "1.0", git= "https://github.com/serde-rs/serde.git" }
+serde = { version = "1.0", path = "../serde" }
 
 [target.'cfg(unix)'.dependencies]
 openssl = "0.4"

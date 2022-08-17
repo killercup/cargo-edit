@@ -146,6 +146,17 @@ fn add_everything_registry_packages(alt: bool) {
     }
 }
 
+fn add_git_registry_packages() {
+    cargo_test_support::git::new("serde", |project| {
+        project
+            .file(
+                "Cargo.toml",
+                &cargo_test_support::basic_manifest("serde", "1.0.99999"),
+            )
+            .file("src/lib.rs", r#"pub fn hello() { println!("it works"); }"#)
+    });
+}
+
 fn add_op_registry_packages(alt: bool) {
     for name in [
         "default",
