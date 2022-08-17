@@ -1,0 +1,7 @@
+error: The following required arguments were not provided:
+    <DEP_ID>...
+
+USAGE:
+    cargo rm [OPTIONS] <DEP_ID>...
+
+For more information try --help
