@@ -129,31 +129,14 @@ impl Manifest {
     }
 
     /// Get the specified table from the manifest.
-    pub fn get_table_mut<'a>(
+    ///
+    /// If there is no table at the specified path, then a non-existent table
+    /// error will be returned.
+    pub(crate) fn get_table_mut<'a>(
         &'a mut self,
         table_path: &[String],
     ) -> CargoResult<&'a mut toml_edit::Item> {
-        /// Descend into a manifest until the required table is found.
-        fn descend<'a>(
-            input: &'a mut toml_edit::Item,
-            path: &[String],
-        ) -> CargoResult<&'a mut toml_edit::Item> {
-            if let Some(segment) = path.get(0) {
-                let mut default_table = toml_edit::Table::new();
-                default_table.set_implicit(true);
-                let value = input[&segment].or_insert(toml_edit::Item::Table(default_table));
-
-                if value.is_table_like() {
-                    descend(value, &path[1..])
-                } else {
-                    Err(non_existent_table_err(segment))
-                }
-            } else {
-                Ok(input)
-            }
-        }
-
-        descend(self.data.as_item_mut(), table_path)
+        self.get_table_mut_internal(table_path, false)
     }
 
     /// Get all sections in the manifest that exist and might contain dependencies.
@@ -223,6 +206,39 @@ impl Manifest {
             );
         }
         result
+    }
+
+    fn get_table_mut_internal<'a>(
+        &'a mut self,
+        table_path: &[String],
+        insert_if_not_exists: bool,
+    ) -> CargoResult<&'a mut toml_edit::Item> {
+        /// Descend into a manifest until the required table is found.
+        fn descend<'a>(
+            input: &'a mut toml_edit::Item,
+            path: &[String],
+            insert_if_not_exists: bool,
+        ) -> CargoResult<&'a mut toml_edit::Item> {
+            if let Some(segment) = path.get(0) {
+                let value = if insert_if_not_exists {
+                    input[&segment].or_insert(toml_edit::table())
+                } else {
+                    input
+                        .get_mut(&segment)
+                        .ok_or_else(|| non_existent_table_err(segment))?
+                };
+
+                if value.is_table_like() {
+                    descend(value, &path[1..], insert_if_not_exists)
+                } else {
+                    Err(non_existent_table_err(segment))
+                }
+            } else {
+                Ok(input)
+            }
+        }
+
+        descend(self.data.as_item_mut(), table_path, insert_if_not_exists)
     }
 }
 
@@ -358,6 +374,28 @@ impl LocalManifest {
         }
         if let Some(t) = table.as_inline_table_mut() {
             t.fmt()
+        }
+
+        Ok(())
+    }
+
+    /// Remove entry from a Cargo.toml.
+    pub fn remove_from_table(&mut self, table_path: &[String], name: &str) -> CargoResult<()> {
+        let parent_table = self.get_table_mut(table_path)?;
+
+        {
+            let dep = parent_table
+                .get_mut(name)
+                .filter(|t| !t.is_none())
+                .ok_or_else(|| non_existent_dependency_err(name, table_path.join(".")))?;
+
+            // remove the dependency
+            *dep = toml_edit::Item::None;
+        }
+
+        // remove table if empty
+        if parent_table.as_table_like().unwrap().is_empty() {
+            *parent_table = toml_edit::Item::None;
         }
 
         Ok(())
@@ -505,4 +543,15 @@ fn parse_manifest_err() -> anyhow::Error {
 
 fn non_existent_table_err(table: impl std::fmt::Display) -> anyhow::Error {
     anyhow::format_err!("the table `{table}` could not be found.")
+}
+
+fn non_existent_dependency_err(
+    name: impl std::fmt::Display,
+    table: impl std::fmt::Display,
+) -> anyhow::Error {
+    anyhow::format_err!(
+        "The dependency `{}` could not be found in `{}`.",
+        name,
+        table,
+    )
 }
