@@ -1,3 +1,4 @@
+use cargo::util::command_prelude::*;
 use cargo::CargoResult;
 use cargo::CliResult;
 use clap::Arg;
@@ -5,7 +6,7 @@ use clap::ArgAction;
 use clap::ArgMatches;
 use clap::Command;
 
-pub fn main(config: &mut cargo::util::Config) -> CliResult {
+pub fn main(config: &mut Config) -> CliResult {
     let args = match cli().try_get_matches() {
         Ok(args) => args,
         Err(e) => {
@@ -30,11 +31,7 @@ fn cli() -> Command<'static> {
         .subcommand_required(true)
 }
 
-fn execute_subcommand(
-    config: &mut cargo::Config,
-    cmd: &str,
-    subcommand_args: &ArgMatches,
-) -> CliResult {
+fn execute_subcommand(config: &mut Config, cmd: &str, subcommand_args: &ArgMatches) -> CliResult {
     config_configure(config, subcommand_args)?;
     let exec = crate::commands::builtin_exec(cmd).expect("all of `builtin` supported");
     exec(config, subcommand_args)
@@ -45,12 +42,12 @@ fn verify_app() {
     cli().debug_assert()
 }
 
-fn config_configure(config: &mut cargo::Config, subcommand_args: &ArgMatches) -> CargoResult<()> {
+fn config_configure(config: &mut Config, subcommand_args: &ArgMatches) -> CargoResult<()> {
     let arg_target_dir = &None;
     let verbose = 0;
     // quiet is unusual because it is redefined in some subcommands in order
     // to provide custom help text.
-    let quiet = subcommand_args.contains_id("quiet");
+    let quiet = subcommand_args.flag("quiet");
     let color = None;
     let frozen = false;
     let locked = false;

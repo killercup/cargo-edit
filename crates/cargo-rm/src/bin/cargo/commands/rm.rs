@@ -1,12 +1,12 @@
-use cargo::util::command_prelude::*;
-use cargo_rm::ops::cargo_rm::{RmOptions, rm};
+use cargo::{core::dependency::DepKind, util::command_prelude::*};
+use cargo_rm::ops::cargo_rm::{rm, DepTable, RmOptions};
 
 pub fn cli() -> clap::Command<'static> {
     clap::Command::new("rm")
         .setting(clap::AppSettings::DeriveDisplayOrder)
         .about("Remove dependencies from a Cargo.toml manifest file")
         .args([
-            clap::Arg::new("crates")
+            clap::Arg::new("dependencies")
                 .takes_value(true)
                 .value_name("DEP_ID")
                 .action(clap::ArgAction::Append)
@@ -18,7 +18,10 @@ pub fn cli() -> clap::Command<'static> {
                 .long("package")
                 .help("Package ID of the crate to remove this dependency from")
                 .takes_value(true)
-                .value_name("PKG_ID")
+                .value_name("PKG_ID"),
+            clap::Arg::new("offline")
+                .long("offline")
+                .help("Run without accessing the network"),
         ])
         .arg_manifest_path()
         .arg_quiet()
@@ -44,12 +47,59 @@ pub fn cli() -> clap::Command<'static> {
 }
 
 pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
-    // TODO parse options
+    let dry_run = args.dry_run();
+    let section = parse_section(args);
+
+    let ws = args.workspace(config)?;
+    let packages = args.packages_from_flags()?;
+    let packages = packages.get_packages(&ws)?;
+    let spec = match packages.len() {
+        0 => {
+            return Err(CliError::new(
+                anyhow::format_err!("no packages selected.  Please specify one with `-p <PKGID>`"),
+                101,
+            ));
+        }
+        1 => packages[0],
+        len => {
+            return Err(CliError::new(
+                anyhow::format_err!(
+                    "{len} packages selected.  Please specify one with `-p <PKGID>`",
+                ),
+                101,
+            ));
+        }
+    };
+
+    let dependencies = args.get_many::<String>("dependencies").unwrap().collect();
 
     let options = RmOptions {
         config,
+        spec,
+        dependencies,
+        section,
+        dry_run,
     };
     rm(&options)?;
 
     Ok(())
+}
+
+fn parse_section(matches: &ArgMatches) -> DepTable {
+    let kind = if matches.contains_id("dev") {
+        DepKind::Development
+    } else if matches.contains_id("build") {
+        DepKind::Build
+    } else {
+        DepKind::Normal
+    };
+
+    let mut table = DepTable::new().set_kind(kind);
+
+    if let Some(target) = matches.get_one::<String>("target") {
+        assert!(!target.is_empty(), "Target specification may not be empty");
+        table = table.set_target(target);
+    }
+
+    table
 }
