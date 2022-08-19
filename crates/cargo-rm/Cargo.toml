@@ -31,7 +31,7 @@ edition = "2021"
 [[bin]]
 name = "cargo-rm"
 path = "src/bin/cargo/main.rs"
-required-features = ["add"]
+required-features = ["rm"]
 
 [lib]
 name = "cargo_rm"
@@ -41,7 +41,7 @@ path = "src/cargo/lib.rs"
 concolor-control = { version = "0.0.7", default-features = false }
 anyhow = "1.0"
 git2 = "0.14"
-clap = { version = "3.1", features = ["wrap_help"], optional = true }
+clap = { version = "3.2", features = ["wrap_help"], optional = true }
 cargo.git = "https://github.com/rust-lang/cargo"
 cargo-util.git = "https://github.com/rust-lang/cargo"
 toml_edit = { version = "0.14.4", features = ["easy"] }
