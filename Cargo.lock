@@ -149,7 +149,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "snapbox",
+ "snapbox 0.3.3",
  "subprocess",
  "termcolor",
  "toml_edit",
@@ -170,12 +170,12 @@ dependencies = [
 [[package]]
 name = "cargo-test-macro"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/cargo#85b500ccad8cd0b63995fd94a03ddd4b83f7905b"
+source = "git+https://github.com/rust-lang/cargo#0c57749ca31165974db3b98618e3514f97afa272"
 
 [[package]]
 name = "cargo-test-support"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/cargo#85b500ccad8cd0b63995fd94a03ddd4b83f7905b"
+source = "git+https://github.com/rust-lang/cargo#0c57749ca31165974db3b98618e3514f97afa272"
 dependencies = [
  "anyhow",
  "cargo-test-macro",
@@ -188,17 +188,18 @@ dependencies = [
  "lazy_static",
  "remove_dir_all",
  "serde_json",
- "snapbox",
+ "snapbox 0.3.3",
  "tar",
  "termcolor",
  "toml_edit",
  "url",
+ "winapi",
 ]
 
 [[package]]
 name = "cargo-util"
 version = "0.2.1"
-source = "git+https://github.com/rust-lang/cargo#85b500ccad8cd0b63995fd94a03ddd4b83f7905b"
+source = "git+https://github.com/rust-lang/cargo#0c57749ca31165974db3b98618e3514f97afa272"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -1350,7 +1351,27 @@ dependencies = [
  "normalize-line-endings",
  "os_pipe",
  "similar",
- "snapbox-macros",
+ "snapbox-macros 0.2.1",
+ "tempfile",
+ "wait-timeout",
+ "walkdir",
+ "yansi",
+]
+
+[[package]]
+name = "snapbox"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44d199ccf8f606592df2d145db26f2aa45344e23c64b074cc5a4047f1d99b0f7"
+dependencies = [
+ "concolor",
+ "content_inspector",
+ "dunce",
+ "filetime",
+ "normalize-line-endings",
+ "os_pipe",
+ "similar",
+ "snapbox-macros 0.3.0",
  "tempfile",
  "wait-timeout",
  "walkdir",
@@ -1362,6 +1383,12 @@ name = "snapbox-macros"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c01dea7e04cbb27ef4c86e9922184608185f7cd95c1763bc30d727cda4a5e930"
+
+[[package]]
+name = "snapbox-macros"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a253e6f894cfa440cba00600a249fa90869d8e0ec45ab274a456e043a0ce8f2"
 
 [[package]]
 name = "socks"
@@ -1540,7 +1567,7 @@ dependencies = [
  "rayon",
  "serde",
  "shlex",
- "snapbox",
+ "snapbox 0.2.10",
  "toml_edit",
 ]
 
