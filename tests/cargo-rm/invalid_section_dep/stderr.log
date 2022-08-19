@@ -1,2 +1,0 @@
-    Removing semver from dev-dependencies
-Error: The dependency `semver` could not be found in `dev-dependencies`.
