@@ -84,28 +84,29 @@ $ cargo rm regex --build
 
 ```console
 $ cargo-rm rm --help
-cargo-rm [..]
-Remove a dependency from a Cargo.toml manifest file
+cargo-rm-rm [..]
+Remove dependencies from a Cargo.toml manifest file
 
 USAGE:
-    cargo rm [OPTIONS] <DEP_ID>...
+    cargo-rm rm [OPTIONS] <DEP_ID>...
 
 ARGS:
-    <DEP_ID>...    Dependencies to be removed
+    <DEP_ID>...    Reference to a package to remove as a dependency
 
 OPTIONS:
-        --manifest-path <PATH>    Path to the manifest to remove a dependency from
-    -p, --package <PKGID>         Package to remove from
-    -Z <FLAG>                     Unstable (nightly-only) flags
+    -p, --package <PKG_ID>        Package ID of the crate to remove this dependency from
+    -Z <FLAG>                     Unstable (nightly-only) flags to Cargo, see 'cargo -Z help' for
+                                  details
+        --offline                 Run without accessing the network
+        --manifest-path <PATH>    Path to Cargo.toml
+    -q, --quiet                   Do not print cargo log messages
         --dry-run                 Don't actually write the manifest
-    -q, --quiet                   Do not print any output in case of success
     -h, --help                    Print help information
-    -V, --version                 Print version information
 
 SECTION:
-    -D, --dev                Remove as development dependency
-    -B, --build              Remove as build dependency
-        --target <TARGET>    Remove as dependency from the given target platform
+        --dev                Remove as development dependency
+        --build              Remove as build dependency
+        --target <target>    Remove as dependency from the given target platform
 
 ```
 
@@ -164,8 +165,9 @@ OPTIONS:
 To only update Cargo.lock, see `cargo update`.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
-version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is up-to-
-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an error.
+version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is
+up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
+error.
 
 ```
 

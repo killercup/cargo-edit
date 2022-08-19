@@ -271,7 +271,7 @@ dependencies = [
  "indexmap",
  "pathdiff",
  "semver",
- "snapbox 0.2.10",
+ "snapbox 0.3.3",
  "toml_edit",
  "url",
 ]
