@@ -67,12 +67,6 @@ pub enum BumpLevel {
     Alpha,
 }
 
-impl BumpLevel {
-    pub fn variants() -> &'static [&'static str] {
-        &["major", "minor", "patch", "release", "rc", "beta", "alpha"]
-    }
-}
-
 impl FromStr for BumpLevel {
     type Err = String;
 

@@ -202,8 +202,7 @@ ARGS:
 
 OPTIONS:
         --all                     [deprecated in favor of `--workspace`]
-        --bump <BUMP>             Increment manifest version [possible values: major, minor, patch,
-                                  release, rc, beta, alpha]
+        --bump <BUMP>             Increment manifest version
         --dry-run                 Print changes to be made without making them
         --exclude <EXCLUDE>       Crates to exclude and not modify
     -h, --help                    Print help information

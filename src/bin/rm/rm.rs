@@ -24,11 +24,11 @@ pub struct RmArgs {
     build: bool,
 
     /// Remove as dependency from the given target platform
-    #[clap(long, forbid_empty_values = true, help_heading = "SECTION")]
+    #[clap(long, value_parser = clap::builder::NonEmptyStringValueParser::new(), help_heading = "SECTION")]
     target: Option<String>,
 
     /// Path to the manifest to remove a dependency from
-    #[clap(long, value_name = "PATH", parse(from_os_str))]
+    #[clap(long, value_name = "PATH", action)]
     manifest_path: Option<PathBuf>,
 
     /// Package to remove from
