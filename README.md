@@ -164,8 +164,9 @@ OPTIONS:
 To only update Cargo.lock, see `cargo update`.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
-version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is up-to-
-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an error.
+version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is
+up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
+error.
 
 ```
 
