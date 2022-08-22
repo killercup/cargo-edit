@@ -164,8 +164,9 @@ OPTIONS:
 To only update Cargo.lock, see `cargo update`.
 
 If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
-version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is up-to-
-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an error.
+version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is
+up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
+error.
 
 ```
 
@@ -201,8 +202,7 @@ ARGS:
 
 OPTIONS:
         --all                     [deprecated in favor of `--workspace`]
-        --bump <BUMP>             Increment manifest version [possible values: major, minor, patch,
-                                  release, rc, beta, alpha]
+        --bump <BUMP>             Increment manifest version
         --dry-run                 Print changes to be made without making them
         --exclude <EXCLUDE>       Crates to exclude and not modify
     -h, --help                    Print help information

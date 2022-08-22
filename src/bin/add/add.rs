@@ -84,16 +84,11 @@ pub struct AddArgs {
     pub build: bool,
 
     /// Add as dependency to the given target platform.
-    #[clap(
-        long,
-        forbid_empty_values = true,
-        help_heading = "SECTION",
-        group = "section"
-    )]
+    #[clap(long, help_heading = "SECTION", group = "section")]
     pub target: Option<String>,
 
     /// Path to `Cargo.toml`
-    #[clap(long, value_name = "PATH", parse(from_os_str))]
+    #[clap(long, value_name = "PATH", action)]
     pub manifest_path: Option<std::path::PathBuf>,
 
     /// Package to modify

@@ -6,7 +6,7 @@ stderr = """
 error: The argument '<TARGET>' cannot be used with '--bump <BUMP>'
 
 USAGE:
-    cargo set-version <TARGET>
+    cargo set-version <TARGET|--bump <BUMP>>
 
 For more information try --help
 """

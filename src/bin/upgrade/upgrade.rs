@@ -29,7 +29,7 @@ pub struct UpgradeArgs {
     dependency: Vec<String>,
 
     /// Path to the manifest to upgrade
-    #[clap(long, value_name = "PATH", parse(from_os_str))]
+    #[clap(long, value_name = "PATH", action)]
     manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to add this dependency to.

@@ -18,15 +18,11 @@ use crate::version::TargetVersion;
 #[clap(group = clap::ArgGroup::new("ver").multiple(false))]
 pub struct VersionArgs {
     /// Version to change manifests to
-    #[clap(parse(try_from_str), group = "ver")]
+    #[clap(group = "ver")]
     target: Option<semver::Version>,
 
     /// Increment manifest version
-    #[clap(
-        long,
-        possible_values(crate::version::BumpLevel::variants()),
-        group = "ver"
-    )]
+    #[clap(long, group = "ver")]
     bump: Option<BumpLevel>,
 
     /// Specify the version metadata field (e.g. a wrapped libraries version)
@@ -34,7 +30,7 @@ pub struct VersionArgs {
     pub metadata: Option<String>,
 
     /// Path to the manifest to upgrade
-    #[clap(long, value_name = "PATH", parse(from_os_str))]
+    #[clap(long, value_name = "PATH", action)]
     manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to change the version of.
