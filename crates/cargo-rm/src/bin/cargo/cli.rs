@@ -4,7 +4,7 @@ use clap::Parser;
 #[derive(Debug, Parser)]
 #[clap(bin_name = "cargo")]
 pub enum Command {
-    Rm(crate::rm::RmArgs),
+    Rm(crate::commands::rm::RmArgs),
 }
 
 impl Command {

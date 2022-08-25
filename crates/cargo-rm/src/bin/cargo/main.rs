@@ -12,7 +12,7 @@
 )]
 
 mod cli;
-mod rm;
+mod commands;
 
 use std::process;
 

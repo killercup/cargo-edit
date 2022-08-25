@@ -30,7 +30,7 @@ edition = "2021"
 
 [[bin]]
 name = "cargo-rm"
-path = "src/bin/rm/main.rs"
+path = "src/bin/cargo/main.rs"
 required-features = ["rm"]
 
 [dependencies]
