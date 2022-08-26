@@ -35,10 +35,6 @@ pub struct RmArgs {
     #[clap(long = "package", short = 'p', value_name = "PKGID")]
     pkgid: Option<String>,
 
-    /// Unstable (nightly-only) flags
-    #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
-    unstable_features: Vec<UnstableOptions>,
-
     /// Don't actually write the manifest
     #[clap(long)]
     dry_run: bool,
@@ -72,9 +68,6 @@ impl RmArgs {
         }
     }
 }
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
-enum UnstableOptions {}
 
 fn exec(args: &RmArgs) -> CargoResult<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {

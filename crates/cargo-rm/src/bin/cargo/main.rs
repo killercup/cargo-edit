@@ -19,7 +19,7 @@ use std::process;
 use clap::Parser;
 
 fn main() {
-    let args = cli::Command::parse();
+    let args = cli::Cli::parse();
 
     if let Err(err) = args.exec() {
         eprintln!("Error: {:?}", err);
