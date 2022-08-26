@@ -82,7 +82,7 @@ $ cargo rm regex --build
 
 #### Usage
 
-```console
+```console,ignore
 $ cargo-rm rm --help
 cargo-rm [..]
 Remove a dependency from a Cargo.toml manifest file
