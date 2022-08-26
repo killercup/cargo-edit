@@ -1,6 +1,6 @@
+use cargo::CargoResult;
 use cargo_rm::shell_status;
 use cargo_rm::shell_warn;
-use cargo_rm::CargoResult;
 use cargo_rm::{manifest_from_pkgid, LocalManifest};
 use clap::Args;
 use std::borrow::Cow;

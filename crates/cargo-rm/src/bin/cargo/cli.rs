@@ -1,5 +1,12 @@
-use cargo_rm::CargoResult;
+use cargo::util::command_prelude::*;
+use cargo::CargoResult;
 use clap::{Parser, Subcommand};
+
+pub fn main(config: &mut Config) -> CliResult {
+    let args = Cli::try_parse()?;
+    execute_subcommand(config, &args)?;
+    Ok(())
+}
 
 #[derive(Debug, Parser)]
 #[clap(bin_name = "cargo")]
@@ -12,19 +19,13 @@ pub struct Cli {
     subcommand: Command,
 }
 
-impl Cli {
-    pub fn exec(self) -> CargoResult<()> {
-        self.subcommand.exec()
-    }
-}
-
 #[derive(Debug, Subcommand)]
 pub enum Command {
     Rm(crate::commands::rm::RmArgs),
 }
 
 impl Command {
-    pub fn exec(self) -> CargoResult<()> {
+    pub fn exec(&self) -> CargoResult<()> {
         match self {
             Self::Rm(rm) => rm.exec(),
         }
@@ -33,6 +34,11 @@ impl Command {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
 enum UnstableOptions {}
+
+fn execute_subcommand(_config: &mut Config, args: &Cli) -> CliResult {
+    args.subcommand.exec()?;
+    Ok(())
+}
 
 #[test]
 fn verify_app() {

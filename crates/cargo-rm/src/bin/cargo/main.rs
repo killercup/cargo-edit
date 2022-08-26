@@ -14,16 +14,9 @@
 mod cli;
 mod commands;
 
-use std::process;
-
-use clap::Parser;
-
 fn main() {
-    let args = cli::Cli::parse();
-
-    if let Err(err) = args.exec() {
-        eprintln!("Error: {:?}", err);
-
-        process::exit(1);
+    let mut config = cargo::Config::default().unwrap();
+    if let Err(err) = cli::main(&mut config) {
+        cargo::exit_with_error(err, &mut config.shell());
     }
 }
