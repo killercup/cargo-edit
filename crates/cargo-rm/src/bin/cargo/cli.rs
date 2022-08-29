@@ -1,22 +1,34 @@
-use cargo_rm::CargoResult;
-use clap::Parser;
+use cargo::util::command_prelude::*;
+use clap::Command;
 
-#[derive(Debug, Parser)]
-#[clap(bin_name = "cargo")]
-pub enum Command {
-    Rm(crate::commands::rm::RmArgs),
+pub fn main(config: &mut Config) -> CliResult {
+    let args = cli().try_get_matches()?;
+    let (cmd, subcommand_args) = args.subcommand().expect("subcommand_required(true)");
+    execute_subcommand(config, cmd, subcommand_args)?;
+    Ok(())
 }
 
-impl Command {
-    pub fn exec(self) -> CargoResult<()> {
-        match self {
-            Self::Rm(add) => add.exec(),
-        }
-    }
+fn cli() -> Command<'static> {
+    Command::new("cargo")
+        .bin_name("cargo")
+        .arg(
+            Arg::new("unstable-features")
+                .help("Unstable (nightly-only) flags")
+                .short('Z')
+                .value_name("FLAG")
+                .action(ArgAction::Append)
+                .global(true),
+        )
+        .subcommands(crate::commands::builtin())
+        .subcommand_required(true)
+}
+
+fn execute_subcommand(config: &mut Config, cmd: &str, subcommand_args: &ArgMatches) -> CliResult {
+    let exec = crate::commands::builtin_exec(cmd).expect("all of `builtin` supported");
+    exec(config, subcommand_args)
 }
 
 #[test]
 fn verify_app() {
-    use clap::CommandFactory;
-    Command::command().debug_assert()
+    cli().debug_assert()
 }

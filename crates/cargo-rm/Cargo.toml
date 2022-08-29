@@ -38,7 +38,7 @@ anyhow = "1.0"
 cargo-util.git = "https://github.com/rust-lang/cargo"
 cargo.git = "https://github.com/rust-lang/cargo"
 cargo_metadata = "0.15.0"
-clap = { version = "3.2", features = ["derive", "wrap_help"], optional = true }
+clap = { version = "3.2", features = ["wrap_help"], optional = true }
 concolor-control = { version = "0.0.7", default-features = false }
 crates-index = "0.18.9"
 dirs-next = "2.0.0"
