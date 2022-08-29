@@ -33,6 +33,10 @@ name = "cargo-rm"
 path = "src/bin/cargo/main.rs"
 required-features = ["rm"]
 
+[lib]
+name = "cargo_rm"
+path = "src/cargo/lib.rs"
+
 [dependencies]
 anyhow = "1.0"
 cargo-util.git = "https://github.com/rust-lang/cargo"

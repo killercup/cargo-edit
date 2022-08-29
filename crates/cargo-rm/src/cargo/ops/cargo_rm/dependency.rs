@@ -5,7 +5,7 @@ use indexmap::IndexSet;
 use toml_edit::KeyMut;
 
 use super::manifest::str_or_1_len_table;
-use crate::CargoResult;
+use super::CargoResult;
 
 /// A dependency handled by Cargo
 ///

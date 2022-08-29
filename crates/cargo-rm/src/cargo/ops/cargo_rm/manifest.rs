@@ -257,7 +257,7 @@ impl LocalManifest {
     /// # Examples
     ///
     /// ```
-    ///   use cargo_rm::{Dependency, LocalManifest, Manifest, RegistrySource};
+    ///   use cargo_rm::ops::cargo_rm::{Dependency, LocalManifest, Manifest, RegistrySource};
     ///   use toml_edit;
     ///
     ///   let root = std::path::PathBuf::from("/").canonicalize().unwrap();
