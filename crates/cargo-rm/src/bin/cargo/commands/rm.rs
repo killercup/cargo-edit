@@ -71,7 +71,7 @@ pub fn cli() -> clap::Command<'static> {
                 .short('p')
                 .long("package")
                 .takes_value(true)
-                .value_name("PKGID")
+                .value_name("PKG_ID")
                 .help("Package to remove from"),
             clap::Arg::new("dry_run")
                 .long("dry-run")
