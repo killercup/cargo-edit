@@ -61,8 +61,9 @@ pub fn remove(options: &RemoveOptions<'_>) -> CargoResult<()> {
                 .remove_from_table(&dep_table, dep)
                 .map_err(Into::into);
 
-            // Now that we have removed the crate, if that was the last reference to that crate,
-            // then we need to drop any explicitly activated features on that crate.
+            // Now that we have removed the crate, if that was the last reference to that
+            // crate, then we need to drop any explicitly activated features on
+            // that crate.
             manifest.gc_dep(dep);
 
             result

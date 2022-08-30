@@ -17,7 +17,8 @@ macro_rules! curr_dir {
 #[doc(hidden)]
 pub fn _curr_dir(mut file_path: &'static std::path::Path) -> &'static std::path::Path {
     if !file_path.exists() {
-        // HACK: temporary fix while in subdirectory, based on similar hack from rust-lang/rust
+        // HACK: temporary fix while in subdirectory, based on similar hack from
+        // rust-lang/rust
         let prefix = std::path::PathBuf::from("crates").join("cargo-remove");
         if let Ok(crate_relative) = file_path.strip_prefix(prefix) {
             file_path = crate_relative

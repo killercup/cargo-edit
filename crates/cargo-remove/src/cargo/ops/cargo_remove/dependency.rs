@@ -13,7 +13,8 @@ use super::CargoResult;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[non_exhaustive]
 pub struct Dependency {
-    /// The name of the dependency (as it is set in its `Cargo.toml` and known to crates.io)
+    /// The name of the dependency (as it is set in its `Cargo.toml` and known
+    /// to crates.io)
     pub name: String,
     /// Whether the dependency is opted-in with a feature flag
     pub optional: Option<bool>,
@@ -289,10 +290,10 @@ impl Dependency {
 
     /// Convert dependency to TOML
     ///
-    /// Returns a tuple with the dependency's name and either the version as a `String`
-    /// or the path/git repository as an `InlineTable`.
-    /// (If the dependency is set as `optional` or `default-features` is set to `false`,
-    /// an `InlineTable` is returned in any case.)
+    /// Returns a tuple with the dependency's name and either the version as a
+    /// `String` or the path/git repository as an `InlineTable`.
+    /// (If the dependency is set as `optional` or `default-features` is set to
+    /// `false`, an `InlineTable` is returned in any case.)
     ///
     /// # Panic
     ///
