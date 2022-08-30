@@ -21,7 +21,7 @@ pub use util::{
 
 /// Remove a dependency from a Cargo.toml manifest file.
 #[derive(Debug)]
-pub struct RmOptions<'a> {
+pub struct RemoveOptions<'a> {
     /// Configuration information for Cargo operations
     pub config: &'a Config,
     /// Package to remove dependencies from
@@ -35,7 +35,7 @@ pub struct RmOptions<'a> {
 }
 
 /// Remove dependencies from a manifest
-pub fn remove(options: &RmOptions<'_>) -> CargoResult<()> {
+pub fn remove(options: &RemoveOptions<'_>) -> CargoResult<()> {
     let dep_table = options
         .section
         .to_table()

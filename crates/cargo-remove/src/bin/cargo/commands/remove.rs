@@ -1,9 +1,8 @@
 use cargo::util::command_prelude::*;
-
 use cargo_remove::ops::cargo_remove::remove;
 use cargo_remove::ops::cargo_remove::DepKind;
 use cargo_remove::ops::cargo_remove::DepTable;
-use cargo_remove::ops::cargo_remove::RmOptions;
+use cargo_remove::ops::cargo_remove::RemoveOptions;
 
 pub fn cli() -> clap::Command<'static> {
     clap::Command::new("remove")
@@ -78,7 +77,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
 
     let section = parse_section(args);
 
-    let options = RmOptions {
+    let options = RemoveOptions {
         config,
         spec,
         dependencies,
