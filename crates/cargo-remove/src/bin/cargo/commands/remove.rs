@@ -1,6 +1,8 @@
 use cargo::util::command_prelude::*;
 
 use cargo_remove::ops::cargo_remove::remove;
+use cargo_remove::ops::cargo_remove::DepKind;
+use cargo_remove::ops::cargo_remove::DepTable;
 use cargo_remove::ops::cargo_remove::RmOptions;
 
 pub fn cli() -> clap::Command<'static> {
@@ -48,12 +50,48 @@ pub fn cli() -> clap::Command<'static> {
         ])
 }
 
-pub fn exec(_config: &mut Config, args: &ArgMatches) -> CliResult {
-    let crates = args
-        .get_many("dependencies")
-        .expect("required(true)")
-        .cloned()
-        .collect();
+pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
+    let dry_run = args.dry_run();
+
+    let workspace = args.workspace(config)?;
+    let packages = args.packages_from_flags()?;
+    let packages = packages.get_packages(&workspace)?;
+    let spec = match packages.len() {
+        0 => {
+            return Err(CliError::new(
+                anyhow::format_err!("no packages selected.  Please specify one with `-p <PKGID>`"),
+                101,
+            ));
+        }
+        1 => packages[0],
+        len => {
+            return Err(CliError::new(
+                anyhow::format_err!(
+                    "{len} packages selected.  Please specify one with `-p <PKGID>`",
+                ),
+                101,
+            ));
+        }
+    };
+
+    let dependencies = args.get_many::<String>("dependencies").unwrap().collect();
+
+    let section = parse_section(args);
+
+    let options = RmOptions {
+        config,
+        spec,
+        dependencies,
+        section,
+        dry_run,
+    };
+
+    remove(&options)?;
+
+    Ok(())
+}
+
+fn parse_section(args: &ArgMatches) -> DepTable {
     let dev = args
         .get_one::<bool>("dev")
         .copied()
@@ -62,24 +100,21 @@ pub fn exec(_config: &mut Config, args: &ArgMatches) -> CliResult {
         .get_one::<bool>("build")
         .copied()
         .expect("action(ArgAction::SetTrue)");
-    let target = args.get_one("target").cloned();
-    let manifest_path = args.get_one("manifest-path").cloned();
-    let pkg_id = args.get_one("pkg_id").cloned();
-    let dry_run = args.dry_run();
-    let quiet = args.flag("quiet");
 
-    let options = RmOptions {
-        crates,
-        dev,
-        build,
-        target,
-        manifest_path,
-        pkg_id,
-        dry_run,
-        quiet,
+    let kind = if dev {
+        DepKind::Development
+    } else if build {
+        DepKind::Build
+    } else {
+        DepKind::Normal
     };
 
-    remove(&options)?;
+    let mut table = DepTable::new().set_kind(kind);
 
-    Ok(())
+    if let Some(target) = args.get_one::<String>("target") {
+        assert!(!target.is_empty(), "Target specification may not be empty");
+        table = table.set_target(target);
+    }
+
+    table
 }
