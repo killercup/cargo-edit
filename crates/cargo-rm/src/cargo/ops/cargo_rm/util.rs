@@ -1,9 +1,9 @@
 use std::io::Write;
 
+use anyhow::Context;
+use cargo::CargoResult;
 pub use termcolor::{Color, ColorChoice};
 use termcolor::{ColorSpec, StandardStream, WriteColor};
-
-use crate::{CargoResult, Context};
 
 /// Whether to color logged output
 pub fn colorize_stderr() -> ColorChoice {

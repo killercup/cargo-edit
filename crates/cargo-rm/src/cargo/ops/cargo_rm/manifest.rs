@@ -3,9 +3,10 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::{env, str};
 
+use anyhow::Context;
+use cargo::CargoResult;
 use semver::Version;
 
-use super::errors::*;
 use super::metadata::find_manifest_path;
 
 #[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Clone, Debug, Copy)]
@@ -257,7 +258,7 @@ impl LocalManifest {
     /// # Examples
     ///
     /// ```
-    ///   use cargo_rm::{Dependency, LocalManifest, Manifest, RegistrySource};
+    ///   use cargo_rm::ops::cargo_rm::{Dependency, LocalManifest, Manifest, RegistrySource};
     ///   use toml_edit;
     ///
     ///   let root = std::path::PathBuf::from("/").canonicalize().unwrap();
@@ -476,4 +477,19 @@ fn overwrite_value(item: &mut toml_edit::Item, value: impl Into<toml_edit::Value
 
 pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
     item.is_str() || item.as_table_like().map(|t| t.len() == 1).unwrap_or(false)
+}
+
+fn non_existent_table_err(table: impl std::fmt::Display) -> anyhow::Error {
+    anyhow::format_err!("The table `{}` could not be found.", table)
+}
+
+fn non_existent_dependency_err(
+    name: impl std::fmt::Display,
+    table: impl std::fmt::Display,
+) -> anyhow::Error {
+    anyhow::format_err!(
+        "The dependency `{}` could not be found in `{}`.",
+        name,
+        table,
+    )
 }
