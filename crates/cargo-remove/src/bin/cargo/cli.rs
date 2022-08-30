@@ -13,7 +13,7 @@ fn cli() -> Command<'static> {
         .bin_name("cargo")
         .arg(
             Arg::new("unstable-features")
-                .help("Unstable (nightly-only) flags")
+                .help("Unstable (nightly-only) flags to Cargo, see 'cargo -Z help' for details")
                 .short('Z')
                 .value_name("FLAG")
                 .action(ArgAction::Append)
