@@ -3,7 +3,6 @@
 mod dependency;
 mod manifest;
 mod metadata;
-mod util;
 
 use cargo::core::Package;
 use cargo::CargoResult;
