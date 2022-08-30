@@ -9,15 +9,12 @@ use cargo::core::Package;
 use cargo::CargoResult;
 use cargo::Config;
 
-pub use dependency::{Dependency, PathSource, RegistrySource, Source};
-pub use manifest::{
-    find, get_dep_version, set_dep_version, DepKind, DepTable, LocalManifest, Manifest,
-};
-pub use metadata::{manifest_from_pkgid, resolve_manifests, workspace_members};
-pub use util::{
-    colorize_stderr, shell_note, shell_print, shell_status, shell_warn, shell_write_stderr, Color,
-    ColorChoice,
-};
+pub use self::dependency::Dependency;
+pub use self::dependency::RegistrySource;
+pub use self::manifest::DepKind;
+pub use self::manifest::DepTable;
+pub use self::manifest::LocalManifest;
+pub use self::manifest::Manifest;
 
 /// Remove a dependency from a Cargo.toml manifest file.
 #[derive(Debug)]
