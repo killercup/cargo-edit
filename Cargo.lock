@@ -255,7 +255,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-rm"
+name = "cargo-remove"
 version = "0.10.2"
 dependencies = [
  "anyhow",
