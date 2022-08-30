@@ -6,7 +6,7 @@ use cargo_remove::ops::cargo_remove::RmOptions;
 pub fn cli() -> clap::Command<'static> {
     clap::Command::new("remove")
         .setting(clap::AppSettings::DeriveDisplayOrder)
-        .about("Remove a dependency from a Cargo.toml manifest file")
+        .about("Remove dependencies from a Cargo.toml manifest file")
         .args([
             clap::Arg::new("dependencies")
                 .action(clap::ArgAction::Append)
@@ -15,39 +15,25 @@ pub fn cli() -> clap::Command<'static> {
                 .takes_value(true)
                 .value_name("DEP_ID")
                 .help("Dependencies to be removed"),
-            clap::Arg::new("manifest_path")
-                .long("manifest-path")
-                .takes_value(true)
-                .value_name("PATH")
-                .value_parser(clap::builder::PathBufValueParser::new())
-                .help("Path to the manifest to remove a dependency from"),
             clap::Arg::new("pkg_id")
                 .short('p')
                 .long("package")
                 .takes_value(true)
                 .value_name("PKG_ID")
                 .help("Package to remove from"),
-            clap::Arg::new("dry_run")
-                .long("dry-run")
-                .action(clap::ArgAction::SetTrue)
-                .help("Don't actually write the manifest"),
-            clap::Arg::new("quiet")
-                .short('q')
-                .long("quiet")
-                .action(clap::ArgAction::SetTrue)
-                .help("Do not print any output in case of success"),
         ])
+        .arg_manifest_path()
+        .arg_quiet()
+        .arg_dry_run("Don't actually write the manifest")
         .next_help_heading("SECTION")
         .args([
             clap::Arg::new("dev")
-                .short('D')
                 .long("dev")
                 .conflicts_with("build")
                 .action(clap::ArgAction::SetTrue)
                 .group("section")
                 .help("Remove as development dependency"),
             clap::Arg::new("build")
-                .short('B')
                 .long("build")
                 .conflicts_with("dev")
                 .action(clap::ArgAction::SetTrue)
@@ -77,16 +63,10 @@ pub fn exec(_config: &mut Config, args: &ArgMatches) -> CliResult {
         .copied()
         .expect("action(ArgAction::SetTrue)");
     let target = args.get_one("target").cloned();
-    let manifest_path = args.get_one("manifest_path").cloned();
+    let manifest_path = args.get_one("manifest-path").cloned();
     let pkg_id = args.get_one("pkg_id").cloned();
-    let dry_run = args
-        .get_one::<bool>("dry_run")
-        .copied()
-        .expect("action(ArgAction::SetTrue)");
-    let quiet = args
-        .get_one::<bool>("quiet")
-        .copied()
-        .expect("action(ArgAction::SetTrue)");
+    let dry_run = args.dry_run();
+    let quiet = args.flag("quiet");
 
     let options = RmOptions {
         crates,
