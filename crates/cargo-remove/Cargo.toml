@@ -1,0 +1,74 @@
+[package]
+authors = [
+    "Without Boats <lee@libertad.ucsd.edu>",
+    "Pascal Hertleif <killercup@gmail.com>",
+    "Sebastian Garrido <sebasgarcep@gmail.com>",
+    "Jonas Platte <mail@jonasplatte.de>",
+    "Benjamin Gill <git@bgill.eu>",
+    "Andronik Ordian <write@reusable.software>",
+]
+categories = [
+    "development-tools",
+    "development-tools::cargo-plugins",
+]
+description = "Cargo commands for modifying a `Cargo.toml` file."
+documentation = "https://github.com/killercup/cargo-edit/blob/master/README.md#available-subcommands"
+homepage = "https://github.com/killercup/cargo-edit"
+keywords = [
+    "cargo",
+    "cargo-subcommand",
+    "cli",
+    "dependencies",
+    "crates",
+]
+license = "Apache-2.0 OR MIT"
+name = "cargo-remove"
+readme = "README.md"
+repository = "https://github.com/killercup/cargo-edit"
+version = "0.10.2"
+edition = "2021"
+
+[[bin]]
+name = "cargo-remove"
+path = "src/bin/cargo/main.rs"
+required-features = ["remove"]
+
+[lib]
+name = "cargo_remove"
+path = "src/cargo/lib.rs"
+
+[dependencies]
+anyhow = "1.0"
+cargo-util.git = "https://github.com/rust-lang/cargo"
+cargo.git = "https://github.com/rust-lang/cargo"
+cargo_metadata = "0.15.0"
+clap = { version = "3.2", features = ["wrap_help"], optional = true }
+concolor-control = { version = "0.0.7", default-features = false }
+crates-index = "0.18.9"
+dirs-next = "2.0.0"
+dunce = "1.0"
+git2 = "0.14"
+indexmap = "1"
+pathdiff = "0.2"
+semver = "1.0.0"
+serde = "1.0.144"
+serde_derive = "1.0.144"
+termcolor = "1.1.3"
+toml_edit = { version = "0.14.4", features = ["easy"] }
+url = "2.2.2"
+
+[dev-dependencies]
+snapbox = { version = "0.3.3", features = ["diff", "path"] }
+cargo-test-macro.git = "https://github.com/rust-lang/cargo"
+cargo-test-support.git = "https://github.com/rust-lang/cargo"
+
+[features]
+default = [
+    "remove",
+    "vendored-libgit2",
+]
+remove = ["cli"]
+cli = ["color", "clap"]
+color = ["concolor-control/auto"]
+vendored-openssl = ["git2/vendored-openssl"]
+vendored-libgit2 = ["git2/vendored-libgit2"]
