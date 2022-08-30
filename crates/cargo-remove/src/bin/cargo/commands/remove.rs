@@ -6,7 +6,7 @@ use cargo_remove::ops::cargo_remove::RmOptions;
 pub fn cli() -> clap::Command<'static> {
     clap::Command::new("remove")
         .setting(clap::AppSettings::DeriveDisplayOrder)
-        .about("Remove a dependency from a Cargo.toml manifest file")
+        .about("Remove dependencies from a Cargo.toml manifest file")
         .args([
             clap::Arg::new("dependencies")
                 .action(clap::ArgAction::Append)
@@ -40,14 +40,12 @@ pub fn cli() -> clap::Command<'static> {
         .next_help_heading("SECTION")
         .args([
             clap::Arg::new("dev")
-                .short('D')
                 .long("dev")
                 .conflicts_with("build")
                 .action(clap::ArgAction::SetTrue)
                 .group("section")
                 .help("Remove as development dependency"),
             clap::Arg::new("build")
-                .short('B')
                 .long("build")
                 .conflicts_with("dev")
                 .action(clap::ArgAction::SetTrue)
