@@ -78,14 +78,12 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
 
     let section = parse_section(args);
 
-    let quiet = args.flag("quiet");
-
     let options = RmOptions {
+        config,
         spec,
         dependencies,
         section,
         dry_run,
-        quiet,
     };
 
     remove(&options)?;

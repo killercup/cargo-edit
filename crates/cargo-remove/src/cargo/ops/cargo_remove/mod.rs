@@ -7,6 +7,7 @@ mod util;
 
 use cargo::core::Package;
 use cargo::CargoResult;
+use cargo::Config;
 
 pub use dependency::{Dependency, PathSource, RegistrySource, Source};
 pub use manifest::{
@@ -21,6 +22,8 @@ pub use util::{
 /// Remove a dependency from a Cargo.toml manifest file.
 #[derive(Debug)]
 pub struct RmOptions<'a> {
+    /// Configuration information for Cargo operations
+    pub config: &'a Config,
     /// Package to remove dependencies from
     pub spec: &'a Package,
     /// Dependencies to remove
@@ -29,8 +32,6 @@ pub struct RmOptions<'a> {
     pub section: DepTable,
     /// Whether or not to actually write the manifest
     pub dry_run: bool,
-    /// Do not print any output in case of success
-    pub quiet: bool,
 }
 
 /// Remove dependencies from a manifest
@@ -49,14 +50,16 @@ pub fn remove(options: &RmOptions<'_>) -> CargoResult<()> {
         .dependencies
         .iter()
         .map(|dep| {
-            if !options.quiet {
-                let section = if dep_table.len() >= 3 {
-                    format!("{} for target `{}`", &dep_table[2], &dep_table[1])
-                } else {
-                    dep_table[0].clone()
-                };
-                shell_status("Removing", &format!("{dep} from {section}",))?;
-            }
+            let section = if dep_table.len() >= 3 {
+                format!("{} for target `{}`", &dep_table[2], &dep_table[1])
+            } else {
+                dep_table[0].clone()
+            };
+            options
+                .config
+                .shell()
+                .status("Removing", format!("{dep} from {section}"))?;
+
             let result = manifest
                 .remove_from_table(&dep_table, dep)
                 .map_err(Into::into);
@@ -70,7 +73,10 @@ pub fn remove(options: &RmOptions<'_>) -> CargoResult<()> {
         .collect::<CargoResult<Vec<_>>>()?;
 
     if options.dry_run {
-        shell_warn("aborting remove due to dry run")?;
+        options
+            .config
+            .shell()
+            .warn("aborting remove due to dry run")?;
     } else {
         manifest.write()?;
     }
