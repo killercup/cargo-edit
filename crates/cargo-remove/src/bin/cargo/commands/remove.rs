@@ -9,21 +9,14 @@ pub fn cli() -> clap::Command<'static> {
     clap::Command::new("remove")
         .setting(clap::AppSettings::DeriveDisplayOrder)
         .about("Remove dependencies from a Cargo.toml manifest file")
-        .args([
-            clap::Arg::new("dependencies")
-                .action(clap::ArgAction::Append)
-                .required(true)
-                .multiple_values(true)
-                .takes_value(true)
-                .value_name("DEP_ID")
-                .help("Dependencies to be removed"),
-            clap::Arg::new("pkg_id")
-                .short('p')
-                .long("package")
-                .takes_value(true)
-                .value_name("PKG_ID")
-                .help("Package to remove from"),
-        ])
+        .args([clap::Arg::new("dependencies")
+            .action(clap::ArgAction::Append)
+            .required(true)
+            .multiple_values(true)
+            .takes_value(true)
+            .value_name("DEP_ID")
+            .help("Dependencies to be removed")])
+        .arg_package("Package to remove from")
         .arg_manifest_path()
         .arg_quiet()
         .arg_dry_run("Don't actually write the manifest")
@@ -59,7 +52,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     let spec = match packages.len() {
         0 => {
             return Err(CliError::new(
-                anyhow::format_err!("no packages selected.  Please specify one with `-p <PKGID>`"),
+                anyhow::format_err!("no packages selected. Please specify one with `-p <PKGID>`"),
                 101,
             ));
         }
@@ -67,7 +60,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
         len => {
             return Err(CliError::new(
                 anyhow::format_err!(
-                    "{len} packages selected.  Please specify one with `-p <PKGID>`",
+                    "{len} packages selected. Please specify one with `-p <PKGID>`",
                 ),
                 101,
             ));
