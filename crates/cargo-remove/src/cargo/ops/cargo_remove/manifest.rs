@@ -9,10 +9,14 @@ use semver::Version;
 
 use super::metadata::find_manifest_path;
 
+/// The kind of dependency, i.e. what section it belongs to
 #[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Clone, Debug, Copy)]
 pub enum DepKind {
+    /// A dependency in the "dependencies" section
     Normal,
+    /// A dependency in the "dev-dependencies" section
     Development,
+    /// A dependency in the "build-dependencies" section
     Build,
 }
 
@@ -31,7 +35,7 @@ impl DepTable {
     ];
 
     /// Reference to a Dependency Table
-    pub(crate) const fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             kind: DepKind::Normal,
             target: None,
@@ -39,15 +43,24 @@ impl DepTable {
     }
 
     /// Choose the type of dependency
-    pub(crate) const fn set_kind(mut self, kind: DepKind) -> Self {
+    pub const fn set_kind(mut self, kind: DepKind) -> Self {
         self.kind = kind;
         self
     }
 
     /// Choose the platform for the dependency
-    pub(crate) fn set_target(mut self, target: impl Into<String>) -> Self {
+    pub fn set_target(mut self, target: impl Into<String>) -> Self {
         self.target = Some(target.into());
         self
+    }
+
+    /// Keys to the table
+    pub fn to_table(&self) -> Vec<&str> {
+        if let Some(target) = &self.target {
+            vec!["target", target, self.kind_table()]
+        } else {
+            vec![self.kind_table()]
+        }
     }
 
     fn kind_table(&self) -> &str {
