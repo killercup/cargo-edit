@@ -23,7 +23,7 @@ pub struct RemoveOptions<'a> {
     /// Package to remove dependencies from
     pub spec: &'a Package,
     /// Dependencies to remove
-    pub dependencies: Vec<&'a String>,
+    pub dependencies: Vec<String>,
     /// Which dependency section to remove these from
     pub section: DepTable,
     /// Whether or not to actually write the manifest

@@ -74,7 +74,11 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
         }
     };
 
-    let dependencies = args.get_many::<String>("dependencies").unwrap().collect();
+    let dependencies = args
+        .get_many::<String>("dependencies")
+        .expect("required(true)")
+        .cloned()
+        .collect();
 
     let section = parse_section(args);
 
