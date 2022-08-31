@@ -3,31 +3,27 @@
 mod dependency;
 mod manifest;
 mod metadata;
-mod util;
 
 use cargo::core::Package;
 use cargo::CargoResult;
 use cargo::Config;
 
-pub use dependency::{Dependency, PathSource, RegistrySource, Source};
-pub use manifest::{
-    find, get_dep_version, set_dep_version, DepKind, DepTable, LocalManifest, Manifest,
-};
-pub use metadata::{manifest_from_pkgid, resolve_manifests, workspace_members};
-pub use util::{
-    colorize_stderr, shell_note, shell_print, shell_status, shell_warn, shell_write_stderr, Color,
-    ColorChoice,
-};
+pub use self::dependency::Dependency;
+pub use self::dependency::RegistrySource;
+pub use self::manifest::DepKind;
+pub use self::manifest::DepTable;
+pub use self::manifest::LocalManifest;
+pub use self::manifest::Manifest;
 
 /// Remove a dependency from a Cargo.toml manifest file.
 #[derive(Debug)]
-pub struct RmOptions<'a> {
+pub struct RemoveOptions<'a> {
     /// Configuration information for Cargo operations
     pub config: &'a Config,
     /// Package to remove dependencies from
     pub spec: &'a Package,
     /// Dependencies to remove
-    pub dependencies: Vec<&'a String>,
+    pub dependencies: Vec<String>,
     /// Which dependency section to remove these from
     pub section: DepTable,
     /// Whether or not to actually write the manifest
@@ -35,7 +31,7 @@ pub struct RmOptions<'a> {
 }
 
 /// Remove dependencies from a manifest
-pub fn remove(options: &RmOptions<'_>) -> CargoResult<()> {
+pub fn remove(options: &RemoveOptions<'_>) -> CargoResult<()> {
     let dep_table = options
         .section
         .to_table()
@@ -64,8 +60,9 @@ pub fn remove(options: &RmOptions<'_>) -> CargoResult<()> {
                 .remove_from_table(&dep_table, dep)
                 .map_err(Into::into);
 
-            // Now that we have removed the crate, if that was the last reference to that crate,
-            // then we need to drop any explicitly activated features on that crate.
+            // Now that we have removed the crate, if that was the last reference to that
+            // crate, then we need to drop any explicitly activated features on
+            // that crate.
             manifest.gc_dep(dep);
 
             result

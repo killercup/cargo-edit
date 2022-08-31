@@ -1,10 +1,12 @@
-use anyhow::Context;
-use cargo::CargoResult;
-use cargo_metadata::Package;
 use std::convert::TryInto;
 use std::path::Path;
 
-/// Takes a pkgid and attempts to find the path to it's `Cargo.toml`, using `cargo`'s metadata
+use anyhow::Context;
+use cargo::CargoResult;
+use cargo_metadata::Package;
+
+/// Takes a pkgid and attempts to find the path to it's `Cargo.toml`, using
+/// `cargo`'s metadata
 pub fn manifest_from_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoResult<Package> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.no_deps();
@@ -102,7 +104,8 @@ pub fn resolve_manifests(
     Ok(pkgs)
 }
 
-/// Search for Cargo.toml in this directory and recursively up the tree until one is found.
+/// Search for Cargo.toml in this directory and recursively up the tree until
+/// one is found.
 pub(crate) fn find_manifest_path(dir: &Path) -> CargoResult<std::path::PathBuf> {
     const MANIFEST_FILENAME: &str = "Cargo.toml";
     for path in dir.ancestors() {

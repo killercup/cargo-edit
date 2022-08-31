@@ -103,8 +103,9 @@ impl Manifest {
         self.get_table_mut_internal(table_path, false)
     }
 
-    /// Get all sections in the manifest that exist and might contain dependencies.
-    /// The returned items are always `Table` or `InlineTable`.
+    /// Get all sections in the manifest that exist and might contain
+    /// dependencies. The returned items are always `Table` or
+    /// `InlineTable`.
     pub(crate) fn get_sections(&self) -> Vec<(DepTable, toml_edit::Item)> {
         let mut sections = Vec::new();
 
@@ -220,8 +221,8 @@ impl DerefMut for LocalManifest {
 }
 
 impl LocalManifest {
-    /// Construct a `LocalManifest`. If no path is provided, make an educated guess as to which one
-    /// the user means.
+    /// Construct a `LocalManifest`. If no path is provided, make an educated
+    /// guess as to which one the user means.
     pub fn find(path: Option<&Path>) -> CargoResult<Self> {
         let path = dunce::canonicalize(find(path)?)?;
         Self::try_new(&path)
@@ -422,11 +423,11 @@ fn remove_feature_activation(
     }
 }
 
-/// If a manifest is specified, return that one, otherise perform a manifest search starting from
-/// the current directory.
-/// If a manifest is specified, return that one. If a path is specified, perform a manifest search
-/// starting from there. If nothing is specified, start searching from the current directory
-/// (`cwd`).
+/// If a manifest is specified, return that one, otherise perform a manifest
+/// search starting from the current directory.
+/// If a manifest is specified, return that one. If a path is specified, perform
+/// a manifest search starting from there. If nothing is specified, start
+/// searching from the current directory (`cwd`).
 pub fn find(specified: Option<&Path>) -> CargoResult<PathBuf> {
     match specified {
         Some(path)
