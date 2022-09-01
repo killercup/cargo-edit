@@ -10,7 +10,6 @@ use cargo::Config;
 
 pub use self::dependency::Dependency;
 pub use self::dependency::RegistrySource;
-pub use self::manifest::DepKind;
 pub use self::manifest::DepTable;
 pub use self::manifest::LocalManifest;
 pub use self::manifest::Manifest;
