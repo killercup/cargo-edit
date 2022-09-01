@@ -5,6 +5,7 @@
 mod dry_run;
 mod invalid_arg;
 mod invalid_dep;
+mod invalid_remove_package;
 mod invalid_remove_package_multiple;
 mod invalid_remove_target;
 mod invalid_remove_target_dep;
