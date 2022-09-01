@@ -22,10 +22,10 @@ jobs:
       run: cargo build --verbose
       continue-on-error: ${{ matrix.toolchain != 'stable' }}
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --all --verbose
       continue-on-error: ${{ matrix.toolchain != 'stable' }}
     - name: Run tests (vendored-openssl)
-      run: cargo test --features vendored-openssl --verbose
+      run: cargo test --all --features vendored-openssl --verbose
       continue-on-error: ${{ matrix.toolchain != 'stable' }}
 
   clippy:
@@ -42,7 +42,7 @@ jobs:
         uses: actions/checkout@v2
       - uses: Swatinem/rust-cache@v1
       - name: Cargo Clippy
-        run: cargo clippy -- -D warnings -A deprecated
+        run: cargo clippy --all -- -D warnings -A deprecated
 
   fmt:
     name: fmt (ubuntu-latest, stable)

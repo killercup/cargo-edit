@@ -52,7 +52,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     let spec = match packages.len() {
         0 => {
             return Err(CliError::new(
-                anyhow::format_err!("no packages selected. Please specify one with `-p <PKGID>`"),
+                anyhow::format_err!("no packages selected. Please specify one with `-p <PKG_ID>`"),
                 101,
             ));
         }
@@ -60,7 +60,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
         len => {
             return Err(CliError::new(
                 anyhow::format_err!(
-                    "{len} packages selected. Please specify one with `-p <PKGID>`",
+                    "{len} packages selected. Please specify one with `-p <PKG_ID>`",
                 ),
                 101,
             ));

@@ -1,2 +1,2 @@
     Removing semver from build-dependencies
-error: The table `build-dependencies` could not be found.
+error: The dependency `semver` could not be found in `build-dependencies`.

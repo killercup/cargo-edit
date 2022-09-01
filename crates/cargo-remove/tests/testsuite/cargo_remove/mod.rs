@@ -5,6 +5,8 @@
 mod dry_run;
 mod invalid_arg;
 mod invalid_dep;
+mod invalid_remove_package;
+mod invalid_remove_package_multiple;
 mod invalid_remove_target;
 mod invalid_remove_target_dep;
 mod invalid_section;
@@ -18,6 +20,7 @@ mod remove_multiple_deps;
 mod remove_multiple_dev;
 mod remove_optional_dep_feature;
 mod remove_optional_feature;
+mod remove_package;
 mod remove_target;
 mod remove_target_build;
 mod remove_target_dev;

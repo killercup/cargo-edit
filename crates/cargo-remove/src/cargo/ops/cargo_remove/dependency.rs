@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(missing_docs)]
+#![allow(warnings)]
+
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
