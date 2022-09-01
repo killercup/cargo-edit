@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(missing_docs)]
+#![allow(warnings)]
+
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str;

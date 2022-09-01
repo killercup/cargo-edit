@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(missing_docs)]
+#![allow(warnings)]
+
 use std::convert::TryInto;
 use std::path::Path;
 
