@@ -6,6 +6,9 @@ version = "0.1.0"
 name = "main"
 path = "src/main.rs"
 
+[build-dependencies]
+semver = "0.1.0"
+
 [dependencies]
 docopt = "0.6"
 pad = "0.1"
