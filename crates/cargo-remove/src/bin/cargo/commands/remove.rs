@@ -78,6 +78,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     let options = RemoveOptions {
         config,
         spec,
+        workspace: &workspace,
         dependencies,
         section,
         dry_run,
