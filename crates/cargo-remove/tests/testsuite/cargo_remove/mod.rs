@@ -24,6 +24,7 @@ mod remove_package;
 mod remove_target;
 mod remove_target_build;
 mod remove_target_dev;
+mod update_lock_file;
 
 fn init_registry() {
     cargo_test_support::registry::init();
