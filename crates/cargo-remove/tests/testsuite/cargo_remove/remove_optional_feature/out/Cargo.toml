@@ -22,5 +22,4 @@ serde = "1.0.90"
 
 [features]
 std = ["serde/std", "semver/std"]
-semver1 = []
 annoy = ["clippy"]
