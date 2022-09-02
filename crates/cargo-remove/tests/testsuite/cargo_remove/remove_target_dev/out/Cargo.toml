@@ -14,19 +14,17 @@ semver = "0.1.0"
 
 [dependencies]
 docopt = "0.6"
-pad = "0.1"
-rustc-serialize = "0.3"
+rustc-serialize = "0.4"
 semver = "0.1"
 toml = "0.1"
-clippy = {git = "https://github.com/Manishearth/rust-clippy.git", optional = true}
+clippy = "0.4"
 
 [target.x86_64-unknown-linux-gnu.dependencies]
-dbus = "0.9.5"
+dbus = "0.6.2"
 
 [dev-dependencies]
-regex = "0.1.41"
+regex = "0.1.1"
 serde = "1.0.90"
 
 [features]
 std = ["serde/std", "semver/std"]
-annoy = ["clippy"]
