@@ -5,8 +5,6 @@ mod manifest;
 mod metadata;
 
 use cargo::core::Package;
-use cargo::core::Workspace;
-use cargo::ops::resolve_ws;
 use cargo::CargoResult;
 use cargo::Config;
 
@@ -23,8 +21,6 @@ pub struct RemoveOptions<'a> {
     pub config: &'a Config,
     /// Package to remove dependencies from
     pub spec: &'a Package,
-    /// Workspace in which the package is located
-    pub workspace: &'a Workspace<'a>,
     /// Dependencies to remove
     pub dependencies: Vec<String>,
     /// Which dependency section to remove these from
@@ -79,7 +75,6 @@ pub fn remove(options: &RemoveOptions<'_>) -> CargoResult<()> {
             .warn("aborting remove due to dry run")?;
     } else {
         manifest.write()?;
-        resolve_ws(options.workspace)?;
     }
 
     Ok(())
