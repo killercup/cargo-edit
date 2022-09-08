@@ -18,6 +18,7 @@ mod remove_dev;
 mod remove_existing;
 mod remove_multiple_deps;
 mod remove_multiple_dev;
+mod remove_offline;
 mod remove_optional_dep_feature;
 mod remove_optional_feature;
 mod remove_package;
