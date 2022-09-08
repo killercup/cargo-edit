@@ -129,3 +129,25 @@ impl BumpLevel {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn abs(version: &str) -> TargetVersion {
+        let abs = semver::Version::parse(version).unwrap();
+        TargetVersion::Absolute(abs)
+    }
+
+    #[test]
+    fn abs_bump_from_dev() {
+        let expected = "2022.3.0";
+        let current = "2022.3.0-dev-12345";
+
+        let target = abs(expected);
+        let current = semver::Version::parse(current).unwrap();
+        let actual = target.bump(&current, None).unwrap();
+        let actual = actual.expect("Version changed").to_string();
+        assert_eq!(actual, expected);
+    }
+}
