@@ -1,4 +1,5 @@
 use cargo::core::dependency::DepKind;
+use cargo::ops::resolve_ws;
 use cargo::util::command_prelude::*;
 
 use cargo_remove::ops::cargo_remove::remove;
@@ -82,8 +83,13 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
         section,
         dry_run,
     };
-
     remove(&options)?;
+
+    if !dry_run {
+        // Reload the workspace since we've changed dependencies
+        let ws = args.workspace(config)?;
+        resolve_ws(&ws)?;
+    }
 
     Ok(())
 }

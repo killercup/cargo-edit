@@ -1,2 +1,2 @@
-    Removing semver from build-dependencies
-error: The dependency `semver` could not be found in `build-dependencies`.
+    Removing docopt from build-dependencies
+error: The dependency `docopt` could not be found in `build-dependencies`.

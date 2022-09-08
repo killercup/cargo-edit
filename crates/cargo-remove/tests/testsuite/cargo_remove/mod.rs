@@ -18,12 +18,14 @@ mod remove_dev;
 mod remove_existing;
 mod remove_multiple_deps;
 mod remove_multiple_dev;
+mod remove_offline;
 mod remove_optional_dep_feature;
 mod remove_optional_feature;
 mod remove_package;
 mod remove_target;
 mod remove_target_build;
 mod remove_target_dev;
+mod update_lock_file;
 
 fn init_registry() {
     cargo_test_support::registry::init();
@@ -39,6 +41,13 @@ fn add_registry_packages(alt: bool) {
         "my-dev-package2",
         "my-build-package1",
         "my-build-package2",
+        "clippy",
+        "dbus",
+        "docopt",
+        "ncurses",
+        "pad",
+        "regex",
+        "rustc-serialize",
         "toml",
         "versioned-package",
         "cargo-list-test-fixture-dependency",
@@ -56,6 +65,15 @@ fn add_registry_packages(alt: bool) {
         cargo_test_support::registry::Package::new(name, "0.4.1+my-package")
             .alternative(alt)
             .publish();
+        cargo_test_support::registry::Package::new(name, "0.6.2+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.9.9+my-package")
+            .alternative(alt)
+            .publish();
+        cargo_test_support::registry::Package::new(name, "1.0.90+my-package")
+            .alternative(alt)
+            .publish();
         cargo_test_support::registry::Package::new(name, "20.0.0+my-package")
             .alternative(alt)
             .publish();
@@ -64,6 +82,21 @@ fn add_registry_packages(alt: bool) {
             .publish();
         cargo_test_support::registry::Package::new(name, "99999.0.0-alpha.1+my-package")
             .alternative(alt)
+            .publish();
+    }
+
+    for name in ["semver", "serde"] {
+        cargo_test_support::registry::Package::new(name, "0.1.1")
+            .alternative(alt)
+            .feature("std", &[])
+            .publish();
+        cargo_test_support::registry::Package::new(name, "0.9.0")
+            .alternative(alt)
+            .feature("std", &[])
+            .publish();
+        cargo_test_support::registry::Package::new(name, "1.0.90")
+            .alternative(alt)
+            .feature("std", &[])
             .publish();
     }
 

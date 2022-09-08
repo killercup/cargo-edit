@@ -14,7 +14,7 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("remove")
-        .args(["--build", "semver"])
+        .args(["--build", "docopt"])
         .current_dir(cwd)
         .assert()
         .code(101)
