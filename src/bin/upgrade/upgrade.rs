@@ -114,6 +114,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         shell_status("Checking", &format!("{}'s dependencies", package.name))?;
         for dep_table in manifest.get_dependency_tables_mut() {
             for (dep_key, dep_item) in dep_table.iter_mut() {
+                let mut reason = None;
+
                 let dep_key = dep_key.get();
                 let dependency = match Dependency::from_toml(&manifest_path, dep_key, dep_item) {
                     Ok(dependency) => dependency,
@@ -126,16 +128,10 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 if !selected_dependencies.is_empty()
                     && !selected_dependencies.contains_key(&dependency.name)
                 {
-                    args.verbose(|| {
-                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
-                    })?;
-                    continue;
+                    reason.get_or_insert(Reason::Excluded);
                 }
                 if args.exclude.contains(&dependency.name) {
-                    args.verbose(|| {
-                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
-                    })?;
-                    continue;
+                    reason.get_or_insert(Reason::Excluded);
                 }
                 let old_version_req = match dependency.version() {
                     Some(version_req) => version_req.to_owned(),
@@ -163,7 +159,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 };
 
-                let mut reason = None;
                 if !args.pinned {
                     if dependency.rename.is_some() {
                         reason.get_or_insert(Reason::Pinned);
@@ -688,6 +683,7 @@ impl Dep {
 enum Reason {
     Unchanged,
     Pinned,
+    Excluded,
 }
 
 impl Reason {
@@ -695,6 +691,7 @@ impl Reason {
         match self {
             Self::Unchanged => "",
             Self::Pinned => "pinned",
+            Self::Excluded => "excluded",
         }
     }
 
@@ -702,6 +699,7 @@ impl Reason {
         match self {
             Self::Unchanged => "unchanged",
             Self::Pinned => "pinned",
+            Self::Excluded => "excluded",
         }
     }
 }
