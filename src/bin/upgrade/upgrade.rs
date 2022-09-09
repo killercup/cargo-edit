@@ -259,7 +259,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         if args.locked {
             anyhow::bail!("cannot upgrade due to `--locked`");
         } else {
-            resolve_ws(Some(&manifest_path), args.locked, args.offline)?;
+            // If we're going to request an update, it would have already been done by now
+            let offline = true;
+            resolve_ws(Some(&manifest_path), args.locked, offline)?;
         }
     }
 
