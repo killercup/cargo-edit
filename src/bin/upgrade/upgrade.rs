@@ -99,7 +99,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             let spec = CrateSpec::resolve(name)?;
             Ok((spec.name, spec.version_req))
         })
-        .collect::<CargoResult<IndexMap<_, _>>>()?;
+        .collect::<CargoResult<IndexMap<_, Option<_>>>>()?;
     let mut processed_keys = BTreeSet::new();
 
     let mut updated_registries = BTreeSet::new();
@@ -270,9 +270,65 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         if args.locked {
             anyhow::bail!("cannot upgrade due to `--locked`");
         } else {
+            // Ensure lock file is updated and collect data for `recursive`
             let offline = true; // index should already be updated
             let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
-            let locked = metadata.packages;
+            let mut locked = metadata.packages;
+
+            let precise_deps = selected_dependencies
+                .iter()
+                .filter_map(|(name, req)| {
+                    req.as_ref()
+                        .and_then(|req| semver::VersionReq::parse(req).ok())
+                        .and_then(|req| {
+                            let precise = precise_version(&req)?;
+                            Some((name, (req, precise)))
+                        })
+                })
+                .collect::<BTreeMap<_, _>>();
+            if !precise_deps.is_empty() {
+                // Rollback the updates to the precise version
+                //
+                // Reusing updates (resolve_ws) so we know what lock_version to reference
+                for (name, (req, precise)) in &precise_deps {
+                    for lock_version in locked
+                        .iter()
+                        .filter(|p| p.name == **name)
+                        .map(|p| &p.version)
+                        .filter_map(|v| req.matches(v).then(|| v))
+                    {
+                        let mut cmd = std::process::Command::new("cargo");
+                        cmd.arg("update");
+                        cmd.arg("--manifest-path").arg(&manifest_path);
+                        if args.locked {
+                            cmd.arg("--locked");
+                        }
+                        if args.recursive {
+                            // HACK: Since we'll need to skip this during the official recursive
+                            // check, let's handle it here
+                            cmd.arg("--aggressive");
+                        }
+                        let dep = format!("{name}@{lock_version}");
+                        cmd.arg("--precise").arg(&precise);
+                        cmd.arg("--package").arg(dep);
+                        // If we're going to request an update, it would have already been done by now
+                        cmd.arg("--offline");
+                        let output = cmd.output().context("failed to lock to precise version")?;
+                        if !output.status.success() {
+                            return Err(anyhow::format_err!(
+                                "{}",
+                                String::from_utf8_lossy(&output.stderr)
+                            ))
+                            .context("failed to lock to precise version");
+                        }
+                    }
+                }
+
+                // Update data for `recursive` with precise_deps
+                let offline = true; // index should already be updated
+                let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
+                locked = metadata.packages;
+            }
 
             if args.recursive {
                 shell_status("Upgrading", "recursive dependencies")?;
@@ -285,7 +341,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 // Limit recursive update to what we touched
                 cmd.arg("--aggressive");
                 let mut still_run = false;
-                for dep in modified_crates {
+                for dep in modified_crates
+                    .iter()
+                    // Already updated so avoid discarding the precise version selection
+                    .filter(|c| !precise_deps.contains_key(c))
+                {
                     for lock_version in locked.iter().filter(|p| p.name == *dep).map(|p| &p.version)
                     {
                         let dep = format!("{dep}@{lock_version}");
@@ -389,6 +449,38 @@ fn is_pinned_req(old_version_req: &str) -> bool {
     } else {
         false
     }
+}
+
+fn precise_version(version_req: &VersionReq) -> Option<String> {
+    version_req
+        .comparators
+        .iter()
+        .filter(|c| {
+            matches!(
+                c.op,
+                // Only ops we can determine a precise version from
+                semver::Op::Exact
+                    | semver::Op::GreaterEq
+                    | semver::Op::LessEq
+                    | semver::Op::Tilde
+                    | semver::Op::Caret
+                    | semver::Op::Wildcard
+            )
+        })
+        .filter_map(|c| {
+            // Only do it when full precision is specified
+            c.minor.and_then(|minor| {
+                c.patch.map(|patch| semver::Version {
+                    major: c.major,
+                    minor,
+                    patch,
+                    pre: c.pre.clone(),
+                    build: Default::default(),
+                })
+            })
+        })
+        .max()
+        .map(|v| v.to_string())
 }
 
 struct Dep {
