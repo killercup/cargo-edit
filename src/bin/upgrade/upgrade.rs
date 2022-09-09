@@ -113,20 +113,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         for dep_table in manifest.get_dependency_tables_mut() {
             for (dep_key, dep_item) in dep_table.iter_mut() {
                 let dep_key = dep_key.get();
-                processed_keys.insert(dep_key.to_owned());
-                if !selected_dependencies.is_empty() && !selected_dependencies.contains_key(dep_key)
-                {
-                    args.verbose(|| {
-                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
-                    })?;
-                    continue;
-                }
-                if args.exclude.contains(&dep_key.to_owned()) {
-                    args.verbose(|| {
-                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
-                    })?;
-                    continue;
-                }
                 let dependency = match Dependency::from_toml(&manifest_path, dep_key, dep_item) {
                     Ok(dependency) => dependency,
                     Err(err) => {
@@ -134,6 +120,21 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         continue;
                     }
                 };
+                processed_keys.insert(dependency.name.clone());
+                if !selected_dependencies.is_empty()
+                    && !selected_dependencies.contains_key(&dependency.name)
+                {
+                    args.verbose(|| {
+                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
+                    })?;
+                    continue;
+                }
+                if args.exclude.contains(&dependency.name) {
+                    args.verbose(|| {
+                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
+                    })?;
+                    continue;
+                }
                 let old_version_req = match dependency.version() {
                     Some(version_req) => version_req.to_owned(),
                     None => {
@@ -207,7 +208,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 let new_version_req = if reason.is_some() {
                     old_version_req.clone()
                 } else if let Some(Some(new_version_req)) =
-                    selected_dependencies.get(dependency.toml_key())
+                    selected_dependencies.get(&dependency.name)
                 {
                     new_version_req.to_owned()
                 } else {
@@ -241,8 +242,13 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     crate_modified = true;
                     any_crate_modified = true;
                 }
+                let display_name = if let Some(rename) = &dependency.rename {
+                    format!("{} ({})", dependency.name, rename)
+                } else {
+                    dependency.name.clone()
+                };
                 table.push(Dep {
-                    name: dependency.toml_key().to_owned(),
+                    name: display_name,
                     old_version_req,
                     locked_version,
                     latest_version,
