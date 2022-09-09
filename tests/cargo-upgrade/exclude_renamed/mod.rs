@@ -14,7 +14,7 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--exclude", "rx", "--verbose"])
+        .args(["--exclude", "regex", "--verbose"])
         .current_dir(cwd)
         .assert()
         .success()
