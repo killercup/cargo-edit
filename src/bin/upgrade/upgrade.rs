@@ -278,6 +278,12 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             if !selected_dependencies.is_empty() {
                 cmd.arg("--aggressive"); // without `--package` it already is recursive
                 for dep in selected_dependencies.keys() {
+                    let lock_version = locked
+                        .iter()
+                        .find(|p| p.name == *dep)
+                        .map(|p| &p.version)
+                        .expect("if we updated it, then its in the lock file");
+                    let dep = format!("{dep}@{lock_version}");
                     cmd.arg("--package").arg(dep);
                 }
             }
