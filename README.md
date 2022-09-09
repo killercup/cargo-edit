@@ -151,17 +151,9 @@ OPTIONS:
         --offline                 Run without accessing the network
     -p, --package <PKGID>         Crate to be upgraded
         --pinned                  Upgrade dependencies pinned in the manifest
-        --to-lockfile             Upgrade all packages to the version in the lockfile
     -v, --verbose                 Use verbose output
     -V, --version                 Print version information
     -Z <FLAG>                     Unstable (nightly-only) flags
-
-To only update Cargo.lock, see `cargo update`.
-
-If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked
-version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is
-up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with an
-error.
 
 ```
 
