@@ -286,9 +286,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 cmd.arg("--aggressive");
                 let mut still_run = false;
                 for dep in modified_crates {
-                    let lock_version = locked.iter().find(|p| p.name == *dep).map(|p| &p.version);
-                    // Assume that we'll be aggressive if it wasn't already in the lock file
-                    if let Some(lock_version) = lock_version {
+                    for lock_version in locked.iter().filter(|p| p.name == *dep).map(|p| &p.version)
+                    {
                         let dep = format!("{dep}@{lock_version}");
                         cmd.arg("--package").arg(dep);
                         still_run = true;
