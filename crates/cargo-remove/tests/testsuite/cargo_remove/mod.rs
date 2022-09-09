@@ -2,29 +2,29 @@
 #![warn(clippy::needless_borrow)]
 #![warn(clippy::redundant_clone)]
 
+mod avoid_empty_tables;
+mod build;
+mod dev;
 mod dry_run;
 mod invalid_arg;
 mod invalid_dep;
-mod invalid_remove_package;
-mod invalid_remove_package_multiple;
-mod invalid_remove_target;
-mod invalid_remove_target_dep;
+mod invalid_package;
+mod invalid_package_multiple;
 mod invalid_section;
 mod invalid_section_dep;
+mod invalid_target;
+mod invalid_target_dep;
+mod multiple_deps;
+mod multiple_dev;
 mod no_arg;
-mod remove_avoid_empty_tables;
-mod remove_build;
-mod remove_dev;
-mod remove_existing;
-mod remove_multiple_deps;
-mod remove_multiple_dev;
-mod remove_offline;
-mod remove_optional_dep_feature;
-mod remove_optional_feature;
-mod remove_package;
-mod remove_target;
-mod remove_target_build;
-mod remove_target_dev;
+mod offline;
+mod optional_dep_feature;
+mod optional_feature;
+mod package;
+mod remove_basic;
+mod target;
+mod target_build;
+mod target_dev;
 mod update_lock_file;
 
 fn init_registry() {
@@ -34,13 +34,6 @@ fn init_registry() {
 
 fn add_registry_packages(alt: bool) {
     for name in [
-        "my-package",
-        "my-package1",
-        "my-package2",
-        "my-dev-package1",
-        "my-dev-package2",
-        "my-build-package1",
-        "my-build-package2",
         "clippy",
         "dbus",
         "docopt",
@@ -49,9 +42,6 @@ fn add_registry_packages(alt: bool) {
         "regex",
         "rustc-serialize",
         "toml",
-        "versioned-package",
-        "cargo-list-test-fixture-dependency",
-        "unrelateed-crate",
     ] {
         cargo_test_support::registry::Package::new(name, "0.1.1+my-package")
             .alternative(alt)
@@ -77,12 +67,6 @@ fn add_registry_packages(alt: bool) {
         cargo_test_support::registry::Package::new(name, "20.0.0+my-package")
             .alternative(alt)
             .publish();
-        cargo_test_support::registry::Package::new(name, "99999.0.0+my-package")
-            .alternative(alt)
-            .publish();
-        cargo_test_support::registry::Package::new(name, "99999.0.0-alpha.1+my-package")
-            .alternative(alt)
-            .publish();
     }
 
     for name in ["semver", "serde"] {
@@ -99,44 +83,6 @@ fn add_registry_packages(alt: bool) {
             .feature("std", &[])
             .publish();
     }
-
-    cargo_test_support::registry::Package::new("prerelease_only", "0.2.0-alpha.1")
-        .alternative(alt)
-        .publish();
-    cargo_test_support::registry::Package::new("test_breaking", "0.2.0")
-        .alternative(alt)
-        .publish();
-    cargo_test_support::registry::Package::new("test_nonbreaking", "0.1.1")
-        .alternative(alt)
-        .publish();
-
-    // Normalization
-    cargo_test_support::registry::Package::new("linked-hash-map", "0.5.4")
-        .alternative(alt)
-        .feature("clippy", &[])
-        .feature("heapsize", &[])
-        .feature("heapsize_impl", &[])
-        .feature("nightly", &[])
-        .feature("serde", &[])
-        .feature("serde_impl", &[])
-        .feature("serde_test", &[])
-        .publish();
-    cargo_test_support::registry::Package::new("inflector", "0.11.4")
-        .alternative(alt)
-        .feature("default", &["heavyweight", "lazy_static", "regex"])
-        .feature("heavyweight", &[])
-        .feature("lazy_static", &[])
-        .feature("regex", &[])
-        .feature("unstable", &[])
-        .publish();
-
-    cargo_test_support::registry::Package::new("your-face", "99999.0.0+my-package")
-        .alternative(alt)
-        .feature("nose", &[])
-        .feature("mouth", &[])
-        .feature("eyes", &[])
-        .feature("ears", &[])
-        .publish();
 }
 
 pub fn cargo_exe() -> std::path::PathBuf {
