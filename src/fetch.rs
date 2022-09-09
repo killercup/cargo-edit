@@ -79,6 +79,33 @@ pub fn get_latest_dependency(
     Ok(dep)
 }
 
+/// Find the highest version compatible with a version req
+pub fn get_compatible_dependency(
+    crate_name: &str,
+    version_req: &semver::VersionReq,
+    manifest_path: &Path,
+    registry: Option<&Url>,
+) -> CargoResult<Dependency> {
+    if crate_name.is_empty() {
+        anyhow::bail!("Found empty crate name");
+    }
+
+    let registry = match registry {
+        Some(url) => url.clone(),
+        None => registry_url(manifest_path, None)?,
+    };
+
+    let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
+
+    let dep = read_compatible_version(&crate_versions, version_req)?;
+
+    if dep.name != crate_name {
+        eprintln!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
+    }
+
+    Ok(dep)
+}
+
 #[derive(Debug)]
 struct CrateVersion {
     name: String,
@@ -174,6 +201,30 @@ fn read_latest_version(
     let latest = versions
         .iter()
         .filter(|&v| flag_allow_prerelease || version_is_stable(v))
+        .filter(|&v| !v.yanked)
+        .max_by_key(|&v| v.version.clone())
+        .ok_or_else(|| {
+            anyhow::format_err!(
+                "No available versions exist. Either all were yanked \
+                         or only prerelease versions exist. Trying with the \
+                         --allow-prerelease flag might solve the issue."
+            )
+        })?;
+
+    let name = &latest.name;
+    let version = latest.version.to_string();
+    Ok(Dependency::new(name)
+        .set_source(RegistrySource::new(&version))
+        .set_available_features(latest.available_features.clone()))
+}
+
+fn read_compatible_version(
+    versions: &[CrateVersion],
+    version_req: &semver::VersionReq,
+) -> CargoResult<Dependency> {
+    let latest = versions
+        .iter()
+        .filter(|&v| version_req.matches(&v.version))
         .filter(|&v| !v.yanked)
         .max_by_key(|&v| v.version.clone())
         .ok_or_else(|| {

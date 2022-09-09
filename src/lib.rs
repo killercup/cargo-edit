@@ -32,7 +32,7 @@ pub use dependency::PathSource;
 pub use dependency::RegistrySource;
 pub use dependency::Source;
 pub use errors::*;
-pub use fetch::{get_latest_dependency, update_registry_index};
+pub use fetch::{get_compatible_dependency, get_latest_dependency, update_registry_index};
 pub use manifest::{find, get_dep_version, set_dep_version, LocalManifest, Manifest};
 pub use metadata::{manifest_from_pkgid, resolve_manifests, workspace_members};
 pub use registry::registry_url;

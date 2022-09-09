@@ -1,6 +1,6 @@
     Updating '[ROOTURL]/registry' index
     Checking cargo-list-test-fixture's dependencies
-name       old req locked latest    new req
-====       ======= ====== ======    =======
-my-package 0       0.4.1  99999.0.0 99999  
+name       old req compatible latest    new req
+====       ======= ========== ======    =======
+my-package 0       0.4.1      99999.0.0 99999  
    Upgrading recursive dependencies
