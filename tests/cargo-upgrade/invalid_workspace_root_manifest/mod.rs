@@ -14,7 +14,6 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--workspace"])
         .current_dir(cwd)
         .assert()
         .code(1)

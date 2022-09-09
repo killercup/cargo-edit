@@ -14,7 +14,7 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["failure"])
+        .args(["--package", "failure"])
         .current_dir(cwd)
         .assert()
         .failure()

@@ -1,17 +1,17 @@
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
-use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
 
 use cargo_edit::{
-    colorize_stderr, find, get_latest_dependency, registry_url, resolve_manifests, set_dep_version,
-    shell_note, shell_status, shell_warn, shell_write_stderr, update_registry_index, CargoResult,
-    Context, CrateSpec, Dependency, LocalManifest,
+    find, get_latest_dependency, registry_url, set_dep_version, shell_note, shell_status,
+    shell_warn, shell_write_stderr, update_registry_index, CargoResult, CrateSpec, Dependency,
+    LocalManifest,
 };
 use clap::Args;
 use indexmap::IndexMap;
 use semver::{Op, VersionReq};
-use termcolor::{Color, ColorSpec, StandardStream, WriteColor};
+use termcolor::{Color, ColorSpec};
 
 /// Upgrade dependency version requirements in Cargo.toml manifest files
 #[derive(Debug, Args)]
@@ -24,36 +24,17 @@ version as recorded in the Cargo.lock file. This flag requires that the Cargo.lo
 up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with \
 an error.")]
 pub struct UpgradeArgs {
-    /// Crates to be upgraded.
-    #[clap(value_name = "DEP_ID")]
-    dependency: Vec<String>,
-
     /// Path to the manifest to upgrade
     #[clap(long, value_name = "PATH", action)]
     manifest_path: Option<PathBuf>,
 
-    /// Package id of the crate to add this dependency to.
-    #[clap(
-        long = "package",
-        short = 'p',
-        value_name = "PKGID",
-        conflicts_with = "all",
-        conflicts_with = "workspace"
-    )]
-    pkgid: Vec<String>,
+    /// Crate to be upgraded
+    #[clap(long, short, value_name = "PKGID")]
+    package: Vec<String>,
 
-    /// Upgrade all packages in the workspace.
-    #[clap(
-        long,
-        help = "[deprecated in favor of `--workspace`]",
-        conflicts_with = "workspace",
-        conflicts_with = "pkgid"
-    )]
-    all: bool,
-
-    /// Upgrade all packages in the workspace.
-    #[clap(long, conflicts_with = "all", conflicts_with = "pkgid")]
-    workspace: bool,
+    /// Crates to exclude and not upgrade.
+    #[clap(long)]
+    exclude: Vec<String>,
 
     /// Print changes to be made without making them.
     #[clap(long)]
@@ -71,10 +52,6 @@ pub struct UpgradeArgs {
     #[clap(long)]
     to_lockfile: bool,
 
-    /// Crates to exclude and not upgrade.
-    #[clap(long)]
-    exclude: Vec<String>,
-
     /// Require `Cargo.toml` to be up to date
     #[clap(long)]
     locked: bool,
@@ -91,18 +68,6 @@ pub struct UpgradeArgs {
 impl UpgradeArgs {
     pub fn exec(self) -> CargoResult<()> {
         exec(self)
-    }
-
-    fn workspace(&self) -> bool {
-        self.all || self.workspace
-    }
-
-    fn resolve_targets(&self) -> CargoResult<Vec<cargo_metadata::Package>> {
-        resolve_manifests(
-            self.manifest_path.as_deref(),
-            self.workspace(),
-            self.pkgid.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
-        )
     }
 
     fn verbose<F>(&self, mut callback: F) -> CargoResult<()>
@@ -123,20 +88,18 @@ enum UnstableOptions {}
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
 fn exec(args: UpgradeArgs) -> CargoResult<()> {
-    if args.all {
-        deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
-    }
-
     if !args.offline && !args.to_lockfile {
         let url = registry_url(&find(args.manifest_path.as_deref())?, None)?;
         update_registry_index(&url, false)?;
     }
 
-    let manifests = args.resolve_targets()?;
-    let locked = load_lockfile(&manifests, args.locked, args.offline).unwrap_or_default();
+    let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, args.offline)?;
+    let manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
+    let manifests = find_ws_members(&metadata);
+    let locked = metadata.packages;
 
     let selected_dependencies = args
-        .dependency
+        .package
         .iter()
         .map(|name| {
             let spec = CrateSpec::resolve(name)?;
@@ -324,7 +287,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         if args.locked {
             anyhow::bail!("cannot upgrade due to `--locked`");
         } else {
-            load_lockfile(&manifests, args.locked, args.offline)?;
+            resolve_ws(Some(&manifest_path), args.locked, args.offline)?;
         }
     }
 
@@ -353,19 +316,15 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     Ok(())
 }
 
-fn load_lockfile(
-    targets: &[cargo_metadata::Package],
+fn resolve_ws(
+    manifest_path: Option<&Path>,
     locked: bool,
     offline: bool,
-) -> CargoResult<Vec<cargo_metadata::Package>> {
-    // Get locked dependencies. For workspaces with multiple Cargo.toml
-    // files, there is only a single lockfile, so it suffices to get
-    // metadata for any one of Cargo.toml files.
-    let package = targets
-        .get(0)
-        .ok_or_else(|| anyhow::format_err!("Invalid cargo config"))?;
+) -> CargoResult<cargo_metadata::Metadata> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.manifest_path(package.manifest_path.clone());
+    if let Some(manifest_path) = manifest_path {
+        cmd.manifest_path(manifest_path);
+    }
     cmd.features(cargo_metadata::CargoOpt::AllFeatures);
     let mut other = Vec::new();
     if locked {
@@ -376,11 +335,20 @@ fn load_lockfile(
     }
     cmd.other_options(other);
 
-    let result = cmd.exec()?;
+    let ws = cmd.exec().or_else(|_| {
+        cmd.no_deps();
+        cmd.exec()
+    })?;
+    Ok(ws)
+}
 
-    let locked = result.packages;
-
-    Ok(locked)
+fn find_ws_members(ws: &cargo_metadata::Metadata) -> Vec<cargo_metadata::Package> {
+    let workspace_members: std::collections::HashSet<_> = ws.workspace_members.iter().collect();
+    ws.packages
+        .iter()
+        .filter(|p| workspace_members.contains(&p.id))
+        .cloned()
+        .collect()
 }
 
 fn find_locked_version(
@@ -425,19 +393,6 @@ fn is_pinned_req(old_version_req: &str) -> bool {
     } else {
         false
     }
-}
-
-fn deprecated_message(message: &str) -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let mut output = StandardStream::stderr(colorchoice);
-    output
-        .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
-        .with_context(|| "Failed to set output colour")?;
-    writeln!(output, "{}", message).with_context(|| "Failed to write deprecated message")?;
-    output
-        .set_color(&ColorSpec::new())
-        .with_context(|| "Failed to clear output colour")?;
-    Ok(())
 }
 
 struct Dep {
