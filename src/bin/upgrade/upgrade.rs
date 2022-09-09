@@ -7,7 +7,7 @@ use anyhow::Context as _;
 use cargo_edit::{
     find, get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version,
     shell_note, shell_status, shell_warn, shell_write_stderr, update_registry_index, CargoResult,
-    CrateSpec, Dependency, LocalManifest,
+    CrateSpec, Dependency, LocalManifest, Source,
 };
 use clap::Args;
 use indexmap::IndexMap;
@@ -114,6 +114,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         shell_status("Checking", &format!("{}'s dependencies", package.name))?;
         for dep_table in manifest.get_dependency_tables_mut() {
             for (dep_key, dep_item) in dep_table.iter_mut() {
+                let mut reason = None;
+
                 let dep_key = dep_key.get();
                 let dependency = match Dependency::from_toml(&manifest_path, dep_key, dep_item) {
                     Ok(dependency) => dependency,
@@ -126,26 +128,37 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 if !selected_dependencies.is_empty()
                     && !selected_dependencies.contains_key(&dependency.name)
                 {
-                    args.verbose(|| {
-                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
-                    })?;
-                    continue;
+                    reason.get_or_insert(Reason::Excluded);
                 }
                 if args.exclude.contains(&dependency.name) {
-                    args.verbose(|| {
-                        shell_warn(&format!("ignoring {}, excluded by user", dep_key))
-                    })?;
-                    continue;
+                    reason.get_or_insert(Reason::Excluded);
                 }
                 let old_version_req = match dependency.version() {
                     Some(version_req) => version_req.to_owned(),
                     None => {
-                        if dependency
-                            .source()
-                            .map(|s| s.as_git().is_some())
-                            .unwrap_or(false)
-                        {
-                            git_crates.insert(dependency.name.clone());
+                        let maybe_reason = match dependency.source() {
+                            Some(Source::Git(_)) => {
+                                git_crates.insert(dependency.name.clone());
+                                Some(Reason::GitSource)
+                            }
+                            Some(Source::Path(_)) => Some(Reason::PathSource),
+                            Some(Source::Workspace(_)) | Some(Source::Registry(_)) | None => None,
+                        };
+                        if let Some(maybe_reason) = maybe_reason {
+                            reason.get_or_insert(maybe_reason);
+                            let display_name = if let Some(rename) = &dependency.rename {
+                                format!("{} ({})", dependency.name, rename)
+                            } else {
+                                dependency.name.clone()
+                            };
+                            table.push(Dep {
+                                name: display_name,
+                                old_version_req: None,
+                                compatible_version: None,
+                                latest_version: None,
+                                new_version_req: None,
+                                reason,
+                            });
                         } else {
                             args.verbose(|| {
                                 let source = dependency
@@ -163,7 +176,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 };
 
-                let mut reason = None;
                 if !args.pinned {
                     if dependency.rename.is_some() {
                         reason.get_or_insert(Reason::Pinned);
@@ -284,10 +296,10 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 };
                 table.push(Dep {
                     name: display_name,
-                    old_version_req,
+                    old_version_req: Some(old_version_req),
                     compatible_version,
                     latest_version,
-                    new_version_req,
+                    new_version_req: Some(new_version_req),
                     reason,
                 });
             }
@@ -571,14 +583,18 @@ fn precise_version(version_req: &VersionReq) -> Option<String> {
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct Dep {
     name: String,
-    old_version_req: String,
+    old_version_req: Option<String>,
     compatible_version: Option<String>,
     latest_version: Option<String>,
-    new_version_req: String,
+    new_version_req: Option<String>,
     reason: Option<Reason>,
 }
 
 impl Dep {
+    fn old_version_req(&self) -> &str {
+        self.old_version_req.as_deref().unwrap_or("-")
+    }
+
     fn old_version_req_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         if !self.old_req_matches_latest() {
@@ -593,8 +609,10 @@ impl Dep {
             .as_ref()
             .and_then(|v| semver::Version::parse(v).ok())
         {
-            if let Ok(old_version_req) = semver::VersionReq::parse(&self.old_version_req) {
-                return old_version_req.matches(&latest_version);
+            if let Some(old_version_req) = &self.old_version_req {
+                if let Ok(old_version_req) = semver::VersionReq::parse(old_version_req) {
+                    return old_version_req.matches(&latest_version);
+                }
             }
         }
         true
@@ -624,6 +642,10 @@ impl Dep {
         self.latest_version.as_deref().unwrap_or("-")
     }
 
+    fn new_version_req(&self) -> &str {
+        self.new_version_req.as_deref().unwrap_or("-")
+    }
+
     fn new_version_req_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         if self.req_changed() {
@@ -636,9 +658,11 @@ impl Dep {
                     .as_ref()
                     .and_then(|v| semver::Version::parse(v).ok())
                 {
-                    if let Ok(new_version_req) = semver::VersionReq::parse(&self.new_version_req) {
-                        if !new_version_req.matches(&latest_version) {
-                            spec.set_fg(Some(Color::Yellow));
+                    if let Some(new_version_req) = &self.new_version_req {
+                        if let Ok(new_version_req) = semver::VersionReq::parse(new_version_req) {
+                            if !new_version_req.matches(&latest_version) {
+                                spec.set_fg(Some(Color::Yellow));
+                            }
                         }
                     }
                 }
@@ -688,6 +712,9 @@ impl Dep {
 enum Reason {
     Unchanged,
     Pinned,
+    GitSource,
+    PathSource,
+    Excluded,
 }
 
 impl Reason {
@@ -695,6 +722,9 @@ impl Reason {
         match self {
             Self::Unchanged => "",
             Self::Pinned => "pinned",
+            Self::GitSource => "git",
+            Self::PathSource => "local",
+            Self::Excluded => "excluded",
         }
     }
 
@@ -702,6 +732,9 @@ impl Reason {
         match self {
             Self::Unchanged => "unchanged",
             Self::Pinned => "pinned",
+            Self::GitSource => "git",
+            Self::PathSource => "local",
+            Self::Excluded => "excluded",
         }
     }
 }
@@ -714,18 +747,18 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             [
                 Dep {
                     name: "name".to_owned(),
-                    old_version_req: "old req".to_owned(),
+                    old_version_req: Some("old req".to_owned()),
                     compatible_version: Some("compatible".to_owned()),
                     latest_version: Some("latest".to_owned()),
-                    new_version_req: "new req".to_owned(),
+                    new_version_req: Some("new req".to_owned()),
                     reason: None,
                 },
                 Dep {
                     name: "====".to_owned(),
-                    old_version_req: "=======".to_owned(),
+                    old_version_req: Some("=======".to_owned()),
                     compatible_version: Some("==========".to_owned()),
                     latest_version: Some("======".to_owned()),
-                    new_version_req: "=======".to_owned(),
+                    new_version_req: Some("=======".to_owned()),
                     reason: None,
                 },
             ],
@@ -733,14 +766,18 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
         let mut width = [0; 6];
         for (i, dep) in interesting.iter().enumerate() {
             width[0] = width[0].max(dep.name.len());
-            width[1] = width[1].max(dep.old_version_req.len());
+            width[1] = width[1].max(dep.old_version_req().len());
             width[2] = width[2].max(dep.compatible_version().len());
             width[3] = width[3].max(dep.latest_version().len());
-            width[4] = width[4].max(dep.new_version_req.len());
+            width[4] = width[4].max(dep.new_version_req().len());
             if 1 < i {
                 width[5] = width[5].max(dep.short_reason().len());
             }
         }
+        if 0 < width[5] {
+            width[5] = width[5].max("note".len());
+        }
+
         for (i, dep) in interesting.iter().enumerate() {
             let is_header = (0..=1).contains(&i);
             let mut header_spec = ColorSpec::new();
@@ -759,7 +796,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             } else {
                 dep.old_version_req_spec()
             };
-            write_cell(&dep.old_version_req, width[1], &spec)?;
+            write_cell(dep.old_version_req(), width[1], &spec)?;
 
             shell_write_stderr(" ", &ColorSpec::new())?;
             let spec = if is_header {
@@ -783,7 +820,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             } else {
                 dep.new_version_req_spec()
             };
-            write_cell(&dep.new_version_req, width[4], &spec)?;
+            write_cell(dep.new_version_req(), width[4], &spec)?;
 
             if 0 < width[5] {
                 shell_write_stderr(" ", &ColorSpec::new())?;
