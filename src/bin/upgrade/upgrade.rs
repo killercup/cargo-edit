@@ -275,7 +275,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         }
     }
 
-    if !modified_crates.is_empty() {
+    if !modified_crates.is_empty() && !args.dry_run {
         if args.locked {
             anyhow::bail!("cannot upgrade due to `--locked`");
         } else {
