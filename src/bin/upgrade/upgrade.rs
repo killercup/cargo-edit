@@ -102,7 +102,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut processed_keys = BTreeSet::new();
 
     let mut updated_registries = BTreeSet::new();
-    let mut any_crate_modified = false;
+    let mut modified_crates = BTreeSet::new();
     let mut pinned_present = false;
     for package in &manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
@@ -240,7 +240,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 if new_version_req != old_version_req {
                     set_dep_version(dep_item, &new_version_req)?;
                     crate_modified = true;
-                    any_crate_modified = true;
+                    modified_crates.insert(dependency.name.clone());
                 }
                 let display_name = if let Some(rename) = &dependency.rename {
                     format!("{} ({})", dependency.name, rename)
@@ -265,7 +265,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         }
     }
 
-    if any_crate_modified {
+    if !modified_crates.is_empty() {
         if args.locked {
             anyhow::bail!("cannot upgrade due to `--locked`");
         } else if args.recursive {
@@ -275,20 +275,28 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             if args.locked {
                 cmd.arg("--locked");
             }
-            if !selected_dependencies.is_empty() {
-                cmd.arg("--aggressive"); // without `--package` it already is recursive
-                for dep in selected_dependencies.keys() {
+            // Limit recursive update to what we touched
+            cmd.arg("--aggressive");
+            let mut still_run = false;
+            for dep in modified_crates {
+                let lock_version = locked.iter().find(|p| p.name == *dep).map(|p| &p.version);
+                if let Some(lock_version) = lock_version {
+                    // Assume that we'll be aggressive if it wasn't already in the lock file
+                    let dep = format!("{dep}@{lock_version}");
                     cmd.arg("--package").arg(dep);
+                    still_run = true;
                 }
             }
             // If we're going to request an update, it would have already been done by now
             cmd.arg("--offline");
-            let output = cmd.output()?;
-            if !output.status.success() {
-                return Err(
-                    anyhow::format_err!("{}", String::from_utf8_lossy(&output.stdout))
-                        .context("recursive dependency update failed"),
-                );
+            if still_run {
+                let output = cmd.output()?;
+                if !output.status.success() {
+                    return Err(
+                        anyhow::format_err!("{}", String::from_utf8_lossy(&output.stderr))
+                            .context("recursive dependency update failed"),
+                    );
+                }
             }
         } else {
             // If we're going to request an update, it would have already been done by now
