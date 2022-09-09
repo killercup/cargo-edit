@@ -33,6 +33,10 @@ pub struct UpgradeArgs {
     #[clap(long)]
     dry_run: bool,
 
+    /// Recursively update locked dependencies
+    #[clap(long, value_name = "true|false", default_value_t = true, action = clap::ArgAction::Set, hide_possible_values = true)]
+    recursive: bool,
+
     /// Upgrade dependencies pinned in the manifest.
     #[clap(long)]
     pinned: bool,
@@ -258,8 +262,32 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     if any_crate_modified {
         if args.locked {
             anyhow::bail!("cannot upgrade due to `--locked`");
+        } else if args.recursive {
+            let mut cmd = std::process::Command::new("cargo");
+            cmd.arg("update");
+            cmd.arg("--manifest-path").arg(&manifest_path);
+            if args.locked {
+                cmd.arg("--locked");
+            }
+            if !selected_dependencies.is_empty() {
+                cmd.arg("--aggressive"); // without `--package` it already is recursive
+                for dep in selected_dependencies.keys() {
+                    cmd.arg("--package").arg(dep);
+                }
+            }
+            // If we're going to request an update, it would have already been done by now
+            cmd.arg("--offline");
+            let output = cmd.output()?;
+            if !output.status.success() {
+                return Err(
+                    anyhow::format_err!("{}", String::from_utf8_lossy(&output.stdout))
+                        .context("recursive dependency update failed"),
+                );
+            }
         } else {
-            resolve_ws(Some(&manifest_path), args.locked, args.offline)?;
+            // If we're going to request an update, it would have already been done by now
+            let offline = true;
+            resolve_ws(Some(&manifest_path), args.locked, offline)?;
         }
     }
 
