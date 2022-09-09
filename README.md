@@ -140,25 +140,20 @@ cargo-upgrade [..]
 Upgrade dependency version requirements in Cargo.toml manifest files
 
 USAGE:
-    cargo upgrade [OPTIONS] [DEP_ID]...
-
-ARGS:
-    <DEP_ID>...    Crates to be upgraded
+    cargo upgrade [OPTIONS]
 
 OPTIONS:
-        --all                     [deprecated in favor of `--workspace`]
         --dry-run                 Print changes to be made without making them
         --exclude <EXCLUDE>       Crates to exclude and not upgrade
     -h, --help                    Print help information
         --locked                  Require `Cargo.toml` to be up to date
         --manifest-path <PATH>    Path to the manifest to upgrade
         --offline                 Run without accessing the network
-    -p, --package <PKGID>         Package id of the crate to add this dependency to
+    -p, --package <PKGID>         Crate to be upgraded
         --pinned                  Upgrade dependencies pinned in the manifest
         --to-lockfile             Upgrade all packages to the version in the lockfile
     -v, --verbose                 Use verbose output
     -V, --version                 Print version information
-        --workspace               Upgrade all packages in the workspace
     -Z <FLAG>                     Unstable (nightly-only) flags
 
 To only update Cargo.lock, see `cargo update`.
