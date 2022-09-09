@@ -2,29 +2,29 @@
 #![warn(clippy::needless_borrow)]
 #![warn(clippy::redundant_clone)]
 
+mod avoid_empty_tables;
+mod build;
+mod dev;
 mod dry_run;
+mod existing;
 mod invalid_arg;
 mod invalid_dep;
-mod invalid_remove_package;
-mod invalid_remove_package_multiple;
-mod invalid_remove_target;
-mod invalid_remove_target_dep;
+mod invalid_package;
+mod invalid_package_multiple;
 mod invalid_section;
 mod invalid_section_dep;
+mod invalid_target;
+mod invalid_target_dep;
+mod multiple_deps;
+mod multiple_dev;
 mod no_arg;
-mod remove_avoid_empty_tables;
-mod remove_build;
-mod remove_dev;
-mod remove_existing;
-mod remove_multiple_deps;
-mod remove_multiple_dev;
-mod remove_offline;
-mod remove_optional_dep_feature;
-mod remove_optional_feature;
-mod remove_package;
-mod remove_target;
-mod remove_target_build;
-mod remove_target_dev;
+mod offline;
+mod optional_dep_feature;
+mod optional_feature;
+mod package;
+mod target;
+mod target_build;
+mod target_dev;
 mod update_lock_file;
 
 fn init_registry() {
