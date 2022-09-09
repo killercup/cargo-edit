@@ -5,9 +5,9 @@ use std::path::PathBuf;
 
 use anyhow::Context as _;
 use cargo_edit::{
-    find, get_latest_dependency, registry_url, set_dep_version, shell_note, shell_status,
-    shell_warn, shell_write_stderr, update_registry_index, CargoResult, CrateSpec, Dependency,
-    LocalManifest,
+    find, get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version,
+    shell_note, shell_status, shell_warn, shell_write_stderr, update_registry_index, CargoResult,
+    CrateSpec, Dependency, LocalManifest,
 };
 use clap::Args;
 use indexmap::IndexMap;
@@ -90,7 +90,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, args.offline)?;
     let manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
     let manifests = find_ws_members(&metadata);
-    let locked = metadata.packages;
 
     let selected_dependencies = args
         .package
@@ -176,9 +175,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 }
 
-                let locked_version =
-                    find_locked_version(&dependency.name, &old_version_req, &locked);
-
                 let latest_version = if dependency
                     .source
                     .as_ref()
@@ -257,10 +253,38 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 } else {
                     dependency.name.clone()
                 };
+                let compatible_version = if dependency
+                    .source
+                    .as_ref()
+                    .and_then(|s| s.as_registry())
+                    .is_some()
+                {
+                    // Update indices for any alternative registries, unless
+                    // we're offline.
+                    let registry_url = dependency
+                        .registry()
+                        .map(|registry| registry_url(&manifest_path, Some(registry)))
+                        .transpose()?;
+                    let latest_version = get_compatible_dependency(
+                        &dependency.name,
+                        &semver::VersionReq::parse(&old_version_req)
+                            .expect("validated when parsing the file"),
+                        &manifest_path,
+                        registry_url.as_ref(),
+                    )
+                    .map(|d| {
+                        d.version()
+                            .expect("registry packages always have a version")
+                            .to_owned()
+                    });
+                    latest_version.ok()
+                } else {
+                    None
+                };
                 table.push(Dep {
                     name: display_name,
                     old_version_req,
-                    locked_version,
+                    compatible_version,
                     latest_version,
                     new_version_req,
                     reason,
@@ -468,22 +492,6 @@ fn find_ws_members(ws: &cargo_metadata::Metadata) -> Vec<cargo_metadata::Package
         .collect()
 }
 
-fn find_locked_version(
-    dep_name: &str,
-    old_version: &str,
-    locked: &[cargo_metadata::Package],
-) -> Option<String> {
-    let req = semver::VersionReq::parse(old_version).ok()?;
-    for p in locked {
-        if dep_name == p.name && req.matches(&p.version) {
-            let mut v = p.version.clone();
-            v.build = semver::BuildMetadata::EMPTY;
-            return Some(v.to_string());
-        }
-    }
-    None
-}
-
 fn is_pinned_req(old_version_req: &str) -> bool {
     if let Ok(version_req) = VersionReq::parse(old_version_req) {
         version_req.comparators.iter().any(|comparator| {
@@ -532,7 +540,7 @@ fn precise_version(version_req: &VersionReq) -> Option<String> {
 struct Dep {
     name: String,
     old_version_req: String,
-    locked_version: Option<String>,
+    compatible_version: Option<String>,
     latest_version: Option<String>,
     new_version_req: String,
     reason: Option<Reason>,
@@ -560,23 +568,23 @@ impl Dep {
         true
     }
 
-    fn locked_version(&self) -> &str {
-        self.locked_version.as_deref().unwrap_or("-")
+    fn compatible_version(&self) -> &str {
+        self.compatible_version.as_deref().unwrap_or("-")
     }
 
-    fn locked_version_spec(&self) -> ColorSpec {
+    fn compatible_version_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        if !self.is_locked_latest() {
+        if !self.is_compatible_latest() {
             spec.set_fg(Some(Color::Yellow));
         }
         spec
     }
 
-    fn is_locked_latest(&self) -> bool {
-        if self.locked_version.is_none() || self.latest_version.is_none() {
+    fn is_compatible_latest(&self) -> bool {
+        if self.compatible_version.is_none() || self.latest_version.is_none() {
             true
         } else {
-            self.locked_version == self.latest_version
+            self.compatible_version == self.latest_version
         }
     }
 
@@ -680,7 +688,7 @@ fn print_upgrade(deps: Vec<Dep>, verbose: bool) -> CargoResult<()> {
                 Dep {
                     name: "name".to_owned(),
                     old_version_req: "old req".to_owned(),
-                    locked_version: Some("locked".to_owned()),
+                    compatible_version: Some("compatible".to_owned()),
                     latest_version: Some("latest".to_owned()),
                     new_version_req: "new req".to_owned(),
                     reason: None,
@@ -688,7 +696,7 @@ fn print_upgrade(deps: Vec<Dep>, verbose: bool) -> CargoResult<()> {
                 Dep {
                     name: "====".to_owned(),
                     old_version_req: "=======".to_owned(),
-                    locked_version: Some("======".to_owned()),
+                    compatible_version: Some("==========".to_owned()),
                     latest_version: Some("======".to_owned()),
                     new_version_req: "=======".to_owned(),
                     reason: None,
@@ -699,7 +707,7 @@ fn print_upgrade(deps: Vec<Dep>, verbose: bool) -> CargoResult<()> {
         for (i, dep) in interesting.iter().enumerate() {
             width[0] = width[0].max(dep.name.len());
             width[1] = width[1].max(dep.old_version_req.len());
-            width[2] = width[2].max(dep.locked_version().len());
+            width[2] = width[2].max(dep.compatible_version().len());
             width[3] = width[3].max(dep.latest_version().len());
             width[4] = width[4].max(dep.new_version_req.len());
             if 1 < i {
@@ -730,9 +738,9 @@ fn print_upgrade(deps: Vec<Dep>, verbose: bool) -> CargoResult<()> {
             let spec = if is_header {
                 header_spec.clone()
             } else {
-                dep.locked_version_spec()
+                dep.compatible_version_spec()
             };
-            write_cell(dep.locked_version(), width[2], &spec)?;
+            write_cell(dep.compatible_version(), width[2], &spec)?;
 
             shell_write_stderr(" ", &ColorSpec::new())?;
             let spec = if is_header {
