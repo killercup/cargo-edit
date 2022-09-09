@@ -3,3 +3,4 @@
 name       old req locked latest    new req  
 ====       ======= ====== ======    =======  
 my-package 0.1.1   0.1.1  99999.0.0 99999.0.0
+   Upgrading recursive dependencies

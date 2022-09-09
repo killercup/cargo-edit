@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 use std::path::PathBuf;
 
+use anyhow::Context as _;
 use cargo_edit::{
     find, get_latest_dependency, registry_url, set_dep_version, shell_note, shell_status,
     shell_warn, shell_write_stderr, update_registry_index, CargoResult, CrateSpec, Dependency,
@@ -268,40 +269,40 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     if !modified_crates.is_empty() {
         if args.locked {
             anyhow::bail!("cannot upgrade due to `--locked`");
-        } else if args.recursive {
-            let mut cmd = std::process::Command::new("cargo");
-            cmd.arg("update");
-            cmd.arg("--manifest-path").arg(&manifest_path);
-            if args.locked {
-                cmd.arg("--locked");
-            }
-            // Limit recursive update to what we touched
-            cmd.arg("--aggressive");
-            let mut still_run = false;
-            for dep in modified_crates {
-                let lock_version = locked.iter().find(|p| p.name == *dep).map(|p| &p.version);
-                if let Some(lock_version) = lock_version {
-                    // Assume that we'll be aggressive if it wasn't already in the lock file
-                    let dep = format!("{dep}@{lock_version}");
-                    cmd.arg("--package").arg(dep);
-                    still_run = true;
-                }
-            }
-            // If we're going to request an update, it would have already been done by now
-            cmd.arg("--offline");
-            if still_run {
-                let output = cmd.output()?;
-                if !output.status.success() {
-                    return Err(
-                        anyhow::format_err!("{}", String::from_utf8_lossy(&output.stderr))
-                            .context("recursive dependency update failed"),
-                    );
-                }
-            }
         } else {
-            // If we're going to request an update, it would have already been done by now
-            let offline = true;
-            resolve_ws(Some(&manifest_path), args.locked, offline)?;
+            let offline = true; // index should already be updated
+            let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
+            let locked = metadata.packages;
+
+            if args.recursive {
+                shell_status("Upgrading", "recursive dependencies")?;
+                let mut cmd = std::process::Command::new("cargo");
+                cmd.arg("update");
+                cmd.arg("--manifest-path").arg(&manifest_path);
+                if args.locked {
+                    cmd.arg("--locked");
+                }
+                // Limit recursive update to what we touched
+                cmd.arg("--aggressive");
+                let mut still_run = false;
+                for dep in modified_crates {
+                    let lock_version = locked.iter().find(|p| p.name == *dep).map(|p| &p.version);
+                    // Assume that we'll be aggressive if it wasn't already in the lock file
+                    if let Some(lock_version) = lock_version {
+                        let dep = format!("{dep}@{lock_version}");
+                        cmd.arg("--package").arg(dep);
+                        still_run = true;
+                    }
+                }
+                // If we're going to request an update, it would have already been done by now
+                cmd.arg("--offline");
+                if still_run {
+                    let status = cmd.status().context("recursive dependency update failed")?;
+                    if !status.success() {
+                        anyhow::bail!("recursive dependency update failed");
+                    }
+                }
+            }
         }
     }
 
