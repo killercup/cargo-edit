@@ -104,6 +104,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
     let mut updated_registries = BTreeSet::new();
     let mut modified_crates = BTreeSet::new();
+    let mut git_crates = BTreeSet::new();
     let mut pinned_present = false;
     for package in &manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
@@ -139,17 +140,25 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 let old_version_req = match dependency.version() {
                     Some(version_req) => version_req.to_owned(),
                     None => {
-                        args.verbose(|| {
-                            let source = dependency
-                                .source()
-                                .map(|s| s.to_string())
-                                .unwrap_or_else(|| "unknown".to_owned());
-                            shell_warn(&format!(
-                                "ignoring {}, source is {}",
-                                dependency.toml_key(),
-                                source,
-                            ))
-                        })?;
+                        if dependency
+                            .source()
+                            .map(|s| s.as_git().is_some())
+                            .unwrap_or(false)
+                        {
+                            git_crates.insert(dependency.name.clone());
+                        } else {
+                            args.verbose(|| {
+                                let source = dependency
+                                    .source()
+                                    .map(|s| s.to_string())
+                                    .unwrap_or_else(|| "unknown".to_owned());
+                                shell_warn(&format!(
+                                    "ignoring {}, source is {}",
+                                    dependency.toml_key(),
+                                    source,
+                                ))
+                            })?;
+                        }
                         continue;
                     }
                 };
@@ -322,6 +331,43 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             .context("failed to lock to precise version");
                         }
                     }
+                }
+
+                // Update data for `recursive` with precise_deps
+                let offline = true; // index should already be updated
+                let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
+                locked = metadata.packages;
+            }
+
+            if !git_crates.is_empty() {
+                shell_status("Upgrading", "git dependencies")?;
+                let mut cmd = std::process::Command::new("cargo");
+                cmd.arg("update");
+                cmd.arg("--manifest-path").arg(&manifest_path);
+                if args.locked {
+                    cmd.arg("--locked");
+                }
+                for dep in git_crates.iter() {
+                    for lock_version in locked
+                        .iter()
+                        .filter(|p| {
+                            p.name == *dep
+                                && p.source
+                                    .as_ref()
+                                    .map(|s| s.repr.starts_with("git+"))
+                                    .unwrap_or(false)
+                        })
+                        .map(|p| &p.version)
+                    {
+                        let dep = format!("{dep}@{lock_version}");
+                        cmd.arg("--package").arg(dep);
+                    }
+                }
+                // If we're going to request an update, it would have already been done by now
+                cmd.arg("--offline");
+                let status = cmd.status().context("recursive dependency update failed")?;
+                if !status.success() {
+                    anyhow::bail!("recursive dependency update failed");
                 }
 
                 // Update data for `recursive` with precise_deps
