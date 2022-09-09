@@ -286,7 +286,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             let output = cmd.output()?;
             if !output.status.success() {
                 return Err(
-                    anyhow::format_err!("{}", String::from_utf8_lossy(&output.stdout))
+                    anyhow::format_err!("{}", String::from_utf8_lossy(&output.stderr))
                         .context("recursive dependency update failed"),
                 );
             }
