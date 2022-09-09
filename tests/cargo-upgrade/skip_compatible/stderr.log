@@ -4,3 +4,4 @@ name             old req locked latest new req
 ====             ======= ====== ====== =======
 test_breaking    0.1     -      0.2.0  0.2    
 test_nonbreaking 0.1.0   -      0.1.2  0.1.2  
+   Upgrading recursive dependencies

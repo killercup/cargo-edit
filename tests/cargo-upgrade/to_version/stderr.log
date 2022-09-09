@@ -3,3 +3,4 @@
 name   old req locked latest    new req  
 ====   ======= ====== ======    =======  
 docopt 0.4.0   0.4.1  99999.0.0 99999.0.0
+   Upgrading recursive dependencies
