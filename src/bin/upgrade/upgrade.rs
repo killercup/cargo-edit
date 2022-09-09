@@ -16,13 +16,6 @@ use termcolor::{Color, ColorSpec};
 /// Upgrade dependency version requirements in Cargo.toml manifest files
 #[derive(Debug, Args)]
 #[clap(version)]
-#[clap(after_help = "\
-To only update Cargo.lock, see `cargo update`.
-
-If the '--to-lockfile' flag is supplied, all dependencies will be upgraded to the currently locked \
-version as recorded in the Cargo.lock file. This flag requires that the Cargo.lock file is \
-up-to-date. If the lock file is missing, or it needs to be updated, cargo-upgrade will exit with \
-an error.")]
 pub struct UpgradeArgs {
     /// Path to the manifest to upgrade
     #[clap(long, value_name = "PATH", action)]
@@ -47,10 +40,6 @@ pub struct UpgradeArgs {
     /// Run without accessing the network
     #[clap(long)]
     offline: bool,
-
-    /// Upgrade all packages to the version in the lockfile.
-    #[clap(long)]
-    to_lockfile: bool,
 
     /// Require `Cargo.toml` to be up to date
     #[clap(long)]
@@ -88,7 +77,7 @@ enum UnstableOptions {}
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
 fn exec(args: UpgradeArgs) -> CargoResult<()> {
-    if !args.offline && !args.to_lockfile {
+    if !args.offline {
         let url = registry_url(&find(args.manifest_path.as_deref())?, None)?;
         update_registry_index(&url, false)?;
     }
@@ -110,7 +99,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
     let mut updated_registries = BTreeSet::new();
     let mut any_crate_modified = false;
-    let mut compatible_present = false;
     let mut pinned_present = false;
     for package in &manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
@@ -219,19 +207,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 {
                     new_version_req.to_owned()
                 } else {
-                    let new_version_req = if args.to_lockfile {
-                        if let Some(locked_version) = &locked_version {
-                            let new_version_req = locked_version.clone();
-                            let new_version: semver::Version = locked_version.parse()?;
-                            match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
-                                Ok(Some(version_req)) => Some(version_req),
-                                Err(_) => Some(new_version_req),
-                                _ => None,
-                            }
-                        } else {
-                            None
-                        }
-                    } else if let Some(latest_version) = &latest_version {
+                    let new_version_req = if let Some(latest_version) = &latest_version {
                         let mut new_version_req = latest_version.clone();
                         let new_version: semver::Version = latest_version.parse()?;
                         match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
@@ -244,10 +220,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             }
                         }
                         if new_version_req == old_version_req {
-                            None
-                        } else if old_version_compatible(&old_version_req, latest_version) {
-                            reason.get_or_insert(Reason::Compatible);
-                            compatible_present = true;
                             None
                         } else {
                             Some(new_version_req)
@@ -304,9 +276,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
     if pinned_present {
         shell_note("Re-run with `--pinned` to upgrade pinned version requirements")?;
-    }
-    if compatible_present {
-        shell_note("Re-run with `--to-lockfile` to upgrade compatible version requirements")?;
     }
 
     if args.dry_run {
@@ -365,21 +334,6 @@ fn find_locked_version(
         }
     }
     None
-}
-
-fn old_version_compatible(old_version_req: &str, new_version: &str) -> bool {
-    let old_version_req = match VersionReq::parse(old_version_req) {
-        Ok(req) => req,
-        Err(_) => return false,
-    };
-
-    let new_version = match semver::Version::parse(new_version) {
-        Ok(new_version) => new_version,
-        // HACK: Skip compatibility checks on incomplete version reqs
-        Err(_) => return false,
-    };
-
-    old_version_req.matches(&new_version)
 }
 
 fn is_pinned_req(old_version_req: &str) -> bool {
@@ -513,7 +467,6 @@ impl Dep {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Reason {
     Unchanged,
-    Compatible,
     Pinned,
 }
 
@@ -521,7 +474,6 @@ impl Reason {
     fn as_short(&self) -> &'static str {
         match self {
             Self::Unchanged => "",
-            Self::Compatible => "compatible",
             Self::Pinned => "pinned",
         }
     }
@@ -529,7 +481,6 @@ impl Reason {
     fn as_long(&self) -> &'static str {
         match self {
             Self::Unchanged => "unchanged",
-            Self::Compatible => "compatible",
             Self::Pinned => "pinned",
         }
     }

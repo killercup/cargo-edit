@@ -11,9 +11,9 @@ dependencies = [
 
 [[package]]
 name = "my-package"
-version = "0.2.3+my-package"
+version = "99999.0.0+my-package"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64091705b8802c92a5d2aed241bf6bc0b4fad664dfd7a5d89667280730d13a5f"
+checksum = "62c45acf9e11d2f97f5b318143219c0b4102eafef1c22a4b545b47104691d915"
 
 [[package]]
 name = "one"

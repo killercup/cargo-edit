@@ -6,4 +6,4 @@ version = "0.1.5"
 path = "../../dummy.rs"
 
 [dependencies]
-my-package = "0.2.3"
+my-package = "99999.0.0"
