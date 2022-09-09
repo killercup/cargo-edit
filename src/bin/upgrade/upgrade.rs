@@ -105,6 +105,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut modified_crates = BTreeSet::new();
     let mut git_crates = BTreeSet::new();
     let mut pinned_present = false;
+    let mut uninteresting_crates = BTreeSet::new();
     for package in &manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
         let mut crate_modified = false;
@@ -292,7 +293,15 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             }
         }
         if !table.is_empty() {
-            print_upgrade(table, args.verbose)?;
+            let (interesting, uninteresting) = if args.verbose {
+                (table, Vec::new())
+            } else {
+                table
+                    .into_iter()
+                    .partition::<Vec<_>, _>(Dep::is_interesting)
+            };
+            print_upgrade(interesting)?;
+            uninteresting_crates.extend(uninteresting);
         }
         if !args.dry_run && !args.locked && crate_modified {
             manifest.write()?;
@@ -450,6 +459,28 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         shell_note("Re-run with `--pinned` to upgrade pinned version requirements")?;
     }
 
+    if !uninteresting_crates.is_empty() {
+        let mut categorize = BTreeMap::new();
+        for dep in uninteresting_crates {
+            categorize
+                .entry(dep.long_reason())
+                .or_insert_with(BTreeSet::new)
+                .insert(dep.name);
+        }
+        let mut note = "Re-run with `--verbose` to show all dependencies".to_owned();
+        for (reason, deps) in categorize {
+            use std::fmt::Write;
+            write!(&mut note, "\n  {}: ", reason)?;
+            for (i, dep) in deps.into_iter().enumerate() {
+                if 0 < i {
+                    note.push_str(", ");
+                }
+                note.push_str(&dep);
+            }
+        }
+        shell_note(&note)?;
+    }
+
     if args.dry_run {
         shell_warn("aborting upgrade due to dry run")?;
     }
@@ -537,6 +568,7 @@ fn precise_version(version_req: &VersionReq) -> Option<String> {
         .map(|v| v.to_string())
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct Dep {
     name: String,
     old_version_req: String,
@@ -675,12 +707,7 @@ impl Reason {
 }
 
 /// Print a message if the new dependency version is different from the old one.
-fn print_upgrade(deps: Vec<Dep>, verbose: bool) -> CargoResult<()> {
-    let (mut interesting, uninteresting) = if verbose {
-        (deps, Vec::new())
-    } else {
-        deps.into_iter().partition::<Vec<_>, _>(Dep::is_interesting)
-    };
+fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
     if !interesting.is_empty() {
         interesting.splice(
             0..0,
@@ -775,28 +802,6 @@ fn print_upgrade(deps: Vec<Dep>, verbose: bool) -> CargoResult<()> {
 
             shell_write_stderr("\n", &ColorSpec::new())?;
         }
-    }
-
-    if !uninteresting.is_empty() {
-        let mut categorize = BTreeMap::new();
-        for dep in uninteresting {
-            categorize
-                .entry(dep.long_reason())
-                .or_insert_with(BTreeSet::new)
-                .insert(dep.name);
-        }
-        let mut note = "Re-run with `--verbose` to show all dependencies".to_owned();
-        for (reason, deps) in categorize {
-            use std::fmt::Write;
-            write!(&mut note, "\n  {}: ", reason)?;
-            for (i, dep) in deps.into_iter().enumerate() {
-                if 0 < i {
-                    note.push_str(", ");
-                }
-                note.push_str(&dep);
-            }
-        }
-        shell_note(&note)?;
     }
 
     Ok(())
