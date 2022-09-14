@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.11.0 - 2022-09-14
+
 This release is another step in our effort to find the appropriate `cargo
 upgrade` workflow for merging into `cargo`.
 
