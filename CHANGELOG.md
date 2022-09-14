@@ -7,6 +7,64 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+This release is another step in our effort to find the appropriate `cargo
+upgrade` workflow for merging into `cargo`.
+
+This new iteration is modeled on the idea "if we started from scratch, what
+would `cargo update` look like?".  Besides getting us to think outside
+the box, I hope that we can deprecate `cargo update` and replace it with `cargo
+upgrade` (caution: this has not been passed by the cargo team).  We need
+runtime with the proposed behavior with feedback to see how well the idea works
+in theory and if it justifies the ecosystem churn of deprecating `cargo
+update`.
+
+More concretely, the approach taken in this release is a `cargo update`-like
+command that implicitly modifies `Cargo.lock`.
+
+To this end
+- `cargo upgrade` now works on the whole workspace exclusively
+  - This also resolves confusion over `--package`, `--exclude`, and the positional `PKGID` argument
+  - This also removes any UI barriers for supporting workspace inheritance coming in 1.64
+- `cargo upgrade -p serde@1.0.100` will act as if `cargo update -p serde --precise 1.0.100` was performed
+- Compatible versions are upgraded by default
+  - Pass `--incompatible` or `--pinned` to upgrade to incompatible versions
+  - Disable the default with `--compatible false`
+  - See [this PR](https://github.com/killercup/cargo-edit/pull/804) for context on the trade offs
+
+A side benefit of this approach is that users will get an approximation of
+minimal-version resolution so long as they stay within `cargo add` and `cargo
+upgrade` and commit their `Cargo.lock` file.
+
+Please include in any
+[interals](https://internals.rust-lang.org/t/feedback-on-cargo-upgrade-to-prepare-it-for-merging/17101):
+- An evaluation of current behavior that takes into account the exiting "care abouts" or any additional we don't have listed yet
+- An evaluation of how existing or new alternatives would better fit the full set of care abouts
+
+### Breaking Changes
+
+`upgrade`
+- Compatible versions are upgraded by default, with opt-out via `--compatible false`
+- Pinned dependencies will be upgraded to compatible versions when `--compatible true`, reserving `--pinned` for incompatible upgrades
+- Incompatible versions require opting in with `-i` / `--incompatible`
+- When a version requirement is fully specified, the lock version will modified to use that version
+- Exclusively operate on the workspace
+- The positional argument for selecting dependencies to upgrade has moved to `--package <NAME>`
+- `--package` and `--exclude` now take crate names rather than dependencies names (matters when dependencies are renamed)
+
+### Features
+
+`upgrade`
+- `--recursive <true|false>` for controlling how the lockfile is updated
+- Update git dependencies
+
+### Fixes
+
+`upgrade`
+- Treat `3.2.x` as pinned
+- Update lockfile in offline mode
+- Don't touch the lockfile in dry-run
+- Prefer preserving the original version requirement over compatible version upgrades (in cases where we don't know how to preserve the format)
+
 ## 0.10.4 - 2022-07-29
 
 ### Fixes
