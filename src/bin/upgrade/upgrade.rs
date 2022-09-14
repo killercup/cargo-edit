@@ -19,46 +19,6 @@ use termcolor::{Color, ColorSpec};
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 #[clap(version)]
 pub struct UpgradeArgs {
-    /// Upgrade to latest compatible version
-    #[clap(
-        long,
-        action = clap::ArgAction::Set,
-        min_values = 0,
-        max_values = 1,
-        value_name = "true|false",
-        hide_possible_values = true,
-        default_value = "true",
-        default_missing_value = "true",
-    )]
-    compatible: bool,
-
-    /// Upgrade to latest incompatible version
-    #[clap(
-        short,
-        long,
-        action = clap::ArgAction::Set,
-        min_values = 0,
-        max_values = 1,
-        value_name = "true|false",
-        hide_possible_values = true,
-        default_value = "false",
-        default_missing_value = "true",
-    )]
-    incompatible: bool,
-
-    /// Upgrade pinned to latest incompatible version
-    #[clap(
-        long,
-        action = clap::ArgAction::Set,
-        min_values = 0,
-        max_values = 1,
-        value_name = "true|false",
-        hide_possible_values = true,
-        default_value = "false",
-        default_missing_value = "true",
-    )]
-    pinned: bool,
-
     /// Print changes to be made without making them.
     #[clap(long)]
     dry_run: bool,
@@ -82,6 +42,49 @@ pub struct UpgradeArgs {
     /// Unstable (nightly-only) flags
     #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
     unstable_features: Vec<UnstableOptions>,
+
+    /// Upgrade to latest compatible version
+    #[clap(
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        hide_possible_values = true,
+        default_value = "true",
+        default_missing_value = "true",
+        help_heading = "VERSION"
+    )]
+    compatible: bool,
+
+    /// Upgrade to latest incompatible version
+    #[clap(
+        short,
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        hide_possible_values = true,
+        default_value = "false",
+        default_missing_value = "true",
+        help_heading = "VERSION"
+    )]
+    incompatible: bool,
+
+    /// Upgrade pinned to latest incompatible version
+    #[clap(
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        hide_possible_values = true,
+        default_value = "false",
+        default_missing_value = "true",
+        help_heading = "VERSION"
+    )]
+    pinned: bool,
 
     /// Crate to be upgraded
     #[clap(long, short, value_name = "PKGID", help_heading = "DEPENDENCIES")]
