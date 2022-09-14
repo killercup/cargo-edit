@@ -143,6 +143,10 @@ USAGE:
     cargo upgrade [OPTIONS]
 
 OPTIONS:
+    -i, --incompatible            Upgrade to latest version, independent of existing version
+                                  requirements
+        --pinned                  Upgrade pinned to latest version, independent of existing version
+                                  requirements
         --dry-run                 Print changes to be made without making them
         --manifest-path <PATH>    Path to the manifest to upgrade
         --offline                 Run without accessing the network
@@ -156,7 +160,6 @@ DEPENDENCIES:
     -p, --package <PKGID>           Crate to be upgraded
         --exclude <EXCLUDE>         Crates to exclude and not upgrade
         --recursive <true|false>    Recursively update locked dependencies [default: true]
-        --pinned                    Upgrade dependencies pinned in the manifest
 
 ```
 

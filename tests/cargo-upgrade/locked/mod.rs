@@ -14,7 +14,7 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--locked"])
+        .args(["--locked", "--incompatible"])
         .current_dir(cwd)
         .assert()
         .failure()

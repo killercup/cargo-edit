@@ -19,6 +19,14 @@ use termcolor::{Color, ColorSpec};
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 #[clap(version)]
 pub struct UpgradeArgs {
+    /// Upgrade to latest version, independent of existing version requirements
+    #[clap(short, long)]
+    incompatible: bool,
+
+    /// Upgrade pinned to latest version, independent of existing version requirements
+    #[clap(long)]
+    pinned: bool,
+
     /// Print changes to be made without making them.
     #[clap(long)]
     dry_run: bool,
@@ -54,10 +62,6 @@ pub struct UpgradeArgs {
     /// Recursively update locked dependencies
     #[clap(long, value_name = "true|false", default_value_t = true, action = clap::ArgAction::Set, hide_possible_values = true, help_heading = "DEPENDENCIES")]
     recursive: bool,
-
-    /// Upgrade dependencies pinned in the manifest.
-    #[clap(long, help_heading = "DEPENDENCIES")]
-    pinned: bool,
 }
 
 impl UpgradeArgs {
@@ -106,6 +110,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut modified_crates = BTreeSet::new();
     let mut git_crates = BTreeSet::new();
     let mut pinned_present = false;
+    let mut incompatible_present = false;
     let mut uninteresting_crates = BTreeSet::new();
     for package in &manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
@@ -265,6 +270,10 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             // `--pinned` is required for incompatible upgrades
                             reason.get_or_insert(Reason::Pinned);
                             pinned_present = true;
+                        } else if !args.incompatible && !is_pinned_dep {
+                            // `--incompatible` is required for non-pinned deps
+                            reason.get_or_insert(Reason::Incompatible);
+                            incompatible_present = true;
                         } else {
                             let new_version: semver::Version = latest_incompatible.parse()?;
                             match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
@@ -496,6 +505,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
     if pinned_present {
         shell_note("Re-run with `--pinned` to upgrade pinned version requirements")?;
+    }
+    if incompatible_present {
+        shell_note("Re-run with `--incompatible` to upgrade incompatible version requirements")?;
     }
 
     if !uninteresting_crates.is_empty() {
@@ -739,6 +751,7 @@ impl Dep {
 enum Reason {
     Unchanged,
     Pinned,
+    Incompatible,
     GitSource,
     PathSource,
     Excluded,
@@ -749,6 +762,7 @@ impl Reason {
         match self {
             Self::Unchanged => "",
             Self::Pinned => "pinned",
+            Self::Incompatible => "incompatible",
             Self::GitSource => "git",
             Self::PathSource => "local",
             Self::Excluded => "excluded",
@@ -759,6 +773,7 @@ impl Reason {
         match self {
             Self::Unchanged => "unchanged",
             Self::Pinned => "pinned",
+            Self::Incompatible => "incompatible",
             Self::GitSource => "git",
             Self::PathSource => "local",
             Self::Excluded => "excluded",

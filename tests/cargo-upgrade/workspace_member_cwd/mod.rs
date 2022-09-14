@@ -14,7 +14,7 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--package", "my-package"])
+        .args(["--package", "my-package", "--incompatible"])
         .current_dir(&cwd)
         .assert()
         .success()
