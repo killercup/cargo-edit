@@ -236,8 +236,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     (None, None)
                 };
 
-                let is_pinned = !args.pinned
-                    && (dependency.rename.is_some() || is_pinned_req(&old_version_req));
+                let is_pinned_dep = dependency.rename.is_some() || is_pinned_req(&old_version_req);
 
                 let mut new_version_req = if reason.is_some() {
                     Some(old_version_req.clone())
@@ -249,7 +248,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     if let Some(Some(explicit_version_req)) =
                         selected_dependencies.get(&dependency.name)
                     {
-                        if is_pinned {
+                        if is_pinned_dep && !args.pinned {
                             // `--pinned` is required in case the user meant an unpinned version
                             // in the dependency tree
                             reason.get_or_insert(Reason::Pinned);
@@ -262,7 +261,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
                 if new_version_req.is_none() {
                     if let Some(latest_incompatible) = &latest_incompatible {
-                        if is_pinned {
+                        if is_pinned_dep && !args.pinned {
                             // `--pinned` is required for incompatible upgrades
                             reason.get_or_insert(Reason::Pinned);
                             pinned_present = true;
