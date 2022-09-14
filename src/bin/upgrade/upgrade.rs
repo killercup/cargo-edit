@@ -241,9 +241,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     (None, None)
                 };
 
-                let new_version_req = if reason.is_some() {
-                    old_version_req.clone()
-                } else if let Some(Some(new_version_req)) =
+                let mut new_version_req = if let Some(Some(new_version_req)) =
                     selected_dependencies.get(&dependency.name)
                 {
                     new_version_req.to_owned()
@@ -266,14 +264,19 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     };
                     new_version_req.unwrap_or_else(|| old_version_req.clone())
                 };
+
+                if reason.is_some() {
+                    new_version_req = old_version_req.clone();
+                }
+
                 if new_version_req == old_version_req {
                     reason.get_or_insert(Reason::Unchanged);
-                }
-                if new_version_req != old_version_req {
+                } else {
                     set_dep_version(dep_item, &new_version_req)?;
                     crate_modified = true;
                     modified_crates.insert(dependency.name.clone());
                 }
+
                 let display_name = if let Some(rename) = &dependency.rename {
                     format!("{} ({})", dependency.name, rename)
                 } else {
