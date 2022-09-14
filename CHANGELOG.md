@@ -38,7 +38,7 @@ minimal-version resolution so long as they stay within `cargo add` and `cargo
 upgrade` and commit their `Cargo.lock` file.
 
 Please include in any
-[interals](https://internals.rust-lang.org/t/feedback-on-cargo-upgrade-to-prepare-it-for-merging/17101):
+[feedback](https://internals.rust-lang.org/t/feedback-on-cargo-upgrade-to-prepare-it-for-merging/17101):
 - An evaluation of current behavior that takes into account the exiting "care abouts" or any additional we don't have listed yet
 - An evaluation of how existing or new alternatives would better fit the full set of care abouts
 
