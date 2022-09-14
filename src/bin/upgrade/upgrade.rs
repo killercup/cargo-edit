@@ -19,12 +19,44 @@ use termcolor::{Color, ColorSpec};
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 #[clap(version)]
 pub struct UpgradeArgs {
-    /// Upgrade to latest version, independent of existing version requirements
-    #[clap(short, long)]
+    /// Upgrade to latest compatible version
+    #[clap(
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        hide_possible_values = true,
+        default_value = "true",
+        default_missing_value = "true",
+    )]
+    compatible: bool,
+
+    /// Upgrade to latest incompatible version
+    #[clap(
+        short,
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        hide_possible_values = true,
+        default_value = "false",
+        default_missing_value = "true",
+    )]
     incompatible: bool,
 
-    /// Upgrade pinned to latest version, independent of existing version requirements
-    #[clap(long)]
+    /// Upgrade pinned to latest incompatible version
+    #[clap(
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        hide_possible_values = true,
+        default_value = "false",
+        default_missing_value = "true",
+    )]
     pinned: bool,
 
     /// Print changes to be made without making them.
@@ -295,22 +327,26 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
                 if new_version_req.is_none() {
                     if let Some(latest_compatible) = &latest_compatible {
-                        // Compatible upgrades are allowed for pinned
-                        let new_version: semver::Version = latest_compatible.parse()?;
-                        match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
-                            Ok(Some(version_req)) => {
-                                new_version_req = Some(version_req);
-                            }
-                            Err(_) => {
-                                // Do not change syntax for compatible upgrades
-                                new_version_req = Some(old_version_req.clone());
-                            }
-                            _ => {
-                                // Already at latest
-                                new_version_req = Some(old_version_req.clone());
+                        if !args.compatible {
+                            reason.get_or_insert(Reason::Compatible);
+                        } else {
+                            // Compatible upgrades are allowed for pinned
+                            let new_version: semver::Version = latest_compatible.parse()?;
+                            match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
+                                Ok(Some(version_req)) => {
+                                    new_version_req = Some(version_req);
+                                }
+                                Err(_) => {
+                                    // Do not change syntax for compatible upgrades
+                                    new_version_req = Some(old_version_req.clone());
+                                }
+                                _ => {
+                                    // Already at latest
+                                    new_version_req = Some(old_version_req.clone());
+                                }
                             }
                         }
-                    };
+                    }
                 }
 
                 let new_version_req = new_version_req.unwrap_or_else(|| old_version_req.clone());
@@ -750,8 +786,9 @@ impl Dep {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Reason {
     Unchanged,
-    Pinned,
+    Compatible,
     Incompatible,
+    Pinned,
     GitSource,
     PathSource,
     Excluded,
@@ -761,8 +798,9 @@ impl Reason {
     fn as_short(&self) -> &'static str {
         match self {
             Self::Unchanged => "",
-            Self::Pinned => "pinned",
+            Self::Compatible => "compatible",
             Self::Incompatible => "incompatible",
+            Self::Pinned => "pinned",
             Self::GitSource => "git",
             Self::PathSource => "local",
             Self::Excluded => "excluded",
@@ -772,8 +810,9 @@ impl Reason {
     fn as_long(&self) -> &'static str {
         match self {
             Self::Unchanged => "unchanged",
-            Self::Pinned => "pinned",
+            Self::Compatible => "compatible",
             Self::Incompatible => "incompatible",
+            Self::Pinned => "pinned",
             Self::GitSource => "git",
             Self::PathSource => "local",
             Self::Excluded => "excluded",
