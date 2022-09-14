@@ -92,7 +92,17 @@ pub struct UpgradeArgs {
     exclude: Vec<String>,
 
     /// Recursively update locked dependencies
-    #[clap(long, value_name = "true|false", default_value_t = true, action = clap::ArgAction::Set, hide_possible_values = true, help_heading = "DEPENDENCIES")]
+    #[clap(
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        default_value = "true",
+        default_missing_value = "true",
+        hide_possible_values = true,
+        help_heading = "DEPENDENCIES"
+    )]
     recursive: bool,
 }
 
