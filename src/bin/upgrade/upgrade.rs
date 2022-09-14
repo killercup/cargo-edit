@@ -16,31 +16,16 @@ use termcolor::{Color, ColorSpec};
 
 /// Upgrade dependency version requirements in Cargo.toml manifest files
 #[derive(Debug, Args)]
+#[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 #[clap(version)]
 pub struct UpgradeArgs {
-    /// Path to the manifest to upgrade
-    #[clap(long, value_name = "PATH", action)]
-    manifest_path: Option<PathBuf>,
-
-    /// Crate to be upgraded
-    #[clap(long, short, value_name = "PKGID")]
-    package: Vec<String>,
-
-    /// Crates to exclude and not upgrade.
-    #[clap(long)]
-    exclude: Vec<String>,
-
     /// Print changes to be made without making them.
     #[clap(long)]
     dry_run: bool,
 
-    /// Recursively update locked dependencies
-    #[clap(long, value_name = "true|false", default_value_t = true, action = clap::ArgAction::Set, hide_possible_values = true)]
-    recursive: bool,
-
-    /// Upgrade dependencies pinned in the manifest.
-    #[clap(long)]
-    pinned: bool,
+    /// Path to the manifest to upgrade
+    #[clap(long, value_name = "PATH", action)]
+    manifest_path: Option<PathBuf>,
 
     /// Run without accessing the network
     #[clap(long)]
@@ -57,6 +42,22 @@ pub struct UpgradeArgs {
     /// Unstable (nightly-only) flags
     #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
     unstable_features: Vec<UnstableOptions>,
+
+    /// Crate to be upgraded
+    #[clap(long, short, value_name = "PKGID", help_heading = "DEPENDENCIES")]
+    package: Vec<String>,
+
+    /// Crates to exclude and not upgrade.
+    #[clap(long, help_heading = "DEPENDENCIES")]
+    exclude: Vec<String>,
+
+    /// Recursively update locked dependencies
+    #[clap(long, value_name = "true|false", default_value_t = true, action = clap::ArgAction::Set, hide_possible_values = true, help_heading = "DEPENDENCIES")]
+    recursive: bool,
+
+    /// Upgrade dependencies pinned in the manifest.
+    #[clap(long, help_heading = "DEPENDENCIES")]
+    pinned: bool,
 }
 
 impl UpgradeArgs {

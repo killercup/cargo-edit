@@ -143,18 +143,20 @@ USAGE:
     cargo upgrade [OPTIONS]
 
 OPTIONS:
-        --dry-run                   Print changes to be made without making them
-        --exclude <EXCLUDE>         Crates to exclude and not upgrade
-    -h, --help                      Print help information
-        --locked                    Require `Cargo.toml` to be up to date
-        --manifest-path <PATH>      Path to the manifest to upgrade
-        --offline                   Run without accessing the network
+        --dry-run                 Print changes to be made without making them
+        --manifest-path <PATH>    Path to the manifest to upgrade
+        --offline                 Run without accessing the network
+        --locked                  Require `Cargo.toml` to be up to date
+    -v, --verbose                 Use verbose output
+    -Z <FLAG>                     Unstable (nightly-only) flags
+    -h, --help                    Print help information
+    -V, --version                 Print version information
+
+DEPENDENCIES:
     -p, --package <PKGID>           Crate to be upgraded
-        --pinned                    Upgrade dependencies pinned in the manifest
+        --exclude <EXCLUDE>         Crates to exclude and not upgrade
         --recursive <true|false>    Recursively update locked dependencies [default: true]
-    -v, --verbose                   Use verbose output
-    -V, --version                   Print version information
-    -Z <FLAG>                       Unstable (nightly-only) flags
+        --pinned                    Upgrade dependencies pinned in the manifest
 
 ```
 
