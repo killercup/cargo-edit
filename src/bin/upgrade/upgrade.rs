@@ -16,31 +16,16 @@ use termcolor::{Color, ColorSpec};
 
 /// Upgrade dependency version requirements in Cargo.toml manifest files
 #[derive(Debug, Args)]
+#[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 #[clap(version)]
 pub struct UpgradeArgs {
-    /// Path to the manifest to upgrade
-    #[clap(long, value_name = "PATH", action)]
-    manifest_path: Option<PathBuf>,
-
-    /// Crate to be upgraded
-    #[clap(long, short, value_name = "PKGID")]
-    package: Vec<String>,
-
-    /// Crates to exclude and not upgrade.
-    #[clap(long)]
-    exclude: Vec<String>,
-
     /// Print changes to be made without making them.
     #[clap(long)]
     dry_run: bool,
 
-    /// Recursively update locked dependencies
-    #[clap(long, value_name = "true|false", default_value_t = true, action = clap::ArgAction::Set, hide_possible_values = true)]
-    recursive: bool,
-
-    /// Upgrade dependencies pinned in the manifest.
-    #[clap(long)]
-    pinned: bool,
+    /// Path to the manifest to upgrade
+    #[clap(long, value_name = "PATH", action)]
+    manifest_path: Option<PathBuf>,
 
     /// Run without accessing the network
     #[clap(long)]
@@ -57,6 +42,76 @@ pub struct UpgradeArgs {
     /// Unstable (nightly-only) flags
     #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
     unstable_features: Vec<UnstableOptions>,
+
+    /// Upgrade to latest compatible version
+    #[clap(
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        hide_possible_values = true,
+        default_value = "true",
+        default_missing_value = "true",
+        help_heading = "VERSION"
+    )]
+    compatible: bool,
+
+    /// Upgrade to latest incompatible version
+    #[clap(
+        short,
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        hide_possible_values = true,
+        default_value = "false",
+        default_missing_value = "true",
+        help_heading = "VERSION"
+    )]
+    incompatible: bool,
+
+    /// Upgrade pinned to latest incompatible version
+    #[clap(
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        hide_possible_values = true,
+        default_value = "false",
+        default_missing_value = "true",
+        help_heading = "VERSION"
+    )]
+    pinned: bool,
+
+    /// Crate to be upgraded
+    #[clap(
+        long,
+        short,
+        value_name = "PKGID[@<VERSION>]",
+        help_heading = "DEPENDENCIES"
+    )]
+    package: Vec<String>,
+
+    /// Crates to exclude and not upgrade.
+    #[clap(long, value_name = "PKGID", help_heading = "DEPENDENCIES")]
+    exclude: Vec<String>,
+
+    /// Recursively update locked dependencies
+    #[clap(
+        long,
+        action = clap::ArgAction::Set,
+        min_values = 0,
+        max_values = 1,
+        value_name = "true|false",
+        default_value = "true",
+        default_missing_value = "true",
+        hide_possible_values = true,
+        help_heading = "DEPENDENCIES"
+    )]
+    recursive: bool,
 }
 
 impl UpgradeArgs {
@@ -105,6 +160,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut modified_crates = BTreeSet::new();
     let mut git_crates = BTreeSet::new();
     let mut pinned_present = false;
+    let mut incompatible_present = false;
     let mut uninteresting_crates = BTreeSet::new();
     for package in &manifests {
         let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
@@ -176,19 +232,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 };
 
-                if !args.pinned {
-                    if dependency.rename.is_some() {
-                        reason.get_or_insert(Reason::Pinned);
-                        pinned_present = true;
-                    }
-
-                    if is_pinned_req(&old_version_req) {
-                        reason.get_or_insert(Reason::Pinned);
-                        pinned_present = true;
-                    }
-                }
-
-                let latest_version = if dependency
+                let (latest_compatible, latest_incompatible) = if dependency
                     .source
                     .as_ref()
                     .and_then(|s| s.as_registry())
@@ -207,6 +251,22 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             }
                         }
                     }
+                    let latest_compatible = semver::VersionReq::parse(&old_version_req)
+                        .ok()
+                        .and_then(|old_version_req| {
+                            get_compatible_dependency(
+                                &dependency.name,
+                                &old_version_req,
+                                &manifest_path,
+                                registry_url.as_ref(),
+                            )
+                            .ok()
+                        })
+                        .map(|d| {
+                            d.version()
+                                .expect("registry packages always have a version")
+                                .to_owned()
+                        });
                     let is_prerelease = old_version_req.contains('-');
                     let latest_version = get_latest_dependency(
                         &dependency.name,
@@ -218,82 +278,118 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         d.version()
                             .expect("registry packages always have a version")
                             .to_owned()
-                    });
-                    latest_version.ok()
+                    })
+                    .ok();
+                    let latest_incompatible = if latest_version != latest_compatible {
+                        latest_version
+                    } else {
+                        // Its compatible
+                        None
+                    };
+                    (latest_compatible, latest_incompatible)
+                } else {
+                    (None, None)
+                };
+
+                let is_pinned_dep = dependency.rename.is_some() || is_pinned_req(&old_version_req);
+
+                let mut new_version_req = if reason.is_some() {
+                    Some(old_version_req.clone())
                 } else {
                     None
                 };
 
-                let new_version_req = if reason.is_some() {
-                    old_version_req.clone()
-                } else if let Some(Some(new_version_req)) =
-                    selected_dependencies.get(&dependency.name)
-                {
-                    new_version_req.to_owned()
-                } else {
-                    let new_version_req = if let Some(latest_version) = &latest_version {
-                        let mut new_version_req = latest_version.clone();
-                        let new_version: semver::Version = latest_version.parse()?;
-                        match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
-                            Ok(Some(version_req)) => {
-                                new_version_req = version_req;
-                            }
-                            Err(_) => {}
-                            _ => {
-                                new_version_req = old_version_req.clone();
-                            }
-                        }
-                        if new_version_req == old_version_req {
-                            None
+                if new_version_req.is_none() {
+                    if let Some(Some(explicit_version_req)) =
+                        selected_dependencies.get(&dependency.name)
+                    {
+                        if is_pinned_dep && !args.pinned {
+                            // `--pinned` is required in case the user meant an unpinned version
+                            // in the dependency tree
+                            reason.get_or_insert(Reason::Pinned);
+                            pinned_present = true;
                         } else {
-                            Some(new_version_req)
+                            new_version_req = Some(explicit_version_req.to_owned())
                         }
-                    } else {
-                        None
-                    };
-                    new_version_req.unwrap_or_else(|| old_version_req.clone())
-                };
+                    }
+                }
+
+                if new_version_req.is_none() {
+                    if let Some(latest_incompatible) = &latest_incompatible {
+                        let new_version: semver::Version = latest_incompatible.parse()?;
+                        let req_candidate =
+                            match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
+                                Ok(Some(version_req)) => Some(version_req),
+                                Err(_) => {
+                                    // Didn't know how to preserve existing format, so abandon it
+                                    Some(latest_incompatible.clone())
+                                }
+                                _ => {
+                                    // Already at latest
+                                    None
+                                }
+                            };
+
+                        if req_candidate.is_some() {
+                            if is_pinned_dep && !args.pinned {
+                                // `--pinned` is required for incompatible upgrades
+                                reason.get_or_insert(Reason::Pinned);
+                                pinned_present = true;
+                            } else if !args.incompatible && !is_pinned_dep {
+                                // `--incompatible` is required for non-pinned deps
+                                reason.get_or_insert(Reason::Incompatible);
+                                incompatible_present = true;
+                            } else {
+                                new_version_req = req_candidate;
+                            }
+                        }
+                    }
+                }
+
+                if new_version_req.is_none() {
+                    if let Some(latest_compatible) = &latest_compatible {
+                        // Compatible upgrades are allowed for pinned
+                        let new_version: semver::Version = latest_compatible.parse()?;
+                        let req_candidate =
+                            match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
+                                Ok(Some(version_req)) => Some(version_req),
+                                Err(_) => {
+                                    // Do not change syntax for compatible upgrades
+                                    Some(old_version_req.clone())
+                                }
+                                _ => {
+                                    // Already at latest
+                                    None
+                                }
+                            };
+
+                        if req_candidate.is_some() {
+                            if !args.compatible {
+                                reason.get_or_insert(Reason::Compatible);
+                            } else {
+                                new_version_req = req_candidate;
+                            }
+                        }
+                    }
+                }
+
+                let new_version_req = new_version_req.unwrap_or_else(|| old_version_req.clone());
+
                 if new_version_req == old_version_req {
                     reason.get_or_insert(Reason::Unchanged);
-                }
-                if new_version_req != old_version_req {
+                } else {
                     set_dep_version(dep_item, &new_version_req)?;
                     crate_modified = true;
                     modified_crates.insert(dependency.name.clone());
                 }
+
                 let display_name = if let Some(rename) = &dependency.rename {
                     format!("{} ({})", dependency.name, rename)
                 } else {
                     dependency.name.clone()
                 };
-                let compatible_version = if dependency
-                    .source
-                    .as_ref()
-                    .and_then(|s| s.as_registry())
-                    .is_some()
-                {
-                    // Update indices for any alternative registries, unless
-                    // we're offline.
-                    let registry_url = dependency
-                        .registry()
-                        .map(|registry| registry_url(&manifest_path, Some(registry)))
-                        .transpose()?;
-                    let latest_version = get_compatible_dependency(
-                        &dependency.name,
-                        &semver::VersionReq::parse(&old_version_req)
-                            .expect("validated when parsing the file"),
-                        &manifest_path,
-                        registry_url.as_ref(),
-                    )
-                    .map(|d| {
-                        d.version()
-                            .expect("registry packages always have a version")
-                            .to_owned()
-                    });
-                    latest_version.ok()
-                } else {
-                    None
-                };
+                let compatible_version = latest_compatible;
+                let latest_version = latest_incompatible.or_else(|| compatible_version.clone());
                 table.push(Dep {
                     name: display_name,
                     old_version_req: Some(old_version_req),
@@ -470,6 +566,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     if pinned_present {
         shell_note("Re-run with `--pinned` to upgrade pinned version requirements")?;
     }
+    if incompatible_present {
+        shell_note("Re-run with `--incompatible` to upgrade incompatible version requirements")?;
+    }
 
     if !uninteresting_crates.is_empty() {
         let mut categorize = BTreeMap::new();
@@ -596,26 +695,7 @@ impl Dep {
     }
 
     fn old_version_req_spec(&self) -> ColorSpec {
-        let mut spec = ColorSpec::new();
-        if !self.old_req_matches_latest() {
-            spec.set_fg(Some(Color::Yellow));
-        }
-        spec
-    }
-
-    fn old_req_matches_latest(&self) -> bool {
-        if let Some(latest_version) = self
-            .latest_version
-            .as_ref()
-            .and_then(|v| semver::Version::parse(v).ok())
-        {
-            if let Some(old_version_req) = &self.old_version_req {
-                if let Ok(old_version_req) = semver::VersionReq::parse(old_version_req) {
-                    return old_version_req.matches(&latest_version);
-                }
-            }
-        }
-        true
+        ColorSpec::new()
     }
 
     fn compatible_version(&self) -> &str {
@@ -649,21 +729,20 @@ impl Dep {
     fn new_version_req_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         if self.req_changed() {
-            if self.reason.is_some() {
-                spec.set_fg(Some(Color::Yellow));
-            } else {
-                spec.set_fg(Some(Color::Green));
-                if let Some(latest_version) = self
-                    .latest_version
-                    .as_ref()
-                    .and_then(|v| semver::Version::parse(v).ok())
-                {
-                    if let Some(new_version_req) = &self.new_version_req {
-                        if let Ok(new_version_req) = semver::VersionReq::parse(new_version_req) {
-                            if !new_version_req.matches(&latest_version) {
-                                spec.set_fg(Some(Color::Yellow));
-                            }
-                        }
+            spec.set_fg(Some(Color::Green));
+        }
+        if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
+            spec.set_fg(Some(Color::Yellow));
+        }
+        if let Some(latest_version) = self
+            .latest_version
+            .as_ref()
+            .and_then(|v| semver::Version::parse(v).ok())
+        {
+            if let Some(new_version_req) = &self.new_version_req {
+                if let Ok(new_version_req) = semver::VersionReq::parse(new_version_req) {
+                    if !new_version_req.matches(&latest_version) {
+                        spec.set_fg(Some(Color::Red));
                     }
                 }
             }
@@ -685,14 +764,14 @@ impl Dep {
 
     fn reason_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        if self.reason.is_some() {
+        if self.reason.unwrap_or(Reason::Unchanged).is_warning() {
             spec.set_fg(Some(Color::Yellow));
         }
         spec
     }
 
     fn is_interesting(&self) -> bool {
-        if self.reason.is_none() {
+        if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
             return true;
         }
 
@@ -701,16 +780,34 @@ impl Dep {
         }
 
         if !self.old_req_matches_latest() {
+            // Show excluded cases with potential
             return true;
         }
 
         false
+    }
+
+    fn old_req_matches_latest(&self) -> bool {
+        if let Some(latest_version) = self
+            .latest_version
+            .as_ref()
+            .and_then(|v| semver::Version::parse(v).ok())
+        {
+            if let Some(old_version_req) = &self.old_version_req {
+                if let Ok(old_version_req) = semver::VersionReq::parse(old_version_req) {
+                    return old_version_req.matches(&latest_version);
+                }
+            }
+        }
+        true
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Reason {
     Unchanged,
+    Compatible,
+    Incompatible,
     Pinned,
     GitSource,
     PathSource,
@@ -718,9 +815,35 @@ enum Reason {
 }
 
 impl Reason {
+    fn is_upgradeable(&self) -> bool {
+        match self {
+            Self::Unchanged => false,
+            Self::Compatible => true,
+            Self::Incompatible => true,
+            Self::Pinned => true,
+            Self::GitSource => false,
+            Self::PathSource => false,
+            Self::Excluded => false,
+        }
+    }
+
+    fn is_warning(&self) -> bool {
+        match self {
+            Self::Unchanged => false,
+            Self::Compatible => false,
+            Self::Incompatible => true,
+            Self::Pinned => true,
+            Self::GitSource => false,
+            Self::PathSource => false,
+            Self::Excluded => false,
+        }
+    }
+
     fn as_short(&self) -> &'static str {
         match self {
             Self::Unchanged => "",
+            Self::Compatible => "compatible",
+            Self::Incompatible => "incompatible",
             Self::Pinned => "pinned",
             Self::GitSource => "git",
             Self::PathSource => "local",
@@ -731,6 +854,8 @@ impl Reason {
     fn as_long(&self) -> &'static str {
         match self {
             Self::Unchanged => "unchanged",
+            Self::Compatible => "compatible",
+            Self::Incompatible => "incompatible",
             Self::Pinned => "pinned",
             Self::GitSource => "git",
             Self::PathSource => "local",

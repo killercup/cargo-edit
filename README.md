@@ -143,18 +143,29 @@ USAGE:
     cargo upgrade [OPTIONS]
 
 OPTIONS:
-        --dry-run                   Print changes to be made without making them
-        --exclude <EXCLUDE>         Crates to exclude and not upgrade
-    -h, --help                      Print help information
-        --locked                    Require `Cargo.toml` to be up to date
-        --manifest-path <PATH>      Path to the manifest to upgrade
-        --offline                   Run without accessing the network
-    -p, --package <PKGID>           Crate to be upgraded
-        --pinned                    Upgrade dependencies pinned in the manifest
-        --recursive <true|false>    Recursively update locked dependencies [default: true]
-    -v, --verbose                   Use verbose output
-    -V, --version                   Print version information
-    -Z <FLAG>                       Unstable (nightly-only) flags
+        --dry-run                 Print changes to be made without making them
+        --manifest-path <PATH>    Path to the manifest to upgrade
+        --offline                 Run without accessing the network
+        --locked                  Require `Cargo.toml` to be up to date
+    -v, --verbose                 Use verbose output
+    -Z <FLAG>                     Unstable (nightly-only) flags
+    -h, --help                    Print help information
+    -V, --version                 Print version information
+
+VERSION:
+        --compatible [<true|false>...]
+            Upgrade to latest compatible version [default: true]
+
+    -i, --incompatible [<true|false>...]
+            Upgrade to latest incompatible version [default: false]
+
+        --pinned [<true|false>...]
+            Upgrade pinned to latest incompatible version [default: false]
+
+DEPENDENCIES:
+    -p, --package <PKGID[@<VERSION>]>    Crate to be upgraded
+        --exclude <PKGID>                Crates to exclude and not upgrade
+        --recursive [<true|false>...]    Recursively update locked dependencies [default: true]
 
 ```
 

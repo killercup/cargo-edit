@@ -8,8 +8,8 @@ lessthan       <0.2    0.1.1      99999.0.0 <0.2       pinned
 lessorequal    <=0.2   0.2.3      99999.0.0 <=0.2      pinned
 caret          ^0.2    0.2.3      99999.0.0 ^99999.0         
 tilde          ~0.2.0  0.2.3      99999.0.0 ~99999.0.0       
-greaterthan    >0.2    99999.0.0  99999.0.0 99999.0.0        
-greaterorequal >=0.2.0 99999.0.0  99999.0.0 99999.0.0        
+greaterthan    >0.2    99999.0.0  99999.0.0 >0.2             
+greaterorequal >=0.2.0 99999.0.0  99999.0.0 >=0.2.0          
 wildcard       0.2.*   0.2.3      99999.0.0 0.2.*      pinned
    Upgrading recursive dependencies
 note: Re-run with `--pinned` to upgrade pinned version requirements

@@ -15,7 +15,7 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--pinned", "--verbose"])
+        .args(["--pinned", "--incompatible", "--verbose"])
         .current_dir(cwd)
         .assert()
         .success()

@@ -8,13 +8,14 @@ use cargo_test_support::curr_dir;
 fn case() {
     cargo_test_support::registry::init();
     crate::add_everything_registry_packages(false);
+    crate::add_git_registry_packages();
     let project = Project::from_template(curr_dir!().join("in"));
     let project_root = project.root();
     let cwd = &project_root;
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--pinned"])
+        .args(["--pinned", "--incompatible"])
         .current_dir(cwd)
         .assert()
         .success()
