@@ -163,8 +163,8 @@ VERSION:
             Upgrade pinned to latest incompatible version [default: false]
 
 DEPENDENCIES:
-    -p, --package <PKGID>                Crate to be upgraded
-        --exclude <EXCLUDE>              Crates to exclude and not upgrade
+    -p, --package <PKGID[@<VERSION>]>    Crate to be upgraded
+        --exclude <PKGID>                Crates to exclude and not upgrade
         --recursive [<true|false>...]    Recursively update locked dependencies [default: true]
 
 ```

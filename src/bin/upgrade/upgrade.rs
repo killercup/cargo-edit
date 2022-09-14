@@ -87,11 +87,16 @@ pub struct UpgradeArgs {
     pinned: bool,
 
     /// Crate to be upgraded
-    #[clap(long, short, value_name = "PKGID", help_heading = "DEPENDENCIES")]
+    #[clap(
+        long,
+        short,
+        value_name = "PKGID[@<VERSION>]",
+        help_heading = "DEPENDENCIES"
+    )]
     package: Vec<String>,
 
     /// Crates to exclude and not upgrade.
-    #[clap(long, help_heading = "DEPENDENCIES")]
+    #[clap(long, value_name = "PKGID", help_heading = "DEPENDENCIES")]
     exclude: Vec<String>,
 
     /// Recursively update locked dependencies
