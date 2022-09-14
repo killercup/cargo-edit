@@ -248,16 +248,10 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 } else {
                     let new_version_req = if let Some(latest_incompatible) = &latest_incompatible {
                         let new_version: semver::Version = latest_incompatible.parse()?;
-                        let new_version_req =
-                            match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
-                                Ok(Some(version_req)) => version_req,
-                                Err(_) => latest_incompatible.clone(),
-                                _ => old_version_req.clone(),
-                            };
-                        if new_version_req == old_version_req {
-                            None
-                        } else {
-                            Some(new_version_req)
+                        match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
+                            Ok(Some(version_req)) => Some(version_req),
+                            Err(_) => Some(latest_incompatible.clone()),
+                            _ => None,
                         }
                     } else {
                         None
