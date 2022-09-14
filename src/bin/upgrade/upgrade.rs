@@ -695,26 +695,7 @@ impl Dep {
     }
 
     fn old_version_req_spec(&self) -> ColorSpec {
-        let mut spec = ColorSpec::new();
-        if !self.old_req_matches_latest() {
-            spec.set_fg(Some(Color::Yellow));
-        }
-        spec
-    }
-
-    fn old_req_matches_latest(&self) -> bool {
-        if let Some(latest_version) = self
-            .latest_version
-            .as_ref()
-            .and_then(|v| semver::Version::parse(v).ok())
-        {
-            if let Some(old_version_req) = &self.old_version_req {
-                if let Ok(old_version_req) = semver::VersionReq::parse(old_version_req) {
-                    return old_version_req.matches(&latest_version);
-                }
-            }
-        }
-        true
+        ColorSpec::new()
     }
 
     fn compatible_version(&self) -> &str {
@@ -748,21 +729,20 @@ impl Dep {
     fn new_version_req_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         if self.req_changed() {
-            if self.reason.is_some() {
-                spec.set_fg(Some(Color::Yellow));
-            } else {
-                spec.set_fg(Some(Color::Green));
-                if let Some(latest_version) = self
-                    .latest_version
-                    .as_ref()
-                    .and_then(|v| semver::Version::parse(v).ok())
-                {
-                    if let Some(new_version_req) = &self.new_version_req {
-                        if let Ok(new_version_req) = semver::VersionReq::parse(new_version_req) {
-                            if !new_version_req.matches(&latest_version) {
-                                spec.set_fg(Some(Color::Yellow));
-                            }
-                        }
+            spec.set_fg(Some(Color::Green));
+        }
+        if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
+            spec.set_fg(Some(Color::Yellow));
+        }
+        if let Some(latest_version) = self
+            .latest_version
+            .as_ref()
+            .and_then(|v| semver::Version::parse(v).ok())
+        {
+            if let Some(new_version_req) = &self.new_version_req {
+                if let Ok(new_version_req) = semver::VersionReq::parse(new_version_req) {
+                    if !new_version_req.matches(&latest_version) {
+                        spec.set_fg(Some(Color::Red));
                     }
                 }
             }
@@ -784,14 +764,14 @@ impl Dep {
 
     fn reason_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        if self.reason.is_some() {
+        if self.reason.unwrap_or(Reason::Unchanged).is_warning() {
             spec.set_fg(Some(Color::Yellow));
         }
         spec
     }
 
     fn is_interesting(&self) -> bool {
-        if self.reason.is_none() {
+        if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
             return true;
         }
 
@@ -800,10 +780,26 @@ impl Dep {
         }
 
         if !self.old_req_matches_latest() {
+            // Show excluded cases with potential
             return true;
         }
 
         false
+    }
+
+    fn old_req_matches_latest(&self) -> bool {
+        if let Some(latest_version) = self
+            .latest_version
+            .as_ref()
+            .and_then(|v| semver::Version::parse(v).ok())
+        {
+            if let Some(old_version_req) = &self.old_version_req {
+                if let Ok(old_version_req) = semver::VersionReq::parse(old_version_req) {
+                    return old_version_req.matches(&latest_version);
+                }
+            }
+        }
+        true
     }
 }
 
@@ -819,6 +815,30 @@ enum Reason {
 }
 
 impl Reason {
+    fn is_upgradeable(&self) -> bool {
+        match self {
+            Self::Unchanged => false,
+            Self::Compatible => true,
+            Self::Incompatible => true,
+            Self::Pinned => true,
+            Self::GitSource => false,
+            Self::PathSource => false,
+            Self::Excluded => false,
+        }
+    }
+
+    fn is_warning(&self) -> bool {
+        match self {
+            Self::Unchanged => false,
+            Self::Compatible => false,
+            Self::Incompatible => true,
+            Self::Pinned => true,
+            Self::GitSource => false,
+            Self::PathSource => false,
+            Self::Excluded => false,
+        }
+    }
+
     fn as_short(&self) -> &'static str {
         match self {
             Self::Unchanged => "",
