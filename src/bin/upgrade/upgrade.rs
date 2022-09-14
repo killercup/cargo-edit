@@ -241,27 +241,40 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     (None, None)
                 };
 
-                let mut new_version_req = if let Some(Some(new_version_req)) =
-                    selected_dependencies.get(&dependency.name)
-                {
-                    new_version_req.to_owned()
+                let mut new_version_req = if reason.is_some() {
+                    Some(old_version_req.clone())
                 } else {
-                    let new_version_req = if let Some(latest_incompatible) = &latest_incompatible {
-                        let new_version: semver::Version = latest_incompatible.parse()?;
-                        match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
-                            Ok(Some(version_req)) => Some(version_req),
-                            Err(_) => Some(latest_incompatible.clone()),
-                            _ => None,
-                        }
-                    } else {
-                        None
-                    };
-                    new_version_req.unwrap_or_else(|| old_version_req.clone())
+                    None
                 };
 
-                if reason.is_some() {
-                    new_version_req = old_version_req.clone();
+                if new_version_req.is_none() {
+                    if let Some(Some(explicit_version_req)) =
+                        selected_dependencies.get(&dependency.name)
+                    {
+                        new_version_req = Some(explicit_version_req.to_owned())
+                    }
                 }
+
+                if new_version_req.is_none() {
+                    if let Some(latest_incompatible) = &latest_incompatible {
+                        let new_version: semver::Version = latest_incompatible.parse()?;
+                        match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
+                            Ok(Some(version_req)) => {
+                                new_version_req = Some(version_req);
+                            }
+                            Err(_) => {
+                                // Didn't know how to preserve existing format, so abandon it
+                                new_version_req = Some(latest_incompatible.clone());
+                            }
+                            _ => {
+                                // Already at latest
+                                new_version_req = Some(old_version_req.clone());
+                            }
+                        }
+                    };
+                }
+
+                let new_version_req = new_version_req.unwrap_or_else(|| old_version_req.clone());
 
                 if new_version_req == old_version_req {
                     reason.get_or_insert(Reason::Unchanged);
