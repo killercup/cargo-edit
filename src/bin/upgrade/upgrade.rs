@@ -480,7 +480,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 locked = metadata.packages;
             }
 
-            if !git_crates.is_empty() {
+            if !git_crates.is_empty() && args.compatible {
                 shell_status("Upgrading", "git dependencies")?;
                 let mut cmd = std::process::Command::new("cargo");
                 cmd.arg("update");
