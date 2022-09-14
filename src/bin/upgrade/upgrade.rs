@@ -177,18 +177,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 };
 
-                if !args.pinned {
-                    if dependency.rename.is_some() {
-                        reason.get_or_insert(Reason::Pinned);
-                        pinned_present = true;
-                    }
-
-                    if is_pinned_req(&old_version_req) {
-                        reason.get_or_insert(Reason::Pinned);
-                        pinned_present = true;
-                    }
-                }
-
                 let (latest_compatible, latest_incompatible) = if dependency
                     .source
                     .as_ref()
@@ -241,13 +229,18 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     (None, None)
                 };
 
+                let is_pinned = !args.pinned
+                    && (dependency.rename.is_some() || is_pinned_req(&old_version_req));
+
                 let mut new_version_req = if reason.is_some() {
                     Some(old_version_req.clone())
                 } else {
                     None
                 };
 
-                if new_version_req.is_none() {
+                // is_pinned: `args.pinned` is required in case the user meant a unpinned version
+                // in the dependency tree
+                if new_version_req.is_none() && !is_pinned {
                     if let Some(Some(explicit_version_req)) =
                         selected_dependencies.get(&dependency.name)
                     {
@@ -255,7 +248,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 }
 
-                if new_version_req.is_none() {
+                // is_pinned: `args.pinned` is required for compatible upgrades
+                if new_version_req.is_none() && !is_pinned {
                     if let Some(latest_incompatible) = &latest_incompatible {
                         let new_version: semver::Version = latest_incompatible.parse()?;
                         match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
@@ -272,6 +266,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             }
                         }
                     };
+                }
+
+                if is_pinned {
+                    reason.get_or_insert(Reason::Pinned);
+                    pinned_present = true;
                 }
 
                 let new_version_req = new_version_req.unwrap_or_else(|| old_version_req.clone());
