@@ -238,39 +238,51 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     None
                 };
 
-                // is_pinned: `args.pinned` is required in case the user meant a unpinned version
-                // in the dependency tree
-                if new_version_req.is_none() && !is_pinned {
+                if new_version_req.is_none() {
                     if let Some(Some(explicit_version_req)) =
                         selected_dependencies.get(&dependency.name)
                     {
-                        new_version_req = Some(explicit_version_req.to_owned())
+                        if is_pinned {
+                            // `--pinned` is required in case the user meant an unpinned version
+                            // in the dependency tree
+                            reason.get_or_insert(Reason::Pinned);
+                            pinned_present = true;
+                        } else {
+                            new_version_req = Some(explicit_version_req.to_owned())
+                        }
                     }
                 }
 
-                // is_pinned: `args.pinned` is required for compatible upgrades
-                if new_version_req.is_none() && !is_pinned {
+                if new_version_req.is_none() {
                     if let Some(latest_incompatible) = &latest_incompatible {
-                        let new_version: semver::Version = latest_incompatible.parse()?;
-                        match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
-                            Ok(Some(version_req)) => {
-                                new_version_req = Some(version_req);
+                        if is_pinned {
+                            // `--pinned` is required for incompatible upgrades
+                            if Some(latest_incompatible) != latest_compatible.as_ref() {
+                                reason.get_or_insert(Reason::Pinned);
+                                pinned_present = true;
                             }
-                            Err(_) => {
-                                // Didn't know how to preserve existing format, so abandon it
-                                new_version_req = Some(latest_incompatible.clone());
-                            }
-                            _ => {
-                                // Already at latest
-                                new_version_req = Some(old_version_req.clone());
+                        } else {
+                            let new_version: semver::Version = latest_incompatible.parse()?;
+                            match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
+                                Ok(Some(version_req)) => {
+                                    new_version_req = Some(version_req);
+                                }
+                                Err(_) => {
+                                    // Didn't know how to preserve existing format, so abandon it
+                                    new_version_req = Some(latest_incompatible.clone());
+                                }
+                                _ => {
+                                    // Already at latest
+                                    new_version_req = Some(old_version_req.clone());
+                                }
                             }
                         }
-                    };
+                    }
                 }
 
-                // Compatible upgrades are allowed for pinned
                 if new_version_req.is_none() {
                     if let Some(latest_compatible) = &latest_compatible {
+                        // Compatible upgrades are allowed for pinned
                         let new_version: semver::Version = latest_compatible.parse()?;
                         match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
                             Ok(Some(version_req)) => {
@@ -285,17 +297,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 new_version_req = Some(old_version_req.clone());
                             }
                         }
-                        if Some(latest_compatible) != latest_incompatible.as_ref() && !args.pinned {
-                            // We could upgrade more if `--pinned` was used
-                            reason.get_or_insert(Reason::Pinned);
-                            pinned_present = true;
-                        }
                     };
-                }
-
-                if new_version_req.is_none() && is_pinned {
-                    reason.get_or_insert(Reason::Pinned);
-                    pinned_present = true;
                 }
 
                 let new_version_req = new_version_req.unwrap_or_else(|| old_version_req.clone());
