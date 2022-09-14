@@ -155,8 +155,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             table.push(Dep {
                                 name: display_name,
                                 old_version_req: None,
-                                latest_compatible: None,
-                                latest_incompatible: None,
+                                compatible_version: None,
+                                latest_version: None,
                                 new_version_req: None,
                                 reason,
                             });
@@ -196,18 +196,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             }
                         }
                     }
-                    let is_prerelease = old_version_req.contains('-');
-                    let latest_incompatible = get_latest_dependency(
-                        &dependency.name,
-                        is_prerelease,
-                        &manifest_path,
-                        registry_url.as_ref(),
-                    )
-                    .map(|d| {
-                        d.version()
-                            .expect("registry packages always have a version")
-                            .to_owned()
-                    });
                     let latest_compatible = semver::VersionReq::parse(&old_version_req)
                         .ok()
                         .and_then(|old_version_req| {
@@ -224,7 +212,26 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 .expect("registry packages always have a version")
                                 .to_owned()
                         });
-                    (latest_compatible, latest_incompatible.ok())
+                    let is_prerelease = old_version_req.contains('-');
+                    let latest_version = get_latest_dependency(
+                        &dependency.name,
+                        is_prerelease,
+                        &manifest_path,
+                        registry_url.as_ref(),
+                    )
+                    .map(|d| {
+                        d.version()
+                            .expect("registry packages always have a version")
+                            .to_owned()
+                    })
+                    .ok();
+                    let latest_incompatible = if latest_version != latest_compatible {
+                        latest_version
+                    } else {
+                        // Its compatible
+                        None
+                    };
+                    (latest_compatible, latest_incompatible)
                 } else {
                     (None, None)
                 };
@@ -257,10 +264,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     if let Some(latest_incompatible) = &latest_incompatible {
                         if is_pinned {
                             // `--pinned` is required for incompatible upgrades
-                            if Some(latest_incompatible) != latest_compatible.as_ref() {
-                                reason.get_or_insert(Reason::Pinned);
-                                pinned_present = true;
-                            }
+                            reason.get_or_insert(Reason::Pinned);
+                            pinned_present = true;
                         } else {
                             let new_version: semver::Version = latest_incompatible.parse()?;
                             match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
@@ -315,11 +320,13 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 } else {
                     dependency.name.clone()
                 };
+                let compatible_version = latest_compatible;
+                let latest_version = latest_incompatible.or_else(|| compatible_version.clone());
                 table.push(Dep {
                     name: display_name,
                     old_version_req: Some(old_version_req),
-                    latest_compatible,
-                    latest_incompatible,
+                    compatible_version,
+                    latest_version,
                     new_version_req: Some(new_version_req),
                     reason,
                 });
@@ -605,8 +612,8 @@ fn precise_version(version_req: &VersionReq) -> Option<String> {
 struct Dep {
     name: String,
     old_version_req: Option<String>,
-    latest_compatible: Option<String>,
-    latest_incompatible: Option<String>,
+    compatible_version: Option<String>,
+    latest_version: Option<String>,
     new_version_req: Option<String>,
     reason: Option<Reason>,
 }
@@ -625,25 +632,25 @@ impl Dep {
     }
 
     fn old_req_matches_latest(&self) -> bool {
-        if let Some(latest_incompatible) = self
-            .latest_incompatible
+        if let Some(latest_version) = self
+            .latest_version
             .as_ref()
             .and_then(|v| semver::Version::parse(v).ok())
         {
             if let Some(old_version_req) = &self.old_version_req {
                 if let Ok(old_version_req) = semver::VersionReq::parse(old_version_req) {
-                    return old_version_req.matches(&latest_incompatible);
+                    return old_version_req.matches(&latest_version);
                 }
             }
         }
         true
     }
 
-    fn latest_compatible(&self) -> &str {
-        self.latest_compatible.as_deref().unwrap_or("-")
+    fn compatible_version(&self) -> &str {
+        self.compatible_version.as_deref().unwrap_or("-")
     }
 
-    fn latest_compatible_spec(&self) -> ColorSpec {
+    fn compatible_version_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         if !self.is_compatible_latest() {
             spec.set_fg(Some(Color::Yellow));
@@ -652,15 +659,15 @@ impl Dep {
     }
 
     fn is_compatible_latest(&self) -> bool {
-        if self.latest_compatible.is_none() || self.latest_incompatible.is_none() {
+        if self.compatible_version.is_none() || self.latest_version.is_none() {
             true
         } else {
-            self.latest_compatible == self.latest_incompatible
+            self.compatible_version == self.latest_version
         }
     }
 
-    fn latest_incompatible(&self) -> &str {
-        self.latest_incompatible.as_deref().unwrap_or("-")
+    fn latest_version(&self) -> &str {
+        self.latest_version.as_deref().unwrap_or("-")
     }
 
     fn new_version_req(&self) -> &str {
@@ -674,14 +681,14 @@ impl Dep {
                 spec.set_fg(Some(Color::Yellow));
             } else {
                 spec.set_fg(Some(Color::Green));
-                if let Some(latest_incompatible) = self
-                    .latest_incompatible
+                if let Some(latest_version) = self
+                    .latest_version
                     .as_ref()
                     .and_then(|v| semver::Version::parse(v).ok())
                 {
                     if let Some(new_version_req) = &self.new_version_req {
                         if let Ok(new_version_req) = semver::VersionReq::parse(new_version_req) {
-                            if !new_version_req.matches(&latest_incompatible) {
+                            if !new_version_req.matches(&latest_version) {
                                 spec.set_fg(Some(Color::Yellow));
                             }
                         }
@@ -769,16 +776,16 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
                 Dep {
                     name: "name".to_owned(),
                     old_version_req: Some("old req".to_owned()),
-                    latest_compatible: Some("compatible".to_owned()),
-                    latest_incompatible: Some("latest".to_owned()),
+                    compatible_version: Some("compatible".to_owned()),
+                    latest_version: Some("latest".to_owned()),
                     new_version_req: Some("new req".to_owned()),
                     reason: None,
                 },
                 Dep {
                     name: "====".to_owned(),
                     old_version_req: Some("=======".to_owned()),
-                    latest_compatible: Some("==========".to_owned()),
-                    latest_incompatible: Some("======".to_owned()),
+                    compatible_version: Some("==========".to_owned()),
+                    latest_version: Some("======".to_owned()),
                     new_version_req: Some("=======".to_owned()),
                     reason: None,
                 },
@@ -788,8 +795,8 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
         for (i, dep) in interesting.iter().enumerate() {
             width[0] = width[0].max(dep.name.len());
             width[1] = width[1].max(dep.old_version_req().len());
-            width[2] = width[2].max(dep.latest_compatible().len());
-            width[3] = width[3].max(dep.latest_incompatible().len());
+            width[2] = width[2].max(dep.compatible_version().len());
+            width[3] = width[3].max(dep.latest_version().len());
             width[4] = width[4].max(dep.new_version_req().len());
             if 1 < i {
                 width[5] = width[5].max(dep.short_reason().len());
@@ -823,9 +830,9 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             let spec = if is_header {
                 header_spec.clone()
             } else {
-                dep.latest_compatible_spec()
+                dep.compatible_version_spec()
             };
-            write_cell(dep.latest_compatible(), width[2], &spec)?;
+            write_cell(dep.compatible_version(), width[2], &spec)?;
 
             shell_write_stderr(" ", &ColorSpec::new())?;
             let spec = if is_header {
@@ -833,7 +840,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             } else {
                 ColorSpec::new()
             };
-            write_cell(dep.latest_incompatible(), width[3], &spec)?;
+            write_cell(dep.latest_version(), width[3], &spec)?;
 
             shell_write_stderr(" ", &ColorSpec::new())?;
             let spec = if is_header {
