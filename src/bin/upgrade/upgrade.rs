@@ -268,7 +268,32 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     };
                 }
 
-                if is_pinned {
+                // Compatible upgrades are allowed for pinned
+                if new_version_req.is_none() {
+                    if let Some(latest_compatible) = &latest_compatible {
+                        let new_version: semver::Version = latest_compatible.parse()?;
+                        match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
+                            Ok(Some(version_req)) => {
+                                new_version_req = Some(version_req);
+                            }
+                            Err(_) => {
+                                // Do not change syntax for compatible upgrades
+                                new_version_req = Some(old_version_req.clone());
+                            }
+                            _ => {
+                                // Already at latest
+                                new_version_req = Some(old_version_req.clone());
+                            }
+                        }
+                        if Some(latest_compatible) != latest_incompatible.as_ref() && !args.pinned {
+                            // We could upgrade more if `--pinned` was used
+                            reason.get_or_insert(Reason::Pinned);
+                            pinned_present = true;
+                        }
+                    };
+                }
+
+                if new_version_req.is_none() && is_pinned {
                     reason.get_or_insert(Reason::Pinned);
                     pinned_present = true;
                 }
