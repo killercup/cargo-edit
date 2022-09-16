@@ -41,32 +41,24 @@ pub fn remove(options: &RemoveOptions<'_>) -> CargoResult<()> {
     let manifest_path = options.spec.manifest_path().to_path_buf();
     let mut manifest = LocalManifest::try_new(&manifest_path)?;
 
-    options
-        .dependencies
-        .iter()
-        .map(|dep| {
-            let section = if dep_table.len() >= 3 {
-                format!("{} for target `{}`", &dep_table[2], &dep_table[1])
-            } else {
-                dep_table[0].clone()
-            };
-            options
-                .config
-                .shell()
-                .status("Removing", format!("{dep} from {section}"))?;
+    for dep in &options.dependencies {
+        let section = if dep_table.len() >= 3 {
+            format!("{} for target `{}`", &dep_table[2], &dep_table[1])
+        } else {
+            dep_table[0].clone()
+        };
+        options
+            .config
+            .shell()
+            .status("Removing", format!("{dep} from {section}"))?;
 
-            let result = manifest
-                .remove_from_table(&dep_table, dep)
-                .map_err(Into::into);
+        manifest.remove_from_table(&dep_table, dep)?;
 
-            // Now that we have removed the crate, if that was the last reference to that
-            // crate, then we need to drop any explicitly activated features on
-            // that crate.
-            manifest.gc_dep(dep);
-
-            result
-        })
-        .collect::<CargoResult<Vec<_>>>()?;
+        // Now that we have removed the crate, if that was the last reference to that
+        // crate, then we need to drop any explicitly activated features on
+        // that crate.
+        manifest.gc_dep(dep);
+    }
 
     if options.dry_run {
         options
