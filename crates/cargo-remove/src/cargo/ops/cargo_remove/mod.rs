@@ -45,10 +45,13 @@ pub fn remove(options: &RemoveOptions<'_>) -> CargoResult<()> {
         .dependencies
         .iter()
         .map(|dep| {
-            let section = if dep_table.len() >= 3 {
-                format!("{} for target `{}`", &dep_table[2], &dep_table[1])
-            } else {
-                dep_table[0].clone()
+            let section = {
+                let table_name = options.section.kind_table_name();
+                if let Some(target) = options.section.target() {
+                    format!("{table_name} for target `{target}`")
+                } else {
+                    table_name.to_owned()
+                }
             };
             options
                 .config
