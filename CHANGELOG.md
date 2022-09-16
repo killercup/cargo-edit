@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.11.1 - 2022-09-16
+
 ### Fixes
 
 - Changed `--compatible`, `--incompatible`, and `--pinned` from accepting `true|false` to `allow|ignore` (with aliases for compatibility
