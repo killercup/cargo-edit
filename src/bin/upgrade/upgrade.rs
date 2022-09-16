@@ -49,13 +49,14 @@ pub struct UpgradeArgs {
         action = clap::ArgAction::Set,
         min_values = 0,
         max_values = 1,
-        value_name = "true|false",
+        value_name = "allow|ignore",
         hide_possible_values = true,
-        default_value = "true",
-        default_missing_value = "true",
-        help_heading = "VERSION"
+        default_value = "allow",
+        default_missing_value = "allow",
+        help_heading = "VERSION",
+        value_enum,
     )]
-    compatible: bool,
+    compatible: Status,
 
     /// Upgrade to latest incompatible version
     #[clap(
@@ -64,13 +65,14 @@ pub struct UpgradeArgs {
         action = clap::ArgAction::Set,
         min_values = 0,
         max_values = 1,
-        value_name = "true|false",
+        value_name = "allow|ignore",
         hide_possible_values = true,
-        default_value = "false",
-        default_missing_value = "true",
-        help_heading = "VERSION"
+        default_value = "ignore",
+        default_missing_value = "allow",
+        help_heading = "VERSION",
+        value_enum,
     )]
-    incompatible: bool,
+    incompatible: Status,
 
     /// Upgrade pinned to latest incompatible version
     #[clap(
@@ -78,13 +80,14 @@ pub struct UpgradeArgs {
         action = clap::ArgAction::Set,
         min_values = 0,
         max_values = 1,
-        value_name = "true|false",
+        value_name = "allow|ignore",
         hide_possible_values = true,
-        default_value = "false",
-        default_missing_value = "true",
-        help_heading = "VERSION"
+        default_value = "ignore",
+        default_missing_value = "allow",
+        help_heading = "VERSION",
+        value_enum,
     )]
-    pinned: bool,
+    pinned: Status,
 
     /// Crate to be upgraded
     #[clap(
@@ -127,6 +130,23 @@ impl UpgradeArgs {
             callback()
         } else {
             Ok(())
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+enum Status {
+    #[clap(alias = "true")]
+    Allow,
+    #[clap(alias = "false")]
+    Ignore,
+}
+
+impl Status {
+    fn as_bool(&self) -> bool {
+        match self {
+            Self::Allow => true,
+            Self::Ignore => false,
         }
     }
 }
@@ -303,7 +323,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     if let Some(Some(explicit_version_req)) =
                         selected_dependencies.get(&dependency.name)
                     {
-                        if is_pinned_dep && !args.pinned {
+                        if is_pinned_dep && !args.pinned.as_bool() {
                             // `--pinned` is required in case the user meant an unpinned version
                             // in the dependency tree
                             reason.get_or_insert(Reason::Pinned);
@@ -331,11 +351,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             };
 
                         if req_candidate.is_some() {
-                            if is_pinned_dep && !args.pinned {
+                            if is_pinned_dep && !args.pinned.as_bool() {
                                 // `--pinned` is required for incompatible upgrades
                                 reason.get_or_insert(Reason::Pinned);
                                 pinned_present = true;
-                            } else if !args.incompatible && !is_pinned_dep {
+                            } else if !args.incompatible.as_bool() && !is_pinned_dep {
                                 // `--incompatible` is required for non-pinned deps
                                 reason.get_or_insert(Reason::Incompatible);
                                 incompatible_present = true;
@@ -364,7 +384,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             };
 
                         if req_candidate.is_some() {
-                            if !args.compatible {
+                            if !args.compatible.as_bool() {
                                 reason.get_or_insert(Reason::Compatible);
                             } else {
                                 new_version_req = req_candidate;
@@ -480,7 +500,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 locked = metadata.packages;
             }
 
-            if !git_crates.is_empty() && args.compatible {
+            if !git_crates.is_empty() && args.compatible.as_bool() {
                 shell_status("Upgrading", "git dependencies")?;
                 let mut cmd = std::process::Command::new("cargo");
                 cmd.arg("update");

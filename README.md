@@ -153,14 +153,14 @@ OPTIONS:
     -V, --version                 Print version information
 
 VERSION:
-        --compatible [<true|false>...]
-            Upgrade to latest compatible version [default: true]
+        --compatible [<allow|ignore>...]
+            Upgrade to latest compatible version [default: allow]
 
-    -i, --incompatible [<true|false>...]
-            Upgrade to latest incompatible version [default: false]
+    -i, --incompatible [<allow|ignore>...]
+            Upgrade to latest incompatible version [default: ignore]
 
-        --pinned [<true|false>...]
-            Upgrade pinned to latest incompatible version [default: false]
+        --pinned [<allow|ignore>...]
+            Upgrade pinned to latest incompatible version [default: ignore]
 
 DEPENDENCIES:
     -p, --package <PKGID[@<VERSION>]>    Crate to be upgraded
