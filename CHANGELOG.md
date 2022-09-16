@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- Changed `--compatible`, `--incompatible`, and `--pinned` from accepting `true|false` to `allow|ignore` (with aliases for compatibility
+  - While we are still working out how we want to express these options, this at least removes the confusion over `--compatible false` looking like it is the same as `--incompatible`.
+
 ## 0.11.0 - 2022-09-14
 
 This release is another step in our effort to find the appropriate `cargo
