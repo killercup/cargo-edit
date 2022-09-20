@@ -159,8 +159,9 @@ impl Manifest {
         descend(self.data.as_item_mut(), table_path)
     }
 
-    /// Get all sections in the manifest that exist and might contain dependencies.
-    /// The returned items are always `Table` or `InlineTable`.
+    /// Get all sections in the manifest that exist and might contain
+    /// dependencies. The returned items are always `Table` or
+    /// `InlineTable`.
     pub fn get_sections(&self) -> Vec<(DepTable, toml_edit::Item)> {
         let mut sections = Vec::new();
 
@@ -545,9 +546,5 @@ fn non_existent_dependency_err(
     name: impl std::fmt::Display,
     table: impl std::fmt::Display,
 ) -> anyhow::Error {
-    anyhow::format_err!(
-        "The dependency `{}` could not be found in `{}`.",
-        name,
-        table,
-    )
+    anyhow::format_err!("The dependency `{name}` could not be found in `{table}`.")
 }
