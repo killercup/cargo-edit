@@ -95,14 +95,8 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
 }
 
 fn parse_section(args: &ArgMatches) -> DepTable {
-    let dev = args
-        .get_one::<bool>("dev")
-        .copied()
-        .expect("action(ArgAction::SetTrue)");
-    let build = args
-        .get_one::<bool>("build")
-        .copied()
-        .expect("action(ArgAction::SetTrue)");
+    let dev = args.flag("dev");
+    let build = args.flag("build");
 
     let kind = if dev {
         DepKind::Development

@@ -159,8 +159,9 @@ impl Manifest {
         descend(self.data.as_item_mut(), table_path)
     }
 
-    /// Get all sections in the manifest that exist and might contain dependencies.
-    /// The returned items are always `Table` or `InlineTable`.
+    /// Get all sections in the manifest that exist and might contain
+    /// dependencies. The returned items are always `Table` or
+    /// `InlineTable`.
     pub fn get_sections(&self) -> Vec<(DepTable, toml_edit::Item)> {
         let mut sections = Vec::new();
 
@@ -373,15 +374,13 @@ impl LocalManifest {
     pub fn remove_from_table(&mut self, table_path: &[String], name: &str) -> CargoResult<()> {
         let parent_table = self.get_table_mut(table_path)?;
 
-        {
-            let dep = parent_table
-                .get_mut(name)
-                .filter(|t| !t.is_none())
-                .ok_or_else(|| non_existent_dependency_err(name, table_path.join(".")))?;
+        let dep = parent_table
+            .get_mut(name)
+            .filter(|t| !t.is_none())
+            .ok_or_else(|| non_existent_dependency_err(name, table_path.join(".")))?;
 
-            // remove the dependency
-            *dep = toml_edit::Item::None;
-        }
+        // remove the dependency
+        *dep = toml_edit::Item::None;
 
         // remove table if empty
         if parent_table.as_table_like().unwrap().is_empty() {
@@ -527,6 +526,8 @@ fn fix_feature_activations(
             }
         }
     }
+
+    feature_values.fmt();
 }
 
 pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
@@ -545,9 +546,5 @@ fn non_existent_dependency_err(
     name: impl std::fmt::Display,
     table: impl std::fmt::Display,
 ) -> anyhow::Error {
-    anyhow::format_err!(
-        "The dependency `{}` could not be found in `{}`.",
-        name,
-        table,
-    )
+    anyhow::format_err!("the dependency `{name}` could not be found in `{table}`.")
 }

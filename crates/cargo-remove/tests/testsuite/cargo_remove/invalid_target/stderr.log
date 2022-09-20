@@ -1,2 +1,2 @@
     Removing dbus from dependencies for target `powerpc-unknown-linux-gnu`
-error: The dependency `dbus` could not be found in `target.powerpc-unknown-linux-gnu.dependencies`.
+error: the dependency `dbus` could not be found in `target.powerpc-unknown-linux-gnu.dependencies`.
