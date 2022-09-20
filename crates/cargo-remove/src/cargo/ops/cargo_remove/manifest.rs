@@ -544,5 +544,5 @@ fn non_existent_dependency_err(
     name: impl std::fmt::Display,
     table: impl std::fmt::Display,
 ) -> anyhow::Error {
-    anyhow::format_err!("The dependency `{name}` could not be found in `{table}`.")
+    anyhow::format_err!("the dependency `{name}` could not be found in `{table}`.")
 }
