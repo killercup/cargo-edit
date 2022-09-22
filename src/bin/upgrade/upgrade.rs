@@ -202,7 +202,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 let mut reason = None;
 
                 let dep_key = dep_key.get();
-                let dependency = match Dependency::from_toml(&manifest_path, dep_key, dep_item) {
+                let dependency = match Dependency::from_toml(manifest_path, dep_key, dep_item) {
                     Ok(dependency) => dependency,
                     Err(err) => {
                         shell_warn(&format!("ignoring {}, unsupported entry: {}", dep_key, err))?;
@@ -271,7 +271,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     // we're offline.
                     let registry_url = dependency
                         .registry()
-                        .map(|registry| registry_url(&manifest_path, Some(registry)))
+                        .map(|registry| registry_url(manifest_path, Some(registry)))
                         .transpose()?;
                     if !args.offline {
                         if let Some(registry_url) = &registry_url {
@@ -286,7 +286,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             get_compatible_dependency(
                                 &dependency.name,
                                 &old_version_req,
-                                &manifest_path,
+                                manifest_path,
                                 registry_url.as_ref(),
                             )
                             .ok()
@@ -300,7 +300,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     let latest_version = get_latest_dependency(
                         &dependency.name,
                         is_prerelease,
-                        &manifest_path,
+                        manifest_path,
                         registry_url.as_ref(),
                     )
                     .map(|d| {
@@ -470,6 +470,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 //
                 // Reusing updates (resolve_ws) so we know what lock_version to reference
                 for (name, (req, precise)) in &precise_deps {
+                    #[allow(clippy::unnecessary_lazy_evaluations)] // requires 1.62
                     for lock_version in locked
                         .iter()
                         .filter(|p| p.name == **name)

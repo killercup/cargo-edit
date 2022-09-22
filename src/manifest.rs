@@ -275,9 +275,9 @@ impl LocalManifest {
     }
 
     /// Allow mutating depedencies, wherever they live
-    pub fn get_dependency_tables_mut<'r>(
-        &'r mut self,
-    ) -> impl Iterator<Item = &mut dyn toml_edit::TableLike> + 'r {
+    pub fn get_dependency_tables_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut dyn toml_edit::TableLike> + '_ {
         let root = self.data.as_table_mut();
         root.iter_mut().flat_map(|(k, v)| {
             if DepTable::KINDS
@@ -385,6 +385,7 @@ fn remove_feature_activation(
         .filter_map(|(idx, feature_activation)| {
             if let toml_edit::Value::String(feature_activation) = feature_activation {
                 let activation = feature_activation.value();
+                #[allow(clippy::unnecessary_lazy_evaluations)] // requires 1.62
                 match status {
                     FeatureStatus::None => activation == dep || activation.starts_with(dep_feature),
                     FeatureStatus::DepFeature => activation == dep,
