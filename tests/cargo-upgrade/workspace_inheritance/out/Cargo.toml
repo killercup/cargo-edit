@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "one",
+    "two",
+    "explicit/*"
+]
+
+[workspace.dependencies]
+my-package = "99999.0.0"

@@ -163,8 +163,18 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     }
 
     let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, args.offline)?;
-    let manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
+    let root_manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
     let manifests = find_ws_members(&metadata);
+    let mut manifests = manifests
+        .into_iter()
+        .map(|p| (p.name, p.manifest_path.as_std_path().to_owned()))
+        .collect::<Vec<_>>();
+    if !manifests.iter().any(|(_, p)| *p == root_manifest_path) {
+        manifests.insert(
+            0,
+            ("virtual workspace".to_owned(), root_manifest_path.clone()),
+        );
+    }
 
     let selected_dependencies = args
         .package
@@ -182,18 +192,17 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut pinned_present = false;
     let mut incompatible_present = false;
     let mut uninteresting_crates = BTreeSet::new();
-    for package in &manifests {
-        let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
+    for (pkg_name, manifest_path) in &manifests {
+        let mut manifest = LocalManifest::try_new(manifest_path)?;
         let mut crate_modified = false;
         let mut table = Vec::new();
-        let manifest_path = manifest.path.clone();
-        shell_status("Checking", &format!("{}'s dependencies", package.name))?;
+        shell_status("Checking", &format!("{}'s dependencies", pkg_name))?;
         for dep_table in manifest.get_dependency_tables_mut() {
             for (dep_key, dep_item) in dep_table.iter_mut() {
                 let mut reason = None;
 
                 let dep_key = dep_key.get();
-                let dependency = match Dependency::from_toml(&manifest_path, dep_key, dep_item) {
+                let dependency = match Dependency::from_toml(manifest_path, dep_key, dep_item) {
                     Ok(dependency) => dependency,
                     Err(err) => {
                         shell_warn(&format!("ignoring {}, unsupported entry: {}", dep_key, err))?;
@@ -262,7 +271,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     // we're offline.
                     let registry_url = dependency
                         .registry()
-                        .map(|registry| registry_url(&manifest_path, Some(registry)))
+                        .map(|registry| registry_url(manifest_path, Some(registry)))
                         .transpose()?;
                     if !args.offline {
                         if let Some(registry_url) = &registry_url {
@@ -277,7 +286,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             get_compatible_dependency(
                                 &dependency.name,
                                 &old_version_req,
-                                &manifest_path,
+                                manifest_path,
                                 registry_url.as_ref(),
                             )
                             .ok()
@@ -291,7 +300,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     let latest_version = get_latest_dependency(
                         &dependency.name,
                         is_prerelease,
-                        &manifest_path,
+                        manifest_path,
                         registry_url.as_ref(),
                     )
                     .map(|d| {
@@ -442,7 +451,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         } else {
             // Ensure lock file is updated and collect data for `recursive`
             let offline = true; // index should already be updated
-            let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
+            let metadata = resolve_ws(Some(&root_manifest_path), args.locked, offline)?;
             let mut locked = metadata.packages;
 
             let precise_deps = selected_dependencies
@@ -461,6 +470,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 //
                 // Reusing updates (resolve_ws) so we know what lock_version to reference
                 for (name, (req, precise)) in &precise_deps {
+                    #[allow(clippy::unnecessary_lazy_evaluations)] // requires 1.62
                     for lock_version in locked
                         .iter()
                         .filter(|p| p.name == **name)
@@ -469,7 +479,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     {
                         let mut cmd = std::process::Command::new("cargo");
                         cmd.arg("update");
-                        cmd.arg("--manifest-path").arg(&manifest_path);
+                        cmd.arg("--manifest-path").arg(&root_manifest_path);
                         if args.locked {
                             cmd.arg("--locked");
                         }
@@ -496,7 +506,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
                 // Update data for `recursive` with precise_deps
                 let offline = true; // index should already be updated
-                let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
+                let metadata = resolve_ws(Some(&root_manifest_path), args.locked, offline)?;
                 locked = metadata.packages;
             }
 
@@ -504,7 +514,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 shell_status("Upgrading", "git dependencies")?;
                 let mut cmd = std::process::Command::new("cargo");
                 cmd.arg("update");
-                cmd.arg("--manifest-path").arg(&manifest_path);
+                cmd.arg("--manifest-path").arg(&root_manifest_path);
                 if args.locked {
                     cmd.arg("--locked");
                 }
@@ -533,7 +543,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
                 // Update data for `recursive` with precise_deps
                 let offline = true; // index should already be updated
-                let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
+                let metadata = resolve_ws(Some(&root_manifest_path), args.locked, offline)?;
                 locked = metadata.packages;
             }
 
@@ -541,7 +551,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 shell_status("Upgrading", "recursive dependencies")?;
                 let mut cmd = std::process::Command::new("cargo");
                 cmd.arg("update");
-                cmd.arg("--manifest-path").arg(&manifest_path);
+                cmd.arg("--manifest-path").arg(&root_manifest_path);
                 if args.locked {
                     cmd.arg("--locked");
                 }

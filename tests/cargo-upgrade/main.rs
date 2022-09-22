@@ -34,6 +34,7 @@ mod upgrade_renamed;
 mod upgrade_verbose;
 mod upgrade_workspace;
 mod virtual_manifest;
+mod workspace_inheritance;
 mod workspace_member_cwd;
 mod workspace_member_manifest_path;
 
