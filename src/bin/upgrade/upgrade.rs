@@ -163,7 +163,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     }
 
     let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, args.offline)?;
-    let manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
+    let root_manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
     let manifests = find_ws_members(&metadata);
 
     let selected_dependencies = args
@@ -442,7 +442,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         } else {
             // Ensure lock file is updated and collect data for `recursive`
             let offline = true; // index should already be updated
-            let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
+            let metadata = resolve_ws(Some(&root_manifest_path), args.locked, offline)?;
             let mut locked = metadata.packages;
 
             let precise_deps = selected_dependencies
@@ -469,7 +469,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     {
                         let mut cmd = std::process::Command::new("cargo");
                         cmd.arg("update");
-                        cmd.arg("--manifest-path").arg(&manifest_path);
+                        cmd.arg("--manifest-path").arg(&root_manifest_path);
                         if args.locked {
                             cmd.arg("--locked");
                         }
@@ -496,7 +496,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
                 // Update data for `recursive` with precise_deps
                 let offline = true; // index should already be updated
-                let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
+                let metadata = resolve_ws(Some(&root_manifest_path), args.locked, offline)?;
                 locked = metadata.packages;
             }
 
@@ -504,7 +504,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 shell_status("Upgrading", "git dependencies")?;
                 let mut cmd = std::process::Command::new("cargo");
                 cmd.arg("update");
-                cmd.arg("--manifest-path").arg(&manifest_path);
+                cmd.arg("--manifest-path").arg(&root_manifest_path);
                 if args.locked {
                     cmd.arg("--locked");
                 }
@@ -533,7 +533,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
                 // Update data for `recursive` with precise_deps
                 let offline = true; // index should already be updated
-                let metadata = resolve_ws(Some(&manifest_path), args.locked, offline)?;
+                let metadata = resolve_ws(Some(&root_manifest_path), args.locked, offline)?;
                 locked = metadata.packages;
             }
 
@@ -541,7 +541,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 shell_status("Upgrading", "recursive dependencies")?;
                 let mut cmd = std::process::Command::new("cargo");
                 cmd.arg("update");
-                cmd.arg("--manifest-path").arg(&manifest_path);
+                cmd.arg("--manifest-path").arg(&root_manifest_path);
                 if args.locked {
                     cmd.arg("--locked");
                 }
