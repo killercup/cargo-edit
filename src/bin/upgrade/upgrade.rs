@@ -165,6 +165,10 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, args.offline)?;
     let root_manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
     let manifests = find_ws_members(&metadata);
+    let manifests = manifests
+        .into_iter()
+        .map(|p| (p.name, p.manifest_path.as_std_path().to_owned()))
+        .collect::<Vec<_>>();
 
     let selected_dependencies = args
         .package
@@ -182,12 +186,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut pinned_present = false;
     let mut incompatible_present = false;
     let mut uninteresting_crates = BTreeSet::new();
-    for package in &manifests {
-        let mut manifest = LocalManifest::try_new(package.manifest_path.as_std_path())?;
+    for (pkg_name, manifest_path) in &manifests {
+        let mut manifest = LocalManifest::try_new(manifest_path)?;
         let mut crate_modified = false;
         let mut table = Vec::new();
-        let manifest_path = manifest.path.clone();
-        shell_status("Checking", &format!("{}'s dependencies", package.name))?;
+        shell_status("Checking", &format!("{}'s dependencies", pkg_name))?;
         for dep_table in manifest.get_dependency_tables_mut() {
             for (dep_key, dep_item) in dep_table.iter_mut() {
                 let mut reason = None;
