@@ -165,10 +165,16 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, args.offline)?;
     let root_manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
     let manifests = find_ws_members(&metadata);
-    let manifests = manifests
+    let mut manifests = manifests
         .into_iter()
         .map(|p| (p.name, p.manifest_path.as_std_path().to_owned()))
         .collect::<Vec<_>>();
+    if !manifests.iter().any(|(_, p)| *p == root_manifest_path) {
+        manifests.insert(
+            0,
+            ("virtual workspace".to_owned(), root_manifest_path.clone()),
+        );
+    }
 
     let selected_dependencies = args
         .package
