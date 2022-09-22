@@ -7,10 +7,16 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Features
+
+`upgrade`
+- Upgrade `workspace.dependencies` (new in Rust 1.64)
+
 ## 0.11.1 - 2022-09-16
 
 ### Fixes
 
+`upgrade`
 - Changed `--compatible`, `--incompatible`, and `--pinned` from accepting `true|false` to `allow|ignore` (with aliases for compatibility
   - While we are still working out how we want to express these options, this at least removes the confusion over `--compatible false` looking like it is the same as `--incompatible`.
 
