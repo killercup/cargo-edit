@@ -1,0 +1,7 @@
+    Updating '[ROOTURL]/registry' index
+    Checking four's dependencies
+    Checking one's dependencies
+    Checking three's dependencies
+    Checking two's dependencies
+note: Re-run with `--verbose` to show all dependencies
+  local: three
