@@ -2,7 +2,7 @@ use cargo_edit::CargoResult;
 use clap::Parser;
 
 #[derive(Debug, Parser)]
-#[clap(bin_name = "cargo")]
+#[command(bin_name = "cargo")]
 pub enum Command {
     SetVersion(crate::set_version::VersionArgs),
 }

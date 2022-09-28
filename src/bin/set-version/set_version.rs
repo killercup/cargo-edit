@@ -14,27 +14,27 @@ use crate::version::TargetVersion;
 
 /// Change a package's version in the local manifest file (i.e. Cargo.toml).
 #[derive(Debug, Args)]
-#[clap(version)]
-#[clap(group = clap::ArgGroup::new("ver").multiple(false))]
+#[command(version)]
+#[command(group = clap::ArgGroup::new("ver").multiple(false))]
 pub struct VersionArgs {
     /// Version to change manifests to
-    #[clap(group = "ver")]
+    #[arg(group = "ver")]
     target: Option<semver::Version>,
 
     /// Increment manifest version
-    #[clap(long, group = "ver")]
+    #[arg(long, group = "ver")]
     bump: Option<BumpLevel>,
 
     /// Specify the version metadata field (e.g. a wrapped libraries version)
-    #[clap(short, long)]
+    #[arg(short, long)]
     pub metadata: Option<String>,
 
     /// Path to the manifest to upgrade
-    #[clap(long, value_name = "PATH", action)]
+    #[arg(long, value_name = "PATH")]
     manifest_path: Option<PathBuf>,
 
     /// Package id of the crate to change the version of.
-    #[clap(
+    #[arg(
         long = "package",
         short = 'p',
         value_name = "PKGID",
@@ -44,7 +44,7 @@ pub struct VersionArgs {
     pkgid: Option<String>,
 
     /// Modify all packages in the workspace.
-    #[clap(
+    #[arg(
         long,
         help = "[deprecated in favor of `--workspace`]",
         conflicts_with = "workspace",
@@ -53,19 +53,19 @@ pub struct VersionArgs {
     all: bool,
 
     /// Modify all packages in the workspace.
-    #[clap(long, conflicts_with = "all", conflicts_with = "pkgid")]
+    #[arg(long, conflicts_with = "all", conflicts_with = "pkgid")]
     workspace: bool,
 
     /// Print changes to be made without making them.
-    #[clap(long)]
+    #[arg(long)]
     dry_run: bool,
 
     /// Crates to exclude and not modify.
-    #[clap(long)]
+    #[arg(long)]
     exclude: Vec<String>,
 
     /// Unstable (nightly-only) flags
-    #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
+    #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
     unstable_features: Vec<UnstableOptions>,
 }
 
@@ -75,7 +75,7 @@ impl VersionArgs {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
 enum UnstableOptions {}
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error

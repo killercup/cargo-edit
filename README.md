@@ -84,28 +84,26 @@ $ cargo rm regex --build
 
 ```console
 $ cargo-rm rm --help
-cargo-rm [..]
 Remove a dependency from a Cargo.toml manifest file
 
-USAGE:
-    cargo rm [OPTIONS] <DEP_ID>...
+Usage: cargo rm [OPTIONS] <DEP_ID>...
 
-ARGS:
-    <DEP_ID>...    Dependencies to be removed
+Arguments:
+  <DEP_ID>...  Dependencies to be removed
 
-OPTIONS:
-        --manifest-path <PATH>    Path to the manifest to remove a dependency from
-    -p, --package <PKGID>         Package to remove from
-    -Z <FLAG>                     Unstable (nightly-only) flags
-        --dry-run                 Don't actually write the manifest
-    -q, --quiet                   Do not print any output in case of success
-    -h, --help                    Print help information
-    -V, --version                 Print version information
+Options:
+      --manifest-path <PATH>  Path to the manifest to remove a dependency from
+  -p, --package <PKGID>       Package to remove from
+  -Z <FLAG>                   Unstable (nightly-only) flags
+      --dry-run               Don't actually write the manifest
+  -q, --quiet                 Do not print any output in case of success
+  -h, --help                  Print help information
+  -V, --version               Print version information
 
-SECTION:
-    -D, --dev                Remove as development dependency
-    -B, --build              Remove as build dependency
-        --target <TARGET>    Remove as dependency from the given target platform
+Section:
+  -D, --dev              Remove as development dependency
+  -B, --build            Remove as build dependency
+      --target <TARGET>  Remove as dependency from the given target platform
 
 ```
 
@@ -136,36 +134,32 @@ $ cargo upgrade --exclude docopt serde
 
 ```console
 $ cargo-upgrade upgrade --help
-cargo-upgrade [..]
 Upgrade dependency version requirements in Cargo.toml manifest files
 
-USAGE:
-    cargo upgrade [OPTIONS]
+Usage: cargo upgrade [OPTIONS]
 
-OPTIONS:
-        --dry-run                 Print changes to be made without making them
-        --manifest-path <PATH>    Path to the manifest to upgrade
-        --offline                 Run without accessing the network
-        --locked                  Require `Cargo.toml` to be up to date
-    -v, --verbose                 Use verbose output
-    -Z <FLAG>                     Unstable (nightly-only) flags
-    -h, --help                    Print help information
-    -V, --version                 Print version information
+Options:
+      --dry-run               Print changes to be made without making them
+      --manifest-path <PATH>  Path to the manifest to upgrade
+      --offline               Run without accessing the network
+      --locked                Require `Cargo.toml` to be up to date
+  -v, --verbose               Use verbose output
+  -Z <FLAG>                   Unstable (nightly-only) flags
+  -h, --help                  Print help information
+  -V, --version               Print version information
 
-VERSION:
-        --compatible [<allow|ignore>...]
-            Upgrade to latest compatible version [default: allow]
+Version:
+      --compatible [<allow|ignore>]
+          Upgrade to latest compatible version [default: allow]
+  -i, --incompatible [<allow|ignore>]
+          Upgrade to latest incompatible version [default: ignore]
+      --pinned [<allow|ignore>]
+          Upgrade pinned to latest incompatible version [default: ignore]
 
-    -i, --incompatible [<allow|ignore>...]
-            Upgrade to latest incompatible version [default: ignore]
-
-        --pinned [<allow|ignore>...]
-            Upgrade pinned to latest incompatible version [default: ignore]
-
-DEPENDENCIES:
-    -p, --package <PKGID[@<VERSION>]>    Crate to be upgraded
-        --exclude <PKGID>                Crates to exclude and not upgrade
-        --recursive [<true|false>...]    Recursively update locked dependencies [default: true]
+Dependencies:
+  -p, --package <PKGID[@<VERSION>]>  Crate to be upgraded
+      --exclude <PKGID>              Crates to exclude and not upgrade
+      --recursive [<true|false>]     Recursively update locked dependencies [default: true]
 
 ```
 
@@ -190,28 +184,25 @@ $ cargo set-version --bump patch
 
 ```console
 $ cargo-set-version set-version --help
-cargo-set-version [..]
 Change a package's version in the local manifest file (i.e. Cargo.toml)
 
-USAGE:
-    cargo set-version [OPTIONS] [TARGET]
+Usage: cargo set-version [OPTIONS] [TARGET]
 
-ARGS:
-    <TARGET>    Version to change manifests to
+Arguments:
+  [TARGET]  Version to change manifests to
 
-OPTIONS:
-        --all                     [deprecated in favor of `--workspace`]
-        --bump <BUMP>             Increment manifest version
-        --dry-run                 Print changes to be made without making them
-        --exclude <EXCLUDE>       Crates to exclude and not modify
-    -h, --help                    Print help information
-    -m, --metadata <METADATA>     Specify the version metadata field (e.g. a wrapped libraries
-                                  version)
-        --manifest-path <PATH>    Path to the manifest to upgrade
-    -p, --package <PKGID>         Package id of the crate to change the version of
-    -V, --version                 Print version information
-        --workspace               Modify all packages in the workspace
-    -Z <FLAG>                     Unstable (nightly-only) flags
+Options:
+      --bump <BUMP>           Increment manifest version
+  -m, --metadata <METADATA>   Specify the version metadata field (e.g. a wrapped libraries version)
+      --manifest-path <PATH>  Path to the manifest to upgrade
+  -p, --package <PKGID>       Package id of the crate to change the version of
+      --all                   [deprecated in favor of `--workspace`]
+      --workspace             Modify all packages in the workspace
+      --dry-run               Print changes to be made without making them
+      --exclude <EXCLUDE>     Crates to exclude and not modify
+  -Z <FLAG>                   Unstable (nightly-only) flags
+  -h, --help                  Print help information
+  -V, --version               Print version information
 
 ```
 

@@ -5,18 +5,17 @@ use clap::Args;
 
 /// Add dependencies to a Cargo.toml manifest file.
 #[derive(Debug, Args)]
-#[clap(version)]
-#[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
-#[clap(after_help = "\
+#[command(version)]
+#[command(after_help = "\
 Examples:
   $ cargo add regex --build
   $ cargo add trycmd --dev
   $ cargo add ./crate/parser/
   $ cargo add serde +derive serde_json
 ")]
-#[clap(override_usage = "\
-    cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
-    cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...")]
+#[command(override_usage = "\
+       cargo add [OPTIONS] <DEP>[@<VERSION>] [+<FEATURE>,...] ...
+       cargo add [OPTIONS] <DEP_PATH> [+<FEATURE>,...] ...")]
 pub struct AddArgs {
     /// Reference to a package to add as a dependency
     ///
@@ -27,33 +26,33 @@ pub struct AddArgs {
     ///
     /// Additionally, you can specify features for a dependency by following it with a
     /// `+<FEATURE>`.
-    #[clap(value_name = "DEP_ID")]
+    #[arg(value_name = "DEP_ID")]
     pub crates: Vec<String>,
 
     /// Disable the default features
-    #[clap(long)]
+    #[arg(long)]
     no_default_features: bool,
     /// Re-enable the default features
-    #[clap(long, overrides_with = "no-default-features")]
+    #[arg(long, overrides_with = "no_default_features")]
     default_features: bool,
 
     /// Space-separated list of features to add
     ///
     /// Alternatively, you can specify features for a dependency by following it with a
     /// `+<FEATURE>`.
-    #[clap(short = 'F', long)]
+    #[arg(short = 'F', long)]
     pub features: Option<Vec<String>>,
 
     /// Mark the dependency as optional
     ///
     /// The package name will be exposed as feature of your crate.
-    #[clap(long, conflicts_with = "dev")]
+    #[arg(long, conflicts_with = "dev")]
     pub optional: bool,
 
     /// Mark the dependency as required
     ///
     /// The package will be removed from your features.
-    #[clap(long, conflicts_with = "dev", overrides_with = "optional")]
+    #[arg(long, conflicts_with = "dev", overrides_with = "optional")]
     pub no_optional: bool,
 
     /// Rename the dependency
@@ -61,11 +60,11 @@ pub struct AddArgs {
     /// Example uses:{n}
     /// - Depending on multiple versions of a crate{n}
     /// - Depend on crates with the same name from different registries
-    #[clap(long, short)]
+    #[arg(long, short)]
     pub rename: Option<String>,
 
     /// Package registry for this dependency
-    #[clap(long, conflicts_with = "git")]
+    #[arg(long, conflicts_with = "git")]
     pub registry: Option<String>,
 
     /// Add as development dependency
@@ -73,61 +72,61 @@ pub struct AddArgs {
     /// Dev-dependencies are not used when compiling a package for building, but are used for compiling tests, examples, and benchmarks.
     ///
     /// These dependencies are not propagated to other packages which depend on this package.
-    #[clap(short = 'D', long, help_heading = "SECTION", group = "section")]
+    #[arg(short = 'D', long, help_heading = "Section", group = "section")]
     pub dev: bool,
 
     /// Add as build dependency
     ///
     /// Build-dependencies are the only dependencies available for use by build scripts (`build.rs`
     /// files).
-    #[clap(short = 'B', long, help_heading = "SECTION", group = "section")]
+    #[arg(short = 'B', long, help_heading = "Section", group = "section")]
     pub build: bool,
 
     /// Add as dependency to the given target platform.
-    #[clap(long, help_heading = "SECTION", group = "section")]
+    #[arg(long, help_heading = "Section", group = "section")]
     pub target: Option<String>,
 
     /// Path to `Cargo.toml`
-    #[clap(long, value_name = "PATH", action)]
+    #[arg(long, value_name = "PATH")]
     pub manifest_path: Option<std::path::PathBuf>,
 
     /// Package to modify
-    #[clap(short = 'p', long = "package", value_name = "PKGID")]
+    #[arg(short = 'p', long = "package", value_name = "PKGID")]
     pub pkgid: Option<String>,
 
     /// Run without accessing the network
-    #[clap(long)]
+    #[arg(long)]
     pub offline: bool,
 
     /// Don't actually write the manifest
-    #[clap(long)]
+    #[arg(long)]
     pub dry_run: bool,
 
     /// Do not print any output in case of success.
-    #[clap(long)]
+    #[arg(long)]
     pub quiet: bool,
 
     /// Git repository location
     ///
     /// Without any other information, cargo will use latest commit on the main branch.
-    #[clap(long, value_name = "URI", help_heading = "UNSTABLE")]
+    #[arg(long, value_name = "URI", help_heading = "Unstable")]
     pub git: Option<String>,
 
     /// Git branch to download the crate from.
-    #[clap(
+    #[arg(
         long,
         value_name = "BRANCH",
-        help_heading = "UNSTABLE",
+        help_heading = "Unstable",
         requires = "git",
         group = "git-ref"
     )]
     pub branch: Option<String>,
 
     /// Git tag to download the crate from.
-    #[clap(
+    #[arg(
         long,
         value_name = "TAG",
-        help_heading = "UNSTABLE",
+        help_heading = "Unstable",
         requires = "git",
         group = "git-ref"
     )]
@@ -136,10 +135,10 @@ pub struct AddArgs {
     /// Git reference to download the crate from
     ///
     /// This is the catch all, handling hashes to named references in remote repositories.
-    #[clap(
+    #[arg(
         long,
         value_name = "REV",
-        help_heading = "UNSTABLE",
+        help_heading = "Unstable",
         requires = "git",
         group = "git-ref"
     )]

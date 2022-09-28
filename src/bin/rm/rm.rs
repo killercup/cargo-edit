@@ -8,43 +8,42 @@ use std::path::PathBuf;
 
 /// Remove a dependency from a Cargo.toml manifest file.
 #[derive(Debug, Args)]
-#[clap(version)]
-#[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
+#[command(version)]
 pub struct RmArgs {
     /// Dependencies to be removed
-    #[clap(value_name = "DEP_ID", required = true)]
+    #[arg(value_name = "DEP_ID", required = true)]
     crates: Vec<String>,
 
     /// Remove as development dependency
-    #[clap(long, short = 'D', conflicts_with = "build", help_heading = "SECTION")]
+    #[arg(long, short = 'D', conflicts_with = "build", help_heading = "Section")]
     dev: bool,
 
     /// Remove as build dependency
-    #[clap(long, short = 'B', conflicts_with = "dev", help_heading = "SECTION")]
+    #[arg(long, short = 'B', conflicts_with = "dev", help_heading = "Section")]
     build: bool,
 
     /// Remove as dependency from the given target platform
-    #[clap(long, value_parser = clap::builder::NonEmptyStringValueParser::new(), help_heading = "SECTION")]
+    #[arg(long, value_parser = clap::builder::NonEmptyStringValueParser::new(), help_heading = "Section")]
     target: Option<String>,
 
     /// Path to the manifest to remove a dependency from
-    #[clap(long, value_name = "PATH", action)]
+    #[arg(long, value_name = "PATH")]
     manifest_path: Option<PathBuf>,
 
     /// Package to remove from
-    #[clap(long = "package", short = 'p', value_name = "PKGID")]
+    #[arg(long = "package", short = 'p', value_name = "PKGID")]
     pkgid: Option<String>,
 
     /// Unstable (nightly-only) flags
-    #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
+    #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
     unstable_features: Vec<UnstableOptions>,
 
     /// Don't actually write the manifest
-    #[clap(long)]
+    #[arg(long)]
     dry_run: bool,
 
     /// Do not print any output in case of success
-    #[clap(long, short)]
+    #[arg(long, short)]
     quiet: bool,
 }
 
@@ -73,7 +72,7 @@ impl RmArgs {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
 enum UnstableOptions {}
 
 fn exec(args: &RmArgs) -> CargoResult<()> {

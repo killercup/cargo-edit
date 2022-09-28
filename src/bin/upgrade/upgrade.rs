@@ -16,103 +16,95 @@ use termcolor::{Color, ColorSpec};
 
 /// Upgrade dependency version requirements in Cargo.toml manifest files
 #[derive(Debug, Args)]
-#[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
-#[clap(version)]
+#[command(version)]
 pub struct UpgradeArgs {
     /// Print changes to be made without making them.
-    #[clap(long)]
+    #[arg(long)]
     dry_run: bool,
 
     /// Path to the manifest to upgrade
-    #[clap(long, value_name = "PATH", action)]
+    #[arg(long, value_name = "PATH")]
     manifest_path: Option<PathBuf>,
 
     /// Run without accessing the network
-    #[clap(long)]
+    #[arg(long)]
     offline: bool,
 
     /// Require `Cargo.toml` to be up to date
-    #[clap(long)]
+    #[arg(long)]
     locked: bool,
 
     /// Use verbose output
-    #[clap(short, long)]
+    #[arg(short, long)]
     verbose: bool,
 
     /// Unstable (nightly-only) flags
-    #[clap(short = 'Z', value_name = "FLAG", global = true, arg_enum)]
+    #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
     unstable_features: Vec<UnstableOptions>,
 
     /// Upgrade to latest compatible version
-    #[clap(
+    #[arg(
         long,
-        action = clap::ArgAction::Set,
-        min_values = 0,
-        max_values = 1,
+        num_args=0..=1,
         value_name = "allow|ignore",
         hide_possible_values = true,
         default_value = "allow",
         default_missing_value = "allow",
-        help_heading = "VERSION",
+        help_heading = "Version",
         value_enum,
     )]
     compatible: Status,
 
     /// Upgrade to latest incompatible version
-    #[clap(
+    #[arg(
         short,
         long,
-        action = clap::ArgAction::Set,
-        min_values = 0,
-        max_values = 1,
+        num_args=0..=1,
         value_name = "allow|ignore",
         hide_possible_values = true,
         default_value = "ignore",
         default_missing_value = "allow",
-        help_heading = "VERSION",
+        help_heading = "Version",
         value_enum,
     )]
     incompatible: Status,
 
     /// Upgrade pinned to latest incompatible version
-    #[clap(
+    #[arg(
         long,
-        action = clap::ArgAction::Set,
-        min_values = 0,
-        max_values = 1,
+        num_args=0..=1,
         value_name = "allow|ignore",
         hide_possible_values = true,
         default_value = "ignore",
         default_missing_value = "allow",
-        help_heading = "VERSION",
+        help_heading = "Version",
         value_enum,
     )]
     pinned: Status,
 
     /// Crate to be upgraded
-    #[clap(
+    #[arg(
         long,
         short,
         value_name = "PKGID[@<VERSION>]",
-        help_heading = "DEPENDENCIES"
+        help_heading = "Dependencies"
     )]
     package: Vec<String>,
 
     /// Crates to exclude and not upgrade.
-    #[clap(long, value_name = "PKGID", help_heading = "DEPENDENCIES")]
+    #[arg(long, value_name = "PKGID", help_heading = "Dependencies")]
     exclude: Vec<String>,
 
     /// Recursively update locked dependencies
-    #[clap(
+    #[arg(
         long,
+        num_args=0..=1,
         action = clap::ArgAction::Set,
-        min_values = 0,
-        max_values = 1,
         value_name = "true|false",
         default_value = "true",
         default_missing_value = "true",
         hide_possible_values = true,
-        help_heading = "DEPENDENCIES"
+        help_heading = "Dependencies"
     )]
     recursive: bool,
 }
@@ -134,11 +126,11 @@ impl UpgradeArgs {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
 enum Status {
-    #[clap(alias = "true")]
+    #[value(alias = "true")]
     Allow,
-    #[clap(alias = "false")]
+    #[value(alias = "false")]
     Ignore,
 }
 
@@ -151,7 +143,7 @@ impl Status {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
 enum UnstableOptions {}
 
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
