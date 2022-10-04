@@ -1,13 +1,11 @@
-use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
 use cargo_edit::{
-    colorize_stderr, resolve_manifests, shell_status, shell_warn, upgrade_requirement,
-    workspace_members, LocalManifest,
+    resolve_manifests, shell_status, shell_warn, upgrade_requirement, workspace_members,
+    LocalManifest,
 };
 use clap::Args;
-use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
 
 use crate::errors::*;
 use crate::version::BumpLevel;
@@ -103,7 +101,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     };
 
     if all {
-        deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
+        shell_warn("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
     let all = workspace || all;
     let manifests = resolve_manifests(
@@ -188,20 +186,4 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     }
 
     Ok(())
-}
-
-fn deprecated_message(message: &str) -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let bufwtr = BufferWriter::stderr(colorchoice);
-    let mut buffer = bufwtr.buffer();
-    buffer
-        .set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))
-        .with_context(|| "Failed to set output colour")?;
-    writeln!(&mut buffer, "{}", message).with_context(|| "Failed to write dry run message")?;
-    buffer
-        .set_color(&ColorSpec::new())
-        .with_context(|| "Failed to clear output colour")?;
-    bufwtr
-        .print(&buffer)
-        .with_context(|| "Failed to print dry run message")
 }
