@@ -324,12 +324,10 @@ impl LocalManifest {
 
     /// Iterates mutably over the `[workspace.dependencies]`.
     pub fn get_workspace_dependency_table_mut(&mut self) -> Option<&mut dyn toml_edit::TableLike> {
-        Some(
-            self.data
-                .get_mut("workspace")?
-                .get_mut("dependencies")?
-                .as_table_like_mut()?,
-        )
+        self.data
+            .get_mut("workspace")?
+            .get_mut("dependencies")?
+            .as_table_like_mut()
     }
 
     /// Override the manifest's version
