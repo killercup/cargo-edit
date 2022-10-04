@@ -142,55 +142,68 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 
             let crate_root =
                 dunce::canonicalize(package.manifest_path.parent().expect("at least a parent"))?;
-            for member in workspace_members.iter() {
-                let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
-                let mut changed = false;
-                let dep_crate_root = dep_manifest
-                    .path
-                    .parent()
-                    .expect("at least a parent")
-                    .to_owned();
-                for dep in dep_manifest
-                    .get_dependency_tables_mut()
-                    .flat_map(|t| t.iter_mut().filter_map(|(_, d)| d.as_table_like_mut()))
-                    .filter(|d| {
-                        if !d.contains_key("version") {
-                            return false;
-                        }
-                        match d.get("path").and_then(|i| i.as_str()).and_then(|relpath| {
-                            dunce::canonicalize(dep_crate_root.join(relpath)).ok()
-                        }) {
-                            Some(dep_path) => dep_path == crate_root.as_path(),
-                            None => false,
-                        }
-                    })
-                {
-                    let old_req = dep
-                        .get("version")
-                        .expect("filter ensures this")
-                        .as_str()
-                        .unwrap_or("*");
-                    if let Some(new_req) = upgrade_requirement(old_req, &next)? {
-                        shell_status(
-                            "Updating",
-                            &format!(
-                                "{}'s dependency from {} to {}",
-                                member.name, old_req, new_req
-                            ),
-                        )?;
-                        dep.insert("version", toml_edit::value(new_req));
-                        changed = true;
-                    }
-                }
-                if changed && !dry_run {
-                    dep_manifest.write()?;
-                }
-            }
+            update_member_dependents(&workspace_members, &crate_root, &next, dry_run)?
         }
     }
 
     if args.dry_run {
         shell_warn("aborting set-version due to dry run")?;
+    }
+
+    Ok(())
+}
+
+fn update_member_dependents(
+    workspace_members: &[cargo_metadata::Package],
+    crate_root: &Path,
+    next: &semver::Version,
+    dry_run: bool,
+) -> CargoResult<()> {
+    for member in workspace_members.iter() {
+        let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
+        let mut changed = false;
+        let dep_crate_root = dep_manifest
+            .path
+            .parent()
+            .expect("at least a parent")
+            .to_owned();
+        for dep in dep_manifest
+            .get_dependency_tables_mut()
+            .flat_map(|t| t.iter_mut().filter_map(|(_, d)| d.as_table_like_mut()))
+            .filter(|d| {
+                if !d.contains_key("version") {
+                    return false;
+                }
+                match d
+                    .get("path")
+                    .and_then(|i| i.as_str())
+                    .and_then(|relpath| dunce::canonicalize(dep_crate_root.join(relpath)).ok())
+                {
+                    Some(dep_path) => dep_path == crate_root,
+                    None => false,
+                }
+            })
+        {
+            let old_req = dep
+                .get("version")
+                .expect("filter ensures this")
+                .as_str()
+                .unwrap_or("*");
+            if let Some(new_req) = upgrade_requirement(old_req, &next)? {
+                shell_status(
+                    "Updating",
+                    &format!(
+                        "{}'s dependency from {} to {}",
+                        member.name, old_req, new_req
+                    ),
+                )?;
+                dep.insert("version", toml_edit::value(new_req));
+                changed = true;
+            }
+        }
+        if changed && !dry_run {
+            dep_manifest.write()?;
+        }
     }
 
     Ok(())
