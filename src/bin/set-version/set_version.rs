@@ -3,7 +3,8 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use cargo_edit::{
-    colorize_stderr, resolve_manifests, upgrade_requirement, workspace_members, LocalManifest,
+    colorize_stderr, resolve_manifests, shell_warn, upgrade_requirement, workspace_members,
+    LocalManifest,
 };
 use clap::Args;
 use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
@@ -111,10 +112,6 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         pkgid.as_deref().into_iter().collect::<Vec<_>>(),
     )?;
 
-    if dry_run {
-        dry_run_message()?;
-    }
-
     let workspace_members = workspace_members(manifest_path.as_deref())?;
 
     for package in manifests {
@@ -177,25 +174,11 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         }
     }
 
-    Ok(())
-}
+    if args.dry_run {
+        shell_warn("aborting set-version due to dry run")?;
+    }
 
-fn dry_run_message() -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let bufwtr = BufferWriter::stderr(colorchoice);
-    let mut buffer = bufwtr.buffer();
-    buffer
-        .set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true))
-        .with_context(|| "Failed to set output colour")?;
-    write!(&mut buffer, "Starting dry run. ").with_context(|| "Failed to write dry run message")?;
-    buffer
-        .set_color(&ColorSpec::new())
-        .with_context(|| "Failed to clear output colour")?;
-    writeln!(&mut buffer, "Changes will not be saved.")
-        .with_context(|| "Failed to write dry run message")?;
-    bufwtr
-        .print(&buffer)
-        .with_context(|| "Failed to print dry run message")
+    Ok(())
 }
 
 fn deprecated_message(message: &str) -> CargoResult<()> {
