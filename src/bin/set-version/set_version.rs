@@ -170,19 +170,7 @@ fn update_member_dependents(
         for dep in dep_manifest
             .get_dependency_tables_mut()
             .flat_map(|t| t.iter_mut().filter_map(|(_, d)| d.as_table_like_mut()))
-            .filter(|d| {
-                if !d.contains_key("version") {
-                    return false;
-                }
-                match d
-                    .get("path")
-                    .and_then(|i| i.as_str())
-                    .and_then(|relpath| dunce::canonicalize(dep_crate_root.join(relpath)).ok())
-                {
-                    Some(dep_path) => dep_path == crate_root,
-                    None => false,
-                }
-            })
+            .filter(|d| is_relevant(*d, &dep_crate_root, crate_root))
         {
             let old_req = dep
                 .get("version")
@@ -207,6 +195,20 @@ fn update_member_dependents(
     }
 
     Ok(())
+}
+
+fn is_relevant(d: &dyn toml_edit::TableLike, dep_crate_root: &Path, crate_root: &Path) -> bool {
+    if !d.contains_key("version") {
+        return false;
+    }
+    match d
+        .get("path")
+        .and_then(|i| i.as_str())
+        .and_then(|relpath| dunce::canonicalize(dep_crate_root.join(relpath)).ok())
+    {
+        Some(dep_path) => dep_path == crate_root,
+        None => false,
+    }
 }
 
 fn resolve_ws(
