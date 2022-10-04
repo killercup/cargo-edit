@@ -14,6 +14,7 @@ mod set_relative_version;
 mod upgrade_compatible_dependency;
 mod upgrade_incompatible_dependency;
 mod upgrade_workspace;
+mod workspace_deps;
 
 fn init_registry() {
     cargo_test_support::registry::init();
