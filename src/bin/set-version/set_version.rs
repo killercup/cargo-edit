@@ -143,7 +143,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 
             let crate_root =
                 dunce::canonicalize(package.manifest_path.parent().expect("at least a parent"))?;
-            update_member_dependents(
+            update_dependents(
                 &crate_root,
                 &next,
                 &root_manifest_path,
@@ -160,14 +160,14 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     Ok(())
 }
 
-fn update_member_dependents(
+fn update_dependents(
     crate_root: &Path,
     next: &semver::Version,
     root_manifest_path: &Path,
     workspace_members: &[cargo_metadata::Package],
     dry_run: bool,
 ) -> CargoResult<()> {
-    // This is redundant with `workspace_members`
+    // This is redundant with iterating over `workspace_members`
     // - As `get_dependency_tables_mut` returns workspace dependencies
     // - If there is a root package
     //
@@ -175,75 +175,17 @@ fn update_member_dependents(
     // - Virtual manifests
     // - Nicer message to the user
     {
-        let mut dep_manifest = LocalManifest::try_new(root_manifest_path)?;
-        let mut changed = false;
-        let dep_crate_root = dep_manifest
-            .path
-            .parent()
-            .expect("at least a parent")
-            .to_owned();
-
-        if let Some(workspace_deps) = dep_manifest.get_workspace_dependency_table_mut() {
-            for dep in workspace_deps
-                .iter_mut()
-                .filter_map(|(_, d)| d.as_table_like_mut())
-                .filter(|d| is_relevant(*d, &dep_crate_root, crate_root))
-            {
-                let old_req = dep
-                    .get("version")
-                    .expect("filter ensures this")
-                    .as_str()
-                    .unwrap_or("*");
-                if let Some(new_req) = upgrade_requirement(old_req, &next)? {
-                    shell_status(
-                        "Updating",
-                        &format!("workspace dependency from {} to {}", old_req, new_req),
-                    )?;
-                    dep.insert("version", toml_edit::value(new_req));
-                    changed = true;
-                }
-            }
-        }
-
-        if changed && !dry_run {
-            dep_manifest.write()?;
-        }
+        update_dependent(crate_root, next, root_manifest_path, "workspace", dry_run)?;
     }
 
     for member in workspace_members.iter() {
-        let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
-        let mut changed = false;
-        let dep_crate_root = dep_manifest
-            .path
-            .parent()
-            .expect("at least a parent")
-            .to_owned();
-
-        for dep in dep_manifest
-            .get_dependency_tables_mut()
-            .flat_map(|t| t.iter_mut().filter_map(|(_, d)| d.as_table_like_mut()))
-            .filter(|d| is_relevant(*d, &dep_crate_root, crate_root))
-        {
-            let old_req = dep
-                .get("version")
-                .expect("filter ensures this")
-                .as_str()
-                .unwrap_or("*");
-            if let Some(new_req) = upgrade_requirement(old_req, &next)? {
-                shell_status(
-                    "Updating",
-                    &format!(
-                        "{}'s dependency from {} to {}",
-                        member.name, old_req, new_req
-                    ),
-                )?;
-                dep.insert("version", toml_edit::value(new_req));
-                changed = true;
-            }
-        }
-        if changed && !dry_run {
-            dep_manifest.write()?;
-        }
+        update_dependent(
+            crate_root,
+            next,
+            member.manifest_path.as_std_path(),
+            &member.name,
+            dry_run,
+        )?;
     }
 
     Ok(())
@@ -261,6 +203,47 @@ fn is_relevant(d: &dyn toml_edit::TableLike, dep_crate_root: &Path, crate_root: 
         Some(dep_path) => dep_path == crate_root,
         None => false,
     }
+}
+
+fn update_dependent(
+    crate_root: &Path,
+    next: &semver::Version,
+    manifest_path: &Path,
+    name: &str,
+    dry_run: bool,
+) -> CargoResult<()> {
+    let mut dep_manifest = LocalManifest::try_new(manifest_path)?;
+    let mut changed = false;
+    let dep_crate_root = dep_manifest
+        .path
+        .parent()
+        .expect("at least a parent")
+        .to_owned();
+
+    for dep in dep_manifest
+        .get_dependency_tables_mut()
+        .flat_map(|t| t.iter_mut().filter_map(|(_, d)| d.as_table_like_mut()))
+        .filter(|d| is_relevant(*d, &dep_crate_root, crate_root))
+    {
+        let old_req = dep
+            .get("version")
+            .expect("filter ensures this")
+            .as_str()
+            .unwrap_or("*");
+        if let Some(new_req) = upgrade_requirement(old_req, &next)? {
+            shell_status(
+                "Updating",
+                &format!("{}'s dependency from {} to {}", name, old_req, new_req),
+            )?;
+            dep.insert("version", toml_edit::value(new_req));
+            changed = true;
+        }
+    }
+    if changed && !dry_run {
+        dep_manifest.write()?;
+    }
+
+    Ok(())
 }
 
 fn resolve_ws(
