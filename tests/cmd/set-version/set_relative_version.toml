@@ -3,7 +3,7 @@ args = ["set-version", "--bump", "major"]
 status = "success"
 stdout = ""
 stderr = """
-    Upgraded sample from 0.1.0 to 1.0.0
+   Upgrading sample from 0.1.0 to 1.0.0
 """
 fs.sandbox = true
 
