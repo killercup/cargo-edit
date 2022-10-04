@@ -1,10 +1,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use cargo_edit::{
-    resolve_manifests, shell_status, shell_warn, upgrade_requirement, workspace_members,
-    LocalManifest,
-};
+use cargo_edit::{resolve_manifests, shell_status, shell_warn, upgrade_requirement, LocalManifest};
 use clap::Args;
 
 use crate::errors::*;
@@ -63,6 +60,14 @@ pub struct VersionArgs {
     #[arg(long)]
     exclude: Vec<String>,
 
+    /// Run without accessing the network
+    #[arg(long)]
+    offline: bool,
+
+    /// Require `Cargo.toml` to be up to date
+    #[arg(long)]
+    locked: bool,
+
     /// Unstable (nightly-only) flags
     #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
     unstable_features: Vec<UnstableOptions>,
@@ -90,6 +95,8 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         dry_run,
         workspace,
         exclude,
+        locked,
+        offline,
         unstable_features: _,
     } = args;
 
@@ -110,7 +117,8 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         pkgid.as_deref().into_iter().collect::<Vec<_>>(),
     )?;
 
-    let workspace_members = workspace_members(manifest_path.as_deref())?;
+    let ws_metadata = resolve_ws(manifest_path.as_deref(), locked, offline)?;
+    let workspace_members = find_ws_members(&ws_metadata);
 
     for package in manifests {
         if exclude.contains(&package.name) {
@@ -186,4 +194,39 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     }
 
     Ok(())
+}
+
+fn resolve_ws(
+    manifest_path: Option<&Path>,
+    locked: bool,
+    offline: bool,
+) -> CargoResult<cargo_metadata::Metadata> {
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    if let Some(manifest_path) = manifest_path {
+        cmd.manifest_path(manifest_path);
+    }
+    cmd.features(cargo_metadata::CargoOpt::AllFeatures);
+    let mut other = Vec::new();
+    if locked {
+        other.push("--locked".to_owned());
+    }
+    if offline {
+        other.push("--offline".to_owned());
+    }
+    cmd.other_options(other);
+
+    let ws = cmd.exec().or_else(|_| {
+        cmd.no_deps();
+        cmd.exec()
+    })?;
+    Ok(ws)
+}
+
+fn find_ws_members(ws: &cargo_metadata::Metadata) -> Vec<cargo_metadata::Package> {
+    let workspace_members: std::collections::HashSet<_> = ws.workspace_members.iter().collect();
+    ws.packages
+        .iter()
+        .filter(|p| workspace_members.contains(&p.id))
+        .cloned()
+        .collect()
 }
