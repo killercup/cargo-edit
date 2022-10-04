@@ -118,6 +118,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     )?;
 
     let ws_metadata = resolve_ws(manifest_path.as_deref(), locked, offline)?;
+    let root_manifest_path = ws_metadata.workspace_root.as_std_path().join("Cargo.toml");
     let workspace_members = find_ws_members(&ws_metadata);
 
     for package in manifests {
@@ -142,7 +143,13 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 
             let crate_root =
                 dunce::canonicalize(package.manifest_path.parent().expect("at least a parent"))?;
-            update_member_dependents(&workspace_members, &crate_root, &next, dry_run)?
+            update_member_dependents(
+                &root_manifest_path,
+                &workspace_members,
+                &crate_root,
+                &next,
+                dry_run,
+            )?
         }
     }
 
@@ -154,13 +161,21 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 }
 
 fn update_member_dependents(
+    root_manifest_path: &Path,
     workspace_members: &[cargo_metadata::Package],
     crate_root: &Path,
     next: &semver::Version,
     dry_run: bool,
 ) -> CargoResult<()> {
-    for member in workspace_members.iter() {
-        let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
+    // This is redundant with `workspace_members`
+    // - As `get_dependency_tables_mut` returns workspace dependencies
+    // - If there is a root package
+    //
+    // But split this out for
+    // - Virtual manifests
+    // - Nicer message to the user
+    {
+        let mut dep_manifest = LocalManifest::try_new(root_manifest_path)?;
         let mut changed = false;
         let dep_crate_root = dep_manifest
             .path
@@ -168,8 +183,6 @@ fn update_member_dependents(
             .expect("at least a parent")
             .to_owned();
 
-        // This will be done by `get_dependency_tables_mut` but we want to do it explicitly first
-        // to give the user a better message
         if let Some(workspace_deps) = dep_manifest.get_workspace_dependency_table_mut() {
             for dep in workspace_deps
                 .iter_mut()
@@ -191,6 +204,20 @@ fn update_member_dependents(
                 }
             }
         }
+
+        if changed && !dry_run {
+            dep_manifest.write()?;
+        }
+    }
+
+    for member in workspace_members.iter() {
+        let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
+        let mut changed = false;
+        let dep_crate_root = dep_manifest
+            .path
+            .parent()
+            .expect("at least a parent")
+            .to_owned();
 
         for dep in dep_manifest
             .get_dependency_tables_mut()
