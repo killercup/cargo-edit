@@ -200,6 +200,8 @@ Options:
       --workspace             Modify all packages in the workspace
       --dry-run               Print changes to be made without making them
       --exclude <EXCLUDE>     Crates to exclude and not modify
+      --offline               Run without accessing the network
+      --locked                Require `Cargo.toml` to be up to date
   -Z <FLAG>                   Unstable (nightly-only) flags
   -h, --help                  Print help information
   -V, --version               Print version information

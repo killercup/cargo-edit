@@ -1,0 +1,5 @@
+[workspace]
+members = ["primary"]
+
+[workspace.dependencies]
+cargo-list-test-fixture-dependency = { version = "2.0.0", path = "dependency" }

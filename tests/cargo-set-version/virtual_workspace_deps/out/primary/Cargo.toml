@@ -1,0 +1,6 @@
+[package]
+name = "cargo-list-test-fixture"
+version = "2.0.0"
+
+[dependencies]
+cargo-list-test-fixture-dependency.workspace = true

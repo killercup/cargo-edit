@@ -1,10 +1,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use cargo_edit::{
-    resolve_manifests, shell_status, shell_warn, upgrade_requirement, workspace_members,
-    LocalManifest,
-};
+use cargo_edit::{shell_status, shell_warn, upgrade_requirement, LocalManifest};
 use clap::Args;
 
 use crate::errors::*;
@@ -40,7 +37,7 @@ pub struct VersionArgs {
         conflicts_with = "all",
         conflicts_with = "workspace"
     )]
-    pkgid: Option<String>,
+    pkgid: Vec<String>,
 
     /// Modify all packages in the workspace.
     #[arg(
@@ -62,6 +59,14 @@ pub struct VersionArgs {
     /// Crates to exclude and not modify.
     #[arg(long)]
     exclude: Vec<String>,
+
+    /// Run without accessing the network
+    #[arg(long)]
+    offline: bool,
+
+    /// Require `Cargo.toml` to be up to date
+    #[arg(long)]
+    locked: bool,
 
     /// Unstable (nightly-only) flags
     #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
@@ -90,6 +95,8 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         dry_run,
         workspace,
         exclude,
+        locked,
+        offline,
         unstable_features: _,
     } = args;
 
@@ -100,22 +107,32 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         (Some(_), Some(_)) => unreachable!("clap groups should prevent this"),
     };
 
+    let ws_metadata = resolve_ws(manifest_path.as_deref(), locked, offline)?;
+    let root_manifest_path = ws_metadata.workspace_root.as_std_path().join("Cargo.toml");
+    let workspace_members = find_ws_members(&ws_metadata);
+
     if all {
         shell_warn("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
     let all = workspace || all;
-    let manifests = resolve_manifests(
-        manifest_path.as_deref(),
-        all,
-        pkgid.as_deref().into_iter().collect::<Vec<_>>(),
-    )?;
+    let selected = if all {
+        workspace_members
+            .iter()
+            .filter(|p| !exclude.contains(&p.name))
+            .collect::<Vec<_>>()
+    } else if pkgid.is_empty() {
+        workspace_members
+            .iter()
+            .filter(|p| !exclude.contains(&p.name))
+            .collect::<Vec<_>>()
+    } else {
+        workspace_members
+            .iter()
+            .filter(|p| pkgid.contains(&p.name))
+            .collect::<Vec<_>>()
+    };
 
-    let workspace_members = workspace_members(manifest_path.as_deref())?;
-
-    for package in manifests {
-        if exclude.contains(&package.name) {
-            continue;
-        }
+    for package in selected {
         let current = &package.version;
         let next = target.bump(current, metadata.as_deref())?;
         if let Some(next) = next {
@@ -134,50 +151,13 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 
             let crate_root =
                 dunce::canonicalize(package.manifest_path.parent().expect("at least a parent"))?;
-            for member in workspace_members.iter() {
-                let mut dep_manifest = LocalManifest::try_new(member.manifest_path.as_std_path())?;
-                let mut changed = false;
-                let dep_crate_root = dep_manifest
-                    .path
-                    .parent()
-                    .expect("at least a parent")
-                    .to_owned();
-                for dep in dep_manifest
-                    .get_dependency_tables_mut()
-                    .flat_map(|t| t.iter_mut().filter_map(|(_, d)| d.as_table_like_mut()))
-                    .filter(|d| {
-                        if !d.contains_key("version") {
-                            return false;
-                        }
-                        match d.get("path").and_then(|i| i.as_str()).and_then(|relpath| {
-                            dunce::canonicalize(dep_crate_root.join(relpath)).ok()
-                        }) {
-                            Some(dep_path) => dep_path == crate_root.as_path(),
-                            None => false,
-                        }
-                    })
-                {
-                    let old_req = dep
-                        .get("version")
-                        .expect("filter ensures this")
-                        .as_str()
-                        .unwrap_or("*");
-                    if let Some(new_req) = upgrade_requirement(old_req, &next)? {
-                        shell_status(
-                            "Updating",
-                            &format!(
-                                "{}'s dependency from {} to {}",
-                                member.name, old_req, new_req
-                            ),
-                        )?;
-                        dep.insert("version", toml_edit::value(new_req));
-                        changed = true;
-                    }
-                }
-                if changed && !dry_run {
-                    dep_manifest.write()?;
-                }
-            }
+            update_dependents(
+                &crate_root,
+                &next,
+                &root_manifest_path,
+                &workspace_members,
+                dry_run,
+            )?
         }
     }
 
@@ -186,4 +166,125 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     }
 
     Ok(())
+}
+
+fn update_dependents(
+    crate_root: &Path,
+    next: &semver::Version,
+    root_manifest_path: &Path,
+    workspace_members: &[cargo_metadata::Package],
+    dry_run: bool,
+) -> CargoResult<()> {
+    // This is redundant with iterating over `workspace_members`
+    // - As `get_dependency_tables_mut` returns workspace dependencies
+    // - If there is a root package
+    //
+    // But split this out for
+    // - Virtual manifests
+    // - Nicer message to the user
+    {
+        update_dependent(crate_root, next, root_manifest_path, "workspace", dry_run)?;
+    }
+
+    for member in workspace_members.iter() {
+        update_dependent(
+            crate_root,
+            next,
+            member.manifest_path.as_std_path(),
+            &member.name,
+            dry_run,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn is_relevant(d: &dyn toml_edit::TableLike, dep_crate_root: &Path, crate_root: &Path) -> bool {
+    if !d.contains_key("version") {
+        return false;
+    }
+    match d
+        .get("path")
+        .and_then(|i| i.as_str())
+        .and_then(|relpath| dunce::canonicalize(dep_crate_root.join(relpath)).ok())
+    {
+        Some(dep_path) => dep_path == crate_root,
+        None => false,
+    }
+}
+
+fn update_dependent(
+    crate_root: &Path,
+    next: &semver::Version,
+    manifest_path: &Path,
+    name: &str,
+    dry_run: bool,
+) -> CargoResult<()> {
+    let mut dep_manifest = LocalManifest::try_new(manifest_path)?;
+    let mut changed = false;
+    let dep_crate_root = dep_manifest
+        .path
+        .parent()
+        .expect("at least a parent")
+        .to_owned();
+
+    for dep in dep_manifest
+        .get_dependency_tables_mut()
+        .flat_map(|t| t.iter_mut().filter_map(|(_, d)| d.as_table_like_mut()))
+        .filter(|d| is_relevant(*d, &dep_crate_root, crate_root))
+    {
+        let old_req = dep
+            .get("version")
+            .expect("filter ensures this")
+            .as_str()
+            .unwrap_or("*");
+        if let Some(new_req) = upgrade_requirement(old_req, next)? {
+            shell_status(
+                "Updating",
+                &format!("{}'s dependency from {} to {}", name, old_req, new_req),
+            )?;
+            dep.insert("version", toml_edit::value(new_req));
+            changed = true;
+        }
+    }
+    if changed && !dry_run {
+        dep_manifest.write()?;
+    }
+
+    Ok(())
+}
+
+fn resolve_ws(
+    manifest_path: Option<&Path>,
+    locked: bool,
+    offline: bool,
+) -> CargoResult<cargo_metadata::Metadata> {
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    if let Some(manifest_path) = manifest_path {
+        cmd.manifest_path(manifest_path);
+    }
+    cmd.features(cargo_metadata::CargoOpt::AllFeatures);
+    let mut other = Vec::new();
+    if locked {
+        other.push("--locked".to_owned());
+    }
+    if offline {
+        other.push("--offline".to_owned());
+    }
+    cmd.other_options(other);
+
+    let ws = cmd.exec().or_else(|_| {
+        cmd.no_deps();
+        cmd.exec()
+    })?;
+    Ok(ws)
+}
+
+fn find_ws_members(ws: &cargo_metadata::Metadata) -> Vec<cargo_metadata::Package> {
+    let workspace_members: std::collections::HashSet<_> = ws.workspace_members.iter().collect();
+    ws.packages
+        .iter()
+        .filter(|p| workspace_members.contains(&p.id))
+        .cloned()
+        .collect()
 }

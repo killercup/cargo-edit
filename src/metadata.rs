@@ -1,6 +1,5 @@
 use super::errors::*;
 use cargo_metadata::Package;
-use std::convert::TryInto;
 use std::path::Path;
 
 /// Takes a pkgid and attempts to find the path to it's `Cargo.toml`, using `cargo`'s metadata
@@ -20,85 +19,6 @@ pub fn manifest_from_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoRe
              actual package in this workspace. Try adding `--workspace`."
         })?;
     Ok(package)
-}
-
-/// Lookup all members of the current workspace
-pub fn workspace_members(manifest_path: Option<&Path>) -> CargoResult<Vec<Package>> {
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.no_deps();
-    if let Some(manifest_path) = manifest_path {
-        cmd.manifest_path(manifest_path);
-    }
-    let result = cmd.exec().with_context(|| "Invalid manifest")?;
-    let workspace_members: std::collections::BTreeSet<_> =
-        result.workspace_members.into_iter().collect();
-    let workspace_members: Vec<_> = result
-        .packages
-        .into_iter()
-        .filter(|p| workspace_members.contains(&p.id))
-        .map(|mut p| {
-            p.manifest_path = canonicalize_path(p.manifest_path);
-            for dep in p.dependencies.iter_mut() {
-                dep.path = dep.path.take().map(canonicalize_path);
-            }
-            p
-        })
-        .collect();
-    Ok(workspace_members)
-}
-
-fn canonicalize_path(
-    path: cargo_metadata::camino::Utf8PathBuf,
-) -> cargo_metadata::camino::Utf8PathBuf {
-    if let Ok(path) = dunce::canonicalize(&path) {
-        if let Ok(path) = path.try_into() {
-            return path;
-        }
-    }
-
-    path
-}
-
-/// Determine packages selected by user
-pub fn resolve_manifests(
-    manifest_path: Option<&Path>,
-    workspace: bool,
-    pkgid: Vec<&str>,
-) -> CargoResult<Vec<Package>> {
-    let manifest_path = manifest_path.map(|p| Ok(p.to_owned())).unwrap_or_else(|| {
-        find_manifest_path(
-            &std::env::current_dir().with_context(|| "Failed to get current directory")?,
-        )
-    })?;
-    let manifest_path = dunce::canonicalize(manifest_path)?;
-
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.no_deps();
-    cmd.manifest_path(&manifest_path);
-    let result = cmd.exec().with_context(|| "Invalid manifest")?;
-    let pkgs = if workspace {
-        result.packages
-    } else if !pkgid.is_empty() {
-        pkgid
-            .into_iter()
-            .map(|id| {
-                result
-                    .packages
-                    .iter()
-                    .find(|pkg| pkg.name == id)
-                    .map(|p| p.to_owned())
-                    .with_context(|| format!("could not find pkgid {}", id))
-            })
-            .collect::<Result<Vec<_>, anyhow::Error>>()?
-    } else {
-        result
-            .packages
-            .iter()
-            .find(|p| p.manifest_path == manifest_path)
-            .map(|p| vec![(p.to_owned())])
-            .unwrap_or_else(|| result.packages)
-    };
-    Ok(pkgs)
 }
 
 /// Search for Cargo.toml in this directory and recursively up the tree until one is found.
