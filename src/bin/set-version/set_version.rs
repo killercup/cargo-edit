@@ -167,6 +167,31 @@ fn update_member_dependents(
             .parent()
             .expect("at least a parent")
             .to_owned();
+
+        // This will be done by `get_dependency_tables_mut` but we want to do it explicitly first
+        // to give the user a better message
+        if let Some(workspace_deps) = dep_manifest.get_workspace_dependency_table_mut() {
+            for dep in workspace_deps
+                .iter_mut()
+                .filter_map(|(_, d)| d.as_table_like_mut())
+                .filter(|d| is_relevant(*d, &dep_crate_root, crate_root))
+            {
+                let old_req = dep
+                    .get("version")
+                    .expect("filter ensures this")
+                    .as_str()
+                    .unwrap_or("*");
+                if let Some(new_req) = upgrade_requirement(old_req, &next)? {
+                    shell_status(
+                        "Updating",
+                        &format!("workspace dependency from {} to {}", old_req, new_req),
+                    )?;
+                    dep.insert("version", toml_edit::value(new_req));
+                    changed = true;
+                }
+            }
+        }
+
         for dep in dep_manifest
             .get_dependency_tables_mut()
             .flat_map(|t| t.iter_mut().filter_map(|(_, d)| d.as_table_like_mut()))
