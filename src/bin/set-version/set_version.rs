@@ -105,11 +105,11 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         deprecated_message("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
     let all = workspace || all;
-    let manifests = Manifests(resolve_manifests(
+    let manifests = resolve_manifests(
         manifest_path.as_deref(),
         all,
         pkgid.as_deref().into_iter().collect::<Vec<_>>(),
-    )?);
+    )?;
 
     if dry_run {
         dry_run_message()?;
@@ -117,7 +117,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 
     let workspace_members = workspace_members(manifest_path.as_deref())?;
 
-    for package in manifests.0 {
+    for package in manifests {
         if exclude.contains(&package.name) {
             continue;
         }
@@ -179,9 +179,6 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 
     Ok(())
 }
-
-/// A collection of manifests.
-struct Manifests(Vec<cargo_metadata::Package>);
 
 fn dry_run_message() -> CargoResult<()> {
     let colorchoice = colorize_stderr();
