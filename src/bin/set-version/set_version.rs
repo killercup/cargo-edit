@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use cargo_edit::{resolve_manifests, shell_status, shell_warn, upgrade_requirement, LocalManifest};
+use cargo_edit::{shell_status, shell_warn, upgrade_requirement, LocalManifest};
 use clap::Args;
 
 use crate::errors::*;
@@ -37,7 +37,7 @@ pub struct VersionArgs {
         conflicts_with = "all",
         conflicts_with = "workspace"
     )]
-    pkgid: Option<String>,
+    pkgid: Vec<String>,
 
     /// Modify all packages in the workspace.
     #[arg(
@@ -107,24 +107,32 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         (Some(_), Some(_)) => unreachable!("clap groups should prevent this"),
     };
 
-    if all {
-        shell_warn("The flag `--all` has been deprecated in favor of `--workspace`")?;
-    }
-    let all = workspace || all;
-    let manifests = resolve_manifests(
-        manifest_path.as_deref(),
-        all,
-        pkgid.as_deref().into_iter().collect::<Vec<_>>(),
-    )?;
-
     let ws_metadata = resolve_ws(manifest_path.as_deref(), locked, offline)?;
     let root_manifest_path = ws_metadata.workspace_root.as_std_path().join("Cargo.toml");
     let workspace_members = find_ws_members(&ws_metadata);
 
-    for package in manifests {
-        if exclude.contains(&package.name) {
-            continue;
-        }
+    if all {
+        shell_warn("The flag `--all` has been deprecated in favor of `--workspace`")?;
+    }
+    let all = workspace || all;
+    let selected = if all {
+        workspace_members
+            .iter()
+            .filter(|p| !exclude.contains(&p.name))
+            .collect::<Vec<_>>()
+    } else if pkgid.is_empty() {
+        workspace_members
+            .iter()
+            .filter(|p| !exclude.contains(&p.name))
+            .collect::<Vec<_>>()
+    } else {
+        workspace_members
+            .iter()
+            .filter(|p| pkgid.contains(&p.name))
+            .collect::<Vec<_>>()
+    };
+
+    for package in selected {
         let current = &package.version;
         let next = target.bump(current, metadata.as_deref())?;
         if let Some(next) = next {

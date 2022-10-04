@@ -21,48 +21,6 @@ pub fn manifest_from_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoRe
     Ok(package)
 }
 
-/// Determine packages selected by user
-pub fn resolve_manifests(
-    manifest_path: Option<&Path>,
-    workspace: bool,
-    pkgid: Vec<&str>,
-) -> CargoResult<Vec<Package>> {
-    let manifest_path = manifest_path.map(|p| Ok(p.to_owned())).unwrap_or_else(|| {
-        find_manifest_path(
-            &std::env::current_dir().with_context(|| "Failed to get current directory")?,
-        )
-    })?;
-    let manifest_path = dunce::canonicalize(manifest_path)?;
-
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    cmd.no_deps();
-    cmd.manifest_path(&manifest_path);
-    let result = cmd.exec().with_context(|| "Invalid manifest")?;
-    let pkgs = if workspace {
-        result.packages
-    } else if !pkgid.is_empty() {
-        pkgid
-            .into_iter()
-            .map(|id| {
-                result
-                    .packages
-                    .iter()
-                    .find(|pkg| pkg.name == id)
-                    .map(|p| p.to_owned())
-                    .with_context(|| format!("could not find pkgid {}", id))
-            })
-            .collect::<Result<Vec<_>, anyhow::Error>>()?
-    } else {
-        result
-            .packages
-            .iter()
-            .find(|p| p.manifest_path == manifest_path)
-            .map(|p| vec![(p.to_owned())])
-            .unwrap_or_else(|| result.packages)
-    };
-    Ok(pkgs)
-}
-
 /// Search for Cargo.toml in this directory and recursively up the tree until one is found.
 pub(crate) fn find_manifest_path(dir: &Path) -> CargoResult<std::path::PathBuf> {
     const MANIFEST_FILENAME: &str = "Cargo.toml";
