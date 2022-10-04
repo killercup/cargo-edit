@@ -144,10 +144,10 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
             let crate_root =
                 dunce::canonicalize(package.manifest_path.parent().expect("at least a parent"))?;
             update_member_dependents(
-                &root_manifest_path,
-                &workspace_members,
                 &crate_root,
                 &next,
+                &root_manifest_path,
+                &workspace_members,
                 dry_run,
             )?
         }
@@ -161,10 +161,10 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 }
 
 fn update_member_dependents(
-    root_manifest_path: &Path,
-    workspace_members: &[cargo_metadata::Package],
     crate_root: &Path,
     next: &semver::Version,
+    root_manifest_path: &Path,
+    workspace_members: &[cargo_metadata::Package],
     dry_run: bool,
 ) -> CargoResult<()> {
     // This is redundant with `workspace_members`
