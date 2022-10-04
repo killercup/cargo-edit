@@ -6,6 +6,7 @@
 extern crate cargo_test_macro;
 
 mod downgrade_error;
+mod dry_run;
 mod ignore_dependent;
 mod relative_absolute_conflict;
 mod set_absolute_version;
