@@ -3,8 +3,8 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use cargo_edit::{
-    colorize_stderr, resolve_manifests, shell_warn, upgrade_requirement, workspace_members,
-    LocalManifest,
+    colorize_stderr, resolve_manifests, shell_status, shell_warn, upgrade_requirement,
+    workspace_members, LocalManifest,
 };
 use clap::Args;
 use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
@@ -162,7 +162,13 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
                         .as_str()
                         .unwrap_or("*");
                     if let Some(new_req) = upgrade_requirement(old_req, &next)? {
-                        upgrade_dependent_message(member.name.as_str(), old_req, &new_req)?;
+                        shell_status(
+                            "Updating",
+                            &format!(
+                                "{}'s dependency from {} to {}",
+                                member.name, old_req, new_req
+                            ),
+                        )?;
                         dep.insert("version", toml_edit::value(new_req));
                         changed = true;
                     }
@@ -209,25 +215,6 @@ fn upgrade_message(name: &str, from: &semver::Version, to: &semver::Version) -> 
         .reset()
         .with_context(|| "Failed to print dry run message")?;
     writeln!(&mut buffer, " {} from {} to {}", name, from, to)
-        .with_context(|| "Failed to print dry run message")?;
-    bufwtr
-        .print(&buffer)
-        .with_context(|| "Failed to print dry run message")
-}
-
-fn upgrade_dependent_message(name: &str, old_req: &str, new_req: &str) -> CargoResult<()> {
-    let colorchoice = colorize_stderr();
-    let bufwtr = BufferWriter::stderr(colorchoice);
-    let mut buffer = bufwtr.buffer();
-    buffer
-        .set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true))
-        .with_context(|| "Failed to print dry run message")?;
-    write!(&mut buffer, "{:>16}", "Updated dependency")
-        .with_context(|| "Failed to print dry run message")?;
-    buffer
-        .reset()
-        .with_context(|| "Failed to print dry run message")?;
-    writeln!(&mut buffer, " {} from {} to {}", name, old_req, new_req)
         .with_context(|| "Failed to print dry run message")?;
     bufwtr
         .print(&buffer)
