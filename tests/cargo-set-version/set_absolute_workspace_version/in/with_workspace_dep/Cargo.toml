@@ -1,0 +1,7 @@
+[package]
+name = "with_workspace_dep"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+inherit_ws_version.workspace = true
