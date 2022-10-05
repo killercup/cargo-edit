@@ -335,6 +335,35 @@ impl LocalManifest {
         self.data["package"]["version"] = toml_edit::value(version.to_string());
     }
 
+    /// `true` if the package inherits the workspace version
+    pub fn version_is_inherited(&self) -> bool {
+        fn inherits_workspace_version_impl(this: &Manifest) -> Option<bool> {
+            this.data
+                .get("package")?
+                .get("version")?
+                .get("workspace")?
+                .as_bool()
+        }
+
+        inherits_workspace_version_impl(self).unwrap_or(false)
+    }
+
+    /// Get the current workspace version, if any.
+    pub fn get_workspace_version(&self) -> Option<Version> {
+        let version = self
+            .data
+            .get("workspace")?
+            .get("package")?
+            .get("version")?
+            .as_str()?;
+        Version::parse(version).ok()
+    }
+
+    /// Override the workspace's version.
+    pub fn set_workspace_version(&mut self, version: &Version) {
+        self.data["workspace"]["package"]["version"] = toml_edit::value(version.to_string());
+    }
+
     /// Remove references to `dep_key` if its no longer present
     pub fn gc_dep(&mut self, dep_key: &str) {
         let status = self.dep_feature(dep_key);

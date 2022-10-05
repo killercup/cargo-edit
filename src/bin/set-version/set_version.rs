@@ -132,18 +132,48 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
             .collect::<Vec<_>>()
     };
 
+    let update_workspace_version = all
+        || selected.iter().any(|p| {
+            LocalManifest::try_new(Path::new(&p.manifest_path))
+                .map_or(false, |m| m.version_is_inherited())
+        });
+    if update_workspace_version {
+        let mut ws_manifest = LocalManifest::try_new(&root_manifest_path)?;
+        if let Some(current) = ws_manifest.get_workspace_version() {
+            if let Some(next) = target.bump(&current, metadata.as_deref())? {
+                shell_status(
+                    "Upgrading",
+                    &format!("workspace version from {} to {}", current, next),
+                )?;
+                ws_manifest.set_workspace_version(&next);
+                if !dry_run {
+                    ws_manifest.write()?;
+                }
+
+                // Deferring `update_dependents` to the per-package logic
+            }
+        }
+    }
+
     for package in selected {
         let current = &package.version;
         let next = target.bump(current, metadata.as_deref())?;
         if let Some(next) = next {
-            {
-                let mut manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
-                manifest.set_package_version(&next);
-
+            let mut manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
+            if manifest.version_is_inherited() {
+                shell_status(
+                    "Upgrading",
+                    &format!(
+                        "{} from {} to {} (inherited from workspace)",
+                        package.name, current, next,
+                    ),
+                )?;
+            } else {
                 shell_status(
                     "Upgrading",
                     &format!("{} from {} to {}", package.name, current, next),
                 )?;
+                manifest.set_package_version(&next);
                 if !dry_run {
                     manifest.write()?;
                 }
@@ -161,7 +191,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         }
     }
 
-    if args.dry_run {
+    if dry_run {
         shell_warn("aborting set-version due to dry run")?;
     }
 
