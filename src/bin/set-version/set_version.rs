@@ -114,13 +114,8 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     if all {
         shell_warn("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
-    let all = workspace || all;
-    let selected = if all {
-        workspace_members
-            .iter()
-            .filter(|p| !exclude.contains(&p.name))
-            .collect::<Vec<_>>()
-    } else if pkgid.is_empty() {
+    let workspace = workspace || all || pkgid.is_empty();
+    let selected = if workspace {
         workspace_members
             .iter()
             .filter(|p| !exclude.contains(&p.name))
