@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Features
+
+- Modify `workspace.package.version` and all dependents, when needed
+
+### Fixes
+
+`set-version`
+- Update versions in `workspace.dependencies` in virtual workspaces
+- Be more consistent with rest of cargo in output
+
 ## 0.11.3 - 2022-09-28
 
 ### Fixes
