@@ -17,7 +17,7 @@ fn case() {
         .args(["2.0.0", "--workspace", "--exclude", "root"])
         .current_dir(cwd)
         .assert()
-        .success()
+        .failure()
         .stdout_matches_path(curr_dir!().join("stdout.log"))
         .stderr_matches_path(curr_dir!().join("stderr.log"));
 

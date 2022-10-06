@@ -132,10 +132,15 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         // Fast path
         update_workspace_version = true;
     } else {
-        update_workspace_version = selected.iter().any(|p| {
-            LocalManifest::try_new(Path::new(&p.manifest_path))
-                .map_or(false, |m| m.version_is_inherited())
-        });
+        let explicit_selected = selected
+            .iter()
+            .filter(|p| {
+                LocalManifest::try_new(Path::new(&p.manifest_path))
+                    .map_or(false, |m| m.version_is_inherited())
+            })
+            .map(|p| p.name.as_str())
+            .collect::<Vec<_>>();
+        update_workspace_version = !explicit_selected.is_empty();
         if update_workspace_version {
             let implicit = workspace_members
                 .iter()
@@ -145,6 +150,18 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
                         .map_or(false, |m| m.version_is_inherited())
                 })
                 .collect::<Vec<_>>();
+            let exclude_implicit = implicit
+                .iter()
+                .filter(|p| exclude.contains(&p.name))
+                .map(|p| p.name.as_str())
+                .collect::<Vec<_>>();
+            if !exclude_implicit.is_empty() {
+                anyhow::bail!(
+                    "Cannot exclude {} package(s) when {} package(s) modify `workspace.package.version`",
+                    exclude_implicit.join(", "),
+                    explicit_selected.join(", ")
+                );
+            }
             selected.extend(implicit);
         }
     }
