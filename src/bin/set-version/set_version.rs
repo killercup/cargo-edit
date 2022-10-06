@@ -115,7 +115,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         shell_warn("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
     let workspace = workspace || all || pkgid.is_empty();
-    let selected = if workspace {
+    let mut selected = if workspace {
         workspace_members
             .iter()
             .filter(|p| !exclude.contains(&p.name))
@@ -127,11 +127,28 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
             .collect::<Vec<_>>()
     };
 
-    let update_workspace_version = all
-        || selected.iter().any(|p| {
+    let update_workspace_version;
+    if workspace && exclude.is_empty() {
+        // Fast path
+        update_workspace_version = true;
+    } else {
+        update_workspace_version = selected.iter().any(|p| {
             LocalManifest::try_new(Path::new(&p.manifest_path))
                 .map_or(false, |m| m.version_is_inherited())
         });
+        if update_workspace_version {
+            let implicit = workspace_members
+                .iter()
+                .filter(|i| !selected.iter().any(|s| i.id == s.id))
+                .filter(|i| {
+                    LocalManifest::try_new(Path::new(&i.manifest_path))
+                        .map_or(false, |m| m.version_is_inherited())
+                })
+                .collect::<Vec<_>>();
+            selected.extend(implicit);
+        }
+    }
+
     if update_workspace_version {
         let mut ws_manifest = LocalManifest::try_new(&root_manifest_path)?;
         if let Some(current) = ws_manifest.get_workspace_version() {
