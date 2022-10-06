@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog].
 
 ### Features
 
+`set-version`
 - Modify `workspace.package.version` and all dependents, when needed
 
 ### Fixes
