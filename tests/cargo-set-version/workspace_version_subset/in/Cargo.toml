@@ -1,0 +1,21 @@
+[workspace]
+members = [
+    "inherits-version",
+    "independent-version",
+]
+
+[workspace.package]
+version = "0.1.0"
+
+[workspace.dependencies]
+inherits-version = { version = "0.1.0", path = "./inherits-version" }
+independent-version = { version = "0.1.0", path = "./independent-version" }
+
+[package]
+name = "root"
+version.workspace = true
+edition = "2021"
+
+[dependencies]
+inherits-version.workspace = true
+independent-version = { version = "0.1.0", path = "./independent-version" }

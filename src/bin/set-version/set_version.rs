@@ -114,13 +114,8 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     if all {
         shell_warn("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }
-    let all = workspace || all;
-    let selected = if all {
-        workspace_members
-            .iter()
-            .filter(|p| !exclude.contains(&p.name))
-            .collect::<Vec<_>>()
-    } else if pkgid.is_empty() {
+    let workspace = workspace || all || pkgid.is_empty();
+    let mut selected = if workspace {
         workspace_members
             .iter()
             .filter(|p| !exclude.contains(&p.name))
@@ -132,18 +127,82 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
             .collect::<Vec<_>>()
     };
 
+    let update_workspace_version;
+    if workspace && exclude.is_empty() {
+        // Fast path
+        update_workspace_version = true;
+    } else {
+        let explicit_selected = selected
+            .iter()
+            .filter(|p| {
+                LocalManifest::try_new(Path::new(&p.manifest_path))
+                    .map_or(false, |m| m.version_is_inherited())
+            })
+            .map(|p| p.name.as_str())
+            .collect::<Vec<_>>();
+        update_workspace_version = !explicit_selected.is_empty();
+        if update_workspace_version {
+            let implicit = workspace_members
+                .iter()
+                .filter(|i| !selected.iter().any(|s| i.id == s.id))
+                .filter(|i| {
+                    LocalManifest::try_new(Path::new(&i.manifest_path))
+                        .map_or(false, |m| m.version_is_inherited())
+                })
+                .collect::<Vec<_>>();
+            let exclude_implicit = implicit
+                .iter()
+                .filter(|p| exclude.contains(&p.name))
+                .map(|p| p.name.as_str())
+                .collect::<Vec<_>>();
+            if !exclude_implicit.is_empty() {
+                anyhow::bail!(
+                    "Cannot exclude {} package(s) when {} package(s) modify `workspace.package.version`",
+                    exclude_implicit.join(", "),
+                    explicit_selected.join(", ")
+                );
+            }
+            selected.extend(implicit);
+        }
+    }
+
+    if update_workspace_version {
+        let mut ws_manifest = LocalManifest::try_new(&root_manifest_path)?;
+        if let Some(current) = ws_manifest.get_workspace_version() {
+            if let Some(next) = target.bump(&current, metadata.as_deref())? {
+                shell_status(
+                    "Upgrading",
+                    &format!("workspace version from {} to {}", current, next),
+                )?;
+                ws_manifest.set_workspace_version(&next);
+                if !dry_run {
+                    ws_manifest.write()?;
+                }
+
+                // Deferring `update_dependents` to the per-package logic
+            }
+        }
+    }
+
     for package in selected {
         let current = &package.version;
         let next = target.bump(current, metadata.as_deref())?;
         if let Some(next) = next {
-            {
-                let mut manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
-                manifest.set_package_version(&next);
-
+            let mut manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
+            if manifest.version_is_inherited() {
+                shell_status(
+                    "Upgrading",
+                    &format!(
+                        "{} from {} to {} (inherited from workspace)",
+                        package.name, current, next,
+                    ),
+                )?;
+            } else {
                 shell_status(
                     "Upgrading",
                     &format!("{} from {} to {}", package.name, current, next),
                 )?;
+                manifest.set_package_version(&next);
                 if !dry_run {
                     manifest.write()?;
                 }
@@ -161,7 +220,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         }
     }
 
-    if args.dry_run {
+    if dry_run {
         shell_warn("aborting set-version due to dry run")?;
     }
 

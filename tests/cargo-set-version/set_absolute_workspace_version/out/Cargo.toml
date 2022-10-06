@@ -1,0 +1,15 @@
+[workspace.package]
+version = "2.0.0"
+
+[workspace]
+members = [
+    "inherit_ws_version",
+    "unrelated_dep",
+    "with_workspace_dep",
+    "with_direct_dep",
+]
+
+[workspace.dependencies]
+inherit_ws_version = { version = "2.0", path = "./inherit_ws_version" }
+unrelated_dep = { version = "0.2", path = "./unrelated_dep" }
+

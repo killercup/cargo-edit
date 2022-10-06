@@ -1,0 +1,4 @@
+[package]
+name = "inherit_ws_version"
+version.workspace = true
+edition = "2021"
