@@ -1,4 +1,11 @@
 //! Show and Edit Cargo's Manifest Files
+//!
+//! # Semver Compatibility
+//!
+//! cargo-edit's versioning tracks compatibility for the binaries, not the API.  We upload to
+//! crates.io to distribute the binary.  If using this as a library, be sure to pin the version
+//! with a `=` version requirement operator.  Note though that our goal is for `cargo-edit` to go
+//! away as we move things into cargo.
 #![recursion_limit = "256"]
 #![cfg_attr(test, allow(dead_code))]
 #![warn(
