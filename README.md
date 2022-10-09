@@ -15,22 +15,6 @@ Currently available subcommands:
 [![crates.io](https://img.shields.io/crates/v/cargo-edit.svg)](https://crates.io/crates/cargo-edit)
 [![Join the chat at https://gitter.im/cargo-edit/Lobby](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/cargo-edit/Lobby)
 
-## Contribution
-
-Thanks for your interest - we gratefully welcome contributions.
-
-Questions can be asked in [issues](https://github.com/killercup/cargo-edit/issues), or on [Gitter](https://gitter.im/cargo-edit/Lobby).
-
-To help us help you get pull requests merged quickly and smoothly, open an issue before submitted large changes. Please keep the contents of pull requests and commits short. Commit messages should include the intent of the commit.
-
-`cargo-edit` has a moderately comprehensive test suite. Contributions that add/improve tests are awesome. Please add tests for every change.
-
-`cargo-edit` uses [`rustfmt`](https://github.com/rust-lang-nursery/rustfmt) for formatting and [`clippy`](https://github.com/rust-lang-nursery/rust-clippy) for linting.
-
-## Related Cargo Commands
-
-- [`cargo feature`](https://github.com/Riey/cargo-feature)
-
 ## Installation
 
 <a href="https://repology.org/project/cargo-edit/versions"><img align="right" src="https://repology.org/badge/vertical-allrepos/cargo-edit.svg" alt="Packaging status"></a>
@@ -210,6 +194,22 @@ Options:
 
 For more on `metadata`, see the
 [semver crate's documentation](https://docs.rs/semver/1.0.4/semver/struct.BuildMetadata.html).
+
+## Related Cargo Commands
+
+- [`cargo feature`](https://github.com/Riey/cargo-feature)
+
+## Contribution
+
+Thanks for your interest - we gratefully welcome contributions.
+
+Questions can be asked in [issues](https://github.com/killercup/cargo-edit/issues), or on [Gitter](https://gitter.im/cargo-edit/Lobby).
+
+To help us help you get pull requests merged quickly and smoothly, open an issue before submitted large changes. Please keep the contents of pull requests and commits short. Commit messages should include the intent of the commit.
+
+`cargo-edit` has a moderately comprehensive test suite. Contributions that add/improve tests are awesome. Please add tests for every change.
+
+`cargo-edit` uses [`rustfmt`](https://github.com/rust-lang-nursery/rustfmt) for formatting and [`clippy`](https://github.com/rust-lang-nursery/rust-clippy) for linting.
 
 ## License
 
