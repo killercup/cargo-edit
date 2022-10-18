@@ -128,6 +128,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     };
 
     let update_workspace_version;
+    let mut changed = false;
     if workspace && exclude.is_empty() {
         // Fast path
         update_workspace_version = true;
@@ -175,6 +176,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
                     &format!("workspace version from {} to {}", current, next),
                 )?;
                 ws_manifest.set_workspace_version(&next);
+                changed = true;
                 if !dry_run {
                     ws_manifest.write()?;
                 }
@@ -203,6 +205,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
                     &format!("{} from {} to {}", package.name, current, next),
                 )?;
                 manifest.set_package_version(&next);
+                changed = true;
                 if !dry_run {
                     manifest.write()?;
                 }
@@ -220,6 +223,9 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         }
     }
 
+    if changed {
+        resolve_ws(manifest_path.as_deref(), locked, offline)?;
+    }
     if dry_run {
         shell_warn("aborting set-version due to dry run")?;
     }
