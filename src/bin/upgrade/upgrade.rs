@@ -442,8 +442,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             anyhow::bail!("cannot upgrade due to `--locked`");
         } else {
             // Ensure lock file is updated and collect data for `recursive`
-            let offline = true; // index should already be updated
-            let metadata = resolve_ws(Some(&root_manifest_path), args.locked, offline)?;
+            let metadata = resolve_ws(Some(&root_manifest_path), args.locked, args.offline)?;
             let mut locked = metadata.packages;
 
             let precise_deps = selected_dependencies
@@ -475,11 +474,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         if args.locked {
                             cmd.arg("--locked");
                         }
-                        if args.recursive {
-                            // HACK: Since we'll need to skip this during the official recursive
-                            // check, let's handle it here
-                            cmd.arg("--aggressive");
-                        }
+                        // NOTE: This will skip the official recursive check and we don't
+                        // recursively update its dependencies
                         let dep = format!("{name}@{lock_version}");
                         cmd.arg("--precise").arg(&precise);
                         cmd.arg("--package").arg(dep);
