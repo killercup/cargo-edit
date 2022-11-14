@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+`upgrade`
+- Ensure precise version setting runs
+- Remove error blocking precise version setting
+
 ## 0.11.5 - 2022-10-09
 
 ## 0.11.4 - 2022-10-06
