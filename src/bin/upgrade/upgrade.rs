@@ -477,7 +477,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         // NOTE: This will skip the official recursive check and we don't
                         // recursively update its dependencies
                         let dep = format!("{name}@{lock_version}");
-                        cmd.arg("--precise").arg(&precise);
+                        cmd.arg("--precise").arg(precise);
                         cmd.arg("--package").arg(dep);
                         // If we're going to request an update, it would have already been done by now
                         cmd.arg("--offline");

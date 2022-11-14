@@ -146,7 +146,7 @@ impl Manifest {
                     input[&segment].or_insert(toml_edit::table())
                 } else {
                     input
-                        .get_mut(&segment)
+                        .get_mut(segment)
                         .ok_or_else(|| non_existent_table_err(segment))?
                 };
 
@@ -219,7 +219,7 @@ impl LocalManifest {
             anyhow::bail!("can only edit absolute paths, got {}", path.display());
         }
         let data =
-            std::fs::read_to_string(&path).with_context(|| "Failed to read manifest contents")?;
+            std::fs::read_to_string(path).with_context(|| "Failed to read manifest contents")?;
         let manifest = data.parse().context("Unable to parse Cargo.toml")?;
         Ok(LocalManifest {
             manifest,
@@ -449,7 +449,7 @@ fn remove_feature_activation(
 pub fn find(specified: Option<&Path>) -> CargoResult<PathBuf> {
     match specified {
         Some(path)
-            if fs::metadata(&path)
+            if fs::metadata(path)
                 .with_context(|| "Failed to get cargo file metadata")?
                 .is_file() =>
         {
