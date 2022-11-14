@@ -54,6 +54,7 @@ impl From<anyhow::Error> for CliError {
 
 impl From<clap::Error> for CliError {
     fn from(err: clap::Error) -> CliError {
+        #[allow(clippy::bool_to_int_with_if)]
         let code = if err.use_stderr() { 1 } else { 0 };
         CliError::new(err.into(), code)
     }
