@@ -96,7 +96,7 @@ Section:
 Upgrade dependencies in your `Cargo.toml` to their latest versions.
 
 To specify a version to upgrade to, provide the dependencies in the `<crate name>@<version>` format,
-e.g. `cargo upgrade docopt@~0.9.0 serde@>=0.9,<2.0`.
+e.g. `cargo upgrade -p docopt@~0.9.0 -p serde@>=0.9,<2.0`.
 
 This command differs from `cargo update`, which updates the dependency versions recorded in the
 local lock file (Cargo.lock).
@@ -107,11 +107,9 @@ local lock file (Cargo.lock).
 # Upgrade all dependencies for the current crate
 $ cargo upgrade
 # Upgrade docopt (to ~0.9) and serde (to >=0.9,<2.0)
-$ cargo upgrade docopt@~0.9 serde@>=0.9,<2.0
-# Upgrade regex (to the latest version) across all crates in the workspace
-$ cargo upgrade regex --workspace
+$ cargo upgrade -p docopt@~0.9 -p serde@>=0.9,<2.0
 # Upgrade all dependencies except docopt and serde
-$ cargo upgrade --exclude docopt serde
+$ cargo upgrade --exclude docopt --exclude serde
 ```
 
 #### Usage
