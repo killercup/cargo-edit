@@ -19,7 +19,6 @@
     unused_import_braces,
     unused_qualifications
 )]
-#![allow(clippy::bool_to_int_with_if)]
 
 #[macro_use]
 extern crate serde_derive;
