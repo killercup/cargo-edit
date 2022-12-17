@@ -55,7 +55,7 @@ pub fn get_latest_dependency(
         };
 
         return Ok(Dependency::new(crate_name)
-            .set_source(RegistrySource::new(&new_version))
+            .set_source(RegistrySource::new(new_version))
             .set_available_features(features));
     }
 
@@ -214,7 +214,7 @@ fn read_latest_version(
     let name = &latest.name;
     let version = latest.version.to_string();
     Ok(Dependency::new(name)
-        .set_source(RegistrySource::new(&version))
+        .set_source(RegistrySource::new(version))
         .set_available_features(latest.available_features.clone()))
 }
 
@@ -238,7 +238,7 @@ fn read_compatible_version(
     let name = &latest.name;
     let version = latest.version.to_string();
     Ok(Dependency::new(name)
-        .set_source(RegistrySource::new(&version))
+        .set_source(RegistrySource::new(version))
         .set_available_features(latest.available_features.clone()))
 }
 

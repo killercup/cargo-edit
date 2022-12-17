@@ -193,13 +193,13 @@ fn set_comparator(
             }
             Ok(pred)
         }
-        semver::Op::Exact => Ok(assign_partial_req(version, pred)),
+        semver::Op::Exact | semver::Op::Tilde | semver::Op::Caret => {
+            Ok(assign_partial_req(version, pred))
+        }
         semver::Op::Greater | semver::Op::GreaterEq | semver::Op::Less | semver::Op::LessEq => {
             let user_pred = pred.to_string();
             Err(unsupported_version_req(user_pred))
         }
-        semver::Op::Tilde => Ok(assign_partial_req(version, pred)),
-        semver::Op::Caret => Ok(assign_partial_req(version, pred)),
         _ => {
             let user_pred = pred.to_string();
             Err(unsupported_version_req(user_pred))
