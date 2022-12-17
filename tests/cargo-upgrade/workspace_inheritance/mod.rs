@@ -15,7 +15,7 @@ fn case() {
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
         .args(["--incompatible"])
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .assert()
         .success()
         .stdout_matches_path(curr_dir!().join("stdout.log"))

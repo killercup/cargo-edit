@@ -21,7 +21,7 @@ fn case() {
             "Cargo.toml",
             "--incompatible",
         ])
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .assert()
         .success()
         .stdout_matches_path(curr_dir!().join("stdout.log"))
