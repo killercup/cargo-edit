@@ -824,9 +824,8 @@ mod tests {
 
     #[test]
     fn to_toml_simple_dep() {
-        let crate_root =
-            dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let dep = Dependency::new("dep").set_source(RegistrySource::new("1.0"));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
@@ -838,9 +837,8 @@ mod tests {
 
     #[test]
     fn to_toml_simple_dep_with_version() {
-        let crate_root =
-            dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let dep = Dependency::new("dep").set_source(RegistrySource::new("1.0"));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
@@ -853,9 +851,8 @@ mod tests {
 
     #[test]
     fn to_toml_optional_dep() {
-        let crate_root =
-            dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let dep = Dependency::new("dep")
             .set_source(RegistrySource::new("1.0"))
             .set_optional(true);
@@ -873,9 +870,8 @@ mod tests {
 
     #[test]
     fn to_toml_dep_without_default_features() {
-        let crate_root =
-            dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let dep = Dependency::new("dep")
             .set_source(RegistrySource::new("1.0"))
             .set_default_features(false);
@@ -911,9 +907,8 @@ mod tests {
 
     #[test]
     fn to_toml_dep_with_git_source() {
-        let crate_root =
-            dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let dep = Dependency::new("dep").set_source(GitSource::new("https://foor/bar.git"));
         let key = dep.toml_key();
         let item = dep.to_toml(&crate_root);
@@ -932,9 +927,8 @@ mod tests {
 
     #[test]
     fn to_toml_renamed_dep() {
-        let crate_root =
-            dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let dep = Dependency::new("dep")
             .set_source(RegistrySource::new("1.0"))
             .set_rename("d");
@@ -952,9 +946,8 @@ mod tests {
 
     #[test]
     fn to_toml_dep_from_alt_registry() {
-        let crate_root =
-            dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let dep = Dependency::new("dep")
             .set_source(RegistrySource::new("1.0"))
             .set_registry("alternative");
@@ -972,9 +965,8 @@ mod tests {
 
     #[test]
     fn to_toml_complex_dep() {
-        let crate_root =
-            dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let dep = Dependency::new("dep")
             .set_source(RegistrySource::new("1.0"))
             .set_default_features(false)
@@ -995,9 +987,8 @@ mod tests {
 
     #[test]
     fn paths_with_forward_slashes_are_left_as_is() {
-        let crate_root =
-            dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let path = crate_root.join("sibling/crate");
         let relpath = "sibling/crate";
         let dep = Dependency::new("dep").set_source(PathSource::new(path));
