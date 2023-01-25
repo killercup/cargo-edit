@@ -1,5 +1,5 @@
-error: The argument '[TARGET]' cannot be used with '--bump <BUMP>'
+error: the argument '[TARGET]' cannot be used with '--bump <BUMP>'
 
-Usage: cargo set-version <TARGET|--bump <BUMP>>
+Usage: cargo set-version <TARGET>
 
-For more information try '--help'
+For more information, try '--help'.

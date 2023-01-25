@@ -81,8 +81,8 @@ Options:
   -Z <FLAG>                   Unstable (nightly-only) flags
       --dry-run               Don't actually write the manifest
   -q, --quiet                 Do not print any output in case of success
-  -h, --help                  Print help information
-  -V, --version               Print version information
+  -h, --help                  Print help
+  -V, --version               Print version
 
 Section:
   -D, --dev              Remove as development dependency
@@ -127,16 +127,14 @@ Options:
       --locked                Require `Cargo.toml` to be up to date
   -v, --verbose               Use verbose output
   -Z <FLAG>                   Unstable (nightly-only) flags
-  -h, --help                  Print help information
-  -V, --version               Print version information
+  -h, --help                  Print help
+  -V, --version               Print version
 
 Version:
-      --compatible [<allow|ignore>]
-          Upgrade to latest compatible version [default: allow]
-  -i, --incompatible [<allow|ignore>]
-          Upgrade to latest incompatible version [default: ignore]
-      --pinned [<allow|ignore>]
-          Upgrade pinned to latest incompatible version [default: ignore]
+      --compatible [<allow|ignore>]    Upgrade to latest compatible version [default: allow]
+  -i, --incompatible [<allow|ignore>]  Upgrade to latest incompatible version [default: ignore]
+      --pinned [<allow|ignore>]        Upgrade pinned to latest incompatible version [default:
+                                       ignore]
 
 Dependencies:
   -p, --package <PKGID[@<VERSION>]>  Crate to be upgraded
@@ -185,8 +183,8 @@ Options:
       --offline               Run without accessing the network
       --locked                Require `Cargo.toml` to be up to date
   -Z <FLAG>                   Unstable (nightly-only) flags
-  -h, --help                  Print help information
-  -V, --version               Print version information
+  -h, --help                  Print help
+  -V, --version               Print version
 
 ```
 
