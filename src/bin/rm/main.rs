@@ -22,7 +22,7 @@ fn main() {
     let args = cli::Command::parse();
 
     if let Err(err) = args.exec() {
-        eprintln!("Error: {:?}", err);
+        eprintln!("Error: {err:?}");
 
         process::exit(1);
     }

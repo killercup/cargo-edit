@@ -23,7 +23,7 @@ pub fn shell_print(status: &str, message: &str, color: Color, justified: bool) -
     if justified {
         write!(output, "{status:>12}")?;
     } else {
-        write!(output, "{}", status)?;
+        write!(output, "{status}")?;
         output.set_color(ColorSpec::new().set_bold(true))?;
         write!(output, ":")?;
     }
@@ -55,7 +55,7 @@ pub fn shell_write_stderr(fragment: impl std::fmt::Display, spec: &ColorSpec) ->
     let mut output = StandardStream::stderr(color_choice);
 
     output.set_color(spec)?;
-    write!(output, "{}", fragment)?;
+    write!(output, "{fragment}")?;
     output.reset()?;
     Ok(())
 }

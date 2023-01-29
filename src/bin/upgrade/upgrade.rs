@@ -188,7 +188,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         let mut manifest = LocalManifest::try_new(manifest_path)?;
         let mut crate_modified = false;
         let mut table = Vec::new();
-        shell_status("Checking", &format!("{}'s dependencies", pkg_name))?;
+        shell_status("Checking", &format!("{pkg_name}'s dependencies"))?;
         for dep_table in manifest.get_dependency_tables_mut() {
             for (dep_key, dep_item) in dep_table.iter_mut() {
                 let mut reason = None;
@@ -197,7 +197,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 let dependency = match Dependency::from_toml(manifest_path, dep_key, dep_item) {
                     Ok(dependency) => dependency,
                     Err(err) => {
-                        shell_warn(&format!("ignoring {}, unsupported entry: {}", dep_key, err))?;
+                        shell_warn(&format!("ignoring {dep_key}, unsupported entry: {err}"))?;
                         continue;
                     }
                 };
@@ -599,7 +599,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         let mut note = "Re-run with `--verbose` to show all dependencies".to_owned();
         for (reason, deps) in categorize {
             use std::fmt::Write;
-            write!(&mut note, "\n  {}: ", reason)?;
+            write!(&mut note, "\n  {reason}: ")?;
             for (i, dep) in deps.into_iter().enumerate() {
                 if 0 < i {
                     note.push_str(", ");

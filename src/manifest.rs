@@ -414,7 +414,7 @@ fn remove_feature_activation(
     dep: &str,
     status: FeatureStatus,
 ) {
-    let dep_feature: &str = &format!("{}/", dep);
+    let dep_feature: &str = &format!("{dep}/",);
 
     let remove_list: Vec<usize> = feature_activations
         .iter()

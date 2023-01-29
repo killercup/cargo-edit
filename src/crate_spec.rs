@@ -38,7 +38,7 @@ impl CrateSpec {
 
         if let Some(version) = version {
             semver::VersionReq::parse(version)
-                .with_context(|| format!("Invalid version requirement `{}`", version))?;
+                .with_context(|| format!("Invalid version requirement `{version}`"))?;
         }
 
         Ok(Self {

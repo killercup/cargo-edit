@@ -32,12 +32,12 @@ pub fn get_latest_dependency(
         // We are in a simulated reality. Nothing is real here.
         // FIXME: Use actual test handling code.
         let new_version = if flag_allow_prerelease {
-            format!("99999.0.0-alpha.1+{}", crate_name)
+            format!("99999.0.0-alpha.1+{crate_name}")
         } else {
             match crate_name {
                 "test_breaking" => "0.2.0".to_string(),
                 "test_nonbreaking" => "0.1.1".to_string(),
-                other => format!("99999.0.0+{}", other),
+                other => format!("99999.0.0+{other}"),
             }
         };
 
@@ -261,7 +261,7 @@ fn registry_features(v: &crates_index::Version) -> BTreeMap<String, Vec<String>>
 pub fn update_registry_index(registry: &Url, quiet: bool) -> CargoResult<()> {
     let mut index = crates_index::Index::from_url(registry.as_str())?;
     if !quiet {
-        shell_status("Updating", &format!("'{}' index", registry))?;
+        shell_status("Updating", &format!("'{registry}' index"))?;
     }
 
     while need_retry(index.update())? {
