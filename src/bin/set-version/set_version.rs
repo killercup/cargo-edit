@@ -173,7 +173,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
             if let Some(next) = target.bump(&current, metadata.as_deref())? {
                 shell_status(
                     "Upgrading",
-                    &format!("workspace version from {} to {}", current, next),
+                    &format!("workspace version from {current} to {next}"),
                 )?;
                 ws_manifest.set_workspace_version(&next);
                 changed = true;
@@ -306,7 +306,7 @@ fn update_dependent(
         if let Some(new_req) = upgrade_requirement(old_req, next)? {
             shell_status(
                 "Updating",
-                &format!("{}'s dependency from {} to {}", name, old_req, new_req),
+                &format!("{name}'s dependency from {old_req} to {new_req}"),
             )?;
             dep.insert("version", toml_edit::value(new_req));
             changed = true;

@@ -389,12 +389,7 @@ impl Dependency {
     }
 
     /// Modify existing entry to match this dependency
-    pub fn update_toml<'k>(
-        &self,
-        crate_root: &Path,
-        key: &mut KeyMut<'k>,
-        item: &mut toml_edit::Item,
-    ) {
+    pub fn update_toml(&self, crate_root: &Path, key: &mut KeyMut, item: &mut toml_edit::Item) {
         if str_or_1_len_table(item) {
             // Nothing to preserve
             *item = self.to_toml(crate_root);
@@ -789,11 +784,11 @@ impl std::fmt::Display for GitSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.git)?;
         if let Some(branch) = &self.branch {
-            write!(f, "?branch={}", branch)?;
+            write!(f, "?branch={branch}")?;
         } else if let Some(tag) = &self.tag {
-            write!(f, "?tag={}", tag)?;
+            write!(f, "?tag={tag}")?;
         } else if let Some(rev) = &self.rev {
-            write!(f, "?rev={}", rev)?;
+            write!(f, "?rev={rev}")?;
         }
         Ok(())
     }
