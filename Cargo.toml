@@ -57,8 +57,8 @@ required-features = ["set-version"]
 
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
-cargo_metadata = "0.15.2"
-crates-index = "0.19.0"
+cargo_metadata = "0.15.3"
+crates-index = "0.19.2"
 dunce = "1.0"
 dirs-next = "2.0.0"
 env_proxy = "0.4.1"
@@ -72,7 +72,8 @@ serde_json = "1.0.91"
 clap = { version = "4.1.4", features = ["derive", "wrap_help"], optional = true }
 subprocess = "0.2.9"
 termcolor = "1.2.0"
-toml_edit = { version = "0.18.0", features = ["easy", "perf"] }
+toml = "0.7.1"
+toml_edit = "0.19.1"
 indexmap = "1"
 url = "2.3.1"
 pathdiff = "0.2"
@@ -93,7 +94,7 @@ ureq = { version = "2.6.2", default-features = false, features = ["native-tls", 
 predicates = { version = "2.1.5", features = ["color-auto"] }
 assert_cmd = { version = "2.0.8", features = ["color-auto"] }
 assert_fs = { version = "1.0.10", features = ["color-auto"] }
-trycmd = "0.14.10"
+trycmd = "0.14.11"
 snapbox = { version = "0.4.4", features = ["cmd", "path"] }
 cargo-test-macro.git = "https://github.com/rust-lang/cargo"
 cargo-test-support.git = "https://github.com/rust-lang/cargo"
