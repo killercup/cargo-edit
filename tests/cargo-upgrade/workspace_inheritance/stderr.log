@@ -1,8 +1,5 @@
     Updating '[ROOTURL]/registry' index
     Checking virtual workspace's dependencies
-name       old req compatible latest    new req  
-====       ======= ========== ======    =======  
-my-package 0.1.1   0.1.1      99999.0.0 99999.0.0
     Checking four's dependencies
     Checking one's dependencies
     Checking three's dependencies

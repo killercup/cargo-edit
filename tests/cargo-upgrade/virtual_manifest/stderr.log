@@ -1,20 +1,7 @@
     Updating '[ROOTURL]/registry' index
     Checking virtual workspace's dependencies
     Checking four's dependencies
-name       old req compatible latest    new req  
-====       ======= ========== ======    =======  
-my-package 0.2.0   0.2.3      99999.0.0 99999.0.0
     Checking one's dependencies
-name       old req compatible latest    new req  
-====       ======= ========== ======    =======  
-my-package 0.2.0   0.2.3      99999.0.0 99999.0.0
-three      0.1.0   -          -         0.1.0    
     Checking three's dependencies
-name       old req compatible latest    new req  
-====       ======= ========== ======    =======  
-my-package 0.2.0   0.2.3      99999.0.0 99999.0.0
     Checking two's dependencies
-name       old req compatible latest    new req  
-====       ======= ========== ======    =======  
-my-package 0.2.0   0.2.3      99999.0.0 99999.0.0
    Upgrading recursive dependencies

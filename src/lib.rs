@@ -44,7 +44,7 @@ pub use manifest::{find, get_dep_version, set_dep_version, LocalManifest, Manife
 pub use metadata::manifest_from_pkgid;
 pub use registry::registry_url;
 pub use util::{
-    colorize_stderr, shell_note, shell_print, shell_status, shell_warn, shell_write_stderr, Color,
-    ColorChoice,
+    colorize_stderr, shell_note, shell_print, shell_status, shell_warn, shell_write_stderr,
+    shell_write_stdout, Color, ColorChoice,
 };
 pub use version::{upgrade_requirement, VersionExt};
