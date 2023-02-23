@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+`upgrade`
+- Report dependency tables to `stdout`, instead of `stderr`
+
 ## 0.11.8 - 2023-01-26
 
 ### Internal
