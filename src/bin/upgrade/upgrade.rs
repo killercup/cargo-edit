@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use anyhow::Context as _;
 use cargo_edit::{
     find, get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version,
-    shell_note, shell_status, shell_warn, shell_write_stderr, update_registry_index, CargoResult,
+    shell_note, shell_status, shell_warn, shell_write_stdout, update_registry_index, CargoResult,
     CrateSpec, Dependency, LocalManifest, Source,
 };
 use clap::Args;
@@ -933,7 +933,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             };
             write_cell(&dep.name, width[0], &spec)?;
 
-            shell_write_stderr(" ", &ColorSpec::new())?;
+            shell_write_stdout(" ", &ColorSpec::new())?;
             let spec = if is_header {
                 header_spec.clone()
             } else {
@@ -941,7 +941,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             };
             write_cell(dep.old_version_req(), width[1], &spec)?;
 
-            shell_write_stderr(" ", &ColorSpec::new())?;
+            shell_write_stdout(" ", &ColorSpec::new())?;
             let spec = if is_header {
                 header_spec.clone()
             } else {
@@ -949,7 +949,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             };
             write_cell(dep.compatible_version(), width[2], &spec)?;
 
-            shell_write_stderr(" ", &ColorSpec::new())?;
+            shell_write_stdout(" ", &ColorSpec::new())?;
             let spec = if is_header {
                 header_spec.clone()
             } else {
@@ -957,7 +957,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             };
             write_cell(dep.latest_version(), width[3], &spec)?;
 
-            shell_write_stderr(" ", &ColorSpec::new())?;
+            shell_write_stdout(" ", &ColorSpec::new())?;
             let spec = if is_header {
                 header_spec.clone()
             } else {
@@ -966,7 +966,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
             write_cell(dep.new_version_req(), width[4], &spec)?;
 
             if 0 < width[5] {
-                shell_write_stderr(" ", &ColorSpec::new())?;
+                shell_write_stdout(" ", &ColorSpec::new())?;
                 let spec = if is_header {
                     header_spec.clone()
                 } else {
@@ -980,17 +980,18 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
                 write_cell(reason, width[5], &spec)?;
             }
 
-            shell_write_stderr("\n", &ColorSpec::new())?;
+            shell_write_stdout("\n", &ColorSpec::new())?;
         }
     }
+    shell_write_stdout("\n", &ColorSpec::new())?;
 
     Ok(())
 }
 
 fn write_cell(content: &str, width: usize, spec: &ColorSpec) -> CargoResult<()> {
-    shell_write_stderr(content, spec)?;
+    shell_write_stdout(content, spec)?;
     for _ in 0..(width - content.len()) {
-        shell_write_stderr(" ", &ColorSpec::new())?;
+        shell_write_stdout(" ", &ColorSpec::new())?;
     }
     Ok(())
 }

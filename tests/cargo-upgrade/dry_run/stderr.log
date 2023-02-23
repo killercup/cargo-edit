@@ -1,6 +1,3 @@
     Updating '[ROOTURL]/registry' index
     Checking cargo-list-test-fixture's dependencies
-name       old req compatible latest    new req  
-====       ======= ========== ======    =======  
-my-package 0.1.1   0.1.1      99999.0.0 99999.0.0
 warning: aborting upgrade due to dry run
