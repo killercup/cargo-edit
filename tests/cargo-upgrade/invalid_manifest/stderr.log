@@ -9,6 +9,5 @@ Caused by:
     |
   1 | This is clearly not a valid Cargo.toml.
     |      ^
-  Unexpected `i`
-  Expected `.` or `=`
+  expected `.`, `=`
 
