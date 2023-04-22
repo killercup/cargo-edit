@@ -1,6 +1,6 @@
 use super::errors::*;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use url::Url;
 
 const CRATES_IO_INDEX: &str = "https://github.com/rust-lang/crates.io-index";
@@ -49,7 +49,7 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> CargoResult
         }
     }
 
-    let default_cargo_home = cargo_home()?;
+    let default_cargo_home = home::cargo_home()?;
     let default_config_path = default_cargo_home.join("config");
     if default_config_path.is_file() {
         read_config(&mut registries, default_config_path)?;
@@ -113,16 +113,6 @@ struct Source {
 #[derive(Debug, Deserialize)]
 struct Registry {
     index: Option<String>,
-}
-
-fn cargo_home() -> CargoResult<PathBuf> {
-    let default_cargo_home = dirs_next::home_dir()
-        .map(|x| x.join(".cargo"))
-        .with_context(|| anyhow::format_err!("Failed to read home directory"))?;
-    let cargo_home = std::env::var("CARGO_HOME")
-        .map(PathBuf::from)
-        .unwrap_or(default_cargo_home);
-    Ok(cargo_home)
 }
 
 mod code_from_cargo {
