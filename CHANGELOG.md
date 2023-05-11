@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.11.10 - 2023-05-11
+
 ### Fixes
 
 - In summary lists, coalece long lists
