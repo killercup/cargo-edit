@@ -35,8 +35,8 @@ pub struct UpgradeArgs {
     locked: bool,
 
     /// Use verbose output
-    #[arg(short, long)]
-    verbose: bool,
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 
     /// Unstable (nightly-only) flags
     #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
@@ -114,11 +114,15 @@ impl UpgradeArgs {
         exec(self)
     }
 
+    fn is_verbose(&self) -> bool {
+        0 < self.verbose
+    }
+
     fn verbose<F>(&self, mut callback: F) -> CargoResult<()>
     where
         F: FnMut() -> CargoResult<()>,
     {
-        if self.verbose {
+        if self.is_verbose() {
             callback()
         } else {
             Ok(())
@@ -422,7 +426,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             }
         }
         if !table.is_empty() {
-            let (interesting, uninteresting) = if args.verbose {
+            let (interesting, uninteresting) = if args.is_verbose() {
                 (table, Vec::new())
             } else {
                 table
