@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.11.11 - 2023-05-11
+
 `upgrade`
 - `--locked --dry-run` should error if there are changes
 
