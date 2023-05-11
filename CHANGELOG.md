@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- In summary lists, coalece long lists
+- Reduce padding, consuming precious vertical space on large workspaces
+- Move unchanged requirements out of table unless `--verbose`, moving the existing `--verbose` to `--verbose --verbose`.
+
 ## 0.11.9 - 2023-02-23
 
 ### Fixes
