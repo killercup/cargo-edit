@@ -437,11 +437,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         }
     }
 
-    if !modified_crates.is_empty() && !args.dry_run {
-        if args.locked {
-            anyhow::bail!("cannot upgrade due to `--locked`");
-        }
-
+    if modified_crates.is_empty() {
+    } else if args.locked {
+        anyhow::bail!("cannot upgrade due to `--locked`");
+    } else if args.dry_run {
+    } else {
         // Ensure lock file is updated and collect data for `recursive`
         let metadata = resolve_ws(Some(&root_manifest_path), args.locked, args.offline)?;
         let mut locked = metadata.packages;
