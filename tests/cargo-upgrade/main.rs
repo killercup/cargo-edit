@@ -15,6 +15,7 @@ mod invalid_flag;
 mod invalid_manifest;
 mod invalid_workspace_root_manifest;
 mod locked;
+mod locked_dry_run;
 mod lockfile;
 mod optional_dep;
 mod pinned;
