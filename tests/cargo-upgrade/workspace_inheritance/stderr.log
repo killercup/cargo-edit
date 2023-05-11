@@ -5,5 +5,5 @@
     Checking three's dependencies
     Checking two's dependencies
    Upgrading recursive dependencies
-note: Re-run with `--verbose` to show all dependencies
+note: Re-run with `--verbose` to show more dependencies
   local: three

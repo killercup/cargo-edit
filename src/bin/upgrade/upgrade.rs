@@ -426,13 +426,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             }
         }
         if !table.is_empty() {
-            let (interesting, uninteresting) = if args.is_verbose() {
-                (table, Vec::new())
-            } else {
-                table
-                    .into_iter()
-                    .partition::<Vec<_>, _>(Dep::is_interesting)
-            };
+            let (interesting, uninteresting) = table
+                .into_iter()
+                .partition::<Vec<_>, _>(|d| d.show_for(args.verbose));
             print_upgrade(interesting)?;
             uninteresting_crates.extend(uninteresting);
         }
@@ -600,7 +596,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 .or_insert_with(BTreeSet::new)
                 .insert(dep.name);
         }
-        let mut note = "Re-run with `--verbose` to show all dependencies".to_owned();
+        let mut note = "Re-run with `--verbose` to show more dependencies".to_owned();
         for (reason, deps) in categorize {
             use std::fmt::Write;
             write!(&mut note, "\n  {reason}: ")?;
@@ -798,18 +794,23 @@ impl Dep {
         spec
     }
 
-    fn is_interesting(&self) -> bool {
-        if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
+    fn show_for(&self, verbosity: u8) -> bool {
+        if 2 <= verbosity {
             return true;
         }
 
         if self.req_changed() {
             return true;
         }
+        if 0 < verbosity {
+            if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
+                return true;
+            }
 
-        if !self.old_req_matches_latest() {
-            // Show excluded cases with potential
-            return true;
+            if !self.old_req_matches_latest() {
+                // Show excluded cases with potential
+                return true;
+            }
         }
 
         false
