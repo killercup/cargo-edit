@@ -401,7 +401,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 let new_version_req = new_version_req.unwrap_or_else(|| old_version_req.clone());
 
                 if new_version_req == old_version_req {
-                    reason.get_or_insert(Reason::Unchanged);
+                    reason.get_or_insert(Reason::Latest);
                 } else {
                     set_dep_version(dep_item, &new_version_req)?;
                     crate_modified = true;
@@ -755,7 +755,7 @@ impl Dep {
         if self.req_changed() {
             spec.set_fg(Some(Color::Green));
         }
-        if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
+        if self.reason.unwrap_or(Reason::Latest).is_upgradeable() {
             spec.set_fg(Some(Color::Yellow));
         }
         if let Some(latest_version) = self
@@ -788,7 +788,7 @@ impl Dep {
 
     fn reason_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        if self.reason.unwrap_or(Reason::Unchanged).is_warning() {
+        if self.reason.unwrap_or(Reason::Latest).is_warning() {
             spec.set_fg(Some(Color::Yellow));
         }
         spec
@@ -803,7 +803,7 @@ impl Dep {
             return true;
         }
         if 0 < verbosity {
-            if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
+            if self.reason.unwrap_or(Reason::Latest).is_upgradeable() {
                 return true;
             }
 
@@ -834,7 +834,7 @@ impl Dep {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Reason {
-    Unchanged,
+    Latest,
     Compatible,
     Incompatible,
     Pinned,
@@ -846,7 +846,7 @@ enum Reason {
 impl Reason {
     fn is_upgradeable(&self) -> bool {
         match self {
-            Self::Unchanged => false,
+            Self::Latest => false,
             Self::Compatible => true,
             Self::Incompatible => true,
             Self::Pinned => true,
@@ -858,7 +858,7 @@ impl Reason {
 
     fn is_warning(&self) -> bool {
         match self {
-            Self::Unchanged => false,
+            Self::Latest => false,
             Self::Compatible => false,
             Self::Incompatible => true,
             Self::Pinned => true,
@@ -870,7 +870,7 @@ impl Reason {
 
     fn as_short(&self) -> &'static str {
         match self {
-            Self::Unchanged => "",
+            Self::Latest => "",
             Self::Compatible => "compatible",
             Self::Incompatible => "incompatible",
             Self::Pinned => "pinned",
@@ -882,7 +882,7 @@ impl Reason {
 
     fn as_long(&self) -> &'static str {
         match self {
-            Self::Unchanged => "unchanged",
+            Self::Latest => "latest",
             Self::Compatible => "compatible",
             Self::Incompatible => "incompatible",
             Self::Pinned => "pinned",
