@@ -7,10 +7,14 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+`upgrade`
+- `--locked --dry-run` should error if there are changes
+
 ## 0.11.10 - 2023-05-11
 
 ### Fixes
 
+`upgrade`
 - In summary lists, coalece long lists
 - Reduce padding, consuming precious vertical space on large workspaces
 - Move unchanged requirements out of table unless `--verbose`, moving the existing `--verbose` to `--verbose --verbose`.
