@@ -57,30 +57,30 @@ required-features = ["set-version"]
 
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
-cargo_metadata = "0.15.3"
-crates-index = "0.19.2"
+cargo_metadata = "0.15.4"
+crates-index = "0.19.8"
 dunce = "1.0"
 env_proxy = "0.4.1"
 anyhow = "1.0"
 git2 = "0.16"
 hex = "0.4.3"
-home = "0.5.4"
-regex = "1.7.1"
-serde = "1.0.152"
-serde_derive = "1.0.152"
-serde_json = "1.0.91"
-clap = { version = "4.1.4", features = ["derive", "wrap_help"], optional = true }
+home = "0.5.5"
+regex = "1.8.1"
+serde = "1.0.163"
+serde_derive = "1.0.163"
+serde_json = "1.0.96"
+clap = { version = "4.2.7", features = ["derive", "wrap_help"], optional = true }
 subprocess = "0.2.9"
 termcolor = "1.2.0"
-toml = "0.7.1"
-toml_edit = "0.19.1"
+toml = "0.7.3"
+toml_edit = "0.19.8"
 indexmap = "1"
 url = "2.3.1"
 pathdiff = "0.2"
 
 [dependencies.semver]
 features = ["serde"]
-version = "1.0.16"
+version = "1.0.17"
 
 [target.'cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "x86", target_arch = "aarch64"))'.dependencies]
 ureq = { version = "2.6.2", default-features = false, features = ["tls", "json", "socks", "socks-proxy"] }
@@ -91,11 +91,11 @@ native-tls = "^0.2"
 ureq = { version = "2.6.2", default-features = false, features = ["native-tls", "json", "socks", "socks-proxy"] }
 
 [dev-dependencies]
-predicates = { version = "2.1.5", features = ["color-auto"] }
-assert_cmd = { version = "2.0.8", features = ["color-auto"] }
-assert_fs = { version = "1.0.10", features = ["color-auto"] }
-trycmd = "0.14.11"
-snapbox = { version = "0.4.4", features = ["cmd", "path"] }
+predicates = { version = "3.0.3", features = ["color"] }
+assert_cmd = { version = "2.0.11", features = ["color-auto"] }
+assert_fs = { version = "1.0.13", features = ["color-auto"] }
+trycmd = "0.14.16"
+snapbox = { version = "0.4.11", features = ["cmd", "path"] }
 cargo-test-macro.git = "https://github.com/rust-lang/cargo"
 cargo-test-support.git = "https://github.com/rust-lang/cargo"
 url = "2.3.1"
