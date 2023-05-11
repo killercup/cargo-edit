@@ -18,6 +18,7 @@ fn case() {
             "--manifest-path",
             "Cargo.toml",
             "--verbose",
+            "--verbose",
             "--incompatible",
         ])
         .current_dir(cwd)

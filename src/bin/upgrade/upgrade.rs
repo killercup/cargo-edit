@@ -35,8 +35,8 @@ pub struct UpgradeArgs {
     locked: bool,
 
     /// Use verbose output
-    #[arg(short, long)]
-    verbose: bool,
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 
     /// Unstable (nightly-only) flags
     #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
@@ -114,11 +114,15 @@ impl UpgradeArgs {
         exec(self)
     }
 
+    fn is_verbose(&self) -> bool {
+        0 < self.verbose
+    }
+
     fn verbose<F>(&self, mut callback: F) -> CargoResult<()>
     where
         F: FnMut() -> CargoResult<()>,
     {
-        if self.verbose {
+        if self.is_verbose() {
             callback()
         } else {
             Ok(())
@@ -397,7 +401,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 let new_version_req = new_version_req.unwrap_or_else(|| old_version_req.clone());
 
                 if new_version_req == old_version_req {
-                    reason.get_or_insert(Reason::Unchanged);
+                    reason.get_or_insert(Reason::Latest);
                 } else {
                     set_dep_version(dep_item, &new_version_req)?;
                     crate_modified = true;
@@ -422,13 +426,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             }
         }
         if !table.is_empty() {
-            let (interesting, uninteresting) = if args.verbose {
-                (table, Vec::new())
-            } else {
-                table
-                    .into_iter()
-                    .partition::<Vec<_>, _>(Dep::is_interesting)
-            };
+            let (interesting, uninteresting) = table
+                .into_iter()
+                .partition::<Vec<_>, _>(|d| d.show_for(args.verbose));
             print_upgrade(interesting)?;
             uninteresting_crates.extend(uninteresting);
         }
@@ -596,7 +596,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 .or_insert_with(BTreeSet::new)
                 .insert(dep.name);
         }
-        let mut note = "Re-run with `--verbose` to show all dependencies".to_owned();
+        let mut note = "Re-run with `--verbose` to show more dependencies".to_owned();
         for (reason, deps) in categorize {
             use std::fmt::Write;
             write!(&mut note, "\n  {reason}: ")?;
@@ -755,7 +755,7 @@ impl Dep {
         if self.req_changed() {
             spec.set_fg(Some(Color::Green));
         }
-        if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
+        if self.reason.unwrap_or(Reason::Latest).is_upgradeable() {
             spec.set_fg(Some(Color::Yellow));
         }
         if let Some(latest_version) = self
@@ -788,24 +788,29 @@ impl Dep {
 
     fn reason_spec(&self) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        if self.reason.unwrap_or(Reason::Unchanged).is_warning() {
+        if self.reason.unwrap_or(Reason::Latest).is_warning() {
             spec.set_fg(Some(Color::Yellow));
         }
         spec
     }
 
-    fn is_interesting(&self) -> bool {
-        if self.reason.unwrap_or(Reason::Unchanged).is_upgradeable() {
+    fn show_for(&self, verbosity: u8) -> bool {
+        if 2 <= verbosity {
             return true;
         }
 
         if self.req_changed() {
             return true;
         }
+        if 0 < verbosity {
+            if self.reason.unwrap_or(Reason::Latest).is_upgradeable() {
+                return true;
+            }
 
-        if !self.old_req_matches_latest() {
-            // Show excluded cases with potential
-            return true;
+            if !self.old_req_matches_latest() {
+                // Show excluded cases with potential
+                return true;
+            }
         }
 
         false
@@ -829,7 +834,7 @@ impl Dep {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Reason {
-    Unchanged,
+    Latest,
     Compatible,
     Incompatible,
     Pinned,
@@ -841,7 +846,7 @@ enum Reason {
 impl Reason {
     fn is_upgradeable(&self) -> bool {
         match self {
-            Self::Unchanged => false,
+            Self::Latest => false,
             Self::Compatible => true,
             Self::Incompatible => true,
             Self::Pinned => true,
@@ -853,7 +858,7 @@ impl Reason {
 
     fn is_warning(&self) -> bool {
         match self {
-            Self::Unchanged => false,
+            Self::Latest => false,
             Self::Compatible => false,
             Self::Incompatible => true,
             Self::Pinned => true,
@@ -865,7 +870,7 @@ impl Reason {
 
     fn as_short(&self) -> &'static str {
         match self {
-            Self::Unchanged => "",
+            Self::Latest => "",
             Self::Compatible => "compatible",
             Self::Incompatible => "incompatible",
             Self::Pinned => "pinned",
@@ -877,7 +882,7 @@ impl Reason {
 
     fn as_long(&self) -> &'static str {
         match self {
-            Self::Unchanged => "unchanged",
+            Self::Latest => "latest",
             Self::Compatible => "compatible",
             Self::Incompatible => "incompatible",
             Self::Pinned => "pinned",

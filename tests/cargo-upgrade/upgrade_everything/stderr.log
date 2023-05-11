@@ -1,5 +1,5 @@
     Updating '[ROOTURL]/registry' index
     Checking None's dependencies
    Upgrading recursive dependencies
-note: Re-run with `--verbose` to show all dependencies
-  unchanged: serde
+note: Re-run with `--verbose` to show more dependencies
+  latest: serde

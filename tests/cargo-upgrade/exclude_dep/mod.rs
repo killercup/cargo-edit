@@ -20,6 +20,7 @@ fn case() {
             "--exclude",
             "docopt",
             "--verbose",
+            "--verbose",
             "--incompatible",
         ])
         .current_dir(cwd)

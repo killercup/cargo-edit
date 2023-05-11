@@ -125,7 +125,7 @@ Options:
       --manifest-path <PATH>  Path to the manifest to upgrade
       --offline               Run without accessing the network
       --locked                Require `Cargo.toml` to be up to date
-  -v, --verbose               Use verbose output
+  -v, --verbose...            Use verbose output
   -Z <FLAG>                   Unstable (nightly-only) flags
   -h, --help                  Print help
   -V, --version               Print version
