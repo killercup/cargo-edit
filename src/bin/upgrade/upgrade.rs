@@ -890,106 +890,106 @@ impl Reason {
 
 /// Print a message if the new dependency version is different from the old one.
 fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
-    if !interesting.is_empty() {
-        interesting.splice(
-            0..0,
-            [
-                Dep {
-                    name: "name".to_owned(),
-                    old_version_req: Some("old req".to_owned()),
-                    compatible_version: Some("compatible".to_owned()),
-                    latest_version: Some("latest".to_owned()),
-                    new_version_req: Some("new req".to_owned()),
-                    reason: None,
-                },
-                Dep {
-                    name: "====".to_owned(),
-                    old_version_req: Some("=======".to_owned()),
-                    compatible_version: Some("==========".to_owned()),
-                    latest_version: Some("======".to_owned()),
-                    new_version_req: Some("=======".to_owned()),
-                    reason: None,
-                },
-            ],
-        );
-        let mut width = [0; 6];
-        for (i, dep) in interesting.iter().enumerate() {
-            width[0] = width[0].max(dep.name.len());
-            width[1] = width[1].max(dep.old_version_req().len());
-            width[2] = width[2].max(dep.compatible_version().len());
-            width[3] = width[3].max(dep.latest_version().len());
-            width[4] = width[4].max(dep.new_version_req().len());
-            if 1 < i {
-                width[5] = width[5].max(dep.short_reason().len());
-            }
-        }
-        if 0 < width[5] {
-            width[5] = width[5].max("note".len());
-        }
-
-        for (i, dep) in interesting.iter().enumerate() {
-            let is_header = (0..=1).contains(&i);
-            let mut header_spec = ColorSpec::new();
-            header_spec.set_bold(true);
-
-            let spec = if is_header {
-                header_spec.clone()
-            } else {
-                ColorSpec::new()
-            };
-            write_cell(&dep.name, width[0], &spec)?;
-
-            shell_write_stdout(" ", &ColorSpec::new())?;
-            let spec = if is_header {
-                header_spec.clone()
-            } else {
-                dep.old_version_req_spec()
-            };
-            write_cell(dep.old_version_req(), width[1], &spec)?;
-
-            shell_write_stdout(" ", &ColorSpec::new())?;
-            let spec = if is_header {
-                header_spec.clone()
-            } else {
-                dep.compatible_version_spec()
-            };
-            write_cell(dep.compatible_version(), width[2], &spec)?;
-
-            shell_write_stdout(" ", &ColorSpec::new())?;
-            let spec = if is_header {
-                header_spec.clone()
-            } else {
-                ColorSpec::new()
-            };
-            write_cell(dep.latest_version(), width[3], &spec)?;
-
-            shell_write_stdout(" ", &ColorSpec::new())?;
-            let spec = if is_header {
-                header_spec.clone()
-            } else {
-                dep.new_version_req_spec()
-            };
-            write_cell(dep.new_version_req(), width[4], &spec)?;
-
-            if 0 < width[5] {
-                shell_write_stdout(" ", &ColorSpec::new())?;
-                let spec = if is_header {
-                    header_spec.clone()
-                } else {
-                    dep.reason_spec()
-                };
-                let reason = match i {
-                    0 => "note",
-                    1 => "====",
-                    _ => dep.short_reason(),
-                };
-                write_cell(reason, width[5], &spec)?;
-            }
-
-            shell_write_stdout("\n", &ColorSpec::new())?;
+    if interesting.is_empty() {
+        return Ok(());
+    }
+    interesting.splice(
+        0..0,
+        [
+            Dep {
+                name: "name".to_owned(),
+                old_version_req: Some("old req".to_owned()),
+                compatible_version: Some("compatible".to_owned()),
+                latest_version: Some("latest".to_owned()),
+                new_version_req: Some("new req".to_owned()),
+                reason: None,
+            },
+            Dep {
+                name: "====".to_owned(),
+                old_version_req: Some("=======".to_owned()),
+                compatible_version: Some("==========".to_owned()),
+                latest_version: Some("======".to_owned()),
+                new_version_req: Some("=======".to_owned()),
+                reason: None,
+            },
+        ],
+    );
+    let mut width = [0; 6];
+    for (i, dep) in interesting.iter().enumerate() {
+        width[0] = width[0].max(dep.name.len());
+        width[1] = width[1].max(dep.old_version_req().len());
+        width[2] = width[2].max(dep.compatible_version().len());
+        width[3] = width[3].max(dep.latest_version().len());
+        width[4] = width[4].max(dep.new_version_req().len());
+        if 1 < i {
+            width[5] = width[5].max(dep.short_reason().len());
         }
     }
-    shell_write_stdout("\n", &ColorSpec::new())?;
+    if 0 < width[5] {
+        width[5] = width[5].max("note".len());
+    }
+
+    for (i, dep) in interesting.iter().enumerate() {
+        let is_header = (0..=1).contains(&i);
+        let mut header_spec = ColorSpec::new();
+        header_spec.set_bold(true);
+
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            ColorSpec::new()
+        };
+        write_cell(&dep.name, width[0], &spec)?;
+
+        shell_write_stdout(" ", &ColorSpec::new())?;
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            dep.old_version_req_spec()
+        };
+        write_cell(dep.old_version_req(), width[1], &spec)?;
+
+        shell_write_stdout(" ", &ColorSpec::new())?;
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            dep.compatible_version_spec()
+        };
+        write_cell(dep.compatible_version(), width[2], &spec)?;
+
+        shell_write_stdout(" ", &ColorSpec::new())?;
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            ColorSpec::new()
+        };
+        write_cell(dep.latest_version(), width[3], &spec)?;
+
+        shell_write_stdout(" ", &ColorSpec::new())?;
+        let spec = if is_header {
+            header_spec.clone()
+        } else {
+            dep.new_version_req_spec()
+        };
+        write_cell(dep.new_version_req(), width[4], &spec)?;
+
+        if 0 < width[5] {
+            shell_write_stdout(" ", &ColorSpec::new())?;
+            let spec = if is_header {
+                header_spec.clone()
+            } else {
+                dep.reason_spec()
+            };
+            let reason = match i {
+                0 => "note",
+                1 => "====",
+                _ => dep.short_reason(),
+            };
+            write_cell(reason, width[5], &spec)?;
+        }
+
+        shell_write_stdout("\n", &ColorSpec::new())?;
+    }
 
     Ok(())
 }
