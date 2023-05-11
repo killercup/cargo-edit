@@ -600,11 +600,17 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         for (reason, deps) in categorize {
             use std::fmt::Write;
             write!(&mut note, "\n  {reason}: ")?;
-            for (i, dep) in deps.into_iter().enumerate() {
-                if 0 < i {
-                    note.push_str(", ");
+            if deps.len() <= 3 {
+                for (i, dep) in deps.into_iter().enumerate() {
+                    if 0 < i {
+                        note.push_str(", ");
+                    }
+                    note.push_str(&dep);
                 }
-                note.push_str(&dep);
+            } else {
+                let number = deps.len();
+                let plural = if number == 1 { "" } else { "s" };
+                write!(&mut note, "{number} package{plural}")?;
             }
         }
         shell_note(&note)?;
