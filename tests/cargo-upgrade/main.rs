@@ -6,9 +6,11 @@
 extern crate cargo_test_macro;
 
 mod alt_registry;
+mod cli_rust_version;
 mod dry_run;
 mod exclude_dep;
 mod exclude_renamed;
+mod ignore_rust_version;
 mod implicit_prerelease;
 mod invalid_dep;
 mod invalid_flag;
@@ -18,6 +20,7 @@ mod locked;
 mod locked_dry_run;
 mod lockfile;
 mod optional_dep;
+mod package_rust_version;
 mod pinned;
 mod preserve_op;
 mod preserve_precision_major;
