@@ -14,7 +14,14 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--package", "docopt@99999.0.0", "--verbose", "--verbose"])
+        .args([
+            "--package",
+            "docopt@99999.0.0",
+            "--verbose",
+            "--verbose",
+            "--compatible=false",
+            "--incompatible=false",
+        ])
         .current_dir(cwd)
         .assert()
         .success()
