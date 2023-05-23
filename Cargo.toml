@@ -58,22 +58,22 @@ required-features = ["set-version"]
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
 cargo_metadata = "0.15.4"
-crates-index = "0.19.8"
+crates-index = "0.19.10"
 dunce = "1.0"
 env_proxy = "0.4.1"
 anyhow = "1.0"
-git2 = "0.16"
+git2 = "0.17"
 hex = "0.4.3"
 home = "0.5.5"
-regex = "1.8.1"
+regex = "1.8.2"
 serde = "1.0.163"
 serde_derive = "1.0.163"
 serde_json = "1.0.96"
-clap = { version = "4.2.7", features = ["derive", "wrap_help"], optional = true }
+clap = { version = "4.3.0", features = ["derive", "wrap_help"], optional = true }
 subprocess = "0.2.9"
 termcolor = "1.2.0"
-toml = "0.7.3"
-toml_edit = "0.19.8"
+toml = "0.7.4"
+toml_edit = "0.19.9"
 indexmap = "1"
 url = "2.3.1"
 pathdiff = "0.2"
