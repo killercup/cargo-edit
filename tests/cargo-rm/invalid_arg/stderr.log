@@ -1,7 +1,0 @@
-error: unexpected argument '--flag' found
-
-  tip: to pass '--flag' as a value, use '-- --flag'
-
-Usage: cargo rm <DEP_ID|--dev|--build|--target <TARGET>|--manifest-path <PATH>|--package <PKGID>|-Z <FLAG>|--dry-run|--quiet>
-
-For more information, try '--help'.
