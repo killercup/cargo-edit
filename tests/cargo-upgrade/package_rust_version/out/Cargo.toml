@@ -4,4 +4,4 @@ version = "0.0.0"
 rust-version = "1.64.0"
 
 [dependencies]
-my-package = "0.2.0"
+my-package = "0.1.2"

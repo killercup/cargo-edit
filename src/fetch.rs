@@ -25,6 +25,7 @@ use super::VersionExt;
 pub fn get_latest_dependency(
     crate_name: &str,
     flag_allow_prerelease: bool,
+    rust_version: Option<RustVersion>,
     manifest_path: &Path,
     registry: Option<&Url>,
 ) -> CargoResult<Dependency> {
@@ -70,7 +71,7 @@ pub fn get_latest_dependency(
 
     let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
 
-    let dep = read_latest_version(&crate_versions, flag_allow_prerelease)?;
+    let dep = read_latest_version(&crate_versions, flag_allow_prerelease, rust_version)?;
 
     if dep.name != crate_name {
         eprintln!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
@@ -83,6 +84,7 @@ pub fn get_latest_dependency(
 pub fn get_compatible_dependency(
     crate_name: &str,
     version_req: &semver::VersionReq,
+    rust_version: Option<RustVersion>,
     manifest_path: &Path,
     registry: Option<&Url>,
 ) -> CargoResult<Dependency> {
@@ -97,7 +99,7 @@ pub fn get_compatible_dependency(
 
     let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
 
-    let dep = read_compatible_version(&crate_versions, version_req)?;
+    let dep = read_compatible_version(&crate_versions, version_req, rust_version)?;
 
     if dep.name != crate_name {
         eprintln!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
@@ -106,10 +108,81 @@ pub fn get_compatible_dependency(
     Ok(dep)
 }
 
+/// Simplified represetation of `package.rust-version`
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct RustVersion {
+    #[allow(missing_docs)]
+    pub major: u64,
+    #[allow(missing_docs)]
+    pub minor: u64,
+    #[allow(missing_docs)]
+    pub patch: u64,
+}
+
+impl RustVersion {
+    /// Minimum-possible `package.rust-version`
+    pub const MIN: Self = RustVersion {
+        major: 1,
+        minor: 0,
+        patch: 0,
+    };
+    /// Maximum-possible `package.rust-version`
+    pub const MAX: Self = RustVersion {
+        major: u64::MAX,
+        minor: u64::MAX,
+        patch: u64::MAX,
+    };
+}
+
+impl std::str::FromStr for RustVersion {
+    type Err = anyhow::Error;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let version_req = text.parse::<semver::VersionReq>()?;
+        anyhow::ensure!(
+            version_req.comparators.len() == 1,
+            "rust-version must be a value like `1.32`"
+        );
+        let comp = &version_req.comparators[0];
+        anyhow::ensure!(
+            comp.op == semver::Op::Caret,
+            "rust-version must be a value like `1.32`"
+        );
+        anyhow::ensure!(
+            comp.pre == semver::Prerelease::EMPTY,
+            "rust-version must be a value like `1.32`"
+        );
+        Ok(Self {
+            major: comp.major,
+            minor: comp.minor.unwrap_or(0),
+            patch: comp.patch.unwrap_or(0),
+        })
+    }
+}
+
+impl From<&'_ semver::VersionReq> for RustVersion {
+    fn from(version_req: &semver::VersionReq) -> Self {
+        // HACK: `rust-version` is a subset of the `VersionReq` syntax that only ever
+        // has one comparator with a required minor and optional patch, and uses no
+        // other features. If in the future this syntax is expanded, this code will need
+        // to be updated.
+        assert!(version_req.comparators.len() == 1);
+        let comp = &version_req.comparators[0];
+        assert_eq!(comp.op, semver::Op::Caret);
+        assert_eq!(comp.pre, semver::Prerelease::EMPTY);
+        Self {
+            major: comp.major,
+            minor: comp.minor.unwrap_or(0),
+            patch: comp.patch.unwrap_or(0),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct CrateVersion {
     name: String,
     version: semver::Version,
+    rust_version: Option<RustVersion>,
     yanked: bool,
     available_features: BTreeMap<String, Vec<String>>,
 }
@@ -140,6 +213,7 @@ fn fuzzy_query_registry_index(
                 Ok(CrateVersion {
                     name: v.name().to_owned(),
                     version: v.version().parse()?,
+                    rust_version: v.rust_version().map(|r| r.parse()).transpose()?,
                     yanked: v.is_yanked(),
                     available_features: registry_features(v),
                 })
@@ -197,11 +271,20 @@ fn version_is_stable(version: &CrateVersion) -> bool {
 fn read_latest_version(
     versions: &[CrateVersion],
     flag_allow_prerelease: bool,
+    rust_version: Option<RustVersion>,
 ) -> CargoResult<Dependency> {
     let latest = versions
         .iter()
         .filter(|&v| flag_allow_prerelease || version_is_stable(v))
         .filter(|&v| !v.yanked)
+        .filter(|&v| {
+            rust_version
+                .and_then(|rust_version| {
+                    v.rust_version
+                        .map(|v_rust_version| v_rust_version <= rust_version)
+                })
+                .unwrap_or(true)
+        })
         .max_by_key(|&v| v.version.clone())
         .ok_or_else(|| {
             anyhow::format_err!(
@@ -221,11 +304,20 @@ fn read_latest_version(
 fn read_compatible_version(
     versions: &[CrateVersion],
     version_req: &semver::VersionReq,
+    rust_version: Option<RustVersion>,
 ) -> CargoResult<Dependency> {
     let latest = versions
         .iter()
         .filter(|&v| version_req.matches(&v.version))
         .filter(|&v| !v.yanked)
+        .filter(|&v| {
+            rust_version
+                .and_then(|rust_version| {
+                    v.rust_version
+                        .map(|v_rust_version| v_rust_version <= rust_version)
+                })
+                .unwrap_or(true)
+        })
         .max_by_key(|&v| v.version.clone())
         .ok_or_else(|| {
             anyhow::format_err!(
@@ -318,18 +410,20 @@ fn get_latest_stable_version() {
         CrateVersion {
             name: "foo".into(),
             version: "0.6.0-alpha".parse().unwrap(),
+            rust_version: None,
             yanked: false,
             available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
+            rust_version: None,
             yanked: false,
             available_features: BTreeMap::new(),
         },
     ];
     assert_eq!(
-        read_latest_version(&versions, false)
+        read_latest_version(&versions, false, None)
             .unwrap()
             .version()
             .unwrap(),
@@ -343,18 +437,20 @@ fn get_latest_unstable_or_stable_version() {
         CrateVersion {
             name: "foo".into(),
             version: "0.6.0-alpha".parse().unwrap(),
+            rust_version: None,
             yanked: false,
             available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
+            rust_version: None,
             yanked: false,
             available_features: BTreeMap::new(),
         },
     ];
     assert_eq!(
-        read_latest_version(&versions, true)
+        read_latest_version(&versions, true, None)
             .unwrap()
             .version()
             .unwrap(),
@@ -368,18 +464,20 @@ fn get_latest_version_with_yanked() {
         CrateVersion {
             name: "treexml".into(),
             version: "0.3.1".parse().unwrap(),
+            rust_version: None,
             yanked: true,
             available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
+            rust_version: None,
             yanked: false,
             available_features: BTreeMap::new(),
         },
     ];
     assert_eq!(
-        read_latest_version(&versions, false)
+        read_latest_version(&versions, false, None)
             .unwrap()
             .version()
             .unwrap(),
@@ -393,15 +491,17 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
         CrateVersion {
             name: "treexml".into(),
             version: "0.3.1".parse().unwrap(),
+            rust_version: None,
             yanked: true,
             available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
+            rust_version: None,
             yanked: true,
             available_features: BTreeMap::new(),
         },
     ];
-    assert!(read_latest_version(&versions, false).is_err());
+    assert!(read_latest_version(&versions, false, None).is_err());
 }

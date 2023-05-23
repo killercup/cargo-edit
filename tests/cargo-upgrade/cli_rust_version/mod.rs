@@ -28,7 +28,13 @@ fn case() {
 
     snapbox::cmd::Command::cargo_ui()
         .arg("upgrade")
-        .args(["--verbose", "--verbose", "--pinned", "--incompatible"])
+        .args([
+            "--verbose",
+            "--verbose",
+            "--pinned",
+            "--incompatible",
+            "--rust-version=1.70.0",
+        ])
         .current_dir(cwd)
         .assert()
         .success()
