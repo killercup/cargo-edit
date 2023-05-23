@@ -139,7 +139,7 @@ Version:
 Dependencies:
   -p, --package <PKGID[@<VERSION>]>  Crate to be upgraded
       --exclude <PKGID>              Crates to exclude and not upgrade
-      --recursive [<true|false>]     Recursively update locked dependencies [default: true]
+      --recursive [<true|false>]     Recursively update locked dependencies
 
 ```
 

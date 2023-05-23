@@ -101,12 +101,11 @@ pub struct UpgradeArgs {
         num_args=0..=1,
         action = clap::ArgAction::Set,
         value_name = "true|false",
-        default_value = "true",
         default_missing_value = "true",
         hide_possible_values = true,
         help_heading = "Dependencies"
     )]
-    recursive: bool,
+    recursive: Option<bool>,
 }
 
 impl UpgradeArgs {
@@ -536,7 +535,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             locked = metadata.packages;
         }
 
-        if args.recursive {
+        if args.recursive.unwrap_or_else(|| args.compatible.as_bool()) {
             shell_status("Upgrading", "recursive dependencies")?;
             let mut cmd = std::process::Command::new("cargo");
             cmd.arg("update");
