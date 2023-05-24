@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::env;
 use std::path::Path;
 use std::time::Duration;
 
@@ -29,37 +28,6 @@ pub fn get_latest_dependency(
     manifest_path: &Path,
     registry: Option<&Url>,
 ) -> CargoResult<Dependency> {
-    if env::var("CARGO_IS_TEST").is_ok() {
-        // We are in a simulated reality. Nothing is real here.
-        // FIXME: Use actual test handling code.
-        let new_version = if flag_allow_prerelease {
-            format!("99999.0.0-alpha.1+{crate_name}")
-        } else {
-            match crate_name {
-                "test_breaking" => "0.2.0".to_string(),
-                "test_nonbreaking" => "0.1.1".to_string(),
-                other => format!("99999.0.0+{other}"),
-            }
-        };
-
-        let features = if crate_name == "your-face" {
-            [
-                ("nose".to_string(), vec![]),
-                ("mouth".to_string(), vec![]),
-                ("eyes".to_string(), vec![]),
-                ("ears".to_string(), vec![]),
-            ]
-            .into_iter()
-            .collect::<BTreeMap<_, _>>()
-        } else {
-            BTreeMap::default()
-        };
-
-        return Ok(Dependency::new(crate_name)
-            .set_source(RegistrySource::new(new_version))
-            .set_available_features(features));
-    }
-
     if crate_name.is_empty() {
         anyhow::bail!("Found empty crate name");
     }
