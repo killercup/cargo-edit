@@ -7,6 +7,21 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Breaking Changes
+
+- *(rm)* Removed in favor of `cargo remove`
+- *(upgrade)* `--recursive <true|false>` now defaults to the same as `--compatible <true|false>`
+
+### Features
+
+- MSRV-aware setting of version requirements with `--ignore-rust-version` and `--rust-version <VER>` flags
+  - Resolver still won't be MSRV aware
+  - Lack of transparency in filtering out incompatible rust-versions (no warnings, no details in errors)
+
+### Fixes
+
+- Don't upgrade indirect dependencies with `--incompatible allow --compatible deny`
+
 ## 0.11.11 - 2023-05-11
 
 `upgrade`
