@@ -43,7 +43,7 @@ pub struct UpgradeArgs {
     ignore_rust_version: bool,
 
     /// Override `rust-version`
-    #[arg(long, conflicts_with = "ignore_rust_version")]
+    #[arg(long, value_name = "VER", conflicts_with = "ignore_rust_version")]
     rust_version: Option<RustVersion>,
 
     /// Unstable (nightly-only) flags

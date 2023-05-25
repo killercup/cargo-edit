@@ -82,16 +82,16 @@ Upgrade dependency version requirements in Cargo.toml manifest files
 Usage: cargo upgrade [OPTIONS]
 
 Options:
-      --dry-run                      Print changes to be made without making them
-      --manifest-path <PATH>         Path to the manifest to upgrade
-      --offline                      Run without accessing the network
-      --locked                       Require `Cargo.toml` to be up to date
-  -v, --verbose...                   Use verbose output
-      --ignore-rust-version          Ignore `rust-version` specification in packages
-      --rust-version <RUST_VERSION>  Override `rust-version`
-  -Z <FLAG>                          Unstable (nightly-only) flags
-  -h, --help                         Print help
-  -V, --version                      Print version
+      --dry-run               Print changes to be made without making them
+      --manifest-path <PATH>  Path to the manifest to upgrade
+      --offline               Run without accessing the network
+      --locked                Require `Cargo.toml` to be up to date
+  -v, --verbose...            Use verbose output
+      --ignore-rust-version   Ignore `rust-version` specification in packages
+      --rust-version <VER>    Override `rust-version`
+  -Z <FLAG>                   Unstable (nightly-only) flags
+  -h, --help                  Print help
+  -V, --version               Print version
 
 Version:
       --compatible [<allow|ignore>]    Upgrade to latest compatible version [default: allow]
