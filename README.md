@@ -84,11 +84,11 @@ Usage: cargo upgrade [OPTIONS]
 Options:
       --dry-run               Print changes to be made without making them
       --manifest-path <PATH>  Path to the manifest to upgrade
+      --rust-version <VER>    Override `rust-version`
+      --ignore-rust-version   Ignore `rust-version` specification in packages
       --offline               Run without accessing the network
       --locked                Require `Cargo.toml` to be up to date
   -v, --verbose...            Use verbose output
-      --ignore-rust-version   Ignore `rust-version` specification in packages
-      --rust-version <VER>    Override `rust-version`
   -Z <FLAG>                   Unstable (nightly-only) flags
   -h, --help                  Print help
   -V, --version               Print version

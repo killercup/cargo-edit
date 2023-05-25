@@ -26,6 +26,14 @@ pub struct UpgradeArgs {
     #[arg(long, value_name = "PATH")]
     manifest_path: Option<PathBuf>,
 
+    /// Override `rust-version`
+    #[arg(long, value_name = "VER", conflicts_with = "ignore_rust_version")]
+    rust_version: Option<RustVersion>,
+
+    /// Ignore `rust-version` specification in packages
+    #[arg(long)]
+    ignore_rust_version: bool,
+
     /// Run without accessing the network
     #[arg(long)]
     offline: bool,
@@ -37,14 +45,6 @@ pub struct UpgradeArgs {
     /// Use verbose output
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
-
-    /// Ignore `rust-version` specification in packages
-    #[arg(long)]
-    ignore_rust_version: bool,
-
-    /// Override `rust-version`
-    #[arg(long, value_name = "VER", conflicts_with = "ignore_rust_version")]
-    rust_version: Option<RustVersion>,
 
     /// Unstable (nightly-only) flags
     #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
