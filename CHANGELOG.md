@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.12.0 - 2023-05-25
+
 ### Breaking Changes
 
 - *(rm)* Removed in favor of `cargo remove`
