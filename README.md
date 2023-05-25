@@ -4,7 +4,6 @@ This tool extends [Cargo](http://doc.crates.io/) to allow you to add, remove, an
 
 Currently available subcommands:
 
-- [`cargo rm`](#cargo-rm)
 - [`cargo upgrade`](#cargo-upgrade)
 - [`cargo set-version`](#cargo-set-version)
 
@@ -51,45 +50,7 @@ Known differences from `cargo-edit` v0.9.1
 
 ### `cargo rm`
 
-Remove dependencies from your `Cargo.toml`.
-
-#### Examples
-
-```console,ignore
-$ # Remove a dependency
-$ cargo rm regex
-$ # Remove a development dependency
-$ cargo rm regex --dev
-$ # Remove a build dependency
-$ cargo rm regex --build
-```
-
-#### Usage
-
-```console
-$ cargo-rm rm --help
-Remove a dependency from a Cargo.toml manifest file
-
-Usage: cargo rm [OPTIONS] <DEP_ID>...
-
-Arguments:
-  <DEP_ID>...  Dependencies to be removed
-
-Options:
-      --manifest-path <PATH>  Path to the manifest to remove a dependency from
-  -p, --package <PKGID>       Package to remove from
-  -Z <FLAG>                   Unstable (nightly-only) flags
-      --dry-run               Don't actually write the manifest
-  -q, --quiet                 Do not print any output in case of success
-  -h, --help                  Print help
-  -V, --version               Print version
-
-Section:
-  -D, --dev              Remove as development dependency
-  -B, --build            Remove as build dependency
-      --target <TARGET>  Remove as dependency from the given target platform
-
-```
+`cargo rm` is now integrated into `cargo` as of v1.66.  If you want access in older versions of `cargo`, you'll need to install `cargo-edit` v0.11 or earlier.
 
 ### `cargo upgrade`
 
