@@ -7,7 +7,7 @@ use anyhow::Context as _;
 use cargo_edit::{
     find, get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version,
     shell_note, shell_status, shell_warn, shell_write_stdout, update_registry_index, CargoResult,
-    CrateSpec, Dependency, LocalManifest, Source,
+    CrateSpec, Dependency, LocalManifest, RustVersion, Source,
 };
 use clap::Args;
 use indexmap::IndexMap;
@@ -37,6 +37,14 @@ pub struct UpgradeArgs {
     /// Use verbose output
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
+
+    /// Ignore `rust-version` specification in packages
+    #[arg(long)]
+    ignore_rust_version: bool,
+
+    /// Override `rust-version`
+    #[arg(long, conflicts_with = "ignore_rust_version")]
+    rust_version: Option<RustVersion>,
 
     /// Unstable (nightly-only) flags
     #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
@@ -162,12 +170,35 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let manifests = find_ws_members(&metadata);
     let mut manifests = manifests
         .into_iter()
-        .map(|p| (p.name, p.manifest_path.as_std_path().to_owned()))
+        .map(|p| {
+            let rust_version = if args.rust_version.is_some() {
+                args.rust_version
+            } else if args.ignore_rust_version {
+                None
+            } else {
+                p.rust_version.as_ref().map(RustVersion::from)
+            };
+
+            (
+                p.name,
+                p.manifest_path.as_std_path().to_owned(),
+                rust_version,
+            )
+        })
         .collect::<Vec<_>>();
-    if !manifests.iter().any(|(_, p)| *p == root_manifest_path) {
+    if !manifests.iter().any(|(_, p, _)| *p == root_manifest_path) {
+        let workspace_rust_version = manifests
+            .iter()
+            .map(|(_, _, msrv)| *msrv)
+            .min_by_key(|msrv| msrv.unwrap_or(RustVersion::MAX))
+            .flatten();
         manifests.insert(
             0,
-            ("virtual workspace".to_owned(), root_manifest_path.clone()),
+            (
+                "virtual workspace".to_owned(),
+                root_manifest_path.clone(),
+                workspace_rust_version,
+            ),
         );
     }
 
@@ -187,8 +218,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut pinned_present = false;
     let mut incompatible_present = false;
     let mut uninteresting_crates = BTreeSet::new();
-    for (pkg_name, manifest_path) in &manifests {
-        let mut manifest = LocalManifest::try_new(manifest_path)?;
+    for (pkg_name, manifest_path, rust_version) in manifests {
+        let mut manifest = LocalManifest::try_new(&manifest_path)?;
         let mut crate_modified = false;
         let mut table = Vec::new();
         shell_status("Checking", &format!("{pkg_name}'s dependencies"))?;
@@ -197,7 +228,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 let mut reason = None;
 
                 let dep_key = dep_key.get();
-                let dependency = match Dependency::from_toml(manifest_path, dep_key, dep_item) {
+                let dependency = match Dependency::from_toml(&manifest_path, dep_key, dep_item) {
                     Ok(dependency) => dependency,
                     Err(err) => {
                         shell_warn(&format!("ignoring {dep_key}, unsupported entry: {err}"))?;
@@ -266,7 +297,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     // we're offline.
                     let registry_url = dependency
                         .registry()
-                        .map(|registry| registry_url(manifest_path, Some(registry)))
+                        .map(|registry| registry_url(&manifest_path, Some(registry)))
                         .transpose()?;
                     if !args.offline {
                         if let Some(registry_url) = &registry_url {
@@ -281,7 +312,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             get_compatible_dependency(
                                 &dependency.name,
                                 &old_version_req,
-                                manifest_path,
+                                rust_version,
+                                &manifest_path,
                                 registry_url.as_ref(),
                             )
                             .ok()
@@ -295,7 +327,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     let latest_version = get_latest_dependency(
                         &dependency.name,
                         is_prerelease,
-                        manifest_path,
+                        rust_version,
+                        &manifest_path,
                         registry_url.as_ref(),
                     )
                     .map(|d| {
