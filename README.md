@@ -146,6 +146,7 @@ Options:
       --offline               Run without accessing the network
       --locked                Require `Cargo.toml` to be up to date
   -Z <FLAG>                   Unstable (nightly-only) flags
+      --allow-downgrade       Allow version to be set to a lower version than the current one
   -h, --help                  Print help
   -V, --version               Print version
 

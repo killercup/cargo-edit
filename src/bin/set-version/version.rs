@@ -15,6 +15,7 @@ impl TargetVersion {
         &self,
         current: &semver::Version,
         metadata: Option<&str>,
+        allow_downgrade: bool,
     ) -> CargoResult<Option<semver::Version>> {
         match self {
             TargetVersion::Relative(bump_level) => {
@@ -28,7 +29,7 @@ impl TargetVersion {
                 }
             }
             TargetVersion::Absolute(version) => {
-                if current < version {
+                if current < version || allow_downgrade {
                     let mut version = version.clone();
                     if version.build.is_empty() {
                         if let Some(metadata) = metadata {
@@ -146,7 +147,19 @@ mod test {
 
         let target = abs(expected);
         let current = semver::Version::parse(current).unwrap();
-        let actual = target.bump(&current, None).unwrap();
+        let actual = target.bump(&current, None, false).unwrap();
+        let actual = actual.expect("Version changed").to_string();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn abs_downgrade() {
+        let expected = "2022.3.0-dev-12345";
+        let current = "2022.3.0";
+
+        let target = abs(expected);
+        let current = semver::Version::parse(current).unwrap();
+        let actual = target.bump(&current, None, true).unwrap();
         let actual = actual.expect("Version changed").to_string();
         assert_eq!(actual, expected);
     }

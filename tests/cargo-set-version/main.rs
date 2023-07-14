@@ -5,6 +5,7 @@
 #[macro_use]
 extern crate cargo_test_macro;
 
+mod allow_downgrade;
 mod downgrade_error;
 mod dry_run;
 mod ignore_dependent;

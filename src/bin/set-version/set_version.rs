@@ -71,6 +71,10 @@ pub struct VersionArgs {
     /// Unstable (nightly-only) flags
     #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
     unstable_features: Vec<UnstableOptions>,
+
+    /// Allow version to be set to a lower version than the current one
+    #[arg(long, default_value = "false")]
+    allow_downgrade: bool,
 }
 
 impl VersionArgs {
@@ -98,6 +102,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         locked,
         offline,
         unstable_features: _,
+        allow_downgrade,
     } = args;
 
     let target = match (target, bump) {
@@ -170,7 +175,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     if update_workspace_version {
         let mut ws_manifest = LocalManifest::try_new(&root_manifest_path)?;
         if let Some(current) = ws_manifest.get_workspace_version() {
-            if let Some(next) = target.bump(&current, metadata.as_deref())? {
+            if let Some(next) = target.bump(&current, metadata.as_deref(), allow_downgrade)? {
                 shell_status(
                     "Upgrading",
                     &format!("workspace version from {current} to {next}"),
@@ -188,7 +193,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
 
     for package in selected {
         let current = &package.version;
-        let next = target.bump(current, metadata.as_deref())?;
+        let next = target.bump(current, metadata.as_deref(), allow_downgrade)?;
         if let Some(next) = next {
             let mut manifest = LocalManifest::try_new(Path::new(&package.manifest_path))?;
             if manifest.version_is_inherited() {
