@@ -74,7 +74,7 @@ subprocess = "0.2.9"
 termcolor = "1.2.0"
 toml = "0.7.4"
 toml_edit = "0.19.9"
-indexmap = "1"
+indexmap = "2"
 url = "2.3.1"
 pathdiff = "0.2"
 
