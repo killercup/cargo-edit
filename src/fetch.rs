@@ -102,6 +102,26 @@ impl RustVersion {
     };
 }
 
+impl TryFrom<&semver::Version> for RustVersion {
+    type Error = anyhow::Error;
+
+    fn try_from(sem_ver: &semver::Version) -> Result<Self, Self::Error> {
+        anyhow::ensure!(
+            sem_ver.pre.is_empty(),
+            "rust-version must be a value like `1.32`"
+        );
+        anyhow::ensure!(
+            sem_ver.build.is_empty(),
+            "rust-version must be a value like `1.32`"
+        );
+        Ok(Self {
+            major: sem_ver.major,
+            minor: sem_ver.minor,
+            patch: sem_ver.patch,
+        })
+    }
+}
+
 impl std::str::FromStr for RustVersion {
     type Err = anyhow::Error;
 

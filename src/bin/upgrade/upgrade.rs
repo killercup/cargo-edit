@@ -176,16 +176,16 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             } else if args.ignore_rust_version {
                 None
             } else {
-                p.rust_version.as_ref().map(RustVersion::from)
+                p.rust_version.as_ref().map(RustVersion::try_from).transpose()?
             };
 
-            (
+            Ok((
                 p.name,
                 p.manifest_path.as_std_path().to_owned(),
                 rust_version,
-            )
+            ))
         })
-        .collect::<Vec<_>>();
+        .collect::<CargoResult<Vec<_>>>()?;
     if !manifests.iter().any(|(_, p, _)| *p == root_manifest_path) {
         let workspace_rust_version = manifests
             .iter()
