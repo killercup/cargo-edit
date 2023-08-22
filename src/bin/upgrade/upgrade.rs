@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 use anyhow::Context as _;
 use cargo_edit::{
-    find, get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version,
-    shell_note, shell_status, shell_warn, shell_write_stdout, update_registry_index, CargoResult,
+    crate_from_sparse_index, get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version,
+    shell_note, shell_status, shell_warn, shell_write_stdout, CargoResult,
     CrateSpec, Dependency, LocalManifest, RustVersion, Source,
 };
 use clap::Args;
@@ -160,11 +160,6 @@ enum UnstableOptions {}
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
 fn exec(args: UpgradeArgs) -> CargoResult<()> {
-    if !args.offline {
-        let url = registry_url(&find(args.manifest_path.as_deref())?, None)?;
-        update_registry_index(&url, false)?;
-    }
-
     let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, args.offline)?;
     let root_manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
     let manifests = find_ws_members(&metadata);
@@ -210,9 +205,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             Ok((spec.name, spec.version_req))
         })
         .collect::<CargoResult<IndexMap<_, Option<_>>>>()?;
+
+    let ureq_agent = ureq::builder().build();
+
     let mut processed_keys = BTreeSet::new();
 
-    let mut updated_registries = BTreeSet::new();
     let mut modified_crates = BTreeSet::new();
     let mut git_crates = BTreeSet::new();
     let mut pinned_present = false;
@@ -299,24 +296,19 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         .registry()
                         .map(|registry| registry_url(&manifest_path, Some(registry)))
                         .transpose()?;
-                    if !args.offline {
-                        if let Some(registry_url) = &registry_url {
-                            if updated_registries.insert(registry_url.to_owned()) {
-                                update_registry_index(registry_url, false)?;
-                            }
-                        }
-                    }
+
+                    let crate_ = crate_from_sparse_index(
+                        &ureq_agent,
+                        &dependency.name,
+                        &manifest_path,
+                        registry_url.as_ref(),
+                        args.offline,
+                    )?;
+
                     let latest_compatible = semver::VersionReq::parse(&old_version_req)
                         .ok()
                         .and_then(|old_version_req| {
-                            get_compatible_dependency(
-                                &dependency.name,
-                                &old_version_req,
-                                rust_version,
-                                &manifest_path,
-                                registry_url.as_ref(),
-                            )
-                            .ok()
+                            get_compatible_dependency(&crate_, &old_version_req, rust_version).ok()
                         })
                         .map(|d| {
                             d.version()
@@ -324,19 +316,12 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 .to_owned()
                         });
                     let is_prerelease = old_version_req.contains('-');
-                    let latest_version = get_latest_dependency(
-                        &dependency.name,
-                        is_prerelease,
-                        rust_version,
-                        &manifest_path,
-                        registry_url.as_ref(),
-                    )
-                    .map(|d| {
-                        d.version()
-                            .expect("registry packages always have a version")
-                            .to_owned()
-                    })
-                    .ok();
+                    let latest_version = get_latest_dependency(&crate_, is_prerelease, rust_version)
+                        .map(|d| {
+                            d.version()
+                                .expect("registry packages always have a version")
+                                .to_owned()
+                        }).ok();
                     let latest_incompatible = if latest_version != latest_compatible {
                         latest_version
                     } else {

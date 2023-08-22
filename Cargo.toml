@@ -58,7 +58,7 @@ required-features = ["set-version"]
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
 cargo_metadata = "0.17.0"
-crates-index = "0.19.10"
+crates-index = "2.1.1"
 dunce = "1.0"
 env_proxy = "0.4.1"
 anyhow = "1.0"
@@ -77,18 +77,19 @@ toml_edit = "0.19.9"
 indexmap = "2"
 url = "2.3.1"
 pathdiff = "0.2"
+http = "0.2.9"
 
 [dependencies.semver]
 features = ["serde"]
 version = "1.0.17"
 
 [target.'cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "x86", target_arch = "aarch64"))'.dependencies]
-ureq = { version = "2.6.2", default-features = false, features = ["tls", "json", "socks", "socks-proxy"] }
+ureq = { version = "2.6.2", default-features = false, features = ["tls", "gzip", "json", "socks", "socks-proxy"] }
 
 # if the CPU architecture is not supported by ring/rustls
 [target.'cfg(not(any(target_arch = "x86_64", target_arch = "arm", target_arch = "x86", target_arch = "aarch64")))'.dependencies]
 native-tls = "^0.2"
-ureq = { version = "2.6.2", default-features = false, features = ["native-tls", "json", "socks", "socks-proxy"] }
+ureq = { version = "2.6.2", default-features = false, features = ["native-tls", "gzip", "json", "socks", "socks-proxy"] }
 
 [dev-dependencies]
 predicates = { version = "3.0.3", features = ["color"] }

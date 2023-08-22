@@ -184,6 +184,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
+name = "bytes"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89b2fd2a0dcf38d7971e2194b6b6eebab45ae01067456a7fd93d5547a61b70be"
+
+[[package]]
 name = "camino"
 version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -210,6 +216,7 @@ dependencies = [
  "git2",
  "hex",
  "home",
+ "http",
  "indexmap",
  "native-tls",
  "pathdiff",
@@ -428,21 +435,21 @@ dependencies = [
 
 [[package]]
 name = "crates-index"
-version = "0.19.13"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3cab38e209d6ba8bd5b0d41c784ec63a5a9ea3adf866b820d377588960f1ded"
+checksum = "aff4be0b4a9c0a3ec6da66ed929456410561b40176f434d7dcd88fa1643bff37"
 dependencies = [
- "git2",
  "hex",
  "home",
+ "http",
  "memchr",
- "rayon",
  "rustc-hash",
  "semver",
  "serde",
  "serde_derive",
  "serde_json",
  "smol_str",
+ "thiserror",
  "toml",
 ]
 
@@ -931,6 +938,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5444c27eef6923071f7ebcc33e3444508466a76f7a2b93da00ed6e19f30c1ddb"
 dependencies = [
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "http"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd6effc99afb63425aff9b05836f029929e345a6148a14b7ecd5ab67af944482"
+dependencies = [
+ "bytes",
+ "fnv",
+ "itoa",
 ]
 
 [[package]]
@@ -2079,6 +2097,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b11c96ac7ee530603dcdf68ed1557050f374ce55a5a07193ebf8cbc9f8927e9"
 dependencies = [
  "base64",
+ "flate2",
  "log",
  "native-tls",
  "once_cell",

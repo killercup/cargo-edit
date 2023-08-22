@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::time::Duration;
 
 use url::Url;
 
@@ -22,58 +21,22 @@ use super::VersionExt;
 /// - summaries in registry index with an incorrect format.
 /// - a crate with the given name does not exist on the registry.
 pub fn get_latest_dependency(
-    crate_name: &str,
+    crate_: &crates_index::Crate,
     flag_allow_prerelease: bool,
     rust_version: Option<RustVersion>,
-    manifest_path: &Path,
-    registry: Option<&Url>,
 ) -> CargoResult<Dependency> {
-    if crate_name.is_empty() {
-        anyhow::bail!("Found empty crate name");
-    }
-
-    let registry = match registry {
-        Some(url) => url.clone(),
-        None => registry_url(manifest_path, None)?,
-    };
-
-    let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
-
-    let dep = read_latest_version(&crate_versions, flag_allow_prerelease, rust_version)?;
-
-    if dep.name != crate_name {
-        eprintln!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
-    }
-
-    Ok(dep)
+    let crate_versions = crate_versions_from_crate(crate_)?;
+    read_latest_version(&crate_versions, flag_allow_prerelease, rust_version)
 }
 
 /// Find the highest version compatible with a version req
 pub fn get_compatible_dependency(
-    crate_name: &str,
+    crate_: &crates_index::Crate,
     version_req: &semver::VersionReq,
     rust_version: Option<RustVersion>,
-    manifest_path: &Path,
-    registry: Option<&Url>,
 ) -> CargoResult<Dependency> {
-    if crate_name.is_empty() {
-        anyhow::bail!("Found empty crate name");
-    }
-
-    let registry = match registry {
-        Some(url) => url.clone(),
-        None => registry_url(manifest_path, None)?,
-    };
-
-    let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
-
-    let dep = read_compatible_version(&crate_versions, version_req, rust_version)?;
-
-    if dep.name != crate_name {
-        eprintln!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
-    }
-
-    Ok(dep)
+    let crate_versions = crate_versions_from_crate(crate_)?;
+    read_compatible_version(&crate_versions, version_req, rust_version)
 }
 
 /// Simplified represetation of `package.rust-version`
@@ -175,40 +138,126 @@ struct CrateVersion {
     available_features: BTreeMap<String, Vec<String>>,
 }
 
-/// Fuzzy query crate from registry index
-fn fuzzy_query_registry_index(
+/// Fetch crate from sparse index, remotely or from cache
+pub fn crate_from_sparse_index(
+    ureq_agent: &ureq::Agent,
     crate_name: impl Into<String>,
-    registry: &Url,
-) -> CargoResult<Vec<CrateVersion>> {
-    let index = crates_index::Index::from_url(registry.as_str())?;
+    manifest_path: &Path,
+    registry: Option<&Url>,
+    use_cached: bool,
+) -> CargoResult<crates_index::Crate> {
+    // https://doc.rust-lang.org/cargo/reference/registry-index.html#nonexistent-crates
+    const NON_EXISTENT_CRATE_STATUS_ERRORS: &[u16] = &[404, 410, 451];
 
     let crate_name = crate_name.into();
+
+    if crate_name.is_empty() {
+        anyhow::bail!("Found empty crate name");
+    }
+
+    let registry_url = match registry {
+        Some(url) => url.clone(),
+        None => registry_url(manifest_path, None)?,
+    };
+
+    let index = crates_index::SparseIndex::from_url(registry_url.as_str())?;
+
     let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
     if let Some(index) = names.iter().position(|x| *x == crate_name) {
         // ref: https://github.com/killercup/cargo-edit/pull/317#discussion_r307365704
         names.swap(index, 0);
     }
 
+    fn req_to_ureq(req: http::request::Builder, ureq_agent: &ureq::Agent) -> Option<ureq::Request> {
+        let uri = req.uri_ref()?.to_string();
+        let u_req = req.headers_ref()
+            .iter()
+            .map(|hm| hm.iter())
+            .flatten()
+            .fold(ureq_agent.get(&uri), |u_req, (h_k, h_v)| {
+                match h_v.to_str() {
+                    Ok(h_v) => u_req.set(&h_k.to_string(), h_v),
+                    Err(_)  => u_req, // skip header if header value is not unicode
+                }
+            });
+        Some(u_req)
+    }
+
     for the_name in names {
-        let crate_ = match index.crate_(&the_name) {
-            Some(crate_) => crate_,
+        let crate_ = match index.make_cache_request(&the_name).ok() {
+            Some(crate_req) => {
+                if use_cached {
+                    shell_status("SparseIndex", &format!("getting cached info for crate {the_name}"))?;
+                    match index.crate_from_cache(&the_name) {
+                        Ok(crate_) => {
+                            if the_name != crate_name {
+                                eprintln!("WARN: Found `{the_name}` instead of `{crate_name}`");
+                            }
+                            crate_
+                        },
+                        Err(_) => continue,
+                    }
+                } else {
+                    shell_status("SparseIndex", &format!("getting remote info for crate {the_name}"))?;
+
+                    let u_req = match req_to_ureq(crate_req, ureq_agent) {
+                        Some(u_req) => u_req,
+                        None => continue,
+                    };
+
+                    let resp = match u_req.call() {
+                        Err(e) => {
+                            if let ureq::Error::Status(status, _) = &e {
+                                if  NON_EXISTENT_CRATE_STATUS_ERRORS.contains(status) {
+                                    continue;
+                                }
+                            }
+                            return Err(e.into());
+                        },
+                        Ok(resp) => resp,
+                    };
+                    match resp.status() {
+                        200 => (),
+                        304 => {
+                            // cached info up to date
+                            if the_name != crate_name {
+                                eprintln!("WARN: Found `{the_name}` instead of `{crate_name}`");
+                            }
+                            return crate_from_sparse_index(ureq_agent, the_name, manifest_path, registry, true);
+                        },
+                        status => anyhow::bail!("getting remote info for {the_name} returned unexpected status {status}"),
+                    }
+                    let mut buf = Vec::with_capacity(1<<16);
+                    resp.into_reader().read_to_end(&mut buf)?;
+                    let crate_ = crates_index::Crate::from_slice(&*buf)?;
+                    if the_name != crate_name {
+                        eprintln!("WARN: Found `{the_name}` instead of `{crate_name}`");
+                    }
+                    crate_
+                }
+            },
             None => continue,
         };
-        return crate_
-            .versions()
-            .iter()
-            .map(|v| {
-                Ok(CrateVersion {
-                    name: v.name().to_owned(),
-                    version: v.version().parse()?,
-                    rust_version: v.rust_version().map(|r| r.parse()).transpose()?,
-                    yanked: v.is_yanked(),
-                    available_features: registry_features(v),
-                })
-            })
-            .collect();
+        return Ok(crate_);
     }
     Err(no_crate_err(crate_name))
+}
+
+/// Get crate versions from crate info we got from the index
+fn crate_versions_from_crate(crate_: &crates_index::Crate) -> CargoResult<Vec<CrateVersion>> {
+    crate_
+        .versions()
+        .iter()
+        .map(|v| {
+            Ok(CrateVersion {
+                name: v.name().to_owned(),
+                version: v.version().parse()?,
+                rust_version: v.rust_version().map(|r| r.parse()).transpose()?,
+                yanked: v.is_yanked(),
+                available_features: registry_features(v),
+            })
+        })
+    .collect()
 }
 
 /// Generate all similar crate names
@@ -335,39 +384,6 @@ fn registry_features(v: &crates_index::Version) -> BTreeMap<String, Vec<String>>
             .map(|d| (d.crate_name().to_owned(), vec![])),
     );
     features
-}
-
-/// update registry index for given project
-pub fn update_registry_index(registry: &Url, quiet: bool) -> CargoResult<()> {
-    let mut index = crates_index::Index::from_url(registry.as_str())?;
-    if !quiet {
-        shell_status("Updating", &format!("'{registry}' index"))?;
-    }
-
-    while need_retry(index.update())? {
-        shell_status("Blocking", "waiting for lock on registry index")?;
-        std::thread::sleep(REGISTRY_BACKOFF);
-    }
-
-    Ok(())
-}
-
-/// Time between retries for retrieving the registry.
-const REGISTRY_BACKOFF: Duration = Duration::from_secs(1);
-
-/// Check if we need to retry retrieving the Index.
-fn need_retry(res: Result<(), crates_index::Error>) -> CargoResult<bool> {
-    match res {
-        Ok(()) => Ok(false),
-        Err(crates_index::Error::Git(err)) => {
-            if err.class() == git2::ErrorClass::Index && err.code() == git2::ErrorCode::Locked {
-                Ok(true)
-            } else {
-                Err(crates_index::Error::Git(err).into())
-            }
-        }
-        Err(err) => Err(err.into()),
-    }
 }
 
 #[test]
