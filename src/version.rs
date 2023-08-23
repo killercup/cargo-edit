@@ -142,7 +142,7 @@ fn prerelease_id_version(version: &semver::Version) -> CargoResult<Option<(Strin
 }
 
 /// Upgrade an existing requirement to a new version
-pub fn upgrade_requirement(req: &str, version: &semver::Version) -> CargoResult<Option<String>> {
+pub fn upgrade_requirement(req: &str, version: &semver::Version, forced_precise: bool) -> CargoResult<Option<String>> {
     let req_text = req.to_string();
     let raw_req = semver::VersionReq::parse(&req_text)
         .expect("semver to generate valid version requirements");
@@ -153,7 +153,7 @@ pub fn upgrade_requirement(req: &str, version: &semver::Version) -> CargoResult<
         let comparators: CargoResult<Vec<_>> = raw_req
             .comparators
             .into_iter()
-            .map(|p| set_comparator(p, version))
+            .map(|p| set_comparator(p, version, forced_precise))
             .collect();
         let comparators = comparators?;
         let new_req = semver::VersionReq { comparators };
@@ -181,6 +181,7 @@ pub fn upgrade_requirement(req: &str, version: &semver::Version) -> CargoResult<
 fn set_comparator(
     mut pred: semver::Comparator,
     version: &semver::Version,
+    forced_precise: bool,
 ) -> CargoResult<semver::Comparator> {
     match pred.op {
         semver::Op::Wildcard => {
@@ -193,13 +194,13 @@ fn set_comparator(
             }
             Ok(pred)
         }
-        semver::Op::Exact => Ok(assign_partial_req(version, pred)),
+        semver::Op::Exact => Ok(assign_partial_req(version, pred, forced_precise)),
         semver::Op::Greater | semver::Op::GreaterEq | semver::Op::Less | semver::Op::LessEq => {
             let user_pred = pred.to_string();
             Err(unsupported_version_req(user_pred))
         }
-        semver::Op::Tilde => Ok(assign_partial_req(version, pred)),
-        semver::Op::Caret => Ok(assign_partial_req(version, pred)),
+        semver::Op::Tilde => Ok(assign_partial_req(version, pred, forced_precise)),
+        semver::Op::Caret => Ok(assign_partial_req(version, pred, forced_precise)),
         _ => {
             let user_pred = pred.to_string();
             Err(unsupported_version_req(user_pred))
@@ -210,12 +211,13 @@ fn set_comparator(
 fn assign_partial_req(
     version: &semver::Version,
     mut pred: semver::Comparator,
+    forced_precise: bool,
 ) -> semver::Comparator {
     pred.major = version.major;
-    if pred.minor.is_some() {
+    if forced_precise || pred.minor.is_some() {
         pred.minor = Some(version.minor);
     }
-    if pred.patch.is_some() {
+    if forced_precise || pred.patch.is_some() {
         pred.patch = Some(version.patch);
     }
     pred.pre = version.pre.clone();
@@ -298,7 +300,7 @@ mod test {
         #[track_caller]
         fn assert_req_bump<'a, O: Into<Option<&'a str>>>(version: &str, req: &str, expected: O) {
             let version = semver::Version::parse(version).unwrap();
-            let actual = upgrade_requirement(req, &version).unwrap();
+            let actual = upgrade_requirement(req, &version, false).unwrap();
             let expected = expected.into();
             assert_eq!(actual.as_deref(), expected);
         }

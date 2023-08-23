@@ -303,7 +303,7 @@ fn update_dependent(
             .expect("filter ensures this")
             .as_str()
             .unwrap_or("*");
-        if let Some(new_req) = upgrade_requirement(old_req, next)? {
+        if let Some(new_req) = upgrade_requirement(old_req, next, false)? {
             shell_status(
                 "Updating",
                 &format!("{name}'s dependency from {old_req} to {new_req}"),

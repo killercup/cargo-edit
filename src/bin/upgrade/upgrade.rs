@@ -11,7 +11,7 @@ use cargo_edit::{
 };
 use clap::Args;
 use indexmap::IndexMap;
-use semver::{Op, VersionReq};
+use semver::{Op, VersionReq, Comparator};
 use termcolor::{Color, ColorSpec};
 
 /// Upgrade dependency version requirements in Cargo.toml manifest files
@@ -41,6 +41,20 @@ pub struct UpgradeArgs {
     /// Require `Cargo.toml` to be up to date
     #[arg(long)]
     locked: bool,
+
+    /// Force precise upgraded dependency versions in different scenarios.
+    ///
+    /// `upgradable`: if the dependency was going to be upgraded anyway.
+    ///
+    /// `non-max`: if the upgraded precise version is bigger than the minimum
+    ///            version compatible with the non-precise version requirement.
+    ///
+    /// `always` always forces a precise version. And `never` never does.
+    #[arg(long,
+        value_name = "never|upgradable|non-max|always",
+        hide_possible_values = true,
+        default_value = "never")]
+    force_precise_when: ForcePreciseWhen,
 
     /// Use verbose output
     #[arg(short, long, action = clap::ArgAction::Count)]
@@ -145,6 +159,14 @@ enum Status {
     Ignore,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
+enum ForcePreciseWhen {
+    Never,
+    Upgradable,
+    NonMax,
+    Always,
+}
+
 impl Status {
     fn as_bool(&self) -> bool {
         match self {
@@ -223,6 +245,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         for dep_table in manifest.get_dependency_tables_mut() {
             for (dep_key, dep_item) in dep_table.iter_mut() {
                 let mut reason = None;
+                let mut force_precise_reason = None;
 
                 let dep_key = dep_key.get();
                 let dependency = match Dependency::from_toml(&manifest_path, dep_key, dep_item) {
@@ -266,6 +289,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 latest_version: None,
                                 new_version_req: None,
                                 reason,
+                                force_precise_reason: None,
                             });
                         } else {
                             args.verbose(|| {
@@ -283,6 +307,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         continue;
                     }
                 };
+
+                let min_prec_old_version_req_opt = (args.force_precise_when != ForcePreciseWhen::Never)
+                    .then(|| mk_min_precise_v_req(&old_version_req))
+                    .transpose()?
+                    .flatten();
 
                 let (latest_compatible, latest_incompatible) = if dependency
                     .source
@@ -356,21 +385,74 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 }
 
+                fn get_req_candidate(old_version_req: &str, new_version: &semver::Version, forced_precise: bool) -> Option<String> {
+                    match cargo_edit::upgrade_requirement(old_version_req, new_version, forced_precise) {
+                        Ok(Some(version_req)) => Some(version_req),
+                        Err(_) => {
+                            // Didn't know how to preserve existing format, so abandon it
+                            Some(new_version.to_string())
+                        }
+                        _ => {
+                            // Already at latest
+                            None
+                        }
+                    }
+                }
+
+                fn get_req_candidate_or_prec_new(
+                    old_version_req: &str,
+                    new_version: &semver::Version,
+                    force_precise_reason: &mut Option<ForcePreciseReason>,
+                    force_precise_when: ForcePreciseWhen,
+                    min_prec_old_version_req_opt: &Option<String>
+                ) -> Option<String> {
+                    let req_candidate_opt = get_req_candidate(old_version_req, new_version, false);
+
+                    if force_precise_when == ForcePreciseWhen::Never {
+                        return req_candidate_opt;
+                    }
+
+                    // already upgradable, and `force_precise_when` is at least
+                    // `ForcePreciseWhen::Upgradable` so just get the precise version, and if that's
+                    // different than the original candidate, set `ForcePreciseReason::Upgraded`
+                    if req_candidate_opt.is_some() {
+                        let precise_req_candidate_opt = get_req_candidate(old_version_req, new_version, true);
+                        if precise_req_candidate_opt != req_candidate_opt {
+                            *force_precise_reason = Some(ForcePreciseReason::Upgraded);
+                        }
+                        return precise_req_candidate_opt;
+                    }
+
+                    if force_precise_when >= ForcePreciseWhen::NonMax {
+                        // check if upgradable to max against min precise
+                        if let Some(min_prec_old_version_req) = min_prec_old_version_req_opt {
+                            if get_req_candidate(min_prec_old_version_req, new_version, false).is_some() {
+                                *force_precise_reason = Some(ForcePreciseReason::Maxed);
+                                return get_req_candidate(min_prec_old_version_req, new_version, true);
+                            }
+                        }
+                    }
+
+                    // force precise if ForcePreciseWhen::Always
+                    if force_precise_when == ForcePreciseWhen::Always {
+                        let req_candidate_opt = get_req_candidate(old_version_req, new_version, true);
+                        if req_candidate_opt.is_some() {
+                            *force_precise_reason = Some(ForcePreciseReason::Always);
+                            return req_candidate_opt;
+                        }
+                    }
+                    None
+                }
+
                 if new_version_req.is_none() {
                     if let Some(latest_incompatible) = &latest_incompatible {
                         let new_version: semver::Version = latest_incompatible.parse()?;
-                        let req_candidate =
-                            match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
-                                Ok(Some(version_req)) => Some(version_req),
-                                Err(_) => {
-                                    // Didn't know how to preserve existing format, so abandon it
-                                    Some(latest_incompatible.clone())
-                                }
-                                _ => {
-                                    // Already at latest
-                                    None
-                                }
-                            };
+                        let req_candidate = get_req_candidate_or_prec_new(
+                            &old_version_req,
+                            &new_version,
+                            &mut force_precise_reason,
+                            args.force_precise_when,
+                            &min_prec_old_version_req_opt);
 
                         if req_candidate.is_some() {
                             if is_pinned_dep && !args.pinned.as_bool() {
@@ -392,18 +474,12 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     if let Some(latest_compatible) = &latest_compatible {
                         // Compatible upgrades are allowed for pinned
                         let new_version: semver::Version = latest_compatible.parse()?;
-                        let req_candidate =
-                            match cargo_edit::upgrade_requirement(&old_version_req, &new_version) {
-                                Ok(Some(version_req)) => Some(version_req),
-                                Err(_) => {
-                                    // Do not change syntax for compatible upgrades
-                                    Some(old_version_req.clone())
-                                }
-                                _ => {
-                                    // Already at latest
-                                    None
-                                }
-                            };
+                        let req_candidate = get_req_candidate_or_prec_new(
+                            &old_version_req,
+                            &new_version,
+                            &mut force_precise_reason,
+                            args.force_precise_when,
+                            &min_prec_old_version_req_opt);
 
                         if req_candidate.is_some() {
                             if !args.compatible.as_bool() {
@@ -439,6 +515,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     latest_version,
                     new_version_req: Some(new_version_req),
                     reason,
+                    force_precise_reason,
                 });
             }
         }
@@ -639,6 +716,46 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     Ok(())
 }
 
+// Returns Ok(None) if 'v_req_str' already contains only precise versions
+fn mk_min_precise_v_req(v_req_str: &str) -> CargoResult<Option<String>> {
+    // we parse through comparators instead of VersionReq directly because we want to
+    // keep implicit/explicit caret info
+    let v_req_str = v_req_str.replace(' ', "");
+    if v_req_str == "*" {
+        // minimum precise version matching "*" is "0.0.0"
+        return Ok(Some("0.0.0".into()));
+    }
+    let prec_v_req = v_req_str
+        .split(',')
+        .map(|cmpr_str| {
+            let explicit_caret = cmpr_str.starts_with('^');
+            let mut cmpr = Comparator::parse(cmpr_str)?;
+            if cmpr.minor.is_none() || cmpr.patch.is_none() {
+                let _ = cmpr.minor.get_or_insert(0);
+                let _ = cmpr.patch.get_or_insert(0);
+                if cmpr.op == Op::Wildcard {
+                    // 'x.*' or 'x.*.*' or 'x.y.*' are no longer Op::Wildcard when
+                    // converted to precise
+                    cmpr.op = Op::Caret;
+
+                }
+            }
+            let mut prec_cmpr_str = cmpr.to_string();
+            if prec_cmpr_str.starts_with('^') && !explicit_caret {
+                let _ = prec_cmpr_str.remove(0);
+            }
+            Ok(prec_cmpr_str)
+        })
+        .collect::<CargoResult<Vec<_>>>()?
+        .join(",");
+
+    if prec_v_req != v_req_str {
+        Ok(Some(prec_v_req))
+    } else {
+        Ok(None)
+    }
+}
+
 fn resolve_ws(
     manifest_path: Option<&Path>,
     locked: bool,
@@ -727,6 +844,7 @@ struct Dep {
     latest_version: Option<String>,
     new_version_req: Option<String>,
     reason: Option<Reason>,
+    force_precise_reason: Option<ForcePreciseReason>,
 }
 
 impl Dep {
@@ -800,6 +918,10 @@ impl Dep {
 
     fn long_reason(&self) -> &'static str {
         self.reason.map(|r| r.as_long()).unwrap_or("")
+    }
+
+    fn short_force_precise_reason(&self) -> &'static str {
+        self.force_precise_reason.map(|r| r.as_short()).unwrap_or("")
     }
 
     fn reason_spec(&self) -> ColorSpec {
@@ -909,6 +1031,24 @@ impl Reason {
     }
 }
 
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum ForcePreciseReason {
+    Upgraded,
+    Maxed,
+    Always,
+}
+
+impl ForcePreciseReason {
+    fn as_short(&self) -> &'static str {
+        match self {
+            Self::Upgraded => "precise upgraded",
+            Self::Maxed => "precise maxed",
+            Self::Always => "precise always",
+        }
+    }
+}
+
 /// Print a message if the new dependency version is different from the old one.
 fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
     if interesting.is_empty() {
@@ -924,6 +1064,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
                 latest_version: Some("latest".to_owned()),
                 new_version_req: Some("new req".to_owned()),
                 reason: None,
+                force_precise_reason: None,
             },
             Dep {
                 name: "====".to_owned(),
@@ -932,6 +1073,7 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
                 latest_version: Some("======".to_owned()),
                 new_version_req: Some("=======".to_owned()),
                 reason: None,
+                force_precise_reason: None,
             },
         ],
     );
@@ -943,7 +1085,10 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
         width[3] = width[3].max(dep.latest_version().len());
         width[4] = width[4].max(dep.new_version_req().len());
         if 1 < i {
-            width[5] = width[5].max(dep.short_reason().len());
+            width[5] = width[5].max(dep.short_reason().len() + dep.short_force_precise_reason().len());
+            if !dep.short_reason().is_empty() && !dep.short_force_precise_reason().is_empty() {
+                width[5] += " + ".len();
+            }
         }
     }
     if 0 < width[5] {
@@ -1002,11 +1147,16 @@ fn print_upgrade(mut interesting: Vec<Dep>) -> CargoResult<()> {
                 dep.reason_spec()
             };
             let reason = match i {
-                0 => "note",
-                1 => "====",
-                _ => dep.short_reason(),
+                0 => "note".into(),
+                1 => "====".into(),
+                _ => match (dep.short_reason(), dep.short_force_precise_reason()) {
+                    ("", "") => "".into(),
+                    (short_reason, "") => short_reason.into(),
+                    ("", short_force_precise_reason) => short_force_precise_reason.into(),
+                    (short_reason, short_force_precise_reason) => short_reason.to_owned() + " + " + short_force_precise_reason,
+                },
             };
-            write_cell(reason, width[5], &spec)?;
+            write_cell(&reason, width[5], &spec)?;
         }
 
         shell_write_stdout("\n", &ColorSpec::new())?;
