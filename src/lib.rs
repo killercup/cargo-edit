@@ -40,7 +40,7 @@ pub use dependency::RegistrySource;
 pub use dependency::Source;
 pub use errors::*;
 pub use fetch::{
-    get_compatible_dependency, get_latest_dependency, update_registry_index, RustVersion,
+    crate_from_sparse_index, get_compatible_dependency, get_latest_dependency, RustVersion,
 };
 pub use manifest::{find, get_dep_version, set_dep_version, LocalManifest, Manifest};
 pub use metadata::manifest_from_pkgid;
