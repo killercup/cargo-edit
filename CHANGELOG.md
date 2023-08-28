@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.12.1 - 2023-08-28
+
 ### Fixes
 
 - Fix building on nightlies
