@@ -58,47 +58,47 @@ required-features = ["set-version"]
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
 cargo_metadata = "0.15.4"
-crates-index = "0.19.10"
+crates-index = "0.19.13"
 dunce = "1.0"
 env_proxy = "0.4.1"
 anyhow = "1.0"
 git2 = "0.17"
 hex = "0.4.3"
 home = "0.5.5"
-regex = "1.8.2"
-serde = "1.0.163"
-serde_derive = "1.0.163"
-serde_json = "1.0.96"
-clap = { version = "4.3.0", features = ["derive", "wrap_help"], optional = true }
+regex = "1.9.4"
+serde = "1.0.188"
+serde_derive = "1.0.188"
+serde_json = "1.0.105"
+clap = { version = "4.4.0", features = ["derive", "wrap_help"], optional = true }
 subprocess = "0.2.9"
 termcolor = "1.2.0"
-toml = "0.7.4"
-toml_edit = "0.19.9"
+toml = "0.7.6"
+toml_edit = "0.19.14"
 indexmap = "1"
-url = "2.3.1"
+url = "2.4.0"
 pathdiff = "0.2"
 
 [dependencies.semver]
 features = ["serde"]
-version = "1.0.17"
+version = "1.0.18"
 
 [target.'cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "x86", target_arch = "aarch64"))'.dependencies]
-ureq = { version = "2.6.2", default-features = false, features = ["tls", "json", "socks", "socks-proxy"] }
+ureq = { version = "2.7.1", default-features = false, features = ["tls", "json", "socks", "socks-proxy"] }
 
 # if the CPU architecture is not supported by ring/rustls
 [target.'cfg(not(any(target_arch = "x86_64", target_arch = "arm", target_arch = "x86", target_arch = "aarch64")))'.dependencies]
 native-tls = "^0.2"
-ureq = { version = "2.6.2", default-features = false, features = ["native-tls", "json", "socks", "socks-proxy"] }
+ureq = { version = "2.7.1", default-features = false, features = ["native-tls", "json", "socks", "socks-proxy"] }
 
 [dev-dependencies]
 predicates = { version = "3.0.3", features = ["color"] }
-assert_cmd = { version = "2.0.11", features = ["color-auto"] }
+assert_cmd = { version = "2.0.12", features = ["color-auto"] }
 assert_fs = { version = "1.0.13", features = ["color-auto"] }
-trycmd = "0.14.16"
-snapbox = { version = "0.4.11", features = ["cmd", "path"] }
+trycmd = "0.14.17"
+snapbox = { version = "0.4.12", features = ["cmd", "path"] }
 cargo-test-macro.git = "https://github.com/rust-lang/cargo"
 cargo-test-support.git = "https://github.com/rust-lang/cargo"
-url = "2.3.1"
+url = "2.4.0"
 
 [features]
 default = [
