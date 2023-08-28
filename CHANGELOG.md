@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- Fix building on nightlies
+
 ## 0.12.0 - 2023-05-25
 
 ### Breaking Changes
