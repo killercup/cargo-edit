@@ -3,6 +3,7 @@ use clap::Parser;
 
 #[derive(Debug, Parser)]
 #[command(bin_name = "cargo")]
+#[command(styles = clap_cargo::style::CLAP_STYLING)]
 pub enum Command {
     SetVersion(crate::set_version::VersionArgs),
 }
