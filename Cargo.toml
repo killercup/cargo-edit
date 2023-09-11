@@ -70,6 +70,7 @@ serde = "1.0.188"
 serde_derive = "1.0.188"
 serde_json = "1.0.105"
 clap = { version = "4.4.2", features = ["derive", "wrap_help"], optional = true }
+clap-cargo = "0.12.0"
 subprocess = "0.2.9"
 termcolor = "1.2.0"
 toml = "0.7.6"
