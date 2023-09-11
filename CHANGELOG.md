@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Features
+
+- Stylize help output
+
 ## 0.12.1 - 2023-08-28
 
 ### Fixes
