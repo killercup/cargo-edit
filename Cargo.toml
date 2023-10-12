@@ -83,14 +83,6 @@ pathdiff = "0.2"
 features = ["serde"]
 version = "1.0.18"
 
-[target.'cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "x86", target_arch = "aarch64"))'.dependencies]
-ureq = { version = "2.7.1", default-features = false, features = ["tls", "json", "socks", "socks-proxy"] }
-
-# if the CPU architecture is not supported by ring/rustls
-[target.'cfg(not(any(target_arch = "x86_64", target_arch = "arm", target_arch = "x86", target_arch = "aarch64")))'.dependencies]
-native-tls = "^0.2"
-ureq = { version = "2.7.1", default-features = false, features = ["native-tls", "json", "socks", "socks-proxy"] }
-
 [dev-dependencies]
 predicates = { version = "3.0.3", features = ["color"] }
 assert_cmd = { version = "2.0.12", features = ["color-auto"] }
