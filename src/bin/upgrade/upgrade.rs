@@ -494,12 +494,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             //
             // Reusing updates (resolve_ws) so we know what lock_version to reference
             for (name, (req, precise)) in &precise_deps {
-                #[allow(clippy::unnecessary_lazy_evaluations)] // requires 1.62
                 for lock_version in locked
                     .iter()
                     .filter(|p| p.name == **name)
                     .map(|p| &p.version)
-                    .filter_map(|v| req.matches(v).then(|| v))
+                    .filter(|v| req.matches(v))
                 {
                     let mut cmd = std::process::Command::new("cargo");
                     cmd.arg("update");
