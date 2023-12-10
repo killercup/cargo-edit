@@ -2,6 +2,7 @@ use crate::errors::*;
 use crate::registry::{RegistryIndex, RegistryReq};
 use crate::{Dependency, Manifest};
 use regex::Regex;
+use reqwest::Proxy;
 use std::env;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -395,29 +396,23 @@ fn get_name_from_manifest(manifest: &Manifest) -> Result<String> {
 }
 
 fn get_cargo_toml_from_git_url(url: &str) -> Result<String> {
-    let mut req = ureq::get(url);
-    req.timeout(get_default_timeout());
-    if let Some(proxy) = env_proxy::for_url_str(url)
-        .to_url()
-        .and_then(|url| ureq::Proxy::new(url).ok())
-    {
-        req.set_proxy(proxy);
+    let mut clientb = reqwest::blocking::Client::builder();
+    clientb = clientb.timeout(get_default_timeout());
+    clientb = clientb.proxy(Proxy::custom(|u| {
+        env_proxy::for_url(u).to_url()
+    }));
+    let client = clientb.build().unwrap();
+    
+    match client.get(url).send().and_then(|r| r.error_for_status()) {
+        Err(e) => {
+            Err(format!(
+                "HTTP request `{}` failed: {}", url, e
+            ).into())
+        },
+        Ok(res) => {
+            res.text().chain_err(|| "Git response not a valid `String`")
+        }
     }
-    let res = req.call();
-    if res.error() {
-        return Err(format!(
-            "HTTP request `{}` failed: {}",
-            url,
-            res.synthetic_error()
-                .as_ref()
-                .map(|x| x.to_string())
-                .unwrap_or_else(|| res.status().to_string())
-        )
-        .into());
-    }
-
-    res.into_string()
-        .chain_err(|| "Git response not a valid `String`")
 }
 
 const fn get_default_timeout() -> Duration {

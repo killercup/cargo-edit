@@ -104,7 +104,7 @@ fn print_msg(name: &str, section: &str) -> Result<()> {
 fn handle_rm(args: &Args) -> Result<()> {
     let manifest_path = if let Some(ref pkgid) = args.pkgid {
         let pkg = manifest_from_pkgid(pkgid)?;
-        Cow::Owned(Some(pkg.manifest_path))
+        Cow::Owned(Some(pkg.manifest_path.into_std_path_buf()))
     } else {
         Cow::Borrowed(&args.manifest_path)
     };

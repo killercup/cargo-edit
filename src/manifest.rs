@@ -204,7 +204,7 @@ impl Manifest {
             }
         }
 
-        descend(&mut self.data.root, table_path)
+        descend(self.data.as_item_mut(), table_path)
     }
 
     /// Get all sections in the manifest that exist and might contain dependencies.
@@ -259,7 +259,8 @@ impl Manifest {
             }
         }
 
-        let s = self.data.to_string_in_original_order();
+        // let s = self.data.to_string_in_original_order();
+        let s = self.data.to_string();
         let new_contents_bytes = s.as_bytes();
 
         // We need to truncate the file, otherwise the new contents
