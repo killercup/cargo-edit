@@ -67,6 +67,7 @@ impl From<std::io::Error> for CliError {
     }
 }
 
+#[cfg(feature = "fetch")]
 pub(crate) fn no_crate_err(name: impl Display) -> Error {
     anyhow::format_err!("The crate `{}` could not be found in registry index.", name)
 }

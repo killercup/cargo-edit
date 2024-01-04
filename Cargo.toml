@@ -58,11 +58,11 @@ required-features = ["set-version"]
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
 cargo_metadata = "0.15.4"
-crates-index = "0.19.13"
+crates-index = { version = "0.19.13", optional = true }
 dunce = "1.0"
 env_proxy = "0.4.1"
 anyhow = "1.0"
-git2 = "0.17"
+git2 = { version = "0.17", optional = true }
 hex = "0.4.3"
 home = "0.5.5"
 regex = "1.9.4"
@@ -103,10 +103,11 @@ default = [
 ]
 add = ["cli"]
 rm = ["cli"]
-upgrade = ["cli"]
+upgrade = ["cli", "fetch"]
 set-version = ["cli"]
 cli = ["color", "clap"]
 color = ["concolor-control/auto"]
+fetch = ["crates-index", "git2"]
 test-external-apis = []
 vendored-openssl = ["git2/vendored-openssl"]
 vendored-libgit2 = ["git2/vendored-libgit2"]

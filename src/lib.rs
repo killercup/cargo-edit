@@ -26,6 +26,7 @@ extern crate serde_derive;
 mod crate_spec;
 mod dependency;
 mod errors;
+#[cfg(feature = "fetch")]
 mod fetch;
 mod manifest;
 mod metadata;
@@ -39,6 +40,7 @@ pub use dependency::PathSource;
 pub use dependency::RegistrySource;
 pub use dependency::Source;
 pub use errors::*;
+#[cfg(feature = "fetch")]
 pub use fetch::{
     get_compatible_dependency, get_latest_dependency, update_registry_index, RustVersion,
 };
