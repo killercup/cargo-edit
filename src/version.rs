@@ -162,7 +162,7 @@ pub fn upgrade_requirement(req: &str, version: &semver::Version) -> CargoResult<
             new_req_text.remove(0);
         }
         // Validate contract
-        #[cfg(debug_assert)]
+        #[cfg(debug_assertions)]
         {
             assert!(
                 new_req.matches(version),
