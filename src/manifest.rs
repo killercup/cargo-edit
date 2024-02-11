@@ -141,7 +141,7 @@ impl Manifest {
             path: &[String],
             insert_if_not_exists: bool,
         ) -> CargoResult<&'a mut toml_edit::Item> {
-            if let Some(segment) = path.get(0) {
+            if let Some(segment) = path.first() {
                 let value = if insert_if_not_exists {
                     input[&segment].or_insert(toml_edit::table())
                 } else {
