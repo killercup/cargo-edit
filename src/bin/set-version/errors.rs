@@ -1,8 +1,7 @@
 use std::fmt::Display;
 
 pub use cargo_edit::CargoResult;
-pub use cargo_edit::CliResult;
-pub use cargo_edit::Context;
+
 pub use cargo_edit::Error;
 
 /// User requested to downgrade a crate
