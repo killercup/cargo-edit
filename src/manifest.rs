@@ -218,8 +218,7 @@ impl LocalManifest {
         if !path.is_absolute() {
             anyhow::bail!("can only edit absolute paths, got {}", path.display());
         }
-        let data =
-            std::fs::read_to_string(path).with_context(|| "Failed to read manifest contents")?;
+        let data = fs::read_to_string(path).with_context(|| "Failed to read manifest contents")?;
         let manifest = data.parse().context("Unable to parse Cargo.toml")?;
         Ok(LocalManifest {
             manifest,
@@ -232,7 +231,7 @@ impl LocalManifest {
         let s = self.manifest.data.to_string();
         let new_contents_bytes = s.as_bytes();
 
-        std::fs::write(&self.path, new_contents_bytes).context("Failed to write updated Cargo.toml")
+        fs::write(&self.path, new_contents_bytes).context("Failed to write updated Cargo.toml")
     }
 
     /// Remove entry from a Cargo.toml.

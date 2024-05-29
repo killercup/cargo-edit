@@ -306,7 +306,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                             }
                         }
                     }
-                    let latest_compatible = semver::VersionReq::parse(&old_version_req)
+                    let latest_compatible = VersionReq::parse(&old_version_req)
                         .ok()
                         .and_then(|old_version_req| {
                             get_compatible_dependency(
@@ -482,7 +482,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             .iter()
             .filter_map(|(name, req)| {
                 req.as_ref()
-                    .and_then(|req| semver::VersionReq::parse(req).ok())
+                    .and_then(|req| VersionReq::parse(req).ok())
                     .and_then(|req| {
                         let precise = precise_version(&req)?;
                         Some((name, (req, precise)))
@@ -709,12 +709,7 @@ fn precise_version(version_req: &VersionReq) -> Option<String> {
             matches!(
                 c.op,
                 // Only ops we can determine a precise version from
-                semver::Op::Exact
-                    | semver::Op::GreaterEq
-                    | semver::Op::LessEq
-                    | semver::Op::Tilde
-                    | semver::Op::Caret
-                    | semver::Op::Wildcard
+                Op::Exact | Op::GreaterEq | Op::LessEq | Op::Tilde | Op::Caret | Op::Wildcard
             )
         })
         .filter_map(|c| {
@@ -794,7 +789,7 @@ impl Dep {
             .and_then(|v| semver::Version::parse(v).ok())
         {
             if let Some(new_version_req) = &self.new_version_req {
-                if let Ok(new_version_req) = semver::VersionReq::parse(new_version_req) {
+                if let Ok(new_version_req) = VersionReq::parse(new_version_req) {
                     if !new_version_req.matches(&latest_version) {
                         spec.set_fg(Some(Color::Red));
                     }
@@ -853,7 +848,7 @@ impl Dep {
             .and_then(|v| semver::Version::parse(v).ok())
         {
             if let Some(old_version_req) = &self.old_version_req {
-                if let Ok(old_version_req) = semver::VersionReq::parse(old_version_req) {
+                if let Ok(old_version_req) = VersionReq::parse(old_version_req) {
                     return old_version_req.matches(&latest_version);
                 }
             }
