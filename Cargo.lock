@@ -206,7 +206,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-edit"
-version = "0.12.2"
+version = "0.12.3"
 dependencies = [
  "anyhow",
  "assert_cmd",
