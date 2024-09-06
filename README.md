@@ -157,6 +157,7 @@ For more on `metadata`, see the
 ## Related Cargo Commands
 
 - [`cargo feature`](https://github.com/Riey/cargo-feature)
+- [`cargo override`](https://github.com/eopb/cargo-override)
 
 ## Contribution
 
