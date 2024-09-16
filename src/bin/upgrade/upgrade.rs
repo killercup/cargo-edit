@@ -34,10 +34,6 @@ pub struct UpgradeArgs {
     #[arg(long)]
     ignore_rust_version: bool,
 
-    /// Run without accessing the network
-    #[arg(long)]
-    offline: bool,
-
     /// Require `Cargo.toml` to be up to date
     #[arg(long)]
     locked: bool,
@@ -160,12 +156,13 @@ enum UnstableOptions {}
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
 fn exec(args: UpgradeArgs) -> CargoResult<()> {
-    if !args.offline {
+    let offline = false;
+    if !offline {
         let url = registry_url(&find(args.manifest_path.as_deref())?, None)?;
         update_registry_index(&url, false)?;
     }
 
-    let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, args.offline)?;
+    let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, offline)?;
     let root_manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
     let manifests = find_ws_members(&metadata);
     let mut manifests = manifests
@@ -299,7 +296,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                         .registry()
                         .map(|registry| registry_url(&manifest_path, Some(registry)))
                         .transpose()?;
-                    if !args.offline {
+                    if !offline {
                         if let Some(registry_url) = &registry_url {
                             if updated_registries.insert(registry_url.to_owned()) {
                                 update_registry_index(registry_url, false)?;
@@ -475,7 +472,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     } else if args.dry_run {
     } else {
         // Ensure lock file is updated and collect data for `recursive`
-        let metadata = resolve_ws(Some(&root_manifest_path), args.locked, args.offline)?;
+        let metadata = resolve_ws(Some(&root_manifest_path), args.locked, offline)?;
         let mut locked = metadata.packages;
 
         let precise_deps = selected_dependencies
