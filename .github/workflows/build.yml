@@ -24,9 +24,6 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
       continue-on-error: ${{ matrix.toolchain != 'stable' }}
-    - name: Run tests (vendored-openssl)
-      run: cargo test --features vendored-openssl --verbose
-      continue-on-error: ${{ matrix.toolchain != 'stable' }}
 
   clippy:
     name: clippy (ubuntu-latest, stable)

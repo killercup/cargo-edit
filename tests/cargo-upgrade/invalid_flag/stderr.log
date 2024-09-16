@@ -1,5 +1,0 @@
-error: unexpected argument '--flag' found
-
-Usage: cargo upgrade [OPTIONS]
-
-For more information, try '--help'.
