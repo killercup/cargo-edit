@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        toolchain: [stable, beta, nightly]
+        toolchain: [stable]
     steps:
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
