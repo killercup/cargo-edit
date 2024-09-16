@@ -1,11 +1,5 @@
-use std::path::Path;
-use std::time::Duration;
-
-use url::Url;
-
 use super::errors::*;
-use super::registry::registry_url;
-use super::shell_status;
+use super::AnyIndexCache;
 use super::Dependency;
 use super::RegistrySource;
 use super::VersionExt;
@@ -24,19 +18,13 @@ pub fn get_latest_dependency(
     crate_name: &str,
     flag_allow_prerelease: bool,
     rust_version: Option<RustVersion>,
-    manifest_path: &Path,
-    registry: Option<&Url>,
+    index: &mut AnyIndexCache,
 ) -> CargoResult<Dependency> {
     if crate_name.is_empty() {
         anyhow::bail!("Found empty crate name");
     }
 
-    let registry = match registry {
-        Some(url) => url.clone(),
-        None => registry_url(manifest_path, None)?,
-    };
-
-    let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
+    let crate_versions = fuzzy_query_registry_index(crate_name, index)?;
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease, rust_version)?;
 
@@ -52,19 +40,13 @@ pub fn get_compatible_dependency(
     crate_name: &str,
     version_req: &semver::VersionReq,
     rust_version: Option<RustVersion>,
-    manifest_path: &Path,
-    registry: Option<&Url>,
+    index: &mut AnyIndexCache,
 ) -> CargoResult<Dependency> {
     if crate_name.is_empty() {
         anyhow::bail!("Found empty crate name");
     }
 
-    let registry = match registry {
-        Some(url) => url.clone(),
-        None => registry_url(manifest_path, None)?,
-    };
-
-    let crate_versions = fuzzy_query_registry_index(crate_name, &registry)?;
+    let crate_versions = fuzzy_query_registry_index(crate_name, index)?;
 
     let dep = read_compatible_version(&crate_versions, version_req, rust_version)?;
 
@@ -156,10 +138,8 @@ struct CrateVersion {
 /// Fuzzy query crate from registry index
 fn fuzzy_query_registry_index(
     crate_name: impl Into<String>,
-    registry: &Url,
+    index: &mut AnyIndexCache,
 ) -> CargoResult<Vec<CrateVersion>> {
-    let index = crates_index::Index::from_url(registry.as_str())?;
-
     let crate_name = crate_name.into();
     let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
     if let Some(index) = names.iter().position(|x| *x == crate_name) {
@@ -168,19 +148,19 @@ fn fuzzy_query_registry_index(
     }
 
     for the_name in names {
-        let crate_ = match index.crate_(&the_name) {
-            Some(crate_) => crate_,
-            None => continue,
+        let krate = match index.krate(&the_name) {
+            Ok(Some(krate)) => krate,
+            _ => continue,
         };
-        return crate_
-            .versions()
+        return krate
+            .versions
             .iter()
             .map(|v| {
                 Ok(CrateVersion {
-                    name: v.name().to_owned(),
-                    version: v.version().parse()?,
-                    rust_version: v.rust_version().map(|r| r.parse()).transpose()?,
-                    yanked: v.is_yanked(),
+                    name: v.name.to_string(),
+                    version: v.version.as_ref().parse()?,
+                    rust_version: v.rust_version.as_ref().map(|r| r.parse()).transpose()?,
+                    yanked: v.yanked,
                 })
             })
             .collect();
@@ -293,39 +273,6 @@ fn read_compatible_version(
     let name = &latest.name;
     let version = latest.version.to_string();
     Ok(Dependency::new(name).set_source(RegistrySource::new(version)))
-}
-
-/// update registry index for given project
-pub fn update_registry_index(registry: &Url, quiet: bool) -> CargoResult<()> {
-    let mut index = crates_index::Index::from_url(registry.as_str())?;
-    if !quiet {
-        shell_status("Updating", &format!("'{registry}' index"))?;
-    }
-
-    while need_retry(index.update())? {
-        shell_status("Blocking", "waiting for lock on registry index")?;
-        std::thread::sleep(REGISTRY_BACKOFF);
-    }
-
-    Ok(())
-}
-
-/// Time between retries for retrieving the registry.
-const REGISTRY_BACKOFF: Duration = Duration::from_secs(1);
-
-/// Check if we need to retry retrieving the Index.
-fn need_retry(res: Result<(), crates_index::Error>) -> CargoResult<bool> {
-    match res {
-        Ok(()) => Ok(false),
-        Err(crates_index::Error::Git(err)) => {
-            if err.class() == git2::ErrorClass::Index && err.code() == git2::ErrorCode::Locked {
-                Ok(true)
-            } else {
-                Err(crates_index::Error::Git(err).into())
-            }
-        }
-        Err(err) => Err(err.into()),
-    }
 }
 
 #[test]

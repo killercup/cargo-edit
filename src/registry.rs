@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use url::Url;
 
-const CRATES_IO_INDEX: &str = "https://github.com/rust-lang/crates.io-index";
+const CRATES_IO_INDEX: &str = tame_index::index::sparse::CRATES_IO_HTTP_INDEX;
 const CRATES_IO_REGISTRY: &str = "crates-io";
 
 /// Find the URL of a registry

@@ -25,6 +25,7 @@ mod crate_spec;
 mod dependency;
 mod errors;
 mod fetch;
+mod index;
 mod manifest;
 mod metadata;
 mod registry;
@@ -37,9 +38,8 @@ pub use dependency::PathSource;
 pub use dependency::RegistrySource;
 pub use dependency::Source;
 pub use errors::*;
-pub use fetch::{
-    get_compatible_dependency, get_latest_dependency, update_registry_index, RustVersion,
-};
+pub use fetch::{get_compatible_dependency, get_latest_dependency, RustVersion};
+pub use index::*;
 pub use manifest::{find, get_dep_version, set_dep_version, LocalManifest, Manifest};
 pub use metadata::manifest_from_pkgid;
 pub use registry::registry_url;

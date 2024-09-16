@@ -5,9 +5,9 @@ use std::path::PathBuf;
 
 use anyhow::Context as _;
 use cargo_edit::{
-    find, get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version,
-    shell_note, shell_status, shell_warn, shell_write_stdout, update_registry_index, CargoResult,
-    CrateSpec, Dependency, LocalManifest, RustVersion, Source,
+    get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version, shell_note,
+    shell_status, shell_warn, shell_write_stdout, CargoResult, CertsSource, CrateSpec, Dependency,
+    IndexCache, LocalManifest, RustVersion, Source,
 };
 use clap::Args;
 use indexmap::IndexMap;
@@ -157,10 +157,7 @@ enum UnstableOptions {}
 /// messages.
 fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let offline = false;
-    if !offline {
-        let url = registry_url(&find(args.manifest_path.as_deref())?, None)?;
-        update_registry_index(&url, false)?;
-    }
+    let mut index = IndexCache::new(CertsSource::Native);
 
     let metadata = resolve_ws(args.manifest_path.as_deref(), args.locked, offline)?;
     let root_manifest_path = metadata.workspace_root.as_std_path().join("Cargo.toml");
@@ -209,7 +206,6 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         .collect::<CargoResult<IndexMap<_, Option<_>>>>()?;
     let mut processed_keys = BTreeSet::new();
 
-    let mut updated_registries = BTreeSet::new();
     let mut modified_crates = BTreeSet::new();
     let mut git_crates = BTreeSet::new();
     let mut pinned_present = false;
@@ -292,17 +288,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 {
                     // Update indices for any alternative registries, unless
                     // we're offline.
-                    let registry_url = dependency
-                        .registry()
-                        .map(|registry| registry_url(&manifest_path, Some(registry)))
-                        .transpose()?;
-                    if !offline {
-                        if let Some(registry_url) = &registry_url {
-                            if updated_registries.insert(registry_url.to_owned()) {
-                                update_registry_index(registry_url, false)?;
-                            }
-                        }
-                    }
+                    let registry_url = registry_url(&manifest_path, dependency.registry())?;
+                    let index = index.index(&registry_url)?;
                     let latest_compatible = VersionReq::parse(&old_version_req)
                         .ok()
                         .and_then(|old_version_req| {
@@ -310,8 +297,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 &dependency.name,
                                 &old_version_req,
                                 rust_version,
-                                &manifest_path,
-                                registry_url.as_ref(),
+                                index,
                             )
                             .ok()
                         })
@@ -321,19 +307,14 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 .to_owned()
                         });
                     let is_prerelease = old_version_req.contains('-');
-                    let latest_version = get_latest_dependency(
-                        &dependency.name,
-                        is_prerelease,
-                        rust_version,
-                        &manifest_path,
-                        registry_url.as_ref(),
-                    )
-                    .map(|d| {
-                        d.version()
-                            .expect("registry packages always have a version")
-                            .to_owned()
-                    })
-                    .ok();
+                    let latest_version =
+                        get_latest_dependency(&dependency.name, is_prerelease, rust_version, index)
+                            .map(|d| {
+                                d.version()
+                                    .expect("registry packages always have a version")
+                                    .to_owned()
+                            })
+                            .ok();
                     let latest_incompatible = if latest_version != latest_compatible {
                         latest_version
                     } else {

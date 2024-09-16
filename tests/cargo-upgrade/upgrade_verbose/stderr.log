@@ -1,4 +1,3 @@
-    Updating '[ROOTURL]/registry' index
     Checking None's dependencies
    Upgrading recursive dependencies
 warning: `[ROOT]/home/.cargo/config` is deprecated in favor of `config.toml`

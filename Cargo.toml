@@ -58,11 +58,15 @@ required-features = ["set-version"]
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
 cargo_metadata = "0.15.4"
-crates-index = "0.19.13"
+# Use this with default-features set to "true" (implicitly) so that reqwest,
+# a transitive dependency, is compiled with support for both webpki
+# certificates AND native certificates. We want support for both to be
+# present, and then to let the user _select_ through configuration which
+# one they want to be used.
+tame-index = { version = "0.13", features = ["sparse", "native-certs", "local"] }
 dunce = "1.0"
 env_proxy = "0.4.1"
 anyhow = "1.0"
-git2 = "0.17"
 hex = "0.4.3"
 home = "0.5.5"
 regex = "1.9.4"
@@ -99,7 +103,6 @@ default = [
     "rm",
     "upgrade",
     "set-version",
-    "vendored-libgit2",
 ]
 add = ["cli"]
 rm = ["cli"]
@@ -108,5 +111,3 @@ set-version = ["cli"]
 cli = ["color", "clap"]
 color = ["concolor-control/auto"]
 test-external-apis = []
-vendored-openssl = ["git2/vendored-openssl"]
-vendored-libgit2 = ["git2/vendored-libgit2"]

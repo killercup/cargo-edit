@@ -1,4 +1,3 @@
-    Updating '[ROOTURL]/registry' index
 Error: `cargo metadata` exited with an error: warning: `[ROOT]/home/.cargo/config` is deprecated in favor of `config.toml`
 note: if you need to support cargo 1.38 or earlier, you can symlink `config` to `config.toml`
 error: expected `.`, `=`
