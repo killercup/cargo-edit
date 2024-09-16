@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.13.0 - 2024-09-16
+
 ### Breaking Changes
 
 - *(upgrade)* Remove of `--offline` as we don't have local caching for sparse registry
