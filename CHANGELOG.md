@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Breaking Changes
+
+- *(upgrade)* Remove of `--offline` as we don't have local caching for sparse registry
+
+### Fixes
+
+- *(upgrade)* Switched from git to sparse registry for faster runs
+
 ## 0.12.3 - 2024-05-30
 
 ### Internal
