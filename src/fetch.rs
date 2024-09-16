@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;
 
@@ -152,7 +151,6 @@ struct CrateVersion {
     version: semver::Version,
     rust_version: Option<RustVersion>,
     yanked: bool,
-    available_features: BTreeMap<String, Vec<String>>,
 }
 
 /// Fuzzy query crate from registry index
@@ -183,7 +181,6 @@ fn fuzzy_query_registry_index(
                     version: v.version().parse()?,
                     rust_version: v.rust_version().map(|r| r.parse()).transpose()?,
                     yanked: v.is_yanked(),
-                    available_features: registry_features(v),
                 })
             })
             .collect();
@@ -264,9 +261,7 @@ fn read_latest_version(
 
     let name = &latest.name;
     let version = latest.version.to_string();
-    Ok(Dependency::new(name)
-        .set_source(RegistrySource::new(version))
-        .set_available_features(latest.available_features.clone()))
+    Ok(Dependency::new(name).set_source(RegistrySource::new(version)))
 }
 
 fn read_compatible_version(
@@ -297,24 +292,7 @@ fn read_compatible_version(
 
     let name = &latest.name;
     let version = latest.version.to_string();
-    Ok(Dependency::new(name)
-        .set_source(RegistrySource::new(version))
-        .set_available_features(latest.available_features.clone()))
-}
-
-fn registry_features(v: &crates_index::Version) -> BTreeMap<String, Vec<String>> {
-    let mut features: BTreeMap<_, _> = v
-        .features()
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-    features.extend(
-        v.dependencies()
-            .iter()
-            .filter(|d| d.is_optional())
-            .map(|d| (d.crate_name().to_owned(), vec![])),
-    );
-    features
+    Ok(Dependency::new(name).set_source(RegistrySource::new(version)))
 }
 
 /// update registry index for given project
@@ -380,14 +358,12 @@ fn get_latest_stable_version() {
             version: "0.6.0-alpha".parse().unwrap(),
             rust_version: None,
             yanked: false,
-            available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
             rust_version: None,
             yanked: false,
-            available_features: BTreeMap::new(),
         },
     ];
     assert_eq!(
@@ -407,14 +383,12 @@ fn get_latest_unstable_or_stable_version() {
             version: "0.6.0-alpha".parse().unwrap(),
             rust_version: None,
             yanked: false,
-            available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "foo".into(),
             version: "0.5.0".parse().unwrap(),
             rust_version: None,
             yanked: false,
-            available_features: BTreeMap::new(),
         },
     ];
     assert_eq!(
@@ -434,14 +408,12 @@ fn get_latest_version_with_yanked() {
             version: "0.3.1".parse().unwrap(),
             rust_version: None,
             yanked: true,
-            available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
             rust_version: None,
             yanked: false,
-            available_features: BTreeMap::new(),
         },
     ];
     assert_eq!(
@@ -461,14 +433,12 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
             version: "0.3.1".parse().unwrap(),
             rust_version: None,
             yanked: true,
-            available_features: BTreeMap::new(),
         },
         CrateVersion {
             name: "true".into(),
             version: "0.3.0".parse().unwrap(),
             rust_version: None,
             yanked: true,
-            available_features: BTreeMap::new(),
         },
     ];
     assert!(read_latest_version(&versions, false, None).is_err());
