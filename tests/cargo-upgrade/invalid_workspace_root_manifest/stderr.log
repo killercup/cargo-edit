@@ -1,3 +1,0 @@
-    Updating '[ROOTURL]/registry' index
-Error: `cargo metadata` exited with an error: warning: `[ROOT]/home/.cargo/config` is deprecated in favor of `config.toml`
-...
