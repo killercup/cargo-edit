@@ -9,8 +9,6 @@
 #![recursion_limit = "256"]
 #![cfg_attr(test, allow(dead_code))]
 #![warn(
-    missing_docs,
-    missing_debug_implementations,
     missing_copy_implementations,
     trivial_casts,
     trivial_numeric_casts,
