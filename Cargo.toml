@@ -97,6 +97,11 @@ cargo-test-macro = "0.3"
 cargo-test-support = "0.3"
 url = "2.4.0"
 
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+
 [features]
 default = [
     "add",
