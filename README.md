@@ -24,12 +24,6 @@ Ensure that you have a fairly recent version of rust/cargo installed. On Ubuntu 
 $ cargo install cargo-edit
 ```
 
-If you wish to use a bundled version of `openssl`:
-
-```console,ignore
-$ cargo install cargo-edit --features vendored-openssl
-```
-
 *Compiler support: requires rustc 1.44+*
 
 (Please check [`cargo`'s documentation](http://doc.crates.io/) to learn how `cargo install` works and how to set up your system so it finds binaries installed by `cargo`.)
