@@ -91,7 +91,7 @@ version = "1.0.18"
 predicates = { version = "3.0.3", features = ["color"] }
 assert_cmd = { version = "2.0.12", features = ["color-auto"] }
 assert_fs = { version = "1.0.13", features = ["color-auto"] }
-trycmd = "0.14.17"
+trycmd = "0.15.8"
 snapbox = { version = "0.6.9", features = ["cmd", "path"] }
 cargo-test-macro = "0.3"
 cargo-test-support = "0.3"
