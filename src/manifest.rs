@@ -506,6 +506,7 @@ fn overwrite_value(item: &mut toml_edit::Item, value: impl Into<toml_edit::Value
     *item = toml_edit::Item::Value(value);
 }
 
+#[cfg(feature = "upgrade")]
 pub fn str_or_1_len_table(item: &toml_edit::Item) -> bool {
     item.is_str() || item.as_table_like().map(|t| t.len() == 1).unwrap_or(false)
 }

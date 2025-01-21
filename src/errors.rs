@@ -66,6 +66,7 @@ impl From<std::io::Error> for CliError {
     }
 }
 
+#[cfg(feature = "upgrade")]
 pub(crate) fn no_crate_err(name: impl Display) -> Error {
     anyhow::format_err!("The crate `{}` could not be found in registry index.", name)
 }
@@ -82,6 +83,7 @@ pub(crate) fn non_existent_dependency_err(name: impl Display, table: impl Displa
     )
 }
 
+#[cfg(feature = "upgrade")]
 pub(crate) fn invalid_cargo_config() -> Error {
     anyhow::format_err!("Invalid cargo config")
 }

@@ -18,33 +18,41 @@
     unused_qualifications
 )]
 
-#[macro_use]
+#[cfg_attr(feature = "upgrade", macro_use)]
+#[cfg(feature = "upgrade")]
 extern crate serde_derive;
 
 mod crate_spec;
+#[cfg(feature = "upgrade")]
 mod dependency;
 mod errors;
+#[cfg(feature = "upgrade")]
 mod fetch;
+#[cfg(feature = "upgrade")]
 mod index;
 mod manifest;
 mod metadata;
+#[cfg(feature = "upgrade")]
 mod registry;
 mod util;
 mod version;
 
 pub use crate_spec::CrateSpec;
-pub use dependency::Dependency;
-pub use dependency::PathSource;
-pub use dependency::RegistrySource;
-pub use dependency::Source;
+#[cfg(feature = "upgrade")]
+pub use dependency::{Dependency, PathSource, RegistrySource, Source};
 pub use errors::*;
+#[cfg(feature = "upgrade")]
 pub use fetch::{get_compatible_dependency, get_latest_dependency, RustVersion};
+#[cfg(feature = "upgrade")]
 pub use index::*;
 pub use manifest::{find, get_dep_version, set_dep_version, LocalManifest, Manifest};
 pub use metadata::manifest_from_pkgid;
+#[cfg(feature = "upgrade")]
 pub use registry::registry_url;
+#[cfg(feature = "upgrade")]
 pub use util::{
-    colorize_stderr, shell_note, shell_print, shell_status, shell_warn, shell_write_stderr,
-    shell_write_stdout, Color, ColorChoice,
+    colorize_stderr, shell_note, shell_print, shell_write_stderr, shell_write_stdout, Color,
+    ColorChoice,
 };
+pub use util::{shell_status, shell_warn};
 pub use version::{upgrade_requirement, VersionExt};

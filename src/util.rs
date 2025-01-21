@@ -14,6 +14,7 @@ pub fn colorize_stderr() -> ColorChoice {
     }
 }
 
+#[cfg(feature = "upgrade")]
 /// Whether to color logged output
 pub fn colorize_stdout() -> ColorChoice {
     if concolor_control::get(concolor_control::Stream::Stdout).color() {
@@ -53,11 +54,13 @@ pub fn shell_warn(message: &str) -> CargoResult<()> {
     shell_print("warning", message, Color::Yellow, false)
 }
 
+#[cfg(feature = "upgrade")]
 /// Print a styled warning message.
 pub fn shell_note(message: &str) -> CargoResult<()> {
     shell_print("note", message, Color::Cyan, false)
 }
 
+#[cfg(feature = "upgrade")]
 /// Print a part of a line with formatting
 pub fn shell_write_stderr(fragment: impl std::fmt::Display, spec: &ColorSpec) -> CargoResult<()> {
     let color_choice = colorize_stderr();
@@ -69,6 +72,7 @@ pub fn shell_write_stderr(fragment: impl std::fmt::Display, spec: &ColorSpec) ->
     Ok(())
 }
 
+#[cfg(feature = "upgrade")]
 /// Print a part of a line with formatting
 pub fn shell_write_stdout(fragment: impl std::fmt::Display, spec: &ColorSpec) -> CargoResult<()> {
     let color_choice = colorize_stdout();
