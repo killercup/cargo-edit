@@ -137,7 +137,8 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
             .iter()
             .filter(|p| {
                 LocalManifest::try_new(Path::new(&p.manifest_path))
-                    .map_or(false, |m| m.version_is_inherited())
+                    .map(|m| m.version_is_inherited())
+                    .unwrap_or(false)
             })
             .map(|p| p.name.as_str())
             .collect::<Vec<_>>();
@@ -148,7 +149,8 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
                 .filter(|i| !selected.iter().any(|s| i.id == s.id))
                 .filter(|i| {
                     LocalManifest::try_new(Path::new(&i.manifest_path))
-                        .map_or(false, |m| m.version_is_inherited())
+                        .map(|m| m.version_is_inherited())
+                        .unwrap_or(false)
                 })
                 .collect::<Vec<_>>();
             let exclude_implicit = implicit
