@@ -127,6 +127,16 @@ impl From<&'_ semver::VersionReq> for RustVersion {
     }
 }
 
+impl From<&'_ semver::Version> for RustVersion {
+    fn from(version: &semver::Version) -> Self {
+        Self {
+            major: version.major,
+            minor: version.minor,
+            patch: version.patch,
+        }
+    }
+}
+
 #[derive(Debug)]
 struct CrateVersion {
     name: String,
@@ -158,7 +168,7 @@ fn fuzzy_query_registry_index(
             .map(|v| {
                 Ok(CrateVersion {
                     name: v.name.to_string(),
-                    version: v.version.as_ref().parse()?,
+                    version: v.version.as_str().parse()?,
                     rust_version: v.rust_version.as_ref().map(|r| r.parse()).transpose()?,
                     yanked: v.yanked,
                 })
