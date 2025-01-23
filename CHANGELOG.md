@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Performance
+
+- Changed compilation settings
+
 ## 0.13.0 - 2024-09-16
 
 ### Breaking Changes
