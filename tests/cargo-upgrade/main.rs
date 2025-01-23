@@ -230,7 +230,7 @@ pub trait CargoCommand {
 
 impl CargoCommand for snapbox::cmd::Command {
     fn cargo_ui() -> Self {
-        use cargo_test_support::TestEnv;
+        use cargo_test_support::TestEnvCommandExt;
         Self::new(cargo_exe())
             .with_assert(cargo_test_support::compare::assert_ui())
             .test_env()

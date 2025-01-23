@@ -57,37 +57,37 @@ required-features = ["set-version"]
 
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
-cargo_metadata = "0.15.4"
+cargo_metadata = "0.19.1"
 # Use this with default-features set to "true" (implicitly) so that reqwest,
 # a transitive dependency, is compiled with support for both webpki
 # certificates AND native certificates. We want support for both to be
 # present, and then to let the user _select_ through configuration which
 # one they want to be used.
-tame-index = { version = "0.13", features = ["sparse", "native-certs", "local"] }
+tame-index = { version = "0.17", features = ["sparse", "native-certs", "local"] }
 dunce = "1.0"
 anyhow = "1.0"
 hex = "0.4.3"
-home = "0.5.5"
-serde = "1.0.188"
-serde_derive = "1.0.188"
-clap = { version = "4.4.2", features = ["derive", "wrap_help"], optional = true }
-clap-cargo = "0.12.0"
-termcolor = "1.2.0"
-toml = "0.7.6"
-toml_edit = "0.19.14"
-indexmap = "1"
-url = "2.4.0"
+home = "0.5.11"
+serde = "1.0.217"
+serde_derive = "1.0.217"
+clap = { version = "4.5.27", features = ["derive", "wrap_help"], optional = true }
+clap-cargo = "0.15.2"
+termcolor = "1.4.1"
+toml = "0.8.19"
+toml_edit = "0.22.22"
+indexmap = "2"
+url = "2.5.4"
 pathdiff = "0.2"
 
 [dependencies.semver]
 features = ["serde"]
-version = "1.0.18"
+version = "1.0.25"
 
 [dev-dependencies]
-trycmd = "0.14.17"
-snapbox = { version = "0.6.9", features = ["cmd", "path"] }
+trycmd = "0.15.8"
+snapbox = { version = "0.6.21", features = ["cmd", "path"] }
 cargo-test-macro = "0.3"
-cargo-test-support = "0.3"
+cargo-test-support = "0.6"
 
 [profile.release]
 panic = "abort"
