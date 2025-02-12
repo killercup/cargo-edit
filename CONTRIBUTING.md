@@ -6,4 +6,4 @@ To help us help you get pull requests merged quickly and smoothly, open an issue
 
 `cargo-edit` has a moderately comprehensive test suite. Contributions that add/improve tests are awesome. Please add tests for every change.
 
-`cargo-edit` uses [`rustfmt-nightly`](https://github.com/rust-lang-nursery/rustfmt) for formatting and [`clippy`](https://github.com/rust-lang-nursery/rust-clippy) for linting.
+`cargo-edit` uses `rustfmt` for formatting and `clippy` for linting.
