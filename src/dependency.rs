@@ -1000,9 +1000,8 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn normalise_windows_style_paths() {
-        let crate_root =
-            dunce::canonicalize(&std::env::current_dir().unwrap().join(Path::new("/")))
-                .expect("root exists");
+        let crate_root = dunce::canonicalize(std::env::current_dir().unwrap().join(Path::new("/")))
+            .expect("root exists");
         let original = crate_root.join(r"sibling\crate");
         let should_be = "sibling/crate";
         let dep = Dependency::new("dep").set_source(PathSource::new(original));
