@@ -1,9 +1,4 @@
-# EditorConfig helps developers define and maintain consistent
-# coding styles between different editors and IDEs
-# editorconfig.org
-
 root = true
-
 
 [*]
 end_of_line = lf
