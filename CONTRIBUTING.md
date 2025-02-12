@@ -1,6 +1,6 @@
 Thanks for your interest - we gratefully welcome contributions.
 
-Questions can be asked in [issues](https://github.com/killercup/cargo-edit/issues), or on [Gitter](https://gitter.im/cargo-edit/Lobby).
+Questions can be asked in [issues](https://github.com/killercup/cargo-edit/issues).
 
 To help us help you get pull requests merged quickly and smoothly, open an issue before submitted large changes. Please keep the contents of pull requests and commits short. Commit messages should include the intent of the commit.
 
