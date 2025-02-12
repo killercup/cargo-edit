@@ -5,9 +5,7 @@ import re
 import pathlib
 import sys
 
-
 _STDIO = pathlib.Path("-")
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -21,6 +19,7 @@ def main():
     else:
         with args.input.open() as fh:
             lines = fh.readlines()
+
     version = args.tag.lstrip("v")
 
     note_lines = []
@@ -33,6 +32,7 @@ def main():
             note_lines.append(line)
 
     notes = "".join(note_lines).strip()
+
     if args.output == _STDIO:
         print(notes)
     else:
