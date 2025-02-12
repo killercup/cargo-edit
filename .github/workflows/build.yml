@@ -1,57 +1,102 @@
 name: build
 
+permissions:
+  contents: read
+
 on: [push, pull_request]
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+  CLICOLOR: 1
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: none
+    name: CI
+    needs: [test, lockfile, rustfmt, clippy]
+    runs-on: ubuntu-latest
+    if: "always()"
+    steps:
+      - name: Failed
+        run: exit 1
+        if: "contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')"
+  test:
+    name: Test
     strategy:
-      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        toolchain: [stable]
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        rust: ["stable"]
+    continue-on-error: ${{ matrix.rust != 'stable' }}
+    runs-on: ${{ matrix.os }}
     steps:
-    - name: Install latest nightly
-      uses: actions-rs/toolchain@v1
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: ${{ matrix.toolchain }}
-        override: true
-    - uses: actions/checkout@v2
-    - uses: Swatinem/rust-cache@v1
+        toolchain: ${{ matrix.rust }}
+    - uses: Swatinem/rust-cache@v2
     - name: Build
-      run: cargo build --verbose
-      continue-on-error: ${{ matrix.toolchain != 'stable' }}
-    - name: Run tests
-      run: cargo test --verbose
-      continue-on-error: ${{ matrix.toolchain != 'stable' }}
-
+      run: cargo test --no-run
+    - name: Test
+      run: cargo test
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+    - uses: Swatinem/rust-cache@v2
+    - name: "Is lockfile updated?"
+      run: cargo update --workspace --locked
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        components: rustfmt
+    - uses: Swatinem/rust-cache@v2
+    - name: Check formatting
+      run: cargo fmt --all -- --check
   clippy:
-    name: clippy (ubuntu-latest, stable)
+    name: clippy
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write # to upload sarif results
     steps:
-      - name: Install latest stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          components: clippy
-      - name: Checkout sources
-        uses: actions/checkout@v2
-      - uses: Swatinem/rust-cache@v1
-      - name: Cargo Clippy
-        run: cargo clippy -- -D warnings -A deprecated
-
-  fmt:
-    name: fmt (ubuntu-latest, stable)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install latest stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          components: rustfmt
-      - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Check Formatting
-        run: cargo fmt --all -- --check
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        components: clippy
+    - uses: Swatinem/rust-cache@v2
+    - name: Install SARIF tools
+      run: cargo install clippy-sarif --locked
+    - name: Install SARIF tools
+      run: cargo install sarif-fmt --locked
+    - name: Check
+      run: >
+        cargo clippy --workspace --all-features --all-targets --message-format=json
+        | clippy-sarif
+        | tee clippy-results.sarif
+        | sarif-fmt
+      continue-on-error: true
+    - name: Upload
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: clippy-results.sarif
+        wait-for-processing: true
+    - name: Report status
+      run: cargo clippy --workspace --all-features --all-targets -- -D warnings --allow deprecated
