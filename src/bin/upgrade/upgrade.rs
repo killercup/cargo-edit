@@ -5,9 +5,9 @@ use std::path::PathBuf;
 
 use anyhow::Context as _;
 use cargo_edit::{
-    get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version, shell_note,
-    shell_status, shell_warn, shell_write_stdout, CargoResult, CertsSource, CrateSpec, Dependency,
-    IndexCache, LocalManifest, RustVersion, Source,
+    CargoResult, CertsSource, CrateSpec, Dependency, IndexCache, LocalManifest, RustVersion,
+    Source, get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version,
+    shell_note, shell_status, shell_warn, shell_write_stdout,
 };
 use clap::Args;
 use indexmap::IndexMap;

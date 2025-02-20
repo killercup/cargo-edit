@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use cargo_edit::{shell_status, shell_warn, upgrade_requirement, LocalManifest};
+use cargo_edit::{LocalManifest, shell_status, shell_warn, upgrade_requirement};
 use clap::Args;
 
 use crate::errors::*;

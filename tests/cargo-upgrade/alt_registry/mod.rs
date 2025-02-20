@@ -1,9 +1,9 @@
+use cargo_test_support::Project;
 use cargo_test_support::compare::assert_ui;
 use cargo_test_support::file;
-use cargo_test_support::Project;
 
-use crate::init_alt_registry;
 use crate::CargoCommand;
+use crate::init_alt_registry;
 use cargo_test_support::current_dir;
 
 #[cargo_test]

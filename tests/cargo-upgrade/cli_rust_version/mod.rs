@@ -1,6 +1,6 @@
+use cargo_test_support::Project;
 use cargo_test_support::compare::assert_ui;
 use cargo_test_support::file;
-use cargo_test_support::Project;
 
 use crate::CargoCommand;
 use cargo_test_support::current_dir;

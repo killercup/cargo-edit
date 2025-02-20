@@ -1,8 +1,8 @@
-use super::errors::*;
 use super::AnyIndexCache;
 use super::Dependency;
 use super::RegistrySource;
 use super::VersionExt;
+use super::errors::*;
 
 /// Query latest version from a registry index
 ///

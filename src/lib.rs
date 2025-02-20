@@ -38,13 +38,13 @@ pub use dependency::PathSource;
 pub use dependency::RegistrySource;
 pub use dependency::Source;
 pub use errors::*;
-pub use fetch::{get_compatible_dependency, get_latest_dependency, RustVersion};
+pub use fetch::{RustVersion, get_compatible_dependency, get_latest_dependency};
 pub use index::*;
-pub use manifest::{find, get_dep_version, set_dep_version, LocalManifest, Manifest};
+pub use manifest::{LocalManifest, Manifest, find, get_dep_version, set_dep_version};
 pub use metadata::manifest_from_pkgid;
 pub use registry::registry_url;
 pub use util::{
-    colorize_stderr, shell_note, shell_print, shell_status, shell_warn, shell_write_stderr,
-    shell_write_stdout, Color, ColorChoice,
+    Color, ColorChoice, colorize_stderr, shell_note, shell_print, shell_status, shell_warn,
+    shell_write_stderr, shell_write_stdout,
 };
-pub use version::{upgrade_requirement, VersionExt};
+pub use version::{VersionExt, upgrade_requirement};
