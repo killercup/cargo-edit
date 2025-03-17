@@ -1,67 +1,6 @@
-use super::AnyIndexCache;
 use super::Dependency;
 use super::RegistrySource;
 use super::VersionExt;
-use super::errors::*;
-
-/// Query latest version from a registry index
-///
-/// The registry argument must be specified for crates
-/// from alternative registries.
-///
-/// The latest version will be returned as a `Dependency`. This will fail, when
-///
-/// - there is no Internet connection and offline is false.
-/// - summaries in registry index with an incorrect format.
-/// - a crate with the given name does not exist on the registry.
-pub fn get_latest_dependency(
-    crate_name: &str,
-    flag_allow_prerelease: bool,
-    rust_version: Option<RustVersion>,
-    index: &mut AnyIndexCache,
-) -> CargoResult<Dependency> {
-    if crate_name.is_empty() {
-        anyhow::bail!("Found empty crate name");
-    }
-
-    let crate_versions = fuzzy_query_registry_index(crate_name, index)?;
-
-    let dep = find_latest_version(&crate_versions, flag_allow_prerelease, rust_version)
-        .ok_or_else(|| {
-            anyhow::format_err!(
-                "No available versions exist. Either all were yanked \
-                         or only prerelease versions exist. Trying with the \
-                         --allow-prerelease flag might solve the issue."
-            )
-        })?;
-
-    Ok(dep)
-}
-
-/// Find the highest version compatible with a version req
-pub fn get_compatible_dependency(
-    crate_name: &str,
-    version_req: &semver::VersionReq,
-    rust_version: Option<RustVersion>,
-    index: &mut AnyIndexCache,
-) -> CargoResult<Dependency> {
-    if crate_name.is_empty() {
-        anyhow::bail!("Found empty crate name");
-    }
-
-    let crate_versions = fuzzy_query_registry_index(crate_name, index)?;
-
-    let dep =
-        find_compatible_version(&crate_versions, version_req, rust_version).ok_or_else(|| {
-            anyhow::format_err!(
-                "No available versions exist. Either all were yanked \
-                         or only prerelease versions exist. Trying with the \
-                         --allow-prerelease flag might solve the issue."
-            )
-        })?;
-
-    Ok(dep)
-}
 
 /// Simplified represetation of `package.rust-version`
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -143,252 +82,62 @@ impl From<&'_ semver::Version> for RustVersion {
     }
 }
 
-#[derive(Debug)]
-struct CrateVersion {
-    name: String,
-    version: semver::Version,
-    rust_version: Option<RustVersion>,
-    yanked: bool,
-}
-
-/// Fuzzy query crate from registry index
-fn fuzzy_query_registry_index(
-    crate_name: impl Into<String>,
-    index: &mut AnyIndexCache,
-) -> CargoResult<Vec<CrateVersion>> {
-    let crate_name = crate_name.into();
-    let mut names = gen_fuzzy_crate_names(crate_name.clone());
-    if let Some(index) = names.iter().position(|x| *x == crate_name) {
-        // ref: https://github.com/killercup/cargo-edit/pull/317#discussion_r307365704
-        names.swap(index, 0);
-    }
-
-    for the_name in names {
-        let krate = match index.krate(&the_name) {
-            Ok(Some(krate)) => krate,
-            _ => continue,
-        };
-        return krate
-            .versions
-            .iter()
-            .map(|v| {
-                Ok(CrateVersion {
-                    name: v.name.to_string(),
-                    version: v.version.as_str().parse()?,
-                    rust_version: v.rust_version.as_ref().map(|r| r.parse()).transpose()?,
-                    yanked: v.yanked,
-                })
-            })
-            .collect();
-    }
-    Err(no_crate_err(crate_name))
-}
-
-/// Generate all similar crate names
-///
-/// Examples:
-///
-/// | input | output |
-/// | ----- | ------ |
-/// | cargo | cargo  |
-/// | cargo-edit | cargo-edit, cargo_edit |
-/// | parking_lot_core | parking_lot_core, parking_lot-core, parking-lot_core, parking-lot-core |
-fn gen_fuzzy_crate_names(crate_name: String) -> Vec<String> {
-    const PATTERN: [u8; 2] = [b'-', b'_'];
-
-    let wildcard_indexs = crate_name
-        .bytes()
-        .enumerate()
-        .filter(|(_, item)| PATTERN.contains(item))
-        .map(|(index, _)| index)
-        .take(10)
-        .collect::<Vec<usize>>();
-    if wildcard_indexs.is_empty() {
-        return vec![crate_name];
-    }
-
-    let mut result = vec![];
-    let mut bytes = crate_name.into_bytes();
-    for mask in 0..2u128.pow(wildcard_indexs.len() as u32) {
-        for (mask_index, wildcard_index) in wildcard_indexs.iter().enumerate() {
-            let mask_value = (mask >> mask_index) & 1 == 1;
-            if mask_value {
-                bytes[*wildcard_index] = b'-';
-            } else {
-                bytes[*wildcard_index] = b'_';
-            }
-        }
-        result.push(String::from_utf8(bytes.clone()).unwrap());
-    }
-    result
-}
-
 // Checks whether a version object is a stable release
-fn version_is_stable(version: &CrateVersion) -> bool {
-    !version.version.is_prerelease()
+fn version_is_stable(version: &semver::Version) -> bool {
+    !version.is_prerelease()
 }
 
 /// Read latest version from Versions structure
-fn find_latest_version(
-    versions: &[CrateVersion],
+pub fn find_latest_version(
+    versions: &[tame_index::IndexVersion],
     flag_allow_prerelease: bool,
     rust_version: Option<RustVersion>,
 ) -> Option<Dependency> {
-    let latest = versions
+    let (latest, _) = versions
         .iter()
-        .filter(|&k| flag_allow_prerelease || version_is_stable(k))
-        .filter(|&k| !k.yanked)
-        .filter(|&k| {
+        .filter_map(|k| Some((k, k.version.parse::<semver::Version>().ok()?)))
+        .filter(|(_, v)| flag_allow_prerelease || version_is_stable(v))
+        .filter(|(k, _)| !k.yanked)
+        .filter(|(k, _)| {
             rust_version
                 .and_then(|rust_version| {
                     k.rust_version
+                        .as_ref()
+                        .and_then(|k_rust_version| k_rust_version.parse::<RustVersion>().ok())
                         .map(|k_rust_version| k_rust_version <= rust_version)
                 })
                 .unwrap_or(true)
         })
-        .max_by_key(|&k| k.version.clone())?;
+        .max_by_key(|(_, v)| v.clone())?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
     Some(Dependency::new(name).set_source(RegistrySource::new(version)))
 }
 
-fn find_compatible_version(
-    versions: &[CrateVersion],
+pub fn find_compatible_version(
+    versions: &[tame_index::IndexVersion],
     version_req: &semver::VersionReq,
     rust_version: Option<RustVersion>,
 ) -> Option<Dependency> {
-    let latest = versions
+    let (latest, _) = versions
         .iter()
-        .filter(|&k| version_req.matches(&k.version))
-        .filter(|&k| !k.yanked)
-        .filter(|&k| {
+        .filter_map(|k| Some((k, k.version.parse::<semver::Version>().ok()?)))
+        .filter(|(_, v)| version_req.matches(v))
+        .filter(|(k, _)| !k.yanked)
+        .filter(|(k, _)| {
             rust_version
                 .and_then(|rust_version| {
                     k.rust_version
+                        .as_ref()
+                        .and_then(|k_rust_version| k_rust_version.parse::<RustVersion>().ok())
                         .map(|k_rust_version| k_rust_version <= rust_version)
                 })
                 .unwrap_or(true)
         })
-        .max_by_key(|&k| k.version.clone())?;
+        .max_by_key(|(_, v)| v.clone())?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
     Some(Dependency::new(name).set_source(RegistrySource::new(version)))
-}
-
-#[test]
-fn test_gen_fuzzy_crate_names() {
-    fn test_helper(input: &str, expect: &[&str]) {
-        let mut actual = gen_fuzzy_crate_names(input.to_string());
-        actual.sort();
-
-        let mut expect = expect.iter().map(|x| x.to_string()).collect::<Vec<_>>();
-        expect.sort();
-
-        assert_eq!(actual, expect);
-    }
-
-    test_helper("", &[""]);
-    test_helper("-", &["_", "-"]);
-    test_helper("DCjanus", &["DCjanus"]);
-    test_helper("DC-janus", &["DC-janus", "DC_janus"]);
-    test_helper(
-        "DC-_janus",
-        &["DC__janus", "DC_-janus", "DC-_janus", "DC--janus"],
-    );
-}
-
-#[test]
-fn get_latest_stable_version() {
-    let versions = vec![
-        CrateVersion {
-            name: "foo".into(),
-            version: "0.6.0-alpha".parse().unwrap(),
-            rust_version: None,
-            yanked: false,
-        },
-        CrateVersion {
-            name: "foo".into(),
-            version: "0.5.0".parse().unwrap(),
-            rust_version: None,
-            yanked: false,
-        },
-    ];
-    assert_eq!(
-        find_latest_version(&versions, false, None)
-            .unwrap()
-            .version()
-            .unwrap(),
-        "0.5.0"
-    );
-}
-
-#[test]
-fn get_latest_unstable_or_stable_version() {
-    let versions = vec![
-        CrateVersion {
-            name: "foo".into(),
-            version: "0.6.0-alpha".parse().unwrap(),
-            rust_version: None,
-            yanked: false,
-        },
-        CrateVersion {
-            name: "foo".into(),
-            version: "0.5.0".parse().unwrap(),
-            rust_version: None,
-            yanked: false,
-        },
-    ];
-    assert_eq!(
-        find_latest_version(&versions, true, None)
-            .unwrap()
-            .version()
-            .unwrap(),
-        "0.6.0-alpha"
-    );
-}
-
-#[test]
-fn get_latest_version_with_yanked() {
-    let versions = vec![
-        CrateVersion {
-            name: "treexml".into(),
-            version: "0.3.1".parse().unwrap(),
-            rust_version: None,
-            yanked: true,
-        },
-        CrateVersion {
-            name: "true".into(),
-            version: "0.3.0".parse().unwrap(),
-            rust_version: None,
-            yanked: false,
-        },
-    ];
-    assert_eq!(
-        find_latest_version(&versions, false, None)
-            .unwrap()
-            .version()
-            .unwrap(),
-        "0.3.0"
-    );
-}
-
-#[test]
-fn get_no_latest_version_from_json_when_all_are_yanked() {
-    let versions = vec![
-        CrateVersion {
-            name: "treexml".into(),
-            version: "0.3.1".parse().unwrap(),
-            rust_version: None,
-            yanked: true,
-        },
-        CrateVersion {
-            name: "true".into(),
-            version: "0.3.0".parse().unwrap(),
-            rust_version: None,
-            yanked: true,
-        },
-    ];
-    assert!(find_latest_version(&versions, false, None).is_none());
 }
