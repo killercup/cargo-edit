@@ -28,10 +28,6 @@ pub fn get_latest_dependency(
 
     let dep = read_latest_version(&crate_versions, flag_allow_prerelease, rust_version)?;
 
-    if dep.name != crate_name {
-        eprintln!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
-    }
-
     Ok(dep)
 }
 
@@ -49,10 +45,6 @@ pub fn get_compatible_dependency(
     let crate_versions = fuzzy_query_registry_index(crate_name, index)?;
 
     let dep = read_compatible_version(&crate_versions, version_req, rust_version)?;
-
-    if dep.name != crate_name {
-        eprintln!("WARN: Added `{}` instead of `{}`", dep.name, crate_name);
-    }
 
     Ok(dep)
 }
