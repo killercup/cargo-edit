@@ -26,7 +26,7 @@ pub fn get_latest_dependency(
 
     let crate_versions = fuzzy_query_registry_index(crate_name, index)?;
 
-    let dep = read_latest_version(&crate_versions, flag_allow_prerelease, rust_version)?;
+    let dep = find_latest_version(&crate_versions, flag_allow_prerelease, rust_version)?;
 
     Ok(dep)
 }
@@ -44,7 +44,7 @@ pub fn get_compatible_dependency(
 
     let crate_versions = fuzzy_query_registry_index(crate_name, index)?;
 
-    let dep = read_compatible_version(&crate_versions, version_req, rust_version)?;
+    let dep = find_compatible_version(&crate_versions, version_req, rust_version)?;
 
     Ok(dep)
 }
@@ -215,7 +215,7 @@ fn version_is_stable(version: &CrateVersion) -> bool {
 }
 
 /// Read latest version from Versions structure
-fn read_latest_version(
+fn find_latest_version(
     versions: &[CrateVersion],
     flag_allow_prerelease: bool,
     rust_version: Option<RustVersion>,
@@ -246,7 +246,7 @@ fn read_latest_version(
     Ok(Dependency::new(name).set_source(RegistrySource::new(version)))
 }
 
-fn read_compatible_version(
+fn find_compatible_version(
     versions: &[CrateVersion],
     version_req: &semver::VersionReq,
     rust_version: Option<RustVersion>,
@@ -316,7 +316,7 @@ fn get_latest_stable_version() {
         },
     ];
     assert_eq!(
-        read_latest_version(&versions, false, None)
+        find_latest_version(&versions, false, None)
             .unwrap()
             .version()
             .unwrap(),
@@ -341,7 +341,7 @@ fn get_latest_unstable_or_stable_version() {
         },
     ];
     assert_eq!(
-        read_latest_version(&versions, true, None)
+        find_latest_version(&versions, true, None)
             .unwrap()
             .version()
             .unwrap(),
@@ -366,7 +366,7 @@ fn get_latest_version_with_yanked() {
         },
     ];
     assert_eq!(
-        read_latest_version(&versions, false, None)
+        find_latest_version(&versions, false, None)
             .unwrap()
             .version()
             .unwrap(),
@@ -390,5 +390,5 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
             yanked: true,
         },
     ];
-    assert!(read_latest_version(&versions, false, None).is_err());
+    assert!(find_latest_version(&versions, false, None).is_err());
 }
