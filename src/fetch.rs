@@ -26,7 +26,14 @@ pub fn get_latest_dependency(
 
     let crate_versions = fuzzy_query_registry_index(crate_name, index)?;
 
-    let dep = find_latest_version(&crate_versions, flag_allow_prerelease, rust_version)?;
+    let dep = find_latest_version(&crate_versions, flag_allow_prerelease, rust_version)
+        .ok_or_else(|| {
+            anyhow::format_err!(
+                "No available versions exist. Either all were yanked \
+                         or only prerelease versions exist. Trying with the \
+                         --allow-prerelease flag might solve the issue."
+            )
+        })?;
 
     Ok(dep)
 }
@@ -44,7 +51,14 @@ pub fn get_compatible_dependency(
 
     let crate_versions = fuzzy_query_registry_index(crate_name, index)?;
 
-    let dep = find_compatible_version(&crate_versions, version_req, rust_version)?;
+    let dep =
+        find_compatible_version(&crate_versions, version_req, rust_version).ok_or_else(|| {
+            anyhow::format_err!(
+                "No available versions exist. Either all were yanked \
+                         or only prerelease versions exist. Trying with the \
+                         --allow-prerelease flag might solve the issue."
+            )
+        })?;
 
     Ok(dep)
 }
@@ -219,7 +233,7 @@ fn find_latest_version(
     versions: &[CrateVersion],
     flag_allow_prerelease: bool,
     rust_version: Option<RustVersion>,
-) -> CargoResult<Dependency> {
+) -> Option<Dependency> {
     let latest = versions
         .iter()
         .filter(|&v| flag_allow_prerelease || version_is_stable(v))
@@ -232,25 +246,18 @@ fn find_latest_version(
                 })
                 .unwrap_or(true)
         })
-        .max_by_key(|&v| v.version.clone())
-        .ok_or_else(|| {
-            anyhow::format_err!(
-                "No available versions exist. Either all were yanked \
-                         or only prerelease versions exist. Trying with the \
-                         --allow-prerelease flag might solve the issue."
-            )
-        })?;
+        .max_by_key(|&v| v.version.clone())?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
-    Ok(Dependency::new(name).set_source(RegistrySource::new(version)))
+    Some(Dependency::new(name).set_source(RegistrySource::new(version)))
 }
 
 fn find_compatible_version(
     versions: &[CrateVersion],
     version_req: &semver::VersionReq,
     rust_version: Option<RustVersion>,
-) -> CargoResult<Dependency> {
+) -> Option<Dependency> {
     let latest = versions
         .iter()
         .filter(|&v| version_req.matches(&v.version))
@@ -263,18 +270,11 @@ fn find_compatible_version(
                 })
                 .unwrap_or(true)
         })
-        .max_by_key(|&v| v.version.clone())
-        .ok_or_else(|| {
-            anyhow::format_err!(
-                "No available versions exist. Either all were yanked \
-                         or only prerelease versions exist. Trying with the \
-                         --allow-prerelease flag might solve the issue."
-            )
-        })?;
+        .max_by_key(|&v| v.version.clone())?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
-    Ok(Dependency::new(name).set_source(RegistrySource::new(version)))
+    Some(Dependency::new(name).set_source(RegistrySource::new(version)))
 }
 
 #[test]
@@ -390,5 +390,5 @@ fn get_no_latest_version_from_json_when_all_are_yanked() {
             yanked: true,
         },
     ];
-    assert!(find_latest_version(&versions, false, None).is_err());
+    assert!(find_latest_version(&versions, false, None).is_none());
 }
