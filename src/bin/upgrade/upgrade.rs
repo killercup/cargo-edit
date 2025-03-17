@@ -290,6 +290,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     // we're offline.
                     let registry_url = registry_url(&manifest_path, dependency.registry())?;
                     let index = index.index(&registry_url)?;
+                    let is_prerelease = old_version_req.contains('-');
+
                     let latest_compatible = VersionReq::parse(&old_version_req)
                         .ok()
                         .and_then(|old_version_req| {
@@ -306,7 +308,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 .expect("registry packages always have a version")
                                 .to_owned()
                         });
-                    let is_prerelease = old_version_req.contains('-');
+
                     let latest_version =
                         get_latest_dependency(&dependency.name, is_prerelease, rust_version, index)
                             .map(|d| {
@@ -315,6 +317,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                     .to_owned()
                             })
                             .ok();
+
                     let latest_incompatible = if latest_version != latest_compatible {
                         latest_version
                     } else {
