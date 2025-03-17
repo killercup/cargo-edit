@@ -38,7 +38,7 @@ pub use dependency::PathSource;
 pub use dependency::RegistrySource;
 pub use dependency::Source;
 pub use errors::*;
-pub use fetch::{RustVersion, get_compatible_dependency, get_latest_dependency};
+pub use fetch::{RustVersion, find_compatible_version, find_latest_version};
 pub use index::*;
 pub use manifest::{LocalManifest, Manifest, find, get_dep_version, set_dep_version};
 pub use metadata::manifest_from_pkgid;

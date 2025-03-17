@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use anyhow::Context as _;
 use cargo_edit::{
     CargoResult, CertsSource, CrateSpec, Dependency, IndexCache, LocalManifest, RustVersion,
-    Source, get_compatible_dependency, get_latest_dependency, registry_url, set_dep_version,
+    Source, find_compatible_version, find_latest_version, registry_url, set_dep_version,
     shell_note, shell_status, shell_warn, shell_write_stdout,
 };
 use clap::Args;
@@ -290,31 +290,31 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     // we're offline.
                     let registry_url = registry_url(&manifest_path, dependency.registry())?;
                     let index = index.index(&registry_url)?;
+                    let krate = index.krate(&dependency.name)?;
+                    let versions = krate
+                        .as_ref()
+                        .map(|k| k.versions.as_slice())
+                        .unwrap_or_default();
+                    let is_prerelease = old_version_req.contains('-');
+
                     let latest_compatible = VersionReq::parse(&old_version_req)
                         .ok()
                         .and_then(|old_version_req| {
-                            get_compatible_dependency(
-                                &dependency.name,
-                                &old_version_req,
-                                rust_version,
-                                index,
-                            )
-                            .ok()
+                            find_compatible_version(versions, &old_version_req, rust_version)
                         })
                         .map(|d| {
                             d.version()
                                 .expect("registry packages always have a version")
                                 .to_owned()
                         });
-                    let is_prerelease = old_version_req.contains('-');
-                    let latest_version =
-                        get_latest_dependency(&dependency.name, is_prerelease, rust_version, index)
-                            .map(|d| {
-                                d.version()
-                                    .expect("registry packages always have a version")
-                                    .to_owned()
-                            })
-                            .ok();
+
+                    let latest_version = find_latest_version(versions, is_prerelease, rust_version)
+                        .map(|d| {
+                            d.version()
+                                .expect("registry packages always have a version")
+                                .to_owned()
+                        });
+
                     let latest_incompatible = if latest_version != latest_compatible {
                         latest_version
                     } else {
