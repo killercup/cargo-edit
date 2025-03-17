@@ -157,7 +157,9 @@ impl LocalIndex {
             .strip_prefix("index")
             .map_err(|_err| anyhow::format_err!("invalid index path {entry_path:?}"))?;
         let entry_path = self.root.join(rel_path);
-        let entry = std::fs::read(&entry_path)?;
+        let Ok(entry) = std::fs::read(&entry_path) else {
+            return Ok(None);
+        };
         let results = IndexKrate::from_slice(&entry)?;
         Ok(Some(results))
     }
