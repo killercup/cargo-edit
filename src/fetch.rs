@@ -236,17 +236,17 @@ fn find_latest_version(
 ) -> Option<Dependency> {
     let latest = versions
         .iter()
-        .filter(|&v| flag_allow_prerelease || version_is_stable(v))
-        .filter(|&v| !v.yanked)
-        .filter(|&v| {
+        .filter(|&k| flag_allow_prerelease || version_is_stable(k))
+        .filter(|&k| !k.yanked)
+        .filter(|&k| {
             rust_version
                 .and_then(|rust_version| {
-                    v.rust_version
-                        .map(|v_rust_version| v_rust_version <= rust_version)
+                    k.rust_version
+                        .map(|k_rust_version| k_rust_version <= rust_version)
                 })
                 .unwrap_or(true)
         })
-        .max_by_key(|&v| v.version.clone())?;
+        .max_by_key(|&k| k.version.clone())?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
@@ -260,17 +260,17 @@ fn find_compatible_version(
 ) -> Option<Dependency> {
     let latest = versions
         .iter()
-        .filter(|&v| version_req.matches(&v.version))
-        .filter(|&v| !v.yanked)
-        .filter(|&v| {
+        .filter(|&k| version_req.matches(&k.version))
+        .filter(|&k| !k.yanked)
+        .filter(|&k| {
             rust_version
                 .and_then(|rust_version| {
-                    v.rust_version
-                        .map(|v_rust_version| v_rust_version <= rust_version)
+                    k.rust_version
+                        .map(|k_rust_version| k_rust_version <= rust_version)
                 })
                 .unwrap_or(true)
         })
-        .max_by_key(|&v| v.version.clone())?;
+        .max_by_key(|&k| k.version.clone())?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
