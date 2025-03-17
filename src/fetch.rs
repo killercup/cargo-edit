@@ -143,7 +143,7 @@ fn fuzzy_query_registry_index(
     index: &mut AnyIndexCache,
 ) -> CargoResult<Vec<CrateVersion>> {
     let crate_name = crate_name.into();
-    let mut names = gen_fuzzy_crate_names(crate_name.clone())?;
+    let mut names = gen_fuzzy_crate_names(crate_name.clone());
     if let Some(index) = names.iter().position(|x| *x == crate_name) {
         // ref: https://github.com/killercup/cargo-edit/pull/317#discussion_r307365704
         names.swap(index, 0);
@@ -179,7 +179,7 @@ fn fuzzy_query_registry_index(
 /// | cargo | cargo  |
 /// | cargo-edit | cargo-edit, cargo_edit |
 /// | parking_lot_core | parking_lot_core, parking_lot-core, parking-lot_core, parking-lot-core |
-fn gen_fuzzy_crate_names(crate_name: String) -> CargoResult<Vec<String>> {
+fn gen_fuzzy_crate_names(crate_name: String) -> Vec<String> {
     const PATTERN: [u8; 2] = [b'-', b'_'];
 
     let wildcard_indexs = crate_name
@@ -190,7 +190,7 @@ fn gen_fuzzy_crate_names(crate_name: String) -> CargoResult<Vec<String>> {
         .take(10)
         .collect::<Vec<usize>>();
     if wildcard_indexs.is_empty() {
-        return Ok(vec![crate_name]);
+        return vec![crate_name];
     }
 
     let mut result = vec![];
@@ -206,7 +206,7 @@ fn gen_fuzzy_crate_names(crate_name: String) -> CargoResult<Vec<String>> {
         }
         result.push(String::from_utf8(bytes.clone()).unwrap());
     }
-    Ok(result)
+    result
 }
 
 // Checks whether a version object is a stable release
@@ -280,7 +280,7 @@ fn read_compatible_version(
 #[test]
 fn test_gen_fuzzy_crate_names() {
     fn test_helper(input: &str, expect: &[&str]) {
-        let mut actual = gen_fuzzy_crate_names(input.to_string()).unwrap();
+        let mut actual = gen_fuzzy_crate_names(input.to_string());
         actual.sort();
 
         let mut expect = expect.iter().map(|x| x.to_string()).collect::<Vec<_>>();
