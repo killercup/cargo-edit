@@ -311,12 +311,12 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
 
                     let latest_version =
                         get_latest_dependency(&dependency.name, is_prerelease, rust_version, index)
+                            .ok()
                             .map(|d| {
                                 d.version()
                                     .expect("registry packages always have a version")
                                     .to_owned()
-                            })
-                            .ok();
+                            });
 
                     let latest_incompatible = if latest_version != latest_compatible {
                         latest_version
