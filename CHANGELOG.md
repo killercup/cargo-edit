@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- *(upgrade)* Don't silence network errors
+
 ## 0.13.1 - 2025-01-23
 
 ### Performance
