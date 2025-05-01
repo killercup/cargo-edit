@@ -289,8 +289,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     // Update indices for any alternative registries, unless
                     // we're offline.
                     let registry_url = registry_url(&manifest_path, dependency.registry())?;
-                    let index = index.index(&registry_url)?;
-                    let krate = index.krate(&dependency.name)?;
+                    let krate = index.krate(&registry_url, &dependency.name)?;
                     let versions = krate
                         .as_ref()
                         .map(|k| k.versions.as_slice())

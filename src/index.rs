@@ -31,7 +31,9 @@ impl IndexCache {
     /// Determines if the specified crate exists in the crates.io index
     #[inline]
     pub fn has_krate(&mut self, registry: &Url, name: &str) -> CargoResult<bool> {
-        self.index(registry)?.has_krate(name)
+        self.index(registry)
+            .with_context(|| format!("failed to look up {name}"))?
+            .has_krate(name)
     }
 
     /// Determines if the specified crate version exists in the crates.io index
@@ -42,20 +44,26 @@ impl IndexCache {
         name: &str,
         version: &str,
     ) -> CargoResult<Option<bool>> {
-        self.index(registry)?.has_krate_version(name, version)
+        self.index(registry)
+            .with_context(|| format!("failed to look up {name}@{version}"))?
+            .has_krate_version(name, version)
     }
 
     #[inline]
     pub fn update_krate(&mut self, registry: &Url, name: &str) -> CargoResult<()> {
-        self.index(registry)?.update_krate(name);
+        self.index(registry)
+            .with_context(|| format!("failed to look up {name}"))?
+            .update_krate(name);
         Ok(())
     }
 
     pub fn krate(&mut self, registry: &Url, name: &str) -> CargoResult<Option<IndexKrate>> {
-        self.index(registry)?.krate(name)
+        self.index(registry)
+            .with_context(|| format!("failed to look up {name}"))?
+            .krate(name)
     }
 
-    pub fn index<'s>(&'s mut self, registry: &Url) -> CargoResult<&'s mut AnyIndexCache> {
+    fn index<'s>(&'s mut self, registry: &Url) -> CargoResult<&'s mut AnyIndexCache> {
         if !self.index.contains_key(registry) {
             let index = AnyIndex::open(registry, self.certs_source)?;
             let index = AnyIndexCache::new(index);
@@ -65,14 +73,14 @@ impl IndexCache {
     }
 }
 
-pub struct AnyIndexCache {
+struct AnyIndexCache {
     index: AnyIndex,
     cache: std::collections::HashMap<String, Option<IndexKrate>>,
 }
 
 impl AnyIndexCache {
     #[inline]
-    pub fn new(index: AnyIndex) -> Self {
+    fn new(index: AnyIndex) -> Self {
         Self {
             index,
             cache: std::collections::HashMap::new(),
@@ -81,23 +89,23 @@ impl AnyIndexCache {
 
     /// Determines if the specified crate exists in the crates.io index
     #[inline]
-    pub fn has_krate(&mut self, name: &str) -> CargoResult<bool> {
+    fn has_krate(&mut self, name: &str) -> CargoResult<bool> {
         Ok(self.krate(name)?.map(|_| true).unwrap_or(false))
     }
 
     /// Determines if the specified crate version exists in the crates.io index
     #[inline]
-    pub fn has_krate_version(&mut self, name: &str, version: &str) -> CargoResult<Option<bool>> {
+    fn has_krate_version(&mut self, name: &str, version: &str) -> CargoResult<Option<bool>> {
         let krate = self.krate(name)?;
         Ok(krate.map(|ik| ik.versions.iter().any(|iv| iv.version == version)))
     }
 
     #[inline]
-    pub fn update_krate(&mut self, name: &str) {
+    fn update_krate(&mut self, name: &str) {
         self.cache.remove(name);
     }
 
-    pub fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
+    fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
         if let Some(entry) = self.cache.get(name) {
             return Ok(entry.clone());
         }
@@ -108,21 +116,25 @@ impl AnyIndexCache {
     }
 }
 
-pub enum AnyIndex {
+enum AnyIndex {
     Local(LocalIndex),
     Remote(RemoteIndex),
 }
 
 impl AnyIndex {
-    pub fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
+    fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
         if url.scheme() == "file" {
-            LocalIndex::open(url).map(Self::Local)
+            LocalIndex::open(url)
+                .map(Self::Local)
+                .with_context(|| format!("invalid local registry {url:?}"))
         } else {
-            RemoteIndex::open(url, certs_source).map(Self::Remote)
+            RemoteIndex::open(url, certs_source)
+                .map(Self::Remote)
+                .with_context(|| format!("invalid registry {url:?}"))
         }
     }
 
-    pub(crate) fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
+    fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
         match self {
             Self::Local(index) => index.krate(name),
             Self::Remote(index) => index.krate(name),
@@ -130,23 +142,23 @@ impl AnyIndex {
     }
 }
 
-pub struct LocalIndex {
+struct LocalIndex {
     index: tame_index::index::LocalRegistry,
     root: tame_index::PathBuf,
 }
 
 impl LocalIndex {
-    pub fn open(url: &Url) -> CargoResult<Self> {
+    fn open(url: &Url) -> CargoResult<Self> {
         let path = url
             .to_file_path()
-            .map_err(|()| anyhow::format_err!("invalid local registry {url}"))?;
+            .map_err(|_err| anyhow::format_err!("invalid file path {url:?}"))?;
         let path = tame_index::PathBuf::from_path_buf(path)
-            .map_err(|_err| anyhow::format_err!("invalid local registry {url:?}"))?;
+            .map_err(|_err| anyhow::format_err!("invalid file path {url:?}"))?;
         let index = tame_index::index::LocalRegistry::open(path.clone(), false)?;
         Ok(Self { index, root: path })
     }
 
-    pub(crate) fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
+    fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
         let name = tame_index::KrateName::cargo(name)?;
         // HACK: for some reason, `tame_index` puts `index` in the middle
         let entry_path = self.index.krate_path(name);
@@ -165,7 +177,7 @@ impl LocalIndex {
     }
 }
 
-pub struct RemoteIndex {
+struct RemoteIndex {
     index: tame_index::SparseIndex,
     client: tame_index::external::reqwest::blocking::Client,
     lock: FileLock,
@@ -173,7 +185,7 @@ pub struct RemoteIndex {
 }
 
 impl RemoteIndex {
-    pub fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
+    fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
         let url = url.to_string();
         let url = tame_index::IndexUrl::NonCratesIo(std::borrow::Cow::Owned(url));
         let index = tame_index::SparseIndex::new(tame_index::IndexLocation::new(url))?;
@@ -199,7 +211,7 @@ impl RemoteIndex {
         })
     }
 
-    pub(crate) fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
+    fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
         let etag = self
             .etags
             .iter()
