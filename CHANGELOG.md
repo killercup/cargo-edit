@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- *(upgrade)* Provide more context on registry errors
+
 ## 0.13.2 - 2025-03-17
 
 ### Fixes
