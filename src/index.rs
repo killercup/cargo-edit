@@ -139,9 +139,9 @@ impl LocalIndex {
     fn open(url: &Url) -> CargoResult<Self> {
         let path = url
             .to_file_path()
-            .map_err(|()| anyhow::format_err!("invalid local registry {url}"))?;
+            .map_err(|_err| anyhow::format_err!("invalid file path {url:?}"))?;
         let path = tame_index::PathBuf::from_path_buf(path)
-            .map_err(|_err| anyhow::format_err!("invalid local registry {url:?}"))?;
+            .map_err(|_err| anyhow::format_err!("invalid file path {url:?}"))?;
         let index = tame_index::index::LocalRegistry::open(path.clone(), false)?;
         Ok(Self { index, root: path })
     }
