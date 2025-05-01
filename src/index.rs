@@ -116,9 +116,13 @@ enum AnyIndex {
 impl AnyIndex {
     fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
         if url.scheme() == "file" {
-            LocalIndex::open(url).map(Self::Local)
+            LocalIndex::open(url)
+                .map(Self::Local)
+                .with_context(|| format!("invalid local registry {url:?}"))
         } else {
-            RemoteIndex::open(url, certs_source).map(Self::Remote)
+            RemoteIndex::open(url, certs_source)
+                .map(Self::Remote)
+                .with_context(|| format!("invalid registry {url:?}"))
         }
     }
 
