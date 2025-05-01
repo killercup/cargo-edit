@@ -31,7 +31,9 @@ impl IndexCache {
     /// Determines if the specified crate exists in the crates.io index
     #[inline]
     pub fn has_krate(&mut self, registry: &Url, name: &str) -> CargoResult<bool> {
-        self.index(registry)?.has_krate(name)
+        self.index(registry)
+            .with_context(|| format!("failed to look up {name}"))?
+            .has_krate(name)
     }
 
     /// Determines if the specified crate version exists in the crates.io index
@@ -42,17 +44,23 @@ impl IndexCache {
         name: &str,
         version: &str,
     ) -> CargoResult<Option<bool>> {
-        self.index(registry)?.has_krate_version(name, version)
+        self.index(registry)
+            .with_context(|| format!("failed to look up {name}@{version}"))?
+            .has_krate_version(name, version)
     }
 
     #[inline]
     pub fn update_krate(&mut self, registry: &Url, name: &str) -> CargoResult<()> {
-        self.index(registry)?.update_krate(name);
+        self.index(registry)
+            .with_context(|| format!("failed to look up {name}"))?
+            .update_krate(name);
         Ok(())
     }
 
     pub fn krate(&mut self, registry: &Url, name: &str) -> CargoResult<Option<IndexKrate>> {
-        self.index(registry)?.krate(name)
+        self.index(registry)
+            .with_context(|| format!("failed to look up {name}"))?
+            .krate(name)
     }
 
     fn index<'s>(&'s mut self, registry: &Url) -> CargoResult<&'s mut AnyIndexCache> {
