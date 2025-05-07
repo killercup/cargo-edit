@@ -13,9 +13,11 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> CargoResult
         registries: &mut HashMap<String, Source>,
         path: impl AsRef<Path>,
     ) -> CargoResult<()> {
+        let path = path.as_ref();
         // TODO unit test for source replacement
         let content = std::fs::read_to_string(path)?;
-        let config = toml::from_str::<CargoConfig>(&content).map_err(|_| invalid_cargo_config())?;
+        let config = toml::from_str::<CargoConfig>(&content)
+            .with_context(|| anyhow::format_err!("invalid cargo config at {}", path.display()))?;
         for (key, value) in config.registries {
             registries.entry(key).or_insert(Source {
                 registry: value.index,
@@ -89,8 +91,9 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> CargoResult
 
     let registry_url = source
         .registry
-        .and_then(|x| Url::parse(&x).ok())
-        .with_context(invalid_cargo_config)?;
+        .ok_or_else(|| anyhow::format_err!("missing `registry`"))?;
+    let registry_url = Url::parse(&registry_url)
+        .with_context(|| anyhow::format_err!("invalid `registry` field"))?;
 
     Ok(registry_url)
 }
