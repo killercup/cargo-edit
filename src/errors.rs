@@ -78,10 +78,6 @@ pub(crate) fn non_existent_dependency_err(name: impl Display, table: impl Displa
     )
 }
 
-pub(crate) fn invalid_cargo_config() -> Error {
-    anyhow::format_err!("Invalid cargo config")
-}
-
 pub(crate) fn unsupported_version_req(req: impl Display) -> Error {
     anyhow::format_err!("Support for modifying {} is currently unsupported", req)
 }
