@@ -74,12 +74,13 @@ Upgrade dependency version requirements in Cargo.toml manifest files
 Usage: cargo upgrade [OPTIONS]
 
 Options:
-      --dry-run               Print changes to be made without making them
+  -n, --dry-run               Print changes to be made without making them
       --manifest-path <PATH>  Path to the manifest to upgrade
       --rust-version <VER>    Override `rust-version`
       --ignore-rust-version   Ignore `rust-version` specification in packages
       --locked                Require `Cargo.toml` to be up to date
-  -v, --verbose...            Use verbose output
+  -v, --verbose...            Increase logging verbosity
+  -q, --quiet...              Decrease logging verbosity
   -Z <FLAG>                   Unstable (nightly-only) flags
   -h, --help                  Print help
   -V, --version               Print version
@@ -132,10 +133,12 @@ Options:
   -p, --package <PKGID>       Package id of the crate to change the version of
       --all                   [deprecated in favor of `--workspace`]
       --workspace             Modify all packages in the workspace
-      --dry-run               Print changes to be made without making them
+  -n, --dry-run               Print changes to be made without making them
       --exclude <EXCLUDE>     Crates to exclude and not modify
       --offline               Run without accessing the network
       --locked                Require `Cargo.toml` to be up to date
+  -v, --verbose...            Increase logging verbosity
+  -q, --quiet...              Decrease logging verbosity
   -Z <FLAG>                   Unstable (nightly-only) flags
   -h, --help                  Print help
   -V, --version               Print version

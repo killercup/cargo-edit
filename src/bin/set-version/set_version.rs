@@ -53,7 +53,7 @@ pub struct VersionArgs {
     workspace: bool,
 
     /// Print changes to be made without making them.
-    #[arg(long)]
+    #[arg(long, short = 'n')]
     dry_run: bool,
 
     /// Crates to exclude and not modify.
@@ -67,6 +67,9 @@ pub struct VersionArgs {
     /// Require `Cargo.toml` to be up to date
     #[arg(long)]
     locked: bool,
+
+    #[command(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
 
     /// Unstable (nightly-only) flags
     #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
@@ -85,6 +88,10 @@ enum UnstableOptions {}
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
 fn exec(args: VersionArgs) -> CargoResult<()> {
+    env_logger::Builder::from_env("CARGO_LOG")
+        .filter_level(args.verbose.log_level_filter())
+        .init();
+
     let VersionArgs {
         target,
         bump,
@@ -97,6 +104,7 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         exclude,
         locked,
         offline,
+        verbose: _,
         unstable_features: _,
     } = args;
 
