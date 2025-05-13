@@ -78,6 +78,8 @@ toml_edit = "0.22.22"
 indexmap = "2"
 url = "2.5.4"
 pathdiff = "0.2"
+env_logger = "0.11.8"
+clap-verbosity-flag = "3.0.2"
 
 [dependencies.semver]
 features = ["serde"]

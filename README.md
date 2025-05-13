@@ -79,7 +79,8 @@ Options:
       --rust-version <VER>    Override `rust-version`
       --ignore-rust-version   Ignore `rust-version` specification in packages
       --locked                Require `Cargo.toml` to be up to date
-  -v, --verbose...            Use verbose output
+  -v, --verbose...            Increase logging verbosity
+  -q, --quiet...              Decrease logging verbosity
   -Z <FLAG>                   Unstable (nightly-only) flags
   -h, --help                  Print help
   -V, --version               Print version
@@ -136,6 +137,8 @@ Options:
       --exclude <EXCLUDE>     Crates to exclude and not modify
       --offline               Run without accessing the network
       --locked                Require `Cargo.toml` to be up to date
+  -v, --verbose...            Increase logging verbosity
+  -q, --quiet...              Decrease logging verbosity
   -Z <FLAG>                   Unstable (nightly-only) flags
   -h, --help                  Print help
   -V, --version               Print version

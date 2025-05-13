@@ -38,9 +38,8 @@ pub struct UpgradeArgs {
     #[arg(long)]
     locked: bool,
 
-    /// Use verbose output
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    verbose: u8,
+    #[command(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
 
     /// Unstable (nightly-only) flags
     #[arg(short = 'Z', value_name = "FLAG", global = true, value_enum)]
@@ -117,8 +116,19 @@ impl UpgradeArgs {
         exec(self)
     }
 
+    fn verbose_num(&self) -> i8 {
+        match self.verbose.filter() {
+            clap_verbosity_flag::VerbosityFilter::Off => -1,
+            clap_verbosity_flag::VerbosityFilter::Error => 0,
+            clap_verbosity_flag::VerbosityFilter::Warn => 1,
+            clap_verbosity_flag::VerbosityFilter::Info => 2,
+            clap_verbosity_flag::VerbosityFilter::Debug => 3,
+            clap_verbosity_flag::VerbosityFilter::Trace => 4,
+        }
+    }
+
     fn is_verbose(&self) -> bool {
-        0 < self.verbose
+        0 < self.verbose_num()
     }
 
     fn verbose<F>(&self, mut callback: F) -> CargoResult<()>
@@ -156,6 +166,10 @@ enum UnstableOptions {}
 /// Main processing function. Allows us to return a `Result` so that `main` can print pretty error
 /// messages.
 fn exec(args: UpgradeArgs) -> CargoResult<()> {
+    env_logger::Builder::from_env("CARGO_LOG")
+        .filter_level(args.verbose.log_level_filter())
+        .init();
+
     let offline = false;
     let mut index = IndexCache::new(CertsSource::Native);
 
@@ -437,7 +451,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
         if !table.is_empty() {
             let (interesting, uninteresting) = table
                 .into_iter()
-                .partition::<Vec<_>, _>(|d| d.show_for(args.verbose));
+                .partition::<Vec<_>, _>(|d| d.show_for(args.verbose_num()));
             print_upgrade(interesting)?;
             uninteresting_crates.extend(uninteresting);
         }
@@ -796,7 +810,7 @@ impl Dep {
         spec
     }
 
-    fn show_for(&self, verbosity: u8) -> bool {
+    fn show_for(&self, verbosity: i8) -> bool {
         if 2 <= verbosity {
             return true;
         }
