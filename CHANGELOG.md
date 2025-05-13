@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- Add logging
+- Add `-n` as a short for `--dry-run`
+
 ## 0.13.3 - 2025-05-01
 
 ### Fixes
