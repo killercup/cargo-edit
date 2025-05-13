@@ -53,7 +53,7 @@ pub struct VersionArgs {
     workspace: bool,
 
     /// Print changes to be made without making them.
-    #[arg(long)]
+    #[arg(long, short = 'n')]
     dry_run: bool,
 
     /// Crates to exclude and not modify.

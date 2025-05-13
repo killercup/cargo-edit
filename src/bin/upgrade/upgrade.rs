@@ -19,7 +19,7 @@ use termcolor::{Color, ColorSpec};
 #[command(version)]
 pub struct UpgradeArgs {
     /// Print changes to be made without making them.
-    #[arg(long)]
+    #[arg(long, short = 'n')]
     dry_run: bool,
 
     /// Path to the manifest to upgrade
