@@ -186,6 +186,7 @@ struct RemoteIndex {
 
 impl RemoteIndex {
     fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
+        log::trace!("opening index entry for {url}");
         let url = url.to_string();
         let url = tame_index::IndexUrl::NonCratesIo(std::borrow::Cow::Owned(url));
         let index = tame_index::SparseIndex::new(tame_index::IndexLocation::new(url))?;
@@ -212,6 +213,7 @@ impl RemoteIndex {
     }
 
     fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
+        log::trace!("krate {name}");
         let etag = self
             .etags
             .iter()
