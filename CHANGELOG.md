@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- *(upgrade)* Don't update git dependencies that were excluded
+
 ## 0.13.5 - 2025-05-27
 
 ### Fixes
