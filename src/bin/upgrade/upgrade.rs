@@ -256,7 +256,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     None => {
                         let maybe_reason = match dependency.source() {
                             Some(Source::Git(_)) => {
-                                git_crates.insert(dependency.name.clone());
+                                if reason.is_none() {
+                                    git_crates.insert(dependency.name.clone());
+                                }
                                 Some(Reason::GitSource)
                             }
                             Some(Source::Path(_)) => Some(Reason::PathSource),
