@@ -561,8 +561,8 @@ impl std::fmt::Display for Dependency {
 
 fn path_field(crate_root: &Path, abs_path: &Path) -> String {
     let relpath = pathdiff::diff_paths(abs_path, crate_root).expect("both paths are absolute");
-    let relpath = relpath.to_str().unwrap().replace('\\', "/");
-    relpath
+
+    relpath.to_str().unwrap().replace('\\', "/")
 }
 
 /// Primary location of a dependency
