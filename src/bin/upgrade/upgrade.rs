@@ -504,6 +504,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     cmd.arg("--package").arg(dep);
                     // If we're going to request an update, it would have already been done by now
                     cmd.arg("--offline");
+                    log::trace!("Running {cmd:?}");
                     let output = cmd.output().context("failed to lock to precise version")?;
                     if !output.status.success() {
                         return Err(anyhow::format_err!(
@@ -547,6 +548,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             }
             // If we're going to request an update, it would have already been done by now
             cmd.arg("--offline");
+            log::trace!("Running {cmd:?}");
             let status = cmd.status().context("recursive dependency update failed")?;
             if !status.success() {
                 anyhow::bail!("recursive dependency update failed");
@@ -583,6 +585,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             // If we're going to request an update, it would have already been done by now
             cmd.arg("--offline");
             if still_run {
+                log::trace!("Running {cmd:?}");
                 let status = cmd.status().context("recursive dependency update failed")?;
                 if !status.success() {
                     anyhow::bail!("recursive dependency update failed");
