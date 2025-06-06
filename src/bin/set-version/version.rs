@@ -8,6 +8,7 @@ use crate::errors::*;
 pub enum TargetVersion {
     Relative(BumpLevel),
     Absolute(semver::Version),
+    Unchanged,
 }
 
 impl TargetVersion {
@@ -17,6 +18,14 @@ impl TargetVersion {
         metadata: Option<&str>,
     ) -> CargoResult<Option<semver::Version>> {
         match self {
+            TargetVersion::Unchanged => {
+                let mut potential_version = current.to_owned();
+                if let Some(metadata) = metadata {
+                    potential_version.metadata(metadata)?;
+                };
+                Ok(Some(potential_version))
+
+            }
             TargetVersion::Relative(bump_level) => {
                 let mut potential_version = current.to_owned();
                 bump_level.bump_version(&mut potential_version, metadata)?;
