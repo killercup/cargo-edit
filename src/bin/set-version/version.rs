@@ -24,7 +24,6 @@ impl TargetVersion {
                     potential_version.metadata(metadata)?;
                 };
                 Ok(Some(potential_version))
-
             }
             TargetVersion::Relative(bump_level) => {
                 let mut potential_version = current.to_owned();
