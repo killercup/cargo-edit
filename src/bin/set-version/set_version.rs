@@ -21,10 +21,6 @@ pub struct VersionArgs {
     #[arg(long, group = "ver")]
     bump: Option<BumpLevel>,
 
-    /// Add build id
-    #[arg(long, group = "ver")]
-    build: Option<String>,
-
     /// Specify the version metadata field (e.g. a wrapped libraries version)
     #[arg(short, long)]
     pub metadata: Option<String>,
@@ -99,7 +95,6 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     let VersionArgs {
         target,
         bump,
-        build,
         metadata,
         manifest_path,
         pkgid,
@@ -113,12 +108,11 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         unstable_features: _,
     } = args;
 
-    let target = match (target, bump, build) {
-        (None, None, Some(_)) => TargetVersion::Relative(BumpLevel::Release),
-        (None, None, None) => TargetVersion::Unchanged,
-        (None, Some(level), None) => TargetVersion::Relative(level),
-        (Some(version), None, None) => TargetVersion::Absolute(version),
-        _ => unreachable!("clap groups should prevent this"),
+    let target = match (target, bump) {
+        (None, None) => TargetVersion::Unchanged,
+        (None, Some(level)) => TargetVersion::Relative(level),
+        (Some(version), None) => TargetVersion::Absolute(version),
+        (Some(_), Some(_)) => unreachable!("clap groups should prevent this"),
     };
 
     let ws_metadata = resolve_ws(manifest_path.as_deref(), locked, offline)?;
