@@ -413,8 +413,9 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                                 }
                             };
 
+                        // If incompatible upgrades are allowed, don't allow compatible upgrades
                         if req_candidate.is_some() {
-                            if !args.compatible.as_bool() {
+                            if !args.compatible.as_bool() || args.incompatible.as_bool() {
                                 reason.get_or_insert(Reason::Compatible);
                             } else {
                                 new_version_req = req_candidate;

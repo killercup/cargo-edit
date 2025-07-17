@@ -1,6 +1,7 @@
 use super::Dependency;
 use super::RegistrySource;
 use super::VersionExt;
+use tame_index::IndexVersion;
 
 /// Simplified represetation of `package.rust-version`
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -89,7 +90,7 @@ fn version_is_stable(version: &semver::Version) -> bool {
 
 /// Read latest version from Versions structure
 pub fn find_latest_version(
-    versions: &[tame_index::IndexVersion],
+    versions: &[IndexVersion],
     flag_allow_prerelease: bool,
     rust_version: Option<RustVersion>,
 ) -> Option<Dependency> {
@@ -98,16 +99,7 @@ pub fn find_latest_version(
         .filter_map(|k| Some((k, k.version.parse::<semver::Version>().ok()?)))
         .filter(|(_, v)| flag_allow_prerelease || version_is_stable(v))
         .filter(|(k, _)| !k.yanked)
-        .filter(|(k, _)| {
-            rust_version
-                .and_then(|rust_version| {
-                    k.rust_version
-                        .as_ref()
-                        .and_then(|k_rust_version| k_rust_version.parse::<RustVersion>().ok())
-                        .map(|k_rust_version| k_rust_version <= rust_version)
-                })
-                .unwrap_or(true)
-        })
+        .filter(|(k, _)| filter_by_rust_version(rust_version, k))
         .max_by_key(|(_, v)| v.clone())?;
 
     let name = &latest.name;
@@ -116,7 +108,7 @@ pub fn find_latest_version(
 }
 
 pub fn find_compatible_version(
-    versions: &[tame_index::IndexVersion],
+    versions: &[IndexVersion],
     version_req: &semver::VersionReq,
     rust_version: Option<RustVersion>,
 ) -> Option<Dependency> {
@@ -125,19 +117,21 @@ pub fn find_compatible_version(
         .filter_map(|k| Some((k, k.version.parse::<semver::Version>().ok()?)))
         .filter(|(_, v)| version_req.matches(v))
         .filter(|(k, _)| !k.yanked)
-        .filter(|(k, _)| {
-            rust_version
-                .and_then(|rust_version| {
-                    k.rust_version
-                        .as_ref()
-                        .and_then(|k_rust_version| k_rust_version.parse::<RustVersion>().ok())
-                        .map(|k_rust_version| k_rust_version <= rust_version)
-                })
-                .unwrap_or(true)
-        })
+        .filter(|(k, _)| filter_by_rust_version(rust_version, k))
         .max_by_key(|(_, v)| v.clone())?;
 
     let name = &latest.name;
     let version = latest.version.to_string();
     Some(Dependency::new(name).set_source(RegistrySource::new(version)))
+}
+
+fn filter_by_rust_version(rust_version: Option<RustVersion>, k: &&IndexVersion) -> bool {
+    rust_version
+        .and_then(|rust_version| {
+            k.rust_version
+                .as_ref()
+                .and_then(|k_rust_version| k_rust_version.parse::<RustVersion>().ok())
+                .map(|k_rust_version| k_rust_version <= rust_version)
+        })
+        .unwrap_or(true)
 }
