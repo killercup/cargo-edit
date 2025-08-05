@@ -166,8 +166,7 @@ pub fn upgrade_requirement(req: &str, version: &semver::Version) -> CargoResult<
         {
             assert!(
                 new_req.matches(version),
-                "Invalid req created: {}",
-                new_req_text
+                "Invalid req created: {new_req_text}"
             )
         }
         if new_req_text == req_text {

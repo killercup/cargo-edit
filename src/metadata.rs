@@ -13,7 +13,7 @@ pub fn manifest_from_pkgid(manifest_path: Option<&Path>, pkgid: &str) -> CargoRe
     let packages = result.packages;
     let package = packages
         .into_iter()
-        .find(|pkg| pkg.name == pkgid)
+        .find(|pkg| pkg.name.as_ref() == pkgid)
         .with_context(|| {
             "Found virtual manifest, but this command requires running against an \
              actual package in this workspace. Try adding `--workspace`."

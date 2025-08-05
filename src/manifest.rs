@@ -239,15 +239,15 @@ impl LocalManifest {
     /// # Examples
     ///
     /// ```
-    ///   use cargo_edit::{Dependency, LocalManifest, Manifest, RegistrySource};
-    ///   use toml_edit;
+    ///   use cargo_edit::{LocalManifest, Manifest};
+    ///   use toml_edit::DocumentMut;
     ///
     ///   let root = std::path::PathBuf::from("/").canonicalize().unwrap();
     ///   let path = root.join("Cargo.toml");
-    ///   let manifest: toml_edit::Document = "
+    ///   let manifest = "
     ///   [dependencies]
     ///   cargo-edit = '0.1.0'
-    ///   ".parse().unwrap();
+    ///   ".parse::<DocumentMut>().unwrap();
     ///   let mut manifest = LocalManifest { path, manifest: Manifest { data: manifest } };
     ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], "cargo-edit").is_ok());
     ///   assert!(manifest.remove_from_table(&["dependencies".to_owned()], "cargo-edit").is_err());

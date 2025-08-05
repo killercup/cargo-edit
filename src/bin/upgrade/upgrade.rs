@@ -188,7 +188,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             };
 
             (
-                p.name,
+                p.name.to_string(),
                 p.manifest_path.as_std_path().to_owned(),
                 rust_version,
             )
@@ -489,7 +489,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
             for (name, (req, precise)) in &precise_deps {
                 for lock_version in locked
                     .iter()
-                    .filter(|p| p.name == **name)
+                    .filter(|p| p.name.as_str() == *name)
                     .map(|p| &p.version)
                     .filter(|v| req.matches(v))
                 {
@@ -536,7 +536,7 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 for lock_version in locked
                     .iter()
                     .filter(|p| {
-                        p.name == *dep
+                        p.name.as_str() == *dep
                             && p.source
                                 .as_ref()
                                 .map(|s| s.repr.starts_with("git+"))
@@ -578,7 +578,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 // Already updated so avoid discarding the precise version selection
                 .filter(|c| !precise_deps.contains_key(c))
             {
-                for lock_version in locked.iter().filter(|p| p.name == *dep).map(|p| &p.version) {
+                for lock_version in locked
+                    .iter()
+                    .filter(|p| p.name.as_str() == *dep)
+                    .map(|p| &p.version)
+                {
                     let dep = format!("{dep}@{lock_version}");
                     cmd.arg("--package").arg(dep);
                     still_run = true;
