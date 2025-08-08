@@ -108,11 +108,12 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
         unstable_features: _,
     } = args;
 
-    let target = match (target, bump) {
-        (None, None) => TargetVersion::Relative(BumpLevel::Release),
-        (None, Some(level)) => TargetVersion::Relative(level),
-        (Some(version), None) => TargetVersion::Absolute(version),
-        (Some(_), Some(_)) => unreachable!("clap groups should prevent this"),
+    let target = match (target, bump, &metadata) {
+        (None, None, Some(_)) => TargetVersion::Unchanged,
+        (None, None, None) => TargetVersion::Relative(BumpLevel::Release),
+        (None, Some(level), _) => TargetVersion::Relative(level),
+        (Some(version), None, _) => TargetVersion::Absolute(version),
+        (Some(_), Some(_), _) => unreachable!("clap groups should prevent this"),
     };
 
     let ws_metadata = resolve_ws(manifest_path.as_deref(), locked, offline)?;
