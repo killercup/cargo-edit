@@ -67,21 +67,17 @@ impl From<std::io::Error> for CliError {
 }
 
 pub(crate) fn non_existent_table_err(table: impl Display) -> Error {
-    anyhow::format_err!("The table `{}` could not be found.", table)
+    anyhow::format_err!("The table `{table}` could not be found.")
 }
 
 pub(crate) fn non_existent_dependency_err(name: impl Display, table: impl Display) -> Error {
-    anyhow::format_err!(
-        "The dependency `{}` could not be found in `{}`.",
-        name,
-        table,
-    )
+    anyhow::format_err!("The dependency `{name}` could not be found in `{table}`.",)
 }
 
 pub(crate) fn unsupported_version_req(req: impl Display) -> Error {
-    anyhow::format_err!("Support for modifying {} is currently unsupported", req)
+    anyhow::format_err!("Support for modifying {req} is currently unsupported")
 }
 
 pub(crate) fn invalid_release_level(actual: impl Display, version: impl Display) -> Error {
-    anyhow::format_err!("Cannot increment the {} field for {}", actual, version)
+    anyhow::format_err!("Cannot increment the {actual} field for {version}")
 }
