@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.13.8 - 2025-11-11
+
 ### Internal
 
 - Dependency updates
