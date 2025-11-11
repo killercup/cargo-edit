@@ -102,8 +102,8 @@ fn add_registry_packages(alt: bool) {
         .publish();
 }
 
-pub fn cargo_exe() -> std::path::PathBuf {
-    snapbox::cmd::cargo_bin("cargo-set-version")
+pub fn cargo_exe() -> &'static std::path::Path {
+    snapbox::cmd::cargo_bin!("cargo-set-version")
 }
 
 /// Test the cargo command
