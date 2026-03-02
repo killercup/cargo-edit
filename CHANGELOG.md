@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- Report error when failing to update lockfile
+
 ## 0.13.8 - 2025-11-11
 
 ### Internal
