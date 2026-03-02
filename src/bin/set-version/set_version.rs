@@ -348,10 +348,7 @@ fn resolve_ws(
     }
     cmd.other_options(other);
 
-    let ws = cmd.exec().or_else(|_| {
-        cmd.no_deps();
-        cmd.exec()
-    })?;
+    let ws = cmd.exec()?;
     Ok(ws)
 }
 
