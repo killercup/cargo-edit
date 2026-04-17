@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Features
+
+- Support for TOML 1.1
+
 ## 0.13.9 - 2026-03-02
 
 ### Fixes
