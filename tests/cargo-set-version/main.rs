@@ -2,9 +2,6 @@
 #![warn(clippy::needless_borrow)]
 #![warn(clippy::redundant_clone)]
 
-#[macro_use]
-extern crate cargo_test_macro;
-
 mod downgrade_error;
 mod dry_run;
 mod ignore_dependent;
