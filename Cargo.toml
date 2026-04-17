@@ -88,8 +88,7 @@ version = "1.0.28"
 [dev-dependencies]
 trycmd = "1.2.0"
 snapbox = { version = "0.6.24", features = ["cmd", "path"] }
-cargo-test-macro = "0.4.6"
-cargo-test-support = "0.7.5"
+cargo-test-support = "0.10.0"
 
 [profile.release]
 panic = "abort"
