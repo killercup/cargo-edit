@@ -69,25 +69,25 @@ anyhow = "1.0"
 home = "0.5.12"
 serde = "1.0.228"
 serde_derive = "1.0.228"
-clap = { version = "4.5.51", features = ["derive", "wrap_help"], optional = true }
+clap = { version = "4.6.1", features = ["derive", "wrap_help"], optional = true }
 clap-cargo = "0.16.0"
 termcolor = "1.4.1"
-toml = "0.9.8"
-toml_edit = "0.23.7"
+toml = "0.9.12"
+toml_edit = "0.23.10"
 indexmap = "2"
-url = "2.5.7"
+url = "2.5.8"
 pathdiff = "0.2"
-env_logger = "0.11.8"
+env_logger = "0.11.10"
 clap-verbosity-flag = "3.0.4"
-log = "0.4.28"
+log = "0.4.29"
 
 [dependencies.semver]
 features = ["serde"]
-version = "1.0.27"
+version = "1.0.28"
 
 [dev-dependencies]
-trycmd = "0.15.10"
-snapbox = { version = "0.6.23", features = ["cmd", "path"] }
+trycmd = "0.15.11"
+snapbox = { version = "0.6.24", features = ["cmd", "path"] }
 cargo-test-macro = "0.4.6"
 cargo-test-support = "0.7.5"
 
