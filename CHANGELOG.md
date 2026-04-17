@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.13.10 - 2026-04-17
+
 ### Features
 
 - Support for TOML 1.1
