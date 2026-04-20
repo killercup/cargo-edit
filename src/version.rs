@@ -288,6 +288,9 @@ mod test {
             let mut v = semver::Version::parse("1.0.0").unwrap();
             v.metadata("git.123456").unwrap();
             assert_eq!(v, semver::Version::parse("1.0.0+git.123456").unwrap());
+            let mut v = semver::Version::parse("1.0.0-dev10").unwrap();
+            v.metadata("git.123456").unwrap();
+            assert_eq!(v, semver::Version::parse("1.0.0-dev10+git.123456").unwrap());
         }
     }
 
