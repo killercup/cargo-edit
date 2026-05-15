@@ -6,8 +6,8 @@ use std::path::PathBuf;
 use anyhow::Context as _;
 use cargo_edit::{
     CargoResult, CertsSource, CrateSpec, Dependency, IndexCache, LocalManifest, RustVersion,
-    Source, find_compatible_version, find_latest_version, registry_url, set_dep_version,
-    shell_note, shell_status, shell_warn, shell_write_stdout,
+    Source, find_compatible_version, find_latest_version, registry_token, registry_url,
+    set_dep_version, shell_note, shell_status, shell_warn, shell_write_stdout,
 };
 use clap::Args;
 use indexmap::IndexMap;
@@ -225,6 +225,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut pinned_present = false;
     let mut incompatible_present = false;
     let mut uninteresting_crates = BTreeSet::new();
+    let mut token_cache: std::collections::HashMap<String, Option<String>> =
+        std::collections::HashMap::new();
     for (pkg_name, manifest_path, rust_version) in manifests {
         let mut manifest = LocalManifest::try_new(&manifest_path)?;
         let mut crate_modified = false;
@@ -296,15 +298,23 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     }
                 };
 
-                let (latest_compatible, latest_incompatible) = if dependency
+                let is_registry_dep = dependency
                     .source
                     .as_ref()
-                    .and_then(|s| s.as_registry())
-                    .is_some()
-                {
+                    .map(|s| s.as_registry().is_some())
+                    .unwrap_or(true); // None source means default registry (crates-io)
+                let (latest_compatible, latest_incompatible) = if is_registry_dep {
                     // Update indices for any alternative registries, unless
                     // we're offline.
                     let registry_url = registry_url(&manifest_path, dependency.registry())?;
+                    let cache_key =
+                        format!("{}:{:?}", manifest_path.display(), dependency.registry());
+                    let token = token_cache
+                        .entry(cache_key)
+                        .or_insert_with(|| registry_token(&manifest_path, dependency.registry()));
+                    if let Some(token) = token {
+                        index.set_token(&registry_url, token.clone());
+                    }
                     let krate = index.krate(&registry_url, &dependency.name)?;
                     let versions = krate
                         .as_ref()

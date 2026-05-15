@@ -89,6 +89,7 @@ version = "1.0.28"
 trycmd = "1.2.0"
 snapbox = { version = "0.6.24", features = ["cmd", "path"] }
 cargo-test-support = "0.10.0"
+tempfile = "3"
 
 [profile.release]
 panic = "abort"
@@ -128,7 +129,7 @@ create_dir = "warn"
 dbg_macro = "warn"
 debug_assert_with_mut_call = "warn"
 doc_markdown = "warn"
-empty_enum = "warn"
+empty_enums = "warn"
 enum_glob_use = "warn"
 expl_impl_clone_on_copy = "warn"
 explicit_deref_methods = "warn"
