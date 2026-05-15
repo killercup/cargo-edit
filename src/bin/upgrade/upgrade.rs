@@ -225,7 +225,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
     let mut pinned_present = false;
     let mut incompatible_present = false;
     let mut uninteresting_crates = BTreeSet::new();
-    let mut token_cache: std::collections::HashMap<String, Option<String>> = std::collections::HashMap::new();
+    let mut token_cache: std::collections::HashMap<String, Option<String>> =
+        std::collections::HashMap::new();
     for (pkg_name, manifest_path, rust_version) in manifests {
         let mut manifest = LocalManifest::try_new(&manifest_path)?;
         let mut crate_modified = false;
@@ -306,10 +307,11 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     // Update indices for any alternative registries, unless
                     // we're offline.
                     let registry_url = registry_url(&manifest_path, dependency.registry())?;
-                    let cache_key = format!("{}:{:?}", manifest_path.display(), dependency.registry());
-                    let token = token_cache.entry(cache_key).or_insert_with(|| {
-                        registry_token(&manifest_path, dependency.registry())
-                    });
+                    let cache_key =
+                        format!("{}:{:?}", manifest_path.display(), dependency.registry());
+                    let token = token_cache
+                        .entry(cache_key)
+                        .or_insert_with(|| registry_token(&manifest_path, dependency.registry()));
                     if let Some(token) = token {
                         index.set_token(&registry_url, token.clone());
                     }

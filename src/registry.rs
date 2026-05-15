@@ -123,7 +123,7 @@ struct Registry {
 }
 
 /// Resolve the auth token for a registry by checking (in order):
-/// 1. Environment variable CARGO_REGISTRIES_<NAME>_TOKEN
+/// 1. Environment variable `CARGO_REGISTRIES_<NAME>_TOKEN`
 /// 2. credentials.toml
 /// 3. credential-provider command (cargo:token-from-stdout)
 /// 4. token field in config.toml
@@ -220,10 +220,7 @@ fn read_all_configs(manifest_path: &Path) -> HashMap<String, Source> {
     sources
 }
 
-fn read_sources_from_config(
-    sources: &mut HashMap<String, Source>,
-    path: &Path,
-) -> CargoResult<()> {
+fn read_sources_from_config(sources: &mut HashMap<String, Source>, path: &Path) -> CargoResult<()> {
     let content = std::fs::read_to_string(path)?;
     let config = toml::from_str::<CargoConfig>(&content)
         .with_context(|| anyhow::format_err!("invalid cargo config at {}", path.display()))?;
@@ -251,10 +248,7 @@ fn read_credentials_token(registry_name: &str) -> Option<String> {
     None
 }
 
-fn read_config_auth(
-    manifest_path: &Path,
-    registry_name: &str,
-) -> (Option<String>, Option<String>) {
+fn read_config_auth(manifest_path: &Path, registry_name: &str) -> (Option<String>, Option<String>) {
     let mut token = None;
     let mut credential_provider = None;
 
