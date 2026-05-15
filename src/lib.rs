@@ -44,6 +44,7 @@ pub use fetch::{RustVersion, find_compatible_version, find_latest_version};
 pub use index::*;
 pub use manifest::{LocalManifest, Manifest, find, get_dep_version, set_dep_version};
 pub use metadata::manifest_from_pkgid;
+pub use registry::registry_token;
 pub use registry::registry_url;
 pub use util::{
     Color, ColorChoice, colorize_stderr, shell_note, shell_print, shell_status, shell_warn,

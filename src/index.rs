@@ -17,6 +17,7 @@ pub enum CertsSource {
 pub struct IndexCache {
     certs_source: CertsSource,
     index: std::collections::HashMap<Url, AnyIndexCache>,
+    tokens: std::collections::HashMap<String, String>,
 }
 
 impl IndexCache {
@@ -25,7 +26,13 @@ impl IndexCache {
         Self {
             certs_source,
             index: Default::default(),
+            tokens: Default::default(),
         }
+    }
+
+    /// Set an auth token for a registry URL
+    pub fn set_token(&mut self, registry_url: &Url, token: String) {
+        self.tokens.insert(registry_url.to_string(), token);
     }
 
     /// Determines if the specified crate exists in the crates.io index
@@ -65,7 +72,8 @@ impl IndexCache {
 
     fn index<'s>(&'s mut self, registry: &Url) -> CargoResult<&'s mut AnyIndexCache> {
         if !self.index.contains_key(registry) {
-            let index = AnyIndex::open(registry, self.certs_source)?;
+            let token = self.tokens.get(&registry.to_string()).cloned();
+            let index = AnyIndex::open(registry, self.certs_source, token)?;
             let index = AnyIndexCache::new(index);
             self.index.insert(registry.clone(), index);
         }
@@ -122,13 +130,13 @@ enum AnyIndex {
 }
 
 impl AnyIndex {
-    fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
+    fn open(url: &Url, certs_source: CertsSource, token: Option<String>) -> CargoResult<Self> {
         if url.scheme() == "file" {
             LocalIndex::open(url)
                 .map(Self::Local)
                 .with_context(|| format!("invalid local registry {url:?}"))
         } else {
-            RemoteIndex::open(url, certs_source)
+            RemoteIndex::open(url, certs_source, token)
                 .map(Self::Remote)
                 .with_context(|| format!("invalid registry {url:?}"))
         }
@@ -182,10 +190,11 @@ struct RemoteIndex {
     client: tame_index::external::reqwest::blocking::Client,
     lock: FileLock,
     etags: Vec<(String, String)>,
+    token: Option<String>,
 }
 
 impl RemoteIndex {
-    fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
+    fn open(url: &Url, certs_source: CertsSource, token: Option<String>) -> CargoResult<Self> {
         log::trace!("opening index entry for {url}");
         let url = url.to_string();
         let url = tame_index::IndexUrl::NonCratesIo(std::borrow::Cow::Owned(url));
@@ -209,6 +218,7 @@ impl RemoteIndex {
             client,
             lock,
             etags: Vec::new(),
+            token,
         })
     }
 
@@ -237,6 +247,12 @@ impl RemoteIndex {
         let mut req = self.client.request(method, uri.to_string());
         req = req.version(version);
         req = req.headers(headers);
+        if let Some(token) = &self.token {
+            req = req.header(
+                tame_index::external::reqwest::header::AUTHORIZATION,
+                token.as_str(),
+            );
+        }
         let res = self.client.execute(req.build()?)?;
 
         // Grab the etag if it exists for future requests

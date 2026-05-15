@@ -89,6 +89,7 @@ version = "1.0.28"
 trycmd = "1.2.0"
 snapbox = { version = "0.6.24", features = ["cmd", "path"] }
 cargo-test-support = "0.10.0"
+tempfile = "3"
 
 [profile.release]
 panic = "abort"
