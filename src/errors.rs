@@ -52,6 +52,7 @@ impl From<anyhow::Error> for CliError {
     }
 }
 
+#[cfg(feature = "clap")]
 impl From<clap::Error> for CliError {
     fn from(err: clap::Error) -> CliError {
         #[allow(clippy::bool_to_int_with_if)]
