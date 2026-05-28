@@ -3,19 +3,27 @@ name: build
 permissions:
   contents: read
 
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+    - master
 
 env:
   RUST_BACKTRACE: 1
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   build:
     permissions:
       contents: none
     name: CI
-    needs: [test, lockfile, rustfmt, clippy]
+    needs: [test, msrv, lockfile, rustfmt, clippy]
     runs-on: ubuntu-latest
     if: "always()"
     steps:
@@ -30,28 +38,64 @@ jobs:
         rust: ["stable"]
     continue-on-error: ${{ matrix.rust != 'stable' }}
     runs-on: ${{ matrix.os }}
+    env:
+      # Reduce amount of data cached
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6.0.2
+      with:
+        persist-credentials: false
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
-    - uses: Swatinem/rust-cache@v2
+    - name: Initialize cache
+      uses: Swatinem/rust-cache@v2.9.1
+    - name: Install cargo-hack
+      uses: taiki-e/install-action@v2.75.4
+      with:
+        tool: cargo-hack
     - name: Build
-      run: cargo test --no-run
+      run: cargo test --workspace --no-run
     - name: Test
-      run: cargo test
+      run: cargo hack test --each-feature --workspace
+  msrv:
+    name: "Check MSRV"
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6.0.2
+      with:
+        persist-credentials: false
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+      with:
+        toolchain: stable
+    - name: Initialize cache
+      uses: Swatinem/rust-cache@v2.9.1
+    - name: Install cargo-hack
+      uses: taiki-e/install-action@v2.75.4
+      with:
+        tool: cargo-hack
+    - name: Default features
+      run: cargo hack check --each-feature --locked --rust-version --ignore-private --workspace --all-targets --keep-going
   lockfile:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6.0.2
+      with:
+        persist-credentials: false
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
-    - uses: Swatinem/rust-cache@v2
+    - name: Initialize cache
+      uses: Swatinem/rust-cache@v2.9.1
     - name: "Is lockfile updated?"
       run: cargo update --workspace --locked
   rustfmt:
@@ -59,15 +103,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6.0.2
+      with:
+        persist-credentials: false
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
         components: rustfmt
-    - uses: Swatinem/rust-cache@v2
+    - name: Initialize cache
+      uses: Swatinem/rust-cache@v2.9.1
     - name: Check formatting
-      run: cargo fmt --all -- --check
+      run: cargo fmt --check
   clippy:
     name: clippy
     runs-on: ubuntu-latest
@@ -75,13 +122,16 @@ jobs:
       security-events: write # to upload sarif results
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6.0.2
+      with:
+        persist-credentials: false
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
         components: clippy
-    - uses: Swatinem/rust-cache@v2
+    - name: Initialize cache
+      uses: Swatinem/rust-cache@v2.9.1
     - name: Install SARIF tools
       run: cargo install clippy-sarif --locked
     - name: Install SARIF tools
@@ -94,9 +144,9 @@ jobs:
         | sarif-fmt
       continue-on-error: true
     - name: Upload
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4.35.1
       with:
         sarif_file: clippy-results.sarif
         wait-for-processing: true
     - name: Report status
-      run: cargo clippy --workspace --all-features --all-targets -- -D warnings --allow deprecated
+      run: cargo clippy --workspace --all-features --all-targets --keep-going -- -D warnings --allow deprecated
