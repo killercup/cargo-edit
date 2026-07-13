@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- *(upgrade)* Send the registry auth token so `cargo upgrade` works with private (`auth-required`) registries instead of failing with `401 Unauthorized`
+
 ## 0.13.11 - 2026-05-28
 
 ## 0.13.10 - 2026-04-17
