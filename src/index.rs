@@ -30,8 +30,13 @@ impl IndexCache {
 
     /// Determines if the specified crate exists in the crates.io index
     #[inline]
-    pub fn has_krate(&mut self, registry: &Url, name: &str) -> CargoResult<bool> {
-        self.index(registry)
+    pub fn has_krate(
+        &mut self,
+        registry: &Url,
+        name: &str,
+        auth: Option<&str>,
+    ) -> CargoResult<bool> {
+        self.index(registry, auth)
             .with_context(|| format!("failed to look up {name}"))?
             .has_krate(name)
     }
@@ -43,29 +48,44 @@ impl IndexCache {
         registry: &Url,
         name: &str,
         version: &str,
+        auth: Option<&str>,
     ) -> CargoResult<Option<bool>> {
-        self.index(registry)
+        self.index(registry, auth)
             .with_context(|| format!("failed to look up {name}@{version}"))?
             .has_krate_version(name, version)
     }
 
     #[inline]
-    pub fn update_krate(&mut self, registry: &Url, name: &str) -> CargoResult<()> {
-        self.index(registry)
+    pub fn update_krate(
+        &mut self,
+        registry: &Url,
+        name: &str,
+        auth: Option<&str>,
+    ) -> CargoResult<()> {
+        self.index(registry, auth)
             .with_context(|| format!("failed to look up {name}"))?
             .update_krate(name);
         Ok(())
     }
 
-    pub fn krate(&mut self, registry: &Url, name: &str) -> CargoResult<Option<IndexKrate>> {
-        self.index(registry)
+    pub fn krate(
+        &mut self,
+        registry: &Url,
+        name: &str,
+        auth: Option<&str>,
+    ) -> CargoResult<Option<IndexKrate>> {
+        self.index(registry, auth)
             .with_context(|| format!("failed to look up {name}"))?
             .krate(name)
     }
 
-    fn index<'s>(&'s mut self, registry: &Url) -> CargoResult<&'s mut AnyIndexCache> {
+    fn index<'s>(
+        &'s mut self,
+        registry: &Url,
+        auth: Option<&str>,
+    ) -> CargoResult<&'s mut AnyIndexCache> {
         if !self.index.contains_key(registry) {
-            let index = AnyIndex::open(registry, self.certs_source)?;
+            let index = AnyIndex::open(registry, self.certs_source, auth)?;
             let index = AnyIndexCache::new(index);
             self.index.insert(registry.clone(), index);
         }
@@ -122,13 +142,13 @@ enum AnyIndex {
 }
 
 impl AnyIndex {
-    fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
+    fn open(url: &Url, certs_source: CertsSource, auth: Option<&str>) -> CargoResult<Self> {
         if url.scheme() == "file" {
             LocalIndex::open(url)
                 .map(Self::Local)
                 .with_context(|| format!("invalid local registry {url:?}"))
         } else {
-            RemoteIndex::open(url, certs_source)
+            RemoteIndex::open(url, certs_source, auth)
                 .map(Self::Remote)
                 .with_context(|| format!("invalid registry {url:?}"))
         }
@@ -182,10 +202,13 @@ struct RemoteIndex {
     client: tame_index::external::reqwest::blocking::Client,
     lock: FileLock,
     etags: Vec<(String, String)>,
+    /// Value for the `Authorization` header, sent verbatim (matching cargo) for
+    /// registries with `auth-required = true`. `None` for unauthenticated registries.
+    auth: Option<String>,
 }
 
 impl RemoteIndex {
-    fn open(url: &Url, certs_source: CertsSource) -> CargoResult<Self> {
+    fn open(url: &Url, certs_source: CertsSource, auth: Option<&str>) -> CargoResult<Self> {
         log::trace!("opening index entry for {url}");
         let url = url.to_string();
         let url = tame_index::IndexUrl::NonCratesIo(std::borrow::Cow::Owned(url));
@@ -209,6 +232,7 @@ impl RemoteIndex {
             client,
             lock,
             etags: Vec::new(),
+            auth: auth.map(str::to_owned),
         })
     }
 
@@ -237,6 +261,12 @@ impl RemoteIndex {
         let mut req = self.client.request(method, uri.to_string());
         req = req.version(version);
         req = req.headers(headers);
+        // tame_index's `make_remote_request` does not attach credentials; a
+        // registry with `auth-required = true` rejects the request with 401
+        // otherwise. cargo sends the configured token verbatim.
+        if let Some(auth) = &self.auth {
+            req = req.header(tame_index::external::reqwest::header::AUTHORIZATION, auth);
+        }
         let res = self.client.execute(req.build()?)?;
 
         // Grab the etag if it exists for future requests
@@ -269,5 +299,95 @@ impl RemoteIndex {
         self.index
             .parse_remote_response(krate_name, response, false, &self.lock)
             .map_err(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    /// A single valid sparse-index entry line (64-hex `cksum` is required by
+    /// `IndexKrate::from_slice`).
+    const INDEX_LINE: &str = concat!(
+        r#"{"name":"somecrate","vers":"1.0.0","deps":[],"#,
+        r#""cksum":"0000000000000000000000000000000000000000000000000000000000000000","#,
+        r#""features":{},"yanked":false}"#,
+        "\n"
+    );
+
+    /// Spawns a one-shot HTTP/1.1 server that captures the raw request and
+    /// answers with `INDEX_LINE`. Returns the base URL and a receiver for the
+    /// captured request text.
+    fn serve_once() -> (String, std::sync::mpsc::Receiver<String>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 8192];
+            let n = stream.read(&mut buf).unwrap();
+            let request = String::from_utf8_lossy(&buf[..n]).into_owned();
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/plain\r\n\r\n{}",
+                INDEX_LINE.len(),
+                INDEX_LINE
+            );
+            let _ = stream.write_all(response.as_bytes());
+            let _ = stream.flush();
+            let _ = tx.send(request);
+        });
+        // tame_index requires the `sparse+` scheme prefix; it is stripped before
+        // the actual HTTP request is issued to `http://{addr}/`.
+        (format!("sparse+http://{addr}/"), rx)
+    }
+
+    /// Extract the value of the (case-insensitive) `Authorization` request header.
+    fn authorization(request: &str) -> Option<String> {
+        request
+            .lines()
+            .find(|line| line.to_ascii_lowercase().starts_with("authorization:"))
+            .map(|line| line.split_once(':').unwrap().1.trim().to_owned())
+    }
+
+    // Regression test for #931: a request to an auth-required registry must
+    // carry the configured token verbatim, or the server answers 401.
+    #[test]
+    fn sends_authorization_header_when_auth_present() {
+        let (url, rx) = serve_once();
+        let mut cache = IndexCache::new(CertsSource::Webpki);
+        let registry = Url::parse(&url).unwrap();
+
+        let krate = cache
+            .krate(&registry, "somecrate", Some("Bearer test-token"))
+            .unwrap();
+        assert!(
+            krate.is_some(),
+            "expected the crate to be parsed from the 200 response"
+        );
+
+        let request = rx.recv().unwrap();
+        assert_eq!(
+            authorization(&request).as_deref(),
+            Some("Bearer test-token"),
+            "Authorization header missing/wrong in request:\n{request}"
+        );
+    }
+
+    #[test]
+    fn omits_authorization_header_when_no_auth() {
+        let (url, rx) = serve_once();
+        let mut cache = IndexCache::new(CertsSource::Webpki);
+        let registry = Url::parse(&url).unwrap();
+
+        let _ = cache.krate(&registry, "somecrate", None).unwrap();
+
+        let request = rx.recv().unwrap();
+        assert_eq!(
+            authorization(&request),
+            None,
+            "unexpected Authorization header in request:\n{request}"
+        );
     }
 }
