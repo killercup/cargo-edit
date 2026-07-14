@@ -241,7 +241,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-edit"
-version = "0.13.11"
+version = "0.13.12"
 dependencies = [
  "anyhow",
  "cargo-test-support",

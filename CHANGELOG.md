@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+## 0.13.12 - 2026-07-14
+
 ### Fixes
 
 - *(set-version)* Error on `-p` invalid package names
