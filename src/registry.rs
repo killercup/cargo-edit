@@ -213,10 +213,9 @@ mod code_from_cargo {
 mod tests {
     use super::*;
 
-    /// Registry name unlikely to have a real token in the ambient `$CARGO_HOME`,
+    /// Registry name extremely unlikely to have a real token in the ambient `$CARGO_HOME`,
     /// so the fallthrough to `$CARGO_HOME` never masks the file under test.
-    const REGISTRY: &str = "cargo-edit-token-test-registry";
-
+    const REGISTRY: &str = "cargo-edit-token-test-registry-3b0ff8d5-2d5a-4c44-9b11-1b0f5b9e8f3a";
     /// A throwaway `<tmp>/.cargo/` tree, cleaned up on drop.
     struct TempTree {
         root: std::path::PathBuf,
