@@ -33,6 +33,7 @@ mod upgrade_all;
 mod upgrade_everything;
 mod upgrade_renamed;
 mod upgrade_verbose;
+mod upgrade_verbose_hint;
 mod upgrade_workspace;
 mod virtual_manifest;
 mod workspace_inheritance;

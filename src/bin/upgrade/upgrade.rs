@@ -625,7 +625,12 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                 .or_insert_with(BTreeSet::new)
                 .insert(dep.name);
         }
-        let mut note = "Re-run with `--verbose` to show more dependencies".to_owned();
+        let verbose_flags = if args.is_verbose() {
+            "`--verbose --verbose`"
+        } else {
+            "`--verbose`"
+        };
+        let mut note = format!("Re-run with {verbose_flags} to show more dependencies");
         for (reason, deps) in categorize {
             use std::fmt::Write;
             write!(&mut note, "\n  {reason}: ")?;

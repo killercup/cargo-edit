@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog].
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Fixes
+
+- *(upgrade)* Point single-`--verbose` users to `--verbose --verbose` when more dependencies are hidden
+
 ## 0.13.12 - 2026-07-14
 
 ### Fixes
