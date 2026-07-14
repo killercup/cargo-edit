@@ -16,7 +16,7 @@ fn case() {
         .args(["2.0.0", "--package", "missing"])
         .current_dir(&project_root)
         .assert()
-        .code(0)
+        .code(1)
         .stdout_eq(file!["stdout.term.svg"])
         .stderr_eq(file!["stderr.term.svg"]);
 

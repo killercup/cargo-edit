@@ -16,7 +16,7 @@
   <rect width="100%" height="100%" y="0" rx="4.5" class="bg" />
 
   <text xml:space="preserve" class="container fg">
-    <tspan x="10px" y="28px"><tspan>   Upgrading sample from 0.1.0 to 2.0.0</tspan>
+    <tspan x="10px" y="28px"><tspan>Error: package missing doesn't exist</tspan>
 </tspan>
     <tspan x="10px" y="46px">
 </tspan>

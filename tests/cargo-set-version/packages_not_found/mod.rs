@@ -22,7 +22,7 @@ fn case() {
         ])
         .current_dir(&project_root)
         .assert()
-        .code(0)
+        .code(1)
         .stdout_eq(file!["stdout.term.svg"])
         .stderr_eq(file!["stderr.term.svg"]);
 
