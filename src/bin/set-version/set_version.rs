@@ -119,6 +119,23 @@ fn exec(args: VersionArgs) -> CargoResult<()> {
     let root_manifest_path = ws_metadata.workspace_root.as_std_path().join("Cargo.toml");
     let workspace_members = find_ws_members(&ws_metadata);
 
+    let mut missing = Vec::new();
+    for name in &pkgid {
+        let name = name.as_str();
+        if !workspace_members
+            .iter()
+            .any(|package| package.name.as_str() == name)
+            && !missing.contains(&name)
+        {
+            missing.push(name);
+        }
+    }
+    match missing.len() {
+        0 => {}
+        1 => anyhow::bail!("package {} doesn't exist", missing.join(", ")),
+        _ => anyhow::bail!("packages {} don't exist", missing.join(", ")),
+    }
+
     if all {
         shell_warn("The flag `--all` has been deprecated in favor of `--workspace`")?;
     }

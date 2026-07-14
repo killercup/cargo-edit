@@ -5,6 +5,10 @@
 mod downgrade_error;
 mod dry_run;
 mod ignore_dependent;
+mod package_not_found;
+mod package_not_found_mixed;
+mod package_not_found_repeated;
+mod packages_not_found;
 mod relative_absolute_conflict;
 mod set_absolute_version;
 mod set_absolute_workspace_version;

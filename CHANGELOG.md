@@ -11,6 +11,12 @@ The format is based on [Keep a Changelog].
 
 - *(upgrade)* Send the registry auth token so `cargo upgrade` works with private (`auth-required`) registries instead of failing with `401 Unauthorized`
 
+## 0.13.12 - 2026-07-14
+
+### Fixes
+
+- *(set-version)* Error on `-p` invalid package names
+
 ## 0.13.11 - 2026-05-28
 
 ## 0.13.10 - 2026-04-17
