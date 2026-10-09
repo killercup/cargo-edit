@@ -31,7 +31,7 @@ pub(crate) struct UpgradeArgs {
     rust_version: Option<RustVersion>,
 
     /// Ignore `rust-version` specification in packages
-    #[arg(long)]
+    #[arg(long, short = 'I')]
     ignore_rust_version: bool,
 
     /// Require `Cargo.toml` to be up to date
