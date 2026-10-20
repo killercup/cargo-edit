@@ -2,7 +2,7 @@ use super::Dependency;
 use super::RegistrySource;
 use super::VersionExt;
 
-/// Simplified represetation of `package.rust-version`
+/// Simplified representation of `package.rust-version`
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct RustVersion {
     #[allow(missing_docs)]

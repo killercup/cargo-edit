@@ -273,7 +273,7 @@ impl LocalManifest {
         Ok(())
     }
 
-    /// Allow mutating depedencies, wherever they live
+    /// Allow mutating dependencies, wherever they live
     pub fn get_dependency_tables_mut(
         &mut self,
     ) -> impl Iterator<Item = &mut dyn toml_edit::TableLike> + '_ {
@@ -439,7 +439,7 @@ fn remove_feature_activation(
     }
 }
 
-/// If a manifest is specified, return that one, otherise perform a manifest search starting from
+/// If a manifest is specified, return that one, otherwise perform a manifest search starting from
 /// the current directory.
 /// If a manifest is specified, return that one. If a path is specified, perform a manifest search
 /// starting from there. If nothing is specified, start searching from the current directory
