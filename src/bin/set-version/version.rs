@@ -17,7 +17,7 @@ impl TargetVersion {
         metadata: Option<&str>,
     ) -> CargoResult<Option<semver::Version>> {
         match self {
-            TargetVersion::Relative(bump_level) => {
+            Self::Relative(bump_level) => {
                 let mut potential_version = current.to_owned();
                 bump_level.bump_version(&mut potential_version, metadata)?;
                 if potential_version != *current {
@@ -27,7 +27,7 @@ impl TargetVersion {
                     Ok(None)
                 }
             }
-            TargetVersion::Absolute(version) => {
+            Self::Absolute(version) => {
                 if current < version {
                     let mut version = version.clone();
                     if version.build.is_empty() {
@@ -51,7 +51,7 @@ impl TargetVersion {
 
 impl Default for TargetVersion {
     fn default() -> Self {
-        TargetVersion::Relative(BumpLevel::Release)
+        Self::Relative(BumpLevel::Release)
     }
 }
 
@@ -72,13 +72,13 @@ impl FromStr for BumpLevel {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "major" => Ok(BumpLevel::Major),
-            "minor" => Ok(BumpLevel::Minor),
-            "patch" => Ok(BumpLevel::Patch),
-            "release" => Ok(BumpLevel::Release),
-            "rc" => Ok(BumpLevel::Rc),
-            "beta" => Ok(BumpLevel::Beta),
-            "alpha" => Ok(BumpLevel::Alpha),
+            "major" => Ok(Self::Major),
+            "minor" => Ok(Self::Minor),
+            "patch" => Ok(Self::Patch),
+            "release" => Ok(Self::Release),
+            "rc" => Ok(Self::Rc),
+            "beta" => Ok(Self::Beta),
+            "alpha" => Ok(Self::Alpha),
             _ => Err(String::from(
                 "[valid values: major, minor, patch, rc, beta, alpha]",
             )),
@@ -93,31 +93,31 @@ impl BumpLevel {
         metadata: Option<&str>,
     ) -> CargoResult<()> {
         match self {
-            BumpLevel::Major => {
+            Self::Major => {
                 version.increment_major();
             }
-            BumpLevel::Minor => {
+            Self::Minor => {
                 version.increment_minor();
             }
-            BumpLevel::Patch => {
+            Self::Patch => {
                 if !version.is_prerelease() {
                     version.increment_patch();
                 } else {
                     version.pre = semver::Prerelease::EMPTY;
                 }
             }
-            BumpLevel::Release => {
+            Self::Release => {
                 if version.is_prerelease() {
                     version.pre = semver::Prerelease::EMPTY;
                 }
             }
-            BumpLevel::Rc => {
+            Self::Rc => {
                 version.increment_rc()?;
             }
-            BumpLevel::Beta => {
+            Self::Beta => {
                 version.increment_beta()?;
             }
-            BumpLevel::Alpha => {
+            Self::Alpha => {
                 version.increment_alpha()?;
             }
         };

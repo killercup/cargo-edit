@@ -110,7 +110,7 @@ unused_macro_rules = "warn"
 unused_qualifications = "warn"
 
 [lints.clippy]
-allow_attributes_without_reason = "warn"
+#allow_attributes_without_reason = "warn"
 bool_assert_comparison = "allow"
 branches_sharing_code = "allow"
 byte_char_slices = "allow"  # sometimes explicit arrays are better
@@ -157,7 +157,7 @@ mutex_integer = "warn"
 needless_continue = "allow"
 needless_for_each = "warn"
 negative_feature_names = "warn"
-partial_pub_fields = "warn"
+#partial_pub_fields = "warn"
 path_buf_push_overwrite = "warn"
 ptr_as_ptr = "warn"
 rc_mutex = "warn"

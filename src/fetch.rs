@@ -15,13 +15,13 @@ pub struct RustVersion {
 
 impl RustVersion {
     /// Minimum-possible `package.rust-version`
-    pub const MIN: Self = RustVersion {
+    pub const MIN: Self = Self {
         major: 1,
         minor: 0,
         patch: 0,
     };
     /// Maximum-possible `package.rust-version`
-    pub const MAX: Self = RustVersion {
+    pub const MAX: Self = Self {
         major: u64::MAX,
         minor: u64::MAX,
         patch: u64::MAX,
