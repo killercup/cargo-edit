@@ -1,18 +1,11 @@
 [package]
-authors = [
-    "Without Boats <lee@libertad.ucsd.edu>",
-    "Pascal Hertleif <killercup@gmail.com>",
-    "Sebastian Garrido <sebasgarcep@gmail.com>",
-    "Jonas Platte <mail@jonasplatte.de>",
-    "Benjamin Gill <git@bgill.eu>",
-    "Andronik Ordian <write@reusable.software>",
-]
+name = "cargo-edit"
+version = "0.13.13"
+description = "Cargo commands for modifying a `Cargo.toml` file.."
 categories = [
     "development-tools",
     "development-tools::cargo-plugins",
 ]
-description = "Cargo commands for modifying a `Cargo.toml` file.."
-documentation = "https://github.com/killercup/cargo-edit/blob/master/README.md#available-subcommands"
 keywords = [
     "cargo",
     "cargo-subcommand",
@@ -20,19 +13,18 @@ keywords = [
     "dependencies",
     "crates",
 ]
-license = "Apache-2.0 OR MIT"
-name = "cargo-edit"
-readme = "README.md"
 repository = "https://github.com/killercup/cargo-edit"
-version = "0.13.13"
+license = "MIT OR Apache-2.0"
 edition = "2024"
 rust-version = "1.97"
 
 [package.metadata.release]
 pre-release-replacements = [
   {file="CHANGELOG.md", search="Unreleased", replace="{{version}}", min=1},
+  {file="CHANGELOG.md", search="\\.\\.\\.HEAD", replace="...{{tag_name}}", exactly=1},
   {file="CHANGELOG.md", search="ReleaseDate", replace="{{date}}", min=1},
-  {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n## Unreleased - ReleaseDate\n", exactly=1},
+  {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n## [Unreleased] - ReleaseDate\n", exactly=1},
+  {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: {{repository}}/compare/{{tag_name}}...HEAD", exactly=1},
 ]
 
 [[bin]]
@@ -90,11 +82,6 @@ trycmd = "1.2.0"
 snapbox = { version = "1.2.2", features = ["cmd", "path"] }
 cargo-test-support = "0.11.6"
 
-[profile.release]
-panic = "abort"
-codegen-units = 1
-lto = true
-
 [features]
 default = [
     "add",
@@ -112,6 +99,9 @@ test-external-apis = []
 
 [lints.rust]
 rust_2018_idioms = { level = "warn", priority = -1 }
+
+non_ascii_idents = "warn"
+trivial_numeric_casts = "warn"
 unnameable_types = "warn"
 unreachable_pub = "warn"
 unsafe_op_in_unsafe_fn = "warn"
@@ -120,10 +110,17 @@ unused_macro_rules = "warn"
 unused_qualifications = "warn"
 
 [lints.clippy]
+allow_attributes_without_reason = "warn"
 bool_assert_comparison = "allow"
 branches_sharing_code = "allow"
+byte_char_slices = "allow"  # sometimes explicit arrays are better
+cast_possible_truncation = "warn"
+cast_possible_wrap = "warn"
+cast_sign_loss = "warn"
 checked_conversions = "warn"
 collapsible_else_if = "allow"
+collapsible_match = "allow"
+collection_is_never_read = "warn"
 create_dir = "warn"
 dbg_macro = "warn"
 debug_assert_with_mut_call = "warn"
@@ -136,8 +133,10 @@ explicit_into_iter_loop = "warn"
 fallible_impl_from = "warn"
 filter_map_next = "warn"
 flat_map_option = "warn"
+float_cmp = "warn"
 float_cmp_const = "warn"
 fn_params_excessive_bools = "warn"
+fn_to_numeric_cast_any = "warn"
 if_same_then_else = "allow"
 implicit_clone = "warn"
 imprecise_flops = "warn"
@@ -153,10 +152,12 @@ linkedlist = "warn"
 lossy_float_literal = "warn"
 macro_use_imports = "warn"
 mem_forget = "warn"
+mismatching_type_param_order = "warn"
 mutex_integer = "warn"
 needless_continue = "allow"
 needless_for_each = "warn"
 negative_feature_names = "warn"
+partial_pub_fields = "warn"
 path_buf_push_overwrite = "warn"
 ptr_as_ptr = "warn"
 rc_mutex = "warn"
@@ -165,15 +166,30 @@ ref_option_ref = "warn"
 rest_pat_in_fully_bound_structs = "warn"
 result_large_err = "allow"
 same_functions_in_if_condition = "warn"
-self_named_module_files = "allow"  # false positive
+self_named_module_files = "warn"
 semicolon_if_nothing_returned = "warn"
+should_panic_without_expect = "warn"
 str_to_string = "warn"
 string_add = "warn"
 string_add_assign = "warn"
 string_lit_as_bytes = "warn"
 todo = "warn"
 trait_duplication_in_bounds = "warn"
+undocumented_unsafe_blocks = "warn"
 uninlined_format_args = "warn"
+unnecessary_safety_comment = "warn"
+unnecessary_safety_doc = "warn"
+unseparated_literal_suffix = "warn"
+use_self = "warn"
 verbose_file_reads = "warn"
 wildcard_imports = "warn"
 zero_sized_map_values = "warn"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+debug = "line-tables-only"  # requires Cargo 1.71
