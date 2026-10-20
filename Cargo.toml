@@ -13,7 +13,6 @@ categories = [
 ]
 description = "Cargo commands for modifying a `Cargo.toml` file.."
 documentation = "https://github.com/killercup/cargo-edit/blob/master/README.md#available-subcommands"
-homepage = "https://github.com/killercup/cargo-edit"
 keywords = [
     "cargo",
     "cargo-subcommand",
