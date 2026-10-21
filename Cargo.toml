@@ -1,6 +1,6 @@
 [package]
 name = "cargo-edit"
-version = "0.13.13"
+version = "0.13.14"
 description = "Cargo commands for modifying a `Cargo.toml` file.."
 categories = [
     "development-tools",
