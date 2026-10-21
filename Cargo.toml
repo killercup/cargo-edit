@@ -54,27 +54,27 @@ tame-index = "0.27.0"
 dunce = "1.0"
 anyhow = "1.0"
 home = "0.5.12"
-serde = "1.0.228"
-serde_derive = "1.0.228"
-clap = { version = "4.6.1", features = ["derive", "wrap_help"], optional = true }
-clap-cargo = "0.18.3"
+serde = "1.0.229"
+serde_derive = "1.0.229"
+clap = { version = "4.6.7", features = ["derive", "wrap_help"], optional = true }
+clap-cargo = "0.19.0"
 termcolor = "1.4.1"
-toml = "1.1.2"
-toml_edit = "0.25.11"
+toml = "1.1.8"
+toml_edit = "0.25.17"
 indexmap = "2"
 url = "2.5.8"
 pathdiff = "0.2"
-env_logger = "0.11.10"
+env_logger = "0.11.11"
 clap-verbosity-flag = "3.0.4"
-log = "0.4.29"
-ureq = { version = "3.4", default-features = false, features = ["platform-verifier", "rustls", "rustls-webpki-roots"] }
+log = "0.4.34"
+ureq = { version = "3.5", default-features = false, features = ["platform-verifier", "rustls", "rustls-webpki-roots"] }
 
 [dependencies.semver]
 features = ["serde"]
 version = "1.0.28"
 
 [dev-dependencies]
-trycmd = "1.2.0"
+trycmd = "1.2.1"
 snapbox = { version = "1.2.2", features = ["cmd", "path"] }
 cargo-test-support = "0.11.6"
 
