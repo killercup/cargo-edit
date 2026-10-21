@@ -50,12 +50,7 @@ required-features = ["set-version"]
 [dependencies]
 concolor-control = { version = "0.0.7", default-features = false }
 cargo_metadata = "0.23.1"
-# Use this with default-features set to "true" (implicitly) so that reqwest,
-# a transitive dependency, is compiled with support for both webpki
-# certificates AND native certificates. We want support for both to be
-# present, and then to let the user _select_ through configuration which
-# one they want to be used.
-tame-index = { version = "0.22.0", features = ["sparse", "native-certs", "local"] }
+tame-index = "0.27.0"
 dunce = "1.0"
 anyhow = "1.0"
 home = "0.5.12"
@@ -72,6 +67,7 @@ pathdiff = "0.2"
 env_logger = "0.11.10"
 clap-verbosity-flag = "3.0.4"
 log = "0.4.29"
+ureq = { version = "3.4", default-features = false, features = ["platform-verifier", "rustls", "rustls-webpki-roots"] }
 
 [dependencies.semver]
 features = ["serde"]
