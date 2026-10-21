@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 <!-- next-header -->
 ## Unreleased - ReleaseDate
 
+### Internal
+
+- Update dependencies
+
+### Compatibility
+
+- Bump MSRV to 1.97
+
 ## 0.13.13 - 2026-07-15
 
 ### Fixes
