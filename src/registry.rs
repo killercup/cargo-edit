@@ -89,6 +89,17 @@ fn resolve_registry(
 
     // search this linked list and find the tail
     while let Some(replace_with) = source.replace_with.take() {
+        // detect cycle: `a -> b -> a`
+        if names.contains(&replace_with) {
+            let chain = names
+                .iter()
+                .chain(std::iter::once(&replace_with))
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(" -> ");
+            anyhow::bail!("cycle detected in source replacement: {chain}");
+        }
+
         let is_crates_io = replace_with == CRATES_IO_INDEX;
         source = registries.remove(&replace_with).with_context(|| {
             anyhow::format_err!("The source '{replace_with}' could not be found")
@@ -350,6 +361,17 @@ mod tests {
 
         let token = registry_token(&tree.manifest(), None).unwrap();
         assert_eq!(token.as_deref(), Some("replaced-token"));
+    }
+
+    #[test]
+    fn source_replacement_cycle_is_detected() {
+        let tree = TempTree::new("cycle");
+        tree.write(
+            ".cargo/config.toml",
+            "[source.crates-io]\nreplace-with = \"a\"\n\n[source.a]\nreplace-with = \"b\"\n\n[source.b]\nreplace-with = \"a\"\n",
+        );
+        let err = registry_url(&tree.manifest(), None).unwrap_err();
+        assert!(err.to_string().contains("cycle"));
     }
 
     #[test]
