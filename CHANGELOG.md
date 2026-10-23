@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - *(upgrade)* Point single-`--verbose` users to `--verbose --verbose` when more dependencies are hidden
 
+### Fixes
+
+- *(upgrade)* Send the registry auth token so `cargo upgrade` works with private (`auth-required`) registries instead of failing with `401 Unauthorized`
+
 ## 0.13.12 - 2026-07-14
 
 ### Fixes

@@ -6,8 +6,8 @@ use std::path::PathBuf;
 use anyhow::Context as _;
 use cargo_edit::{
     CargoResult, CertsSource, CrateSpec, Dependency, IndexCache, LocalManifest, RustVersion,
-    Source, find_compatible_version, find_latest_version, registry_url, set_dep_version,
-    shell_note, shell_status, shell_warn, shell_write_stdout,
+    Source, find_compatible_version, find_latest_version, registry_token, registry_url,
+    set_dep_version, shell_note, shell_status, shell_warn, shell_write_stdout,
 };
 use clap::Args;
 use indexmap::IndexMap;
@@ -305,7 +305,8 @@ fn exec(args: UpgradeArgs) -> CargoResult<()> {
                     // Update indices for any alternative registries, unless
                     // we're offline.
                     let registry_url = registry_url(&manifest_path, dependency.registry())?;
-                    let krate = index.krate(&registry_url, &dependency.name)?;
+                    let auth = registry_token(&manifest_path, dependency.registry())?;
+                    let krate = index.krate(&registry_url, &dependency.name, auth.as_deref())?;
                     let versions = krate
                         .as_ref()
                         .map(|k| k.versions.as_slice())
