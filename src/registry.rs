@@ -100,15 +100,18 @@ fn resolve_registry(
             anyhow::bail!("cycle detected in source replacement: {chain}");
         }
 
-        let is_crates_io = replace_with == CRATES_IO_INDEX;
-        source = registries.remove(&replace_with).with_context(|| {
-            anyhow::format_err!("The source '{replace_with}' could not be found")
-        })?;
-        if is_crates_io {
+        // crates-io is built in, so it need not be declared in any config
+        source = if replace_with == CRATES_IO_REGISTRY {
+            let mut source = registries.remove(&replace_with).unwrap_or_default();
             source
                 .registry
                 .get_or_insert_with(|| CRATES_IO_INDEX.to_owned());
-        }
+            source
+        } else {
+            registries.remove(&replace_with).with_context(|| {
+                anyhow::format_err!("The source '{replace_with}' could not be found")
+            })?
+        };
         names.push(replace_with);
     }
 
@@ -357,6 +360,26 @@ mod tests {
 
         let token = registry_token(&tree.manifest(), None).unwrap();
         assert_eq!(token.as_deref(), Some("replaced-token"));
+    }
+
+    #[test]
+    fn replacement_with_crates_io_uses_default_index() {
+        let tree = TempTree::new("to-crates-io");
+        tree.write(
+            ".cargo/config.toml",
+            "[source.mirror]\nreplace-with = \"crates-io\"\n",
+        );
+        tree.write(
+            ".cargo/credentials.toml",
+            "[registry]\ntoken = \"crates-io-publish-token\"\n",
+        );
+
+        let url = registry_url(&tree.manifest(), Some("mirror")).unwrap();
+        assert_eq!(url.as_str(), CRATES_IO_INDEX);
+
+        // The crates.io publish token must not be sent to the index.
+        let token = registry_token(&tree.manifest(), Some("mirror")).unwrap();
+        assert_eq!(token, None);
     }
 
     #[test]
