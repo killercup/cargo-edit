@@ -295,8 +295,6 @@ mod tests {
     #[test]
     fn token_from_credentials_toml() {
         let tree = TempTree::new("credentials");
-        // The registry must be defined in `config` (index); only the token
-        // lives in `credentials`.
         tree.write(
             ".cargo/config.toml",
             &format!("[registries.{REGISTRY}]\nindex = \"sparse+https://example.com/\"\n"),
@@ -340,9 +338,6 @@ mod tests {
 
     #[test]
     fn source_replacement_is_followed() {
-        // crates.io is replaced with a private registry. Both the resolved URL
-        // and the token must come from the replacement, never from crates.io
-        // (whose publish token must not leak to the CDN-fronted sparse index).
         let tree = TempTree::new("replace");
         tree.write(
             ".cargo/config.toml",
@@ -366,8 +361,6 @@ mod tests {
 
     #[test]
     fn misconfigured_source_replacement_is_an_error() {
-        // A `replace-with` cycle (`a -> b -> a`) must be reported as a cycle,
-        // not as a misleading missing source.
         let cycle = TempTree::new("cycle");
         cycle.write(
             ".cargo/config.toml",
