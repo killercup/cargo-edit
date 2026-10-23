@@ -16,7 +16,9 @@ pub enum CertsSource {
 
 pub struct IndexCache {
     certs_source: CertsSource,
-    index: std::collections::HashMap<Url, AnyIndexCache>,
+    /// Keyed by registry URL *and* auth, so a token configured for one registry
+    /// is never reused for (or withheld from) another that shares its index URL.
+    index: std::collections::HashMap<(Url, Option<String>), AnyIndexCache>,
 }
 
 impl IndexCache {
@@ -84,12 +86,13 @@ impl IndexCache {
         registry: &Url,
         auth: Option<&str>,
     ) -> CargoResult<&'s mut AnyIndexCache> {
-        if !self.index.contains_key(registry) {
+        let key = (registry.clone(), auth.map(str::to_owned));
+        if !self.index.contains_key(&key) {
             let index = AnyIndex::open(registry, self.certs_source, auth)?;
             let index = AnyIndexCache::new(index);
-            self.index.insert(registry.clone(), index);
+            self.index.insert(key.clone(), index);
         }
-        Ok(self.index.get_mut(registry).unwrap())
+        Ok(self.index.get_mut(&key).unwrap())
     }
 }
 
@@ -290,22 +293,29 @@ mod tests {
     /// answers with `INDEX_LINE`. Returns the base URL and a receiver for the
     /// captured request text.
     fn serve_once() -> (String, std::sync::mpsc::Receiver<String>) {
+        serve(1)
+    }
+
+    /// Like [`serve_once`], but answers `connections` requests, one per connection.
+    fn serve(connections: usize) -> (String, std::sync::mpsc::Receiver<String>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
-            let (mut stream, _) = listener.accept().unwrap();
-            let mut buf = [0_u8; 8192];
-            let n = stream.read(&mut buf).unwrap();
-            let request = String::from_utf8_lossy(&buf[..n]).into_owned();
-            let response = format!(
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/plain\r\n\r\n{}",
-                INDEX_LINE.len(),
-                INDEX_LINE
-            );
-            let _ = stream.write_all(response.as_bytes());
-            let _ = stream.flush();
-            let _ = tx.send(request);
+            for _ in 0..connections {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut buf = [0_u8; 8192];
+                let n = stream.read(&mut buf).unwrap();
+                let request = String::from_utf8_lossy(&buf[..n]).into_owned();
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/plain\r\n\r\n{}",
+                    INDEX_LINE.len(),
+                    INDEX_LINE
+                );
+                let _ = stream.write_all(response.as_bytes());
+                let _ = stream.flush();
+                let _ = tx.send(request);
+            }
         });
         // tame_index requires the `sparse+` scheme prefix; it is stripped before
         // the actual HTTP request is issued to `http://{addr}/`.
@@ -357,6 +367,29 @@ mod tests {
             authorization(&request),
             None,
             "unexpected Authorization header in request:\n{request}"
+        );
+    }
+
+    // The same index URL looked up without and then with a token must not reuse
+    // the first (unauthenticated) client, or the second request gets a 401.
+    #[test]
+    fn auth_is_part_of_the_cache_key() {
+        let (url, rx) = serve(2);
+        let mut cache = IndexCache::new(CertsSource::Webpki);
+        let registry = Url::parse(&url).unwrap();
+
+        let _ = cache.krate(&registry, "somecrate", None).unwrap();
+        let _ = cache
+            .krate(&registry, "somecrate", Some("Bearer test-token"))
+            .unwrap();
+
+        assert_eq!(
+            authorization(&rx.recv_timeout(std::time::Duration::from_secs(5)).unwrap()),
+            None
+        );
+        assert_eq!(
+            authorization(&rx.recv_timeout(std::time::Duration::from_secs(5)).unwrap()).as_deref(),
+            Some("Bearer test-token")
         );
     }
 }
