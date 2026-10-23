@@ -1,5 +1,5 @@
+use tame_index::flock::FileLock;
 use tame_index::krate::IndexKrate;
-use tame_index::utils::flock::FileLock;
 
 use url::Url;
 
@@ -163,8 +163,7 @@ impl AnyIndex {
 }
 
 struct LocalIndex {
-    index: tame_index::index::LocalRegistry,
-    root: tame_index::PathBuf,
+    index: tame_index::index::LocalIndex,
 }
 
 impl LocalIndex {
@@ -174,34 +173,26 @@ impl LocalIndex {
             .map_err(|_err| anyhow::format_err!("invalid file path {url:?}"))?;
         let path = tame_index::PathBuf::from_path_buf(path)
             .map_err(|_err| anyhow::format_err!("invalid file path {url:?}"))?;
-        let index = tame_index::index::LocalRegistry::open(path.clone(), false)?;
-        Ok(Self { index, root: path })
+        Ok(Self {
+            index: tame_index::index::LocalIndex::open(path)?,
+        })
     }
 
     fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
-        let name = tame_index::KrateName::cargo(name)?;
-        // HACK: for some reason, `tame_index` puts `index` in the middle
-        let entry_path = self.index.krate_path(name);
-        let rel_path = entry_path
-            .strip_prefix(&self.root)
-            .map_err(|_err| anyhow::format_err!("invalid index path {entry_path:?}"))?;
-        let rel_path = rel_path
-            .strip_prefix("index")
-            .map_err(|_err| anyhow::format_err!("invalid index path {entry_path:?}"))?;
-        let entry_path = self.root.join(rel_path);
-        let Ok(entry) = std::fs::read(&entry_path) else {
+        let l = FileLock::unlocked();
+        let Some(entry) = self.index.krate(name.try_into()?, &l)? else {
             return Ok(None);
         };
-        let results = IndexKrate::from_slice(&entry)?;
-        Ok(Some(results))
+
+        Ok(entry.deserialize().map(Some)?)
     }
 }
 
 struct RemoteIndex {
     index: tame_index::SparseIndex,
-    client: tame_index::external::reqwest::blocking::Client,
+    client: ureq::Agent,
     lock: FileLock,
-    etags: Vec<(String, String)>,
+    etag_cache: tame_index::EtagCache,
     /// Value for the `Authorization` header, sent verbatim (matching cargo) for
     /// registries with `auth-required = true`. `None` for unauthenticated registries.
     auth: Option<String>,
@@ -214,16 +205,20 @@ impl RemoteIndex {
         let url = tame_index::IndexUrl::NonCratesIo(std::borrow::Cow::Owned(url));
         let index = tame_index::SparseIndex::new(tame_index::IndexLocation::new(url))?;
 
-        let client = {
-            let builder = tame_index::external::reqwest::blocking::ClientBuilder::new();
-
-            let builder = match certs_source {
-                CertsSource::Webpki => builder.tls_built_in_webpki_certs(true),
-                CertsSource::Native => builder.tls_built_in_native_certs(true),
-            };
-
-            builder.build()?
-        };
+        let client = ureq::Agent::config_builder()
+            // tame_index handles HTTP status codes internally
+            .http_status_as_error(false)
+            .tls_config(
+                ureq::tls::TlsConfig::builder()
+                    .provider(ureq::tls::TlsProvider::Rustls)
+                    .root_certs(match certs_source {
+                        CertsSource::Webpki => ureq::tls::RootCerts::WebPki,
+                        CertsSource::Native => ureq::tls::RootCerts::PlatformVerifier,
+                    })
+                    .build(),
+            )
+            .build()
+            .new_agent();
 
         let lock = FileLock::unlocked();
 
@@ -231,73 +226,47 @@ impl RemoteIndex {
             index,
             client,
             lock,
-            etags: Vec::new(),
+            etag_cache: Default::default(),
             auth: auth.map(str::to_owned),
         })
     }
 
     fn krate(&mut self, name: &str) -> CargoResult<Option<IndexKrate>> {
         log::trace!("krate {name}");
-        let etag = self
-            .etags
-            .iter()
-            .find_map(|(krate, etag)| (krate == name).then_some(etag.as_str()))
-            .unwrap_or("");
-
         let krate_name = name.try_into()?;
         let req = self
-            .index
-            .make_remote_request(krate_name, Some(etag), &self.lock)?;
-        let (
-            tame_index::external::http::request::Parts {
-                method,
-                uri,
-                version,
-                headers,
-                ..
-            },
-            _,
-        ) = req.into_parts();
-        let mut req = self.client.request(method, uri.to_string());
-        req = req.version(version);
-        req = req.headers(headers);
+            .etag_cache
+            .make_remote_request(&self.index, krate_name, &self.lock)?;
+
+        let mut req: ureq::http::Request<()> = req.into();
         // tame_index's `make_remote_request` does not attach credentials; a
         // registry with `auth-required = true` rejects the request with 401
         // otherwise. cargo sends the configured token verbatim.
         if let Some(auth) = &self.auth {
-            req = req.header(tame_index::external::reqwest::header::AUTHORIZATION, auth);
-        }
-        let res = self.client.execute(req.build()?)?;
-
-        // Grab the etag if it exists for future requests
-        if let Some(etag) = res
-            .headers()
-            .get(tame_index::external::reqwest::header::ETAG)
-            && let Ok(etag) = etag.to_str()
-        {
-            if let Some(i) = self.etags.iter().position(|(krate, _)| krate == name) {
-                etag.clone_into(&mut self.etags[i].1);
-            } else {
-                self.etags.push((name.to_owned(), etag.to_owned()));
-            }
+            let value = ureq::http::HeaderValue::from_str(auth)
+                .context("invalid Authorization header value")?;
+            req.headers_mut()
+                .insert(ureq::http::header::AUTHORIZATION, value);
         }
 
-        let mut builder = tame_index::external::http::Response::builder()
-            .status(res.status())
-            .version(res.version());
+        let (parts, mut body) = self.client.run(req)?.into_parts();
+        let body = body.read_to_vec().context("failed to read response body")?;
 
-        builder
-            .headers_mut()
-            .unwrap()
-            .extend(res.headers().iter().map(|(k, v)| (k.clone(), v.clone())));
-
-        let body = res.bytes()?;
-        let response = builder
-            .body(body.to_vec())
-            .map_err(|e| tame_index::Error::from(tame_index::error::HttpError::from(e)))?;
-
-        self.index
-            .parse_remote_response(krate_name, response, false, &self.lock)
+        self.etag_cache
+            .parse_remote_response(
+                &self.index,
+                krate_name,
+                &ureq::http::Response::from_parts(parts, body),
+                false,
+                &self.lock,
+            )
+            .and_then(|ie| {
+                if let Some(ie) = ie {
+                    ie.deserialize().map(Some)
+                } else {
+                    Ok(None)
+                }
+            })
             .map_err(Into::into)
     }
 }
@@ -326,7 +295,7 @@ mod tests {
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
-            let mut buf = [0u8; 8192];
+            let mut buf = [0_u8; 8192];
             let n = stream.read(&mut buf).unwrap();
             let request = String::from_utf8_lossy(&buf[..n]).into_owned();
             let response = format!(

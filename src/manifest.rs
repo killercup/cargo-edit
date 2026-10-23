@@ -171,7 +171,7 @@ impl str::FromStr for Manifest {
     fn from_str(input: &str) -> ::std::result::Result<Self, Self::Err> {
         let d: toml_edit::DocumentMut = input.parse().context("Manifest not valid TOML")?;
 
-        Ok(Manifest { data: d })
+        Ok(Self { data: d })
     }
 }
 
@@ -220,7 +220,7 @@ impl LocalManifest {
         }
         let data = fs::read_to_string(path).with_context(|| "Failed to read manifest contents")?;
         let manifest = data.parse().context("Unable to parse Cargo.toml")?;
-        Ok(LocalManifest {
+        Ok(Self {
             manifest,
             path: path.to_owned(),
         })
@@ -273,7 +273,7 @@ impl LocalManifest {
         Ok(())
     }
 
-    /// Allow mutating depedencies, wherever they live
+    /// Allow mutating dependencies, wherever they live
     pub fn get_dependency_tables_mut(
         &mut self,
     ) -> impl Iterator<Item = &mut dyn toml_edit::TableLike> + '_ {
@@ -439,7 +439,7 @@ fn remove_feature_activation(
     }
 }
 
-/// If a manifest is specified, return that one, otherise perform a manifest search starting from
+/// If a manifest is specified, return that one, otherwise perform a manifest search starting from
 /// the current directory.
 /// If a manifest is specified, return that one. If a path is specified, perform a manifest search
 /// starting from there. If nothing is specified, start searching from the current directory

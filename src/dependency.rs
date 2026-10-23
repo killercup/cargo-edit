@@ -626,8 +626,8 @@ impl std::fmt::Display for Source {
     }
 }
 
-impl<'s> From<&'s Source> for Source {
-    fn from(inner: &'s Source) -> Self {
+impl<'s> From<&'s Self> for Source {
+    fn from(inner: &'s Self) -> Self {
         inner.clone()
     }
 }

@@ -1,7 +1,7 @@
 <svg width="740px" height="128px" xmlns="http://www.w3.org/2000/svg">
   <style>
     .fg { fill: #AAAAAA }
-    .bg { background: #000000 }
+    .bg { fill: #000000 }
     .container {
       padding: 0 10px;
       line-height: 18px;
@@ -20,7 +20,7 @@
 </tspan>
     <tspan x="10px" y="46px"><tspan>   Upgrading recursive dependencies</tspan>
 </tspan>
-    <tspan x="10px" y="64px"><tspan>     Locking 0 packages to latest compatible versions</tspan>
+    <tspan x="10px" y="64px"><tspan>     Locking 0 packages to highest compatible versions</tspan>
 </tspan>
     <tspan x="10px" y="82px"><tspan>note: Re-run with `--verbose` to show more dependencies</tspan>
 </tspan>
