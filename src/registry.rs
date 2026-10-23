@@ -166,17 +166,12 @@ struct Registry {
 /// / `config` files, walking from the manifest directory up to `$CARGO_HOME`.
 pub fn registry_token(manifest_path: &Path, registry: Option<&str>) -> CargoResult<Option<String>> {
     // resolve which registry ultimately serves the request:
-    // `[source.crates-io] replace-with = "my-registry" in that case the token belongs
-    // to "my-registry", not "crates-io"
+    // `source.crates-io.replace-with = "my-registry"` means the token should be pulled
+    // from "my-registry", not "crates-io".
     let names = {
         let mut registries = load_registries(manifest_path)?;
-        match resolve_registry(&mut registries, registry) {
-            Ok((names, _source)) => names,
-            Err(_) => match registry {
-                Some(CRATES_IO_INDEX) | None => vec![CRATES_IO_REGISTRY.to_owned()],
-                Some(r) => vec![r.to_owned()],
-            },
-        }
+        let (names, _source) = resolve_registry(&mut registries, registry)?;
+        names
     };
     let Some(name) = names.last() else {
         return Ok(None);
@@ -300,6 +295,12 @@ mod tests {
     #[test]
     fn token_from_credentials_toml() {
         let tree = TempTree::new("credentials");
+        // The registry must be defined in `config` (index); only the token
+        // lives in `credentials`.
+        tree.write(
+            ".cargo/config.toml",
+            &format!("[registries.{REGISTRY}]\nindex = \"sparse+https://example.com/\"\n"),
+        );
         tree.write(
             ".cargo/credentials.toml",
             &format!("[registries.{REGISTRY}]\ntoken = \"cred-token\"\n"),
@@ -364,33 +365,55 @@ mod tests {
     }
 
     #[test]
-    fn source_replacement_cycle_is_detected() {
-        let tree = TempTree::new("cycle");
-        tree.write(
+    fn misconfigured_source_replacement_is_an_error() {
+        // A `replace-with` cycle (`a -> b -> a`) must be reported as a cycle,
+        // not as a misleading missing source.
+        let cycle = TempTree::new("cycle");
+        cycle.write(
             ".cargo/config.toml",
             "[source.crates-io]\nreplace-with = \"a\"\n\n[source.a]\nreplace-with = \"b\"\n\n[source.b]\nreplace-with = \"a\"\n",
         );
-        let err = registry_url(&tree.manifest(), None).unwrap_err();
-        assert!(err.to_string().contains("cycle"));
+        let err = registry_url(&cycle.manifest(), None).unwrap_err();
+        assert!(err.to_string().contains("cycle"), "got: {err}");
+
+        let missing = TempTree::new("missing");
+        missing.write(
+            ".cargo/config.toml",
+            "[source.crates-io]\nreplace-with = \"a\"\n",
+        );
+        let token_err = registry_token(&missing.manifest(), None).unwrap_err();
+        let url_err = registry_url(&missing.manifest(), None).unwrap_err();
+        assert_eq!(token_err.to_string(), url_err.to_string());
+        assert!(token_err.to_string().contains("'a'"), "got: {token_err}");
     }
 
     #[test]
-    fn unknown_registry_is_none() {
+    fn unknown_registry_is_an_error() {
         let tree = TempTree::new("unknown");
         tree.write(
             ".cargo/credentials.toml",
             &format!("[registries.{REGISTRY}]\ntoken = \"cred-token\"\n"),
         );
-        assert_eq!(
-            registry_token(&tree.manifest(), Some("cargo-edit-absent-registry")).unwrap(),
-            None
+        let err = registry_token(&tree.manifest(), Some("cargo-edit-absent-registry")).unwrap_err();
+        assert!(
+            err.to_string().contains("cargo-edit-absent-registry"),
+            "expected a missing-registry error, got: {err}"
         );
     }
 
     #[test]
-    fn default_registry_is_none() {
-        // The crates.io index never requires a token; don't leak the publish token to it.
-        let tree = TempTree::new("default");
-        assert_eq!(registry_token(&tree.manifest(), None).unwrap(), None);
+    fn unauthenticated_registry_is_none() {
+        let crates_io = TempTree::new("default");
+        assert_eq!(registry_token(&crates_io.manifest(), None).unwrap(), None);
+
+        let tree = TempTree::new("no-token");
+        tree.write(
+            ".cargo/config.toml",
+            &format!("[registries.{REGISTRY}]\nindex = \"sparse+https://example.com/\"\n"),
+        );
+        assert_eq!(
+            registry_token(&tree.manifest(), Some(REGISTRY)).unwrap(),
+            None
+        );
     }
 }
