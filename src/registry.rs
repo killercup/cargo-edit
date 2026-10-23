@@ -71,7 +71,7 @@ fn resolve_registry(
 ) -> CargoResult<(Vec<String>, Source)> {
     // find head of the relevant linked list
     let (head, mut source) = match registry {
-        Some(CRATES_IO_INDEX) | None => {
+        Some(CRATES_IO_INDEX | CRATES_IO_REGISTRY) | None => {
             let mut source = registries.remove(CRATES_IO_REGISTRY).unwrap_or_default();
             source
                 .registry
@@ -168,6 +168,15 @@ struct Registry {
 /// variable wins, then `token` under `[registries.<name>]` in the `credentials`
 /// / `config` files, walking from the manifest directory up to `$CARGO_HOME`.
 pub fn registry_token(manifest_path: &Path, registry: Option<&str>) -> CargoResult<Option<String>> {
+    registry_token_with_env(manifest_path, registry, |key| std::env::var_os(key))
+}
+
+// `registry_token` with the environment lookup injected, so tests need not mutate process state.
+fn registry_token_with_env(
+    manifest_path: &Path,
+    registry: Option<&str>,
+    env_var: impl Fn(&str) -> Option<std::ffi::OsString>,
+) -> CargoResult<Option<String>> {
     // resolve which registry ultimately serves the request:
     // `source.crates-io.replace-with = "my-registry"` means the token should be pulled
     // from "my-registry", not "crates-io".
@@ -189,7 +198,7 @@ pub fn registry_token(manifest_path: &Path, registry: Option<&str>) -> CargoResu
         "CARGO_REGISTRIES_{}_TOKEN",
         name.to_uppercase().replace('-', "_")
     );
-    if let Some(token) = std::env::var_os(&env_key) {
+    if let Some(token) = env_var(&env_key) {
         let token = token
             .into_string()
             .map_err(|_err| anyhow::format_err!("`{env_key}` was not valid unicode"))?;
@@ -281,7 +290,9 @@ mod tests {
         }
 
         fn write(&self, rel: &str, contents: &str) {
-            std::fs::write(self.root.join(rel), contents).unwrap();
+            let path = self.root.join(rel);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, contents).unwrap();
         }
 
         fn manifest(&self) -> std::path::PathBuf {
@@ -431,5 +442,104 @@ mod tests {
             registry_token(&tree.manifest(), Some(REGISTRY)).unwrap(),
             None
         );
+    }
+
+    #[test]
+    fn explicit_crates_io_is_builtin() {
+        let tree = TempTree::new("explicit-crates-io");
+        tree.write(
+            ".cargo/credentials.toml",
+            "[registry]\ntoken = \"crates-io-publish-token\"\n",
+        );
+
+        let url = registry_url(&tree.manifest(), Some(CRATES_IO_REGISTRY)).unwrap();
+        assert_eq!(url.as_str(), CRATES_IO_INDEX);
+
+        let token = registry_token(&tree.manifest(), Some(CRATES_IO_REGISTRY)).unwrap();
+        assert_eq!(token, None);
+    }
+
+    #[test]
+    fn env_token_wins_over_files() {
+        let tree = TempTree::new("env");
+        tree.write(
+            ".cargo/config.toml",
+            "[registries.my-registry]\nindex = \"sparse+https://example.com/\"\ntoken = \"config-token\"\n",
+        );
+        tree.write(
+            ".cargo/credentials.toml",
+            "[registries.my-registry]\ntoken = \"cred-token\"\n",
+        );
+
+        // Dashes in the registry name become underscores in the variable name.
+        let env =
+            |key: &str| (key == "CARGO_REGISTRIES_MY_REGISTRY_TOKEN").then(|| "env-token".into());
+        let token = registry_token_with_env(&tree.manifest(), Some("my-registry"), env).unwrap();
+        assert_eq!(token.as_deref(), Some("env-token"));
+    }
+
+    #[test]
+    fn env_token_follows_source_replacement() {
+        let tree = TempTree::new("env-replace");
+        tree.write(
+            ".cargo/config.toml",
+            "[source.crates-io]\nreplace-with = \"my-registry\"\n\n[registries.my-registry]\nindex = \"sparse+https://example.com/\"\n",
+        );
+
+        // The token is keyed by the registry that serves the index, never by crates-io.
+        let env = |key: &str| match key {
+            "CARGO_REGISTRIES_MY_REGISTRY_TOKEN" => Some("replaced-token".into()),
+            "CARGO_REGISTRIES_CRATES_IO_TOKEN" => Some("crates-io-token".into()),
+            _ => None,
+        };
+        let token = registry_token_with_env(&tree.manifest(), None, env).unwrap();
+        assert_eq!(token.as_deref(), Some("replaced-token"));
+    }
+
+    #[test]
+    fn multi_hop_replacement_uses_tail() {
+        let tree = TempTree::new("multi-hop");
+        tree.write(
+            ".cargo/config.toml",
+            &format!(
+                "[source.crates-io]\nreplace-with = \"middle\"\n\n[source.middle]\nreplace-with = \"{REGISTRY}\"\n\n[registries.{REGISTRY}]\nindex = \"sparse+https://example.com/tail/\"\n"
+            ),
+        );
+        tree.write(
+            ".cargo/credentials.toml",
+            &format!(
+                "[registries.middle]\ntoken = \"middle-token\"\n\n[registries.{REGISTRY}]\ntoken = \"tail-token\"\n"
+            ),
+        );
+
+        let url = registry_url(&tree.manifest(), None).unwrap();
+        assert_eq!(url.as_str(), "sparse+https://example.com/tail/");
+
+        let token = registry_token(&tree.manifest(), None).unwrap();
+        assert_eq!(token.as_deref(), Some("tail-token"));
+    }
+
+    #[test]
+    fn nearest_config_wins() {
+        let tree = TempTree::new("nearest");
+        tree.write(
+            ".cargo/config.toml",
+            &format!(
+                "[registries.{REGISTRY}]\nindex = \"sparse+https://example.com/parent/\"\ntoken = \"parent-token\"\n"
+            ),
+        );
+        tree.write(
+            "member/.cargo/config.toml",
+            &format!(
+                "[registries.{REGISTRY}]\nindex = \"sparse+https://example.com/member/\"\ntoken = \"member-token\"\n"
+            ),
+        );
+        let manifest = tree.root.join("member/Cargo.toml");
+
+        let url = registry_url(&manifest, Some(REGISTRY)).unwrap();
+        assert_eq!(url.as_str(), "sparse+https://example.com/member/");
+
+        let token = registry_token(&manifest, Some(REGISTRY)).unwrap();
+        assert_eq!(token.as_deref(), Some("member-token"));
     }
 }
