@@ -6,29 +6,28 @@ use url::Url;
 const CRATES_IO_INDEX: &str = tame_index::index::sparse::CRATES_IO_HTTP_INDEX;
 const CRATES_IO_REGISTRY: &str = "crates-io";
 
-/// Find the URL of a registry
-pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> CargoResult<Url> {
-    // TODO support local registry sources, directory sources, git sources: https://doc.rust-lang.org/cargo/reference/source-replacement.html?highlight=replace-with#source-replacement
-    fn read_config(
-        registries: &mut HashMap<String, Source>,
-        path: impl AsRef<Path>,
-    ) -> CargoResult<()> {
-        let path = path.as_ref();
-        // TODO unit test for source replacement
-        let content = std::fs::read_to_string(path)?;
-        let config = toml::from_str::<CargoConfig>(&content)
-            .with_context(|| anyhow::format_err!("invalid cargo config at {}", path.display()))?;
-        for (key, value) in config.registries {
-            registries.entry(key).or_insert(Source {
-                registry: value.index,
-                replace_with: None,
-            });
-        }
-        for (key, value) in config.source {
-            registries.entry(key).or_insert(value);
-        }
-        Ok(())
+// Read `[registries]` and `[source]` tables from a cargo config file into `registries`.
+fn read_config(
+    registries: &mut HashMap<String, Source>,
+    path: impl AsRef<Path>,
+) -> CargoResult<()> {
+    let path = path.as_ref();
+    let content = std::fs::read_to_string(path)?;
+    let config = toml::from_str::<CargoConfig>(&content)
+        .with_context(|| anyhow::format_err!("invalid cargo config at {}", path.display()))?;
+    for (key, value) in config.registries {
+        registries.entry(key).or_insert(Source {
+            registry: value.index,
+            replace_with: None,
+        });
     }
+    for (key, value) in config.source {
+        registries.entry(key).or_insert(value);
+    }
+    Ok(())
+}
+
+fn load_registries(manifest_path: &Path) -> CargoResult<HashMap<String, Source>> {
     // registry might be replaced with another source
     // it's looks like a singly linked list
     // put relations in this map.
@@ -62,32 +61,68 @@ pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> CargoResult
         }
     }
 
+    Ok(registries)
+}
+
+// Resolve `registry` through any `replace-with` source replacements, defaults to crates-io.
+fn resolve_registry(
+    registries: &mut HashMap<String, Source>,
+    registry: Option<&str>,
+) -> CargoResult<(Vec<String>, Source)> {
     // find head of the relevant linked list
-    let mut source = match registry {
+    let (head, mut source) = match registry {
         Some(CRATES_IO_INDEX) | None => {
             let mut source = registries.remove(CRATES_IO_REGISTRY).unwrap_or_default();
             source
                 .registry
                 .get_or_insert_with(|| CRATES_IO_INDEX.to_owned());
-            source
+            (CRATES_IO_REGISTRY.to_owned(), source)
         }
-        Some(r) => registries
-            .remove(r)
-            .with_context(|| anyhow::format_err!("The registry '{r}' could not be found"))?,
+        Some(r) => {
+            let source = registries
+                .remove(r)
+                .with_context(|| anyhow::format_err!("The registry '{r}' could not be found"))?;
+            (r.to_owned(), source)
+        }
     };
+    let mut names = vec![head];
 
     // search this linked list and find the tail
-    while let Some(replace_with) = &source.replace_with {
-        let is_crates_io = replace_with == CRATES_IO_INDEX;
-        source = registries.remove(replace_with).with_context(|| {
-            anyhow::format_err!("The source '{replace_with}' could not be found")
-        })?;
-        if is_crates_io {
+    while let Some(replace_with) = source.replace_with.take() {
+        // detect cycle: `a -> b -> a`
+        if names.contains(&replace_with) {
+            let chain = names
+                .iter()
+                .chain(std::iter::once(&replace_with))
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(" -> ");
+            anyhow::bail!("cycle detected in source replacement: {chain}");
+        }
+
+        // crates-io is built in, so it need not be declared in any config
+        source = if replace_with == CRATES_IO_REGISTRY {
+            let mut source = registries.remove(&replace_with).unwrap_or_default();
             source
                 .registry
                 .get_or_insert_with(|| CRATES_IO_INDEX.to_owned());
-        }
+            source
+        } else {
+            registries.remove(&replace_with).with_context(|| {
+                anyhow::format_err!("The source '{replace_with}' could not be found")
+            })?
+        };
+        names.push(replace_with);
     }
+
+    Ok((names, source))
+}
+
+/// Find the URL of a registry
+pub fn registry_url(manifest_path: &Path, registry: Option<&str>) -> CargoResult<Url> {
+    // TODO support local registry sources, directory sources, git sources: https://doc.rust-lang.org/cargo/reference/source-replacement.html?highlight=replace-with#source-replacement
+    let mut registries = load_registries(manifest_path)?;
+    let (_names, source) = resolve_registry(&mut registries, registry)?;
 
     let registry_url = source
         .registry
@@ -126,16 +161,29 @@ struct Registry {
 /// requests with `401 Unauthorized`. cargo stores the token out-of-band, so we
 /// resolve it here and let the caller attach it to the request.
 ///
+/// The registry name is resolved through `replace-with` source replacement
+/// first allowing crates.io to be served by a private registry.
+///
 /// Precedence mirrors cargo: the `CARGO_REGISTRIES_<NAME>_TOKEN` environment
 /// variable wins, then `token` under `[registries.<name>]` in the `credentials`
 /// / `config` files, walking from the manifest directory up to `$CARGO_HOME`.
 pub fn registry_token(manifest_path: &Path, registry: Option<&str>) -> CargoResult<Option<String>> {
-    // The crates.io index does not require authentication, and its publish
-    // token must not be leaked to the (CDN-fronted) sparse index, so only named
-    // alternative registries are considered here.
-    let Some(name) = registry else {
+    // resolve which registry ultimately serves the request:
+    // `source.crates-io.replace-with = "my-registry"` means the token should be pulled
+    // from "my-registry", not "crates-io".
+    let names = {
+        let mut registries = load_registries(manifest_path)?;
+        let (names, _source) = resolve_registry(&mut registries, registry)?;
+        names
+    };
+    let Some(name) = names.last() else {
         return Ok(None);
     };
+
+    // crates.io index does not require auth
+    if name == CRATES_IO_REGISTRY {
+        return Ok(None);
+    }
 
     let env_key = format!(
         "CARGO_REGISTRIES_{}_TOKEN",
@@ -251,6 +299,10 @@ mod tests {
     fn token_from_credentials_toml() {
         let tree = TempTree::new("credentials");
         tree.write(
+            ".cargo/config.toml",
+            &format!("[registries.{REGISTRY}]\nindex = \"sparse+https://example.com/\"\n"),
+        );
+        tree.write(
             ".cargo/credentials.toml",
             &format!("[registries.{REGISTRY}]\ntoken = \"cred-token\"\n"),
         );
@@ -288,22 +340,96 @@ mod tests {
     }
 
     #[test]
-    fn unknown_registry_is_none() {
+    fn source_replacement_is_followed() {
+        let tree = TempTree::new("replace");
+        tree.write(
+            ".cargo/config.toml",
+            &format!(
+                "[source.crates-io]\nreplace-with = \"{REGISTRY}\"\n\n[registries.{REGISTRY}]\nindex = \"sparse+https://example.com/index/\"\n"
+            ),
+        );
+        tree.write(
+            ".cargo/credentials.toml",
+            &format!(
+                "[registry]\ntoken = \"crates-io-publish-token\"\n\n[registries.{REGISTRY}]\ntoken = \"replaced-token\"\n"
+            ),
+        );
+
+        let url = registry_url(&tree.manifest(), None).unwrap();
+        assert_eq!(url.as_str(), "sparse+https://example.com/index/");
+
+        let token = registry_token(&tree.manifest(), None).unwrap();
+        assert_eq!(token.as_deref(), Some("replaced-token"));
+    }
+
+    #[test]
+    fn replacement_with_crates_io_uses_default_index() {
+        let tree = TempTree::new("to-crates-io");
+        tree.write(
+            ".cargo/config.toml",
+            "[source.mirror]\nreplace-with = \"crates-io\"\n",
+        );
+        tree.write(
+            ".cargo/credentials.toml",
+            "[registry]\ntoken = \"crates-io-publish-token\"\n",
+        );
+
+        let url = registry_url(&tree.manifest(), Some("mirror")).unwrap();
+        assert_eq!(url.as_str(), CRATES_IO_INDEX);
+
+        // The crates.io publish token must not be sent to the index.
+        let token = registry_token(&tree.manifest(), Some("mirror")).unwrap();
+        assert_eq!(token, None);
+    }
+
+    #[test]
+    fn misconfigured_source_replacement_is_an_error() {
+        let cycle = TempTree::new("cycle");
+        cycle.write(
+            ".cargo/config.toml",
+            "[source.crates-io]\nreplace-with = \"a\"\n\n[source.a]\nreplace-with = \"b\"\n\n[source.b]\nreplace-with = \"a\"\n",
+        );
+        let err = registry_url(&cycle.manifest(), None).unwrap_err();
+        assert!(err.to_string().contains("cycle"), "got: {err}");
+
+        let missing = TempTree::new("missing");
+        missing.write(
+            ".cargo/config.toml",
+            "[source.crates-io]\nreplace-with = \"a\"\n",
+        );
+        let token_err = registry_token(&missing.manifest(), None).unwrap_err();
+        let url_err = registry_url(&missing.manifest(), None).unwrap_err();
+        assert_eq!(token_err.to_string(), url_err.to_string());
+        assert!(token_err.to_string().contains("'a'"), "got: {token_err}");
+    }
+
+    #[test]
+    fn unknown_registry_is_an_error() {
         let tree = TempTree::new("unknown");
         tree.write(
             ".cargo/credentials.toml",
             &format!("[registries.{REGISTRY}]\ntoken = \"cred-token\"\n"),
         );
-        assert_eq!(
-            registry_token(&tree.manifest(), Some("cargo-edit-absent-registry")).unwrap(),
-            None
+        let err = registry_token(&tree.manifest(), Some("cargo-edit-absent-registry")).unwrap_err();
+        assert!(
+            err.to_string().contains("cargo-edit-absent-registry"),
+            "expected a missing-registry error, got: {err}"
         );
     }
 
     #[test]
-    fn default_registry_is_none() {
-        // The crates.io index never requires a token; don't leak the publish token to it.
-        let tree = TempTree::new("default");
-        assert_eq!(registry_token(&tree.manifest(), None).unwrap(), None);
+    fn unauthenticated_registry_is_none() {
+        let crates_io = TempTree::new("default");
+        assert_eq!(registry_token(&crates_io.manifest(), None).unwrap(), None);
+
+        let tree = TempTree::new("no-token");
+        tree.write(
+            ".cargo/config.toml",
+            &format!("[registries.{REGISTRY}]\nindex = \"sparse+https://example.com/\"\n"),
+        );
+        assert_eq!(
+            registry_token(&tree.manifest(), Some(REGISTRY)).unwrap(),
+            None
+        );
     }
 }
